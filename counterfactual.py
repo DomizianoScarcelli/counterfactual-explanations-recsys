@@ -3,13 +3,14 @@ from torch.utils.data import Dataset
 import torch
 from typing import Tuple, List
 import heapq
+from tqdm import tqdm
 
 class Explainer:
     def __init__(self, 
                  recommender: RecommenderSystem):
         self.recommender = recommender
 
-    def apply_swap(self, sequence: torch.Tensor, idx_src: int, idx_dst: int) -> Tuple[torch.Tensor, torch.Tensor]:
+    def apply_swap(self, sequence: torch.Tensor, idx_src: int, idx_dst: int) -> Tuple[torch.Tensor, float]:
         """
         Swaps two items in the sequence.
         Args:
@@ -28,10 +29,10 @@ class Explainer:
         # Perform the swap
         new_sequence[idx_src], new_sequence[idx_dst] = new_sequence[idx_dst], new_sequence[idx_src]
         
-        cost = torch.dist(new_sequence, sequence, p=2)
+        cost = torch.dist(new_sequence.float(), sequence.float(), p=2).item()
         return new_sequence, cost
 
-    def apply_replacement(self, sequence: torch.Tensor, idx: int, new_value: int) -> Tuple[torch.Tensor, torch.Tensor]:
+    def apply_replacement(self, sequence: torch.Tensor, idx: int, new_value: int) -> Tuple[torch.Tensor, float]:
         """
         Replace an item in the sequence with another item
         Args:
@@ -49,11 +50,11 @@ class Explainer:
 
         # Replace the value at the given index with the new value
         new_sequence[idx] = new_value
-        cost = torch.dist(new_sequence, sequence, p=2)
+        cost = torch.dist(new_sequence.float(), sequence.float(), p=2).item()
         
         return new_sequence, cost
 
-    def apply_deletion(self, sequence: torch.Tensor, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
+    def apply_deletion(self, sequence: torch.Tensor, idx: int) -> Tuple[torch.Tensor, float]:
         """
         Delete an item from the sequence
         Args:
@@ -72,16 +73,15 @@ class Explainer:
 
         # Shift all elements after the deleted index to the left
         if idx < len(new_sequence) - 1:
-            new_sequence[idx:-1] = new_sequence[idx+1:]
+            new_sequence[idx:-1] = new_sequence[idx+1:].clone() #clone, otherwise error
         
         # Set the last element to 0 (padding)
         new_sequence[-1] = 0
         
-        cost = torch.dist(new_sequence, sequence, p=2)
+        cost = torch.dist(new_sequence.float(), sequence.float(), p=2).item()
         return new_sequence, cost
 
-    # TODO: this is a work in progress
-    def a_star(self, sequence: torch.Tensor, max_steps: int = 1000) -> Tuple[torch.Tensor, List[torch.Tensor]]:
+    def a_star(self, sequence: torch.Tensor, max_steps: int = 100_000) -> Tuple[torch.Tensor, List[torch.Tensor]]:
         """
         Perform A* search to find counterfactual explanation.
         Args:
@@ -92,20 +92,28 @@ class Explainer:
         """
         def heuristic(seq: torch.Tensor) -> float:
             """ Heuristic based on recommendation scores (e.g., distance in scores). """
-            rec_original = self.recommender(sequence)
-            rec_current = self.recommender(seq)
-            return torch.dist(rec_original, rec_current, p=2).item()
+            rec_original = self.recommender(sequence)[0,0].float()
+            rec_current = self.recommender(seq)[0,0].float()
+            # return torch.dist(rec_original, rec_current, p=2).item()
+            return abs(rec_original - rec_current).item()
 
         # Priority queue to store (cost, sequence, edit path)
         pq = [(0, sequence, [])]
         visited = set()
         visited.add(tuple(sequence.tolist()))  # Store sequences as tuples for immutability in the visited set
+        pbar = tqdm(total=max_steps)
+
+        original_rec = self.recommender(sequence)[0, 0].item()
 
         while pq and len(pq) < max_steps:
+            pbar.update(1)
             cost, current_sequence, path = heapq.heappop(pq)
+            current_sequence = torch.tensor(current_sequence)
+
+            current_rec = self.recommender(current_sequence)[0, 0].item()
 
             # Check if this is a valid counterfactual (change in recommendation)
-            if self.recommender(current_sequence) != self.recommender(sequence):
+            if current_rec != original_rec:
                 return current_sequence, path
 
             # Apply transitions: swap, replacement, deletion
@@ -118,7 +126,7 @@ class Explainer:
 
                         if tuple(new_seq.tolist()) not in visited:
                             visited.add(tuple(new_seq.tolist()))
-                            heapq.heappush(pq, (total_cost, new_seq, new_path))
+                            heapq.heappush(pq, (-total_cost, new_seq.tolist(), new_path))
                 
                 # Try replacements and deletions
                 for new_value in range(len(sequence)):  # Assuming items are integers
@@ -128,7 +136,7 @@ class Explainer:
 
                     if tuple(new_seq.tolist()) not in visited:
                         visited.add(tuple(new_seq.tolist()))
-                        heapq.heappush(pq, (total_cost, new_seq, new_path))
+                        heapq.heappush(pq, (-total_cost, new_seq.tolist(), new_path))
                 
                 new_seq, transition_cost = self.apply_deletion(current_sequence, idx_src)
                 new_path = path + [('delete', idx_src)]
@@ -136,10 +144,9 @@ class Explainer:
 
                 if tuple(new_seq.tolist()) not in visited:
                     visited.add(tuple(new_seq.tolist()))
-                    heapq.heappush(pq, (total_cost, new_seq, new_path))
-
+                    heapq.heappush(pq, (-total_cost, new_seq.tolist(), new_path))
+        
         return None, []
-        pass
     
     def explain(self, sequence: torch.Tensor) -> torch.Tensor:
         pass
@@ -147,10 +154,12 @@ class Explainer:
 
 if __name__ == "__main__":
     # Example usage
-    mock_recommender = MockRecommenderSystem(num_items=10, top_k=3)
+    torch.manual_seed(42)
+    num_items, top_k = 10000, 10
+    mock_recommender = MockRecommenderSystem(num_items=num_items, top_k=top_k)
     explainer = Explainer(mock_recommender)
 
-    sequence = torch.tensor([1, 2, 3, 4, 5])  # Original sequence of user interactions
+    sequence = torch.rand(1000)  # Original sequence of user interactions
     counterfactual, edit_path = explainer.a_star(sequence)
     print("Counterfactual sequence:", counterfactual)
     print("Edit path:", edit_path)

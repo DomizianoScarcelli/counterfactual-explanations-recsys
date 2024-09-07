@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from abc import ABC, abstractmethod
 
 class RecommenderSystem(ABC, nn.Module):
@@ -17,7 +18,7 @@ class RecommenderSystem(ABC, nn.Module):
         pass
 
 
-class MockRecommenderSystem(RecommenderSystem):
+class MockRecommenderSystem(nn.Module):
     def __init__(self, num_items: int, top_k: int):
         """
         Args:
@@ -27,27 +28,43 @@ class MockRecommenderSystem(RecommenderSystem):
         super(MockRecommenderSystem, self).__init__()
         self.num_items = num_items
         self.top_k = top_k
-
+        # Randomly initialized item embeddings for simplicity
+        self.item_embeddings = nn.Parameter(torch.randn(num_items, num_items))
+    
     def forward(self, x: torch.Tensor):
         """
         Args:
-            x: A tensor representing user interaction history, shape (batch_size, num_items)
+            x: A tensor representing user interaction history, shape (batch_size, num_features)
+            num_features can be different from num_items
         
         Returns:
             A tensor of size (batch_size, top_k) with the indices of the top-k recommendations.
         """
-        # Mock logic: Recommend the first top_k items for every user
-        # In a real system, this might involve more complex logic like matrix factorization, attention models, etc.
+        if len(x.shape) == 1:
+            x = x.unsqueeze(0)
+        batch_size, num_features = x.size()
         
-        # For simplicity, here we recommend items 0, 1, ..., top_k-1 for every user
-        batch_size = x.size(0)
-        top_k_items = torch.arange(self.top_k).expand(batch_size, -1)  # Shape: (batch_size, top_k)
+        if num_features < self.num_items:
+            # Pad x with zeros to make it of size (batch_size, num_items)
+            padding_size = self.num_items - num_features
+            x = F.pad(x, (0, padding_size), "constant", 0)
+        elif num_features > self.num_items:
+            # Truncate x to make it of size (batch_size, num_items)
+            x = x[:, :self.num_items]
         
-        return top_k_items
+        # Now x has shape (batch_size, num_items)
+        scores = torch.matmul(x, self.item_embeddings.T)  # Shape: (batch_size, num_items)
+        
+        # Get the indices of the top-k items per user
+        _, top_k_items = torch.topk(scores, self.top_k, dim=1)  # Shape: (batch_size, top_k)
 
+        # print(f"Source: {x}") 
+        # print(f"Topk: {top_k_items[0]}")
+        return top_k_items
 
 # Example usage:
 if __name__ == "__main__":
+    torch.manual_seed(42)
     num_items = 100  # Mock number of items
     top_k = 5  # We want the top 5 recommendations
 
