@@ -80,7 +80,8 @@ class Explainer:
         
         cost = torch.dist(new_sequence.float(), sequence.float(), p=2).item()
         return new_sequence, cost
-
+    
+    @torch.no_grad()
     def a_star(self, sequence: torch.Tensor, max_steps: int = 100_000) -> Tuple[torch.Tensor, List[torch.Tensor]]:
         """
         Perform A* search to find counterfactual explanation.
@@ -155,11 +156,13 @@ class Explainer:
 if __name__ == "__main__":
     # Example usage
     torch.manual_seed(42)
-    num_items, top_k = 10000, 10
-    mock_recommender = MockRecommenderSystem(num_items=num_items, top_k=top_k)
+    num_items, top_k = 1_000, 10
+    mock_recommender = MockRecommenderSystem(num_items=num_items, top_k=top_k, embedding_dim=64)
     explainer = Explainer(mock_recommender)
-
-    sequence = torch.rand(1000)  # Original sequence of user interactions
+    
+    history_length = 100
+    sequence = torch.randint(high=num_items, size=(history_length,)).float()  # Shape: (batch_size=2, num_items=100)
     counterfactual, edit_path = explainer.a_star(sequence)
+    print("Original sequence:", sequence)
     print("Counterfactual sequence:", counterfactual)
     print("Edit path:", edit_path)

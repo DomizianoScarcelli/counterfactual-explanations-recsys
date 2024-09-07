@@ -19,17 +19,20 @@ class RecommenderSystem(ABC, nn.Module):
 
 
 class MockRecommenderSystem(nn.Module):
-    def __init__(self, num_items: int, top_k: int):
+    def __init__(self, num_items: int, top_k: int, embedding_dim: int):
         """
         Args:
             num_items: Total number of items available for recommendation
             top_k: Number of top items to recommend
+            embedding_dim: The dimensionality of the embedding space
         """
         super(MockRecommenderSystem, self).__init__()
         self.num_items = num_items
         self.top_k = top_k
-        # Randomly initialized item embeddings for simplicity
-        self.item_embeddings = nn.Parameter(torch.randn(num_items, num_items))
+        self.embedding_dim = embedding_dim
+        
+        # Randomly initialized item embeddings in a lower-dimensional space
+        self.item_embeddings = nn.Parameter(torch.randn(num_items, embedding_dim))
     
     def forward(self, x: torch.Tensor):
         """
@@ -43,35 +46,35 @@ class MockRecommenderSystem(nn.Module):
         if len(x.shape) == 1:
             x = x.unsqueeze(0)
         batch_size, num_features = x.size()
-        
+
+        # Embedding padding or truncation as needed
         if num_features < self.num_items:
-            # Pad x with zeros to make it of size (batch_size, num_items)
             padding_size = self.num_items - num_features
             x = F.pad(x, (0, padding_size), "constant", 0)
         elif num_features > self.num_items:
-            # Truncate x to make it of size (batch_size, num_items)
             x = x[:, :self.num_items]
         
-        # Now x has shape (batch_size, num_items)
-        scores = torch.matmul(x, self.item_embeddings.T)  # Shape: (batch_size, num_items)
+        # Project user interaction history to the embedding space
+        x_embeddings = torch.matmul(x, self.item_embeddings)  # Shape: (batch_size, embedding_dim)
+
+        # Compute scores for all items (dot product in embedding space)
+        scores = torch.matmul(x_embeddings, self.item_embeddings.T)  # Shape: (batch_size, num_items)
         
         # Get the indices of the top-k items per user
         _, top_k_items = torch.topk(scores, self.top_k, dim=1)  # Shape: (batch_size, top_k)
-
-        # print(f"Source: {x}") 
-        # print(f"Topk: {top_k_items[0]}")
+        
         return top_k_items
 
 # Example usage:
 if __name__ == "__main__":
     torch.manual_seed(42)
-    num_items = 100  # Mock number of items
+    num_items = 10_000 # Mock number of items
     top_k = 5  # We want the top 5 recommendations
 
-    recommender = MockRecommenderSystem(num_items=num_items, top_k=top_k)
+    recommender = MockRecommenderSystem(num_items=num_items, top_k=top_k, embedding_dim=64)
     
     # Mock input: A batch of 2 users, with interaction history (we'll leave the actual values unused)
-    user_history = torch.rand((2, num_items))  # Shape: (batch_size=2, num_items=100)
+    user_history = torch.randint(high=num_items, size=(2, 1500)).float()  # Shape: (batch_size=2, num_items=100)
     
     recommendations = recommender(user_history)
     print("Top-k Recommendations:\n", recommendations)
