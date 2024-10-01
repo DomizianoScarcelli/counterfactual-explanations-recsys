@@ -47,6 +47,10 @@ class GeneticGenerationStrategy(GenerationStrategy):
         seq[i:j+1] = np.random.shuffle(seq[i:j+1])
         return seq
 
+    # Mutation: Replaces an item with another random item
+    def mutate_replace(self, sequence):
+        pass
+
 
      # Fitness function combining sequence similarity and label difference
     def fitness(self, original_seq, candidate_seq, original_label, candidate_label):
