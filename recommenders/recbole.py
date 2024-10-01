@@ -7,6 +7,11 @@ from recbole.model.sequential_recommender import BERT4Rec
 from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
 import torch
+import numpy as np
+from typing import List
+from copy import deepcopy
+
+from dataset_generator import GeneticGenerationStrategy
 
 # Set the config file or pass in model/dataset parameters
 eval_batch_size = 1
@@ -27,6 +32,25 @@ def predict(model: SequentialRecommender, interaction: Interaction) -> torch.Ten
     assert preds.size(0) == eval_batch_size
     return preds
 
+
+# def predict(model: SequentialRecommender, sequence: torch.Tensor, user_id: int) -> int:
+#     pass
+
+def generate_counterfactual_dataset(interaction: Interaction) -> List[Interaction]:
+    genetic_strategy = GeneticGenerationStrategy()
+    sequence = interaction.interaction["item_id_list"] 
+    assert sequence.size(0) == 1, f"Only batch size of 1 is supported, sequence shape is: {sequence.shape}"
+    user_id = interaction.interaction["user_id"][0].item()
+    def model_predict(seq):
+        if isinstance(seq, np.ndarray):
+            seq = torch.from_numpy(seq)
+        seq = seq.unsqueeze(0)
+        new_interaction = deepcopy(interaction)
+        new_interaction.interaction["item_id_list"] = seq
+        return predict(model, new_interaction)
+    counterfactual_dataset = genetic_strategy.generate(sequence[0].numpy(), model=model_predict)
+    print(counterfactual_dataset )
+
 for data in test_data:
     # Interaction is an object and the first of the tuple. 
     interaction = data[0]
@@ -36,10 +60,10 @@ for data in test_data:
     # item_matrix = raw_interactions["item_id_list"]
     # item_length = raw_interactions["item_length"]
 
-    pred = predict(model, interaction)
-    print(pred)
+    # pred = predict_from_interaction(model, interaction)
+    generate_counterfactual_dataset(interaction)
+    break
 
 
-def generate_counterfactual_dataset(interaction: Interaction) -> List[Interaction]:
-    pass
+
 

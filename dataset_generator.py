@@ -1,6 +1,6 @@
 import numpy as np
 from abc import ABC, abstractmethod
-from typing import List, Tuple
+from typing import List, Tuple, Callable
 import random
 
 # A function to calculate similarity between two sequences (e.g., edit distance)
@@ -14,13 +14,17 @@ def label_distance(label1, label2):
 def self_indicator(seq1, seq2):
     return float("inf") if (seq1 == seq2).all() else 0
 
+def dummy_model(seq):
+    #NOTE: dummy black box model, use recommender
+    return 1 if sum(seq) % 2 == 0 else 0
+
 class GenerationStrategy(ABC):
     @abstractmethod
-    def generate(self, x: np.ndarray) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+    def generate(self, x: np.ndarray,  model: Callable[[np.ndarray], int]) -> Tuple[List[np.ndarray], List[np.ndarray]]:
         pass
 
 class RandomPickGenerationStrategy(GenerationStrategy):
-    def generate(self, x: np.ndarray) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+    def generate(self, x: np.ndarray,  model: Callable[[np.ndarray], int]) -> Tuple[List[np.ndarray], List[np.ndarray]]:
         pass
     
 class GeneticGenerationStrategy(GenerationStrategy):
@@ -97,21 +101,17 @@ class GeneticGenerationStrategy(GenerationStrategy):
 
         return good_examples, bad_examples
 
-    def generate(self, x: np.ndarray) -> Tuple[List[np.ndarray], List[np.ndarray]]:
-        def label_func(seq):
-            #NOTE: dummy black box model, use recommender
-            return 1 if sum(seq) % 2 == 0 else 0
+    def generate(self, x: np.ndarray, model: Callable[[np.ndarray], int]) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+        original_label = model(x)
 
-        original_label = label_func(x)
-
-        return self.genetic_algorithm(original_seq=x, label_func=label_func, original_label=original_label, pop_size=10)
+        return self.genetic_algorithm(original_seq=x, label_func=model, original_label=original_label, pop_size=10)
 
     
 
 
 def generate(strategy: GenerationStrategy):
     src = np.random.randint(0,100, (20,))
-    result = strategy.generate(src)
+    result = strategy.generate(src, dummy_model)
     print(result)
 
 
