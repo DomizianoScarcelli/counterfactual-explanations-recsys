@@ -156,11 +156,11 @@ class Explainer:
 if __name__ == "__main__":
     # Example usage
     torch.manual_seed(42)
-    num_items, top_k = 1_000, 10
+    num_items, top_k = 10_000, 10
     mock_recommender = MockRecommenderSystem(num_items=num_items, top_k=top_k, embedding_dim=64)
     explainer = Explainer(mock_recommender)
     
-    history_length = 100
+    history_length = 1000
     sequence = torch.randint(high=num_items, size=(history_length,)).float()  # Shape: (batch_size=2, num_items=100)
     counterfactual, edit_path = explainer.a_star(sequence)
     print("Original sequence:", sequence)

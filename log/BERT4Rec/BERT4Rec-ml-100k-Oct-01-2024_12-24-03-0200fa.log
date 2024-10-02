@@ -1,0 +1,3 @@
+Tue 01 Oct 2024 12:24:04 INFO  [Training]: train_batch_size = [2048] train_neg_sample_args: [{'distribution': 'none', 'sample_num': 'none', 'alpha': 'none', 'dynamic': False, 'candidate_num': 0}]
+Tue 01 Oct 2024 12:24:04 INFO  [Evaluation]: eval_batch_size = [4096] eval_args: [{'split': {'LS': 'valid_and_test'}, 'order': 'TO', 'group_by': 'user', 'mode': {'valid': 'full', 'test': 'full'}}]
+Tue 01 Oct 2024 12:24:05 INFO  Loading model structure and parameters from saved/BERT4Rec-Oct-01-2024_12-18-45.pth
