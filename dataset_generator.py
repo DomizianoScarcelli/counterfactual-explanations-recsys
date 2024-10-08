@@ -28,7 +28,7 @@ def simple_matching_distance(v1, v2):
     # Ensure the input vectors are of the same shape
     assert v1.shape == v2.shape, "Vectors must have the same shape."
     matches = (v1 == v2).float()
-    return matches.mean()
+    return 1 - matches.mean()
 
 # A function to calculate label distance (0 if same label, 1 if different)
 def label_distance(prob1, prob2):
@@ -56,7 +56,7 @@ class RandomPickGenerationStrategy(GenerationStrategy):
     
 class GeneticGenerationStrategy(GenerationStrategy):
     def __init__(self) :
-        self.mutations = [self.mutate_replace, self.mutate_shuffle, self.mutate_swap, self.mutate_reverse]
+        self.mutations = [self.mutate_swap]
 
     # Crossover: Two-point crossover between two sequences
     def two_point_crossover(self, seq1: torch.Tensor, seq2: torch.Tensor):
