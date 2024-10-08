@@ -18,7 +18,7 @@ def augment_trace_automata(automata: Dfa):
     Giacomo et al:
         1. Two new propositions `add_p` and `del_p` are added for each proposition p in
         the T alphabet;
-        2. Two new transitions `(q, add_p, q')` and `(q, del_p, q')` are added for each
+        2. Two new transitions `(q, add_p, q)` and `(q, del_p, q')` are added for each
         proposition `p` in the `T` alphabet and for each state q in the transition
         function, if there is no transition `(q, p, q')` for all `q'` in the transition
         function.
@@ -77,7 +77,7 @@ def augment_constraint_automata(automata: Dfa):
             the T alphabet;
             2. A new transitions `(q, del_p, q')` is added for each
             proposition `p` in the `T` alphabet and for each state q in the transition
-            function; and a new transition `(q, add_p, q')` is added for all
+            function; and a new transition `(q, add_p, q)` is added for all
             transitions (q, phi, q') such that p satisfies the formula phi.
     
     The `phi` formula is the constraint that checks a trace against `A`. It
@@ -86,7 +86,37 @@ def augment_constraint_automata(automata: Dfa):
     The augmented automaton `A+` will accept all sequences that satisfy `phi`
     and that have been obtained by repairing the original sequence `s`
     """
-    pass
+    # Alphabet is the universe of all the items
+    alphabet = [i for i in range(1, NumItems.ML_1M.value)]
+    
+    # Create the new repair propositions
+    add_propositions = {p: f"add_{p}" for p in alphabet}
+    del_propositions = {p: f"del_{p}" for p in alphabet}
+
+    # Step 2: Augment the automaton by adding new transitions for `del_p` and `add_p`
+    for state in automata.states:
+        # Step 2.1: For every existing transition (q, p, q'), add (q, del_p, q')
+        transitions_to_add = []
+        for p, target_state in state.transitions.items():
+            del_p = del_propositions[p]
+            # Add (q, del_p, q') transition, where q' is the same as for p
+            transitions_to_add.append((del_p, target_state))
+
+        # Step 2.2: For every symbol p in the alphabet, if the transition (q, add_p, q') 
+        # creates a sequence that is still accepted by the formula, then add that transition.
+        #TODO: this has to be implemented
+        for p in alphabet:
+            pass
+    
+        # Now add the new transitions to the state
+        for new_transition_symbol, target_state in transitions_to_add:
+            state.transitions[new_transition_symbol] = target_state
+
+    # alphabet = set()  # Collect the alphabet of the DFA
+    # for state in automata.states:
+    #     alphabet.update(state.transitions.keys())
+    # print(f"Augmented alphabet is: {alphabet}")
+    return automata
 
 def synchronous_product(dfa_A: Dfa, dfa_T: Dfa):
     #TODO: THIS HAS TO BE TESTED!!!

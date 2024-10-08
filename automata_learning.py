@@ -9,6 +9,7 @@ from aalpy.utils.HelperFunctions import make_input_complete
 from recbole.config import Config
 from tqdm import tqdm
 import random
+from collections import deque
 
 automata_save_path = "automata.pickle"
 
@@ -48,7 +49,7 @@ def run_automata(automata: Dfa, input: List[int]):
         try:
             result = automata.step(char)
         except KeyError:
-            print(f"Char {char} at position {i} ignored because not in alphabet")
+            # print(f"Char {char} at position {i} ignored because not in alphabet")
             continue
     return result
 
@@ -109,4 +110,5 @@ def generate_single_accepting_sequence_dfa(sequence):
 
     # Return the DFA
     return Dfa(initial_state, states)
-     
+ 
+
