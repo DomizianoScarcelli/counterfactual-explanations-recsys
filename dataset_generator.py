@@ -9,6 +9,10 @@ import torch.nn.functional as F
 import torch
 from enum import Enum
 
+class NumItems(Enum):
+    ML_100K=1682
+    ML_1M= 3952 - 500
+
 # A function to calculate distance between two sequences (e.g., edit distance)
 def edit_distance(seq1, seq2):
     return 1 - np.sum(np.array(seq1) == np.array(seq2)) / len(seq1)  # Fraction of matching elements
@@ -56,7 +60,7 @@ class RandomPickGenerationStrategy(GenerationStrategy):
     
 class GeneticGenerationStrategy(GenerationStrategy):
     def __init__(self) :
-        self.mutations = [self.mutate_swap]
+        self.mutations = [self.mutate_replace, self.mutate_swap]
 
     # Crossover: Two-point crossover between two sequences
     def two_point_crossover(self, seq1: torch.Tensor, seq2: torch.Tensor):
@@ -106,10 +110,6 @@ class GeneticGenerationStrategy(GenerationStrategy):
         random.shuffle(subseq) 
         seq[i:j+1] = subseq  
         return torch.tensor(seq)
-
-    class NumItems(Enum):
-        ML_100K=1682
-        ML_1M= 3952 - 500
 
     # Mutation: Replaces an item with another random item
     def mutate_replace(self, sequence, max_value:NumItems=NumItems.ML_1M, num_replaces:int=1):
