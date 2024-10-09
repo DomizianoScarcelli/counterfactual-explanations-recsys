@@ -12,7 +12,7 @@ from copy import deepcopy
 import pickle
 from typing import Union, Optional
 
-from dataset_generator import GeneticGenerationStrategy
+from deap_generator import GeneticGenerationStrategy
 
 
 MAX_LENGTH = 50
@@ -43,7 +43,6 @@ def model_predict(seq:torch.Tensor, prob: bool=True, default_interaction: Option
     return preds
 
 def generate_counterfactual_dataset(interaction: Interaction):
-    genetic_strategy = GeneticGenerationStrategy()
     sequence = interaction.interaction["item_id_list"] 
     assert sequence.size(0) == 1, f"Only batch size of 1 is supported, sequence shape is: {sequence.shape}"
     user_id = interaction.interaction["user_id"][0].item()
@@ -53,9 +52,12 @@ def generate_counterfactual_dataset(interaction: Interaction):
     sequence = sequence[:torch.nonzero(sequence, as_tuple=False).max().item() + 1] if sequence.nonzero().size(0) > 0 else torch.tensor([])
     sequence = sequence.squeeze(0)
     assert len(sequence.shape) == 1, f"Sequence dim must be 1: {sequence.shape}"
-    good_examples, bad_examples = genetic_strategy.generate(sequence, model=model_predict, clean=True)
-    # print([ex[1].item() for ex in good_examples], [ex[1].item() for ex in bad_examples])
-    # print(len(good_examples), len(bad_examples))
+    good_genetic_strategy = GeneticGenerationStrategy(input_seq=sequence, predictor=lambda x: model_predict(x, True, interaction, model), pop_size=500, good_examples=True, generations=10)
+    good_examples = good_genetic_strategy.generate()
+    good_examples = good_genetic_strategy.postprocess(good_examples)
+    bad_genetic_strategy = GeneticGenerationStrategy(input_seq=sequence, predictor=lambda x: model_predict(x, True, interaction, model), pop_size=500, good_examples=False, generations=10)
+    bad_examples = bad_genetic_strategy.generate()
+    bad_examples = bad_genetic_strategy.postprocess(bad_examples)
     return good_examples, bad_examples
 
 def save_dataset(dataset, save_path: str):

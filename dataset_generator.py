@@ -45,7 +45,7 @@ def cosine_distance(prob1: torch.Tensor, prob2: torch.Tensor) -> float:
 def self_indicator(seq1, seq2):
     return float("inf") if (seq1 == seq2).all() else 0
 
-# def dummy_model(seq: torch.Tensor) -> torch.Tensor:
+def dummy_model(seq: torch.Tensor) -> torch.Tensor:
     #NOTE: dummy black box model
     return torch.randn((1, 1983))
 
@@ -191,7 +191,7 @@ class GeneticGenerationStrategy(GenerationStrategy):
                           original_seq: torch.Tensor,
                           original_prob: torch.Tensor, 
                           label_func: Callable, 
-                          pop_size: int=500,
+                          pop_size: int=2000,
                           generations: int=20, 
                           good_examples: bool=True, 
                           pc: float=0.7, 

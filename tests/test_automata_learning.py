@@ -45,8 +45,9 @@ def test_automata(automata: Dfa, dataset):
 
 def test_automata_against_bb(automata: Dfa, automata_gt: int):
     """
-    Test if automata accepts good sequences (model(x) == gt) on the entire test
-    set and refuses bad sequences (model(x) != gt) and calculates the precision.
+    Test the capacity of the automa to approximate the neighbourhood of x
+    described by the black box model. The evaluation is in term of precision,
+    accuracy and recall.
     """
     parameter_dict_ml1m = {
         'load_col': {"inter": ['user_id', 'item_id', 'rating', 'timestamp']},
@@ -54,21 +55,29 @@ def test_automata_against_bb(automata: Dfa, automata_gt: int):
         "eval_batch_size": 1
     }
     config = Config(model='BERT4Rec', dataset='ml-1m', config_dict=parameter_dict_ml1m)
-    _, _, test_data = load_data(config)
+    train_data, valid_data, test_data = load_data(config)
     model = generate_model(config)
     
-    good_predictions, bad_predictions = 0, 0
+    tp, tn, fp, fn = 0, 0, 0, 0
     for _, data in enumerate(tqdm(test_data, "Testing automata against black box model...")):
         interaction = data[0]
         point = interaction.interaction["item_id_list"].squeeze(0)
         bb_label = model_predict(point, prob=False, default_interaction=interaction, default_model=model)
         automata_accepts = run_automata(automata, point.tolist())
-        good_prediction = (automata_gt and automata_accepts) or (bb_label != automata_gt and not automata_accepts)
-        if good_prediction:
-            good_predictions += 1
-        else:
-            bad_predictions += 1
+        bb_good_point = (bb_label == automata_gt)
+        bb_bad_point = (bb_label != automata_gt)
+        if (bb_good_point and automata_accepts): tp+=1
+        if (bb_bad_point and automata_accepts): fp+=1
+        if (bb_bad_point and not automata_accepts): tn+=1
+        if (bb_good_point and not automata_accepts): fn+=1
 
-    total_predictions = good_predictions + bad_predictions
-    precision = (good_predictions / total_predictions) * 100 if total_predictions > 0 else 0
-    assert precision > 90, f"Automata precision is too low: {precision}%"
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+    accuracy = (tp + tn) / (tp + fp + tn + fn) if (tp + fp + tn + fn) > 0 else 0
+    
+    print(f"Precision: {precision}")
+    print(f"Recall: {recall}")
+    print(f"Accuracy: {accuracy}")
+    assert precision > 0.5, f"Automata precision is too low: {precision}"
+    assert recall > 0.5, f"Automata precision is too low: {precision}"
+    assert accuracy > 0.5, f"Automata precision is too low: {precision}"

@@ -4,7 +4,8 @@ from aalpy.automata.Dfa import Dfa
 
 def has_path_to_accepting_state(automaton: Dfa, seq: List[int]):
     """
-    Check if there is a path from the state reached after reading seq.
+    Check if the automata, in the state after executing the sequence `seq`, is
+    in a state which can reach an accepting state in some way
     """
     automaton.reset_to_initial()
     automaton.execute_sequence(origin_state=automaton.current_state, seq=seq)
@@ -21,3 +22,5 @@ def has_path_to_accepting_state(automaton: Dfa, seq: List[int]):
             if next_state and next_state not in visited:
                 queue.append(next_state)
     return False
+
+
