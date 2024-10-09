@@ -55,20 +55,20 @@ def mutate_swap(seq: List[int], offset_ratio: float=0.8):
     seq[i], seq[j] = seq[j], seq[i]
     return seq,
 
-def mutate_reverse(seq: torch.Tensor, offset_ratio:float=0.3):
+def mutate_reverse(seq: List[int], offset_ratio:float=0.3):
     max_offset = round(len(seq) * offset_ratio)
     i, j = random_points_with_offset(len(seq)-1, max_offset)
     seq[i:j+1] = seq[i:j+1][::-1]
-    return torch.tensor(seq)
+    return seq,
 
 # Mutation: Shuffles a random subsequence
-def mutate_shuffle(seq: torch.Tensor, offset_ratio:float=0.3):
+def mutate_shuffle(seq: List[int], offset_ratio:float=0.3):
     max_offset = round(len(seq) * offset_ratio)
     i, j = random_points_with_offset(len(seq)-1, max_offset)
     subseq = seq[i:j+1]  
     random.shuffle(subseq) 
     seq[i:j+1] = subseq  
-    return torch.tensor(seq)
+    return seq,
 
 
 class GeneticGenerationStrategy():
@@ -109,44 +109,6 @@ class GeneticGenerationStrategy():
 
     def generate(self):
         population = self.toolbox.population(n=self.pop_size)
-
-        # for gen in tqdm(range(self.generations), "Genetic algorithm..."):
-        #     # Evaluate the individuals with the objective function
-        #     fitnesses = [self.toolbox.evaluate(ind) for ind in population]
-        #     for ind, fit in zip(population, fitnesses):
-        #         ind.fitness.values = fit
-            
-        #     # Select the next generation individuals
-        #     offspring = self.toolbox.select(population, self.pop_size//2)
-        #     offspring = list(map(self.toolbox.clone, offspring))
-        #     # Apply crossover and mutation on the offspring
-        #     for child1, child2 in zip(offspring[::2], offspring[1::2]):
-        #         child1_c, child2_c = [self.toolbox.clone(child) for child in (child1, child2)]
-        #         if random.random() < 0.7:  # Crossover probability
-        #             self.toolbox.mate(child1_c, child2_c)
-        #             del child1_c.fitness.values
-        #             del child2_c.fitness.values
-            
-        #     # Only mutate a part of the offset
-        #     for mutant in offspring:
-        #         if random.random() < 1:
-        #             mutant_c = self.toolbox.clone(mutant)
-        #             mutated, = self.toolbox.mutate(mutant_c)
-        #             assert id(mutant_c) != id(mutant), f"""
-        #             Mutant and mutated refer to the same object:
-        #                 mutated id: {id(mutant)}
-        #                 mutant id: {id(mutant_c)}
-        #             """
-
-        #             assert mutated != mutant, f"""
-        #             Mutated and mutant are equal:
-        #                 mutated: {mutant}
-        #                 mutant: {mutated}
-        #             """
-        #             del mutant_c.fitness.values
-            
-        #     # Replace the old population by the offspring
-        #     population[:] = offspring
         population, _ = algorithms.eaSimple(population, self.toolbox, cxpb=0.7, mutpb=0.5, ngen=self.generations, verbose=True)
         population = [(torch.tensor(x), self.predictor(torch.tensor(x)).argmax(-1).item()) for x in population]
         label_eval, seq_eval = self.evaluate_generation(population)
@@ -174,11 +136,6 @@ class GeneticGenerationStrategy():
         for seq, _ in examples:
             distances.append(edit_distance(self.input_seq, seq))
         return (same_label / len(examples)), (sum(distances)/len(distances))
-
-# def generate(strategy: GeneticGenerationStrategy):
-#     src = np.random.randint(0, 100, (20,))
-#     best_example = strategy.generate(src, dummy_model)
-#     print([ex.item() for ex in best_example])
 
 if __name__ == "__main__":
     x = torch.randint(0, NumItems.ML_1M.value, (50,))
