@@ -46,13 +46,14 @@ def generate_syntetic_point(min_value:int=1, max_value: int=NumItems.ML_1M.value
 
 def run_automata(automata: Dfa, input: List[int]):
     automata.reset_to_initial()
+    # automata.execute_sequence(origin_state=automata.current_state, seq=input)
+    # return automata.current_state.is_accepting
     result = False
-    for i, char in enumerate(input):
+    for i, char in enumerate(tqdm(input, desc="Running automata...")):
         try:
             result = automata.step(char)
         except KeyError:
-            # print(f"Char {char} at position {i} ignored because not in alphabet")
-            continue
+            return False
     return result
 
 
@@ -111,7 +112,8 @@ def generate_single_accepting_sequence_dfa(sequence):
         reject_state.transitions = {symbol: reject_state for symbol in all_symbols}
 
     # Return the DFA
-    return Dfa(initial_state, states)
+    dfa = Dfa(initial_state, states)
+    return dfa
 
 
 if __name__ == "__main__":

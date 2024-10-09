@@ -66,7 +66,7 @@ def augment_trace_automata(automata: Dfa):
 
 
 
-def augment_constraint_automata(automata: Dfa):
+def augment_constraint_automata(automata: Dfa, trace_automaton: Dfa):
     """
     Given an DFA `A` which only accepts good sequences, defined as those
     sequences which label is the same as the ground truth sequence it augments
@@ -87,7 +87,9 @@ def augment_constraint_automata(automata: Dfa):
     and that have been obtained by repairing the original sequence `s`
     """
     # Alphabet is the universe of all the items
-    alphabet = [i for i in range(1, NumItems.ML_1M.value)]
+    # alphabet = [i for i in range(1, NumItems.ML_1M.value)]
+    alphabet = automata.get_input_alphabet()
+    trace_alphabet = trace_automaton.get_input_alphabet()
     
     # Create the new repair propositions
     add_propositions = {p: f"add_{p}" for p in alphabet}
@@ -97,25 +99,21 @@ def augment_constraint_automata(automata: Dfa):
     for state in automata.states:
         # Step 2.1: For every existing transition (q, p, q'), add (q, del_p, q')
         transitions_to_add = []
-        for p, target_state in state.transitions.items():
-            del_p = del_propositions[p]
-            # Add (q, del_p, q') transition, where q' is the same as for p
-            transitions_to_add.append((del_p, target_state))
+        for trace_p in alphabet:
+            del_p = del_propositions[trace_p]
+            transitions_to_add.append((del_p, state))
 
         # Step 2.2: For every symbol p in the alphabet, if the transition (q, add_p, q') 
         # creates a sequence that is still accepted by the formula, then add that transition.
-        #TODO: this has to be implemented
-        for p in alphabet:
-            pass
+        for p, target_state in state.transitions.items():
+            add_p = add_propositions[p]
+            # Add (q, add_p, q) transition for each (q, p, q) in transitions (#TODO: don't know if this is correct)
+            transitions_to_add.append((add_p, target_state))
     
         # Now add the new transitions to the state
         for new_transition_symbol, target_state in transitions_to_add:
             state.transitions[new_transition_symbol] = target_state
 
-    # alphabet = set()  # Collect the alphabet of the DFA
-    # for state in automata.states:
-    #     alphabet.update(state.transitions.keys())
-    # print(f"Augmented alphabet is: {alphabet}")
     return automata
 
 def synchronous_product(dfa_A: Dfa, dfa_T: Dfa):
