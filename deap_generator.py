@@ -131,7 +131,7 @@ class GeneticGenerationStrategy():
     def postprocess(self, population):
         clean_pop = self.clean(population)
         label_eval, seq_eval = self.evaluate_generation(clean_pop)
-        print(f"[After clean] Good oxamples ={self.good_examples} ({len(clean_pop)}) ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
+        print(f"[After clean] Good examples={self.good_examples} ({len(clean_pop)}) ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
         return clean_pop
 
     def evaluate_generation(self, examples):

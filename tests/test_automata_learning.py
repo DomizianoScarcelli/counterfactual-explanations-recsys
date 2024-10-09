@@ -78,6 +78,14 @@ def test_automata_against_bb(automata: Dfa, automata_gt: int):
     print(f"Precision: {precision}")
     print(f"Recall: {recall}")
     print(f"Accuracy: {accuracy}")
+    print(f"""
+    Confusion matrix:
+    ---------------
+    | TP: {tp}  | FP: {fp} |
+    ---------------
+    | FN: {fn}  | TN: {tn} |
+    ---------------
+    """)
     assert precision > 0.5, f"Automata precision is too low: {precision}"
     assert recall > 0.5, f"Automata precision is too low: {precision}"
     assert accuracy > 0.5, f"Automata precision is too low: {precision}"

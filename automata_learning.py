@@ -23,6 +23,7 @@ def generate_automata(dataset, load_if_exists: bool=True) -> Union[None, Dfa]:
     if dfa is None:
         return 
     save_automata(dfa)
+    print(f"Automata saved at {automata_save_path}")
     return dfa
 
 def save_automata(automata):
@@ -115,8 +116,24 @@ def generate_single_accepting_sequence_dfa(sequence):
 
 if __name__ == "__main__":
     print(f"Generating automata from saved dataset")
-    dataset = load_dataset(load_path="saved/counterfactual_dataset.pickle")
+
+    #Remove non-determinism
+    g,b= load_dataset(load_path="saved/counterfactual_dataset.pickle")
+    new_g, new_b = [], []
+    ids = set()
+    for p, l in g:
+        if tuple(p.tolist()) in ids:
+            continue
+        new_g.append((p,l))
+        ids.add(tuple(p.tolist()))
+    for p, l in b:
+        if tuple(p.tolist()) in ids:
+            continue
+        new_b.append((p,l))
+        ids.add(tuple(p.tolist()))
+
+    dataset = (new_g, new_b)
     dfa = generate_automata_from_dataset(dataset, load_if_exists=False)
-    dfa.visualize()
+    # dfa.visualize()
 
 
