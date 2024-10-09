@@ -13,10 +13,11 @@ from collections import deque
 
 automata_save_path = "automata.pickle"
 
-def generate_automata(dataset) -> Union[None, Dfa]:
-    if os.path.exists(automata_save_path):
+def generate_automata(dataset, load_if_exists: bool=True) -> Union[None, Dfa]:
+    if os.path.exists(automata_save_path) and load_if_exists:
         print("Loaded existing automata")
-        return load_automata()
+        dfa = load_automata()
+        return dfa
     print("Existing automata not found, generating a new one based on the provided dataset")
     dfa = run_RPNI(data=dataset, automaton_type="dfa")
     if dfa is None:
@@ -54,7 +55,7 @@ def run_automata(automata: Dfa, input: List[int]):
     return result
 
 
-def generate_automata_from_dataset(dataset):
+def generate_automata_from_dataset(dataset, load_if_exists: bool=True):
     """
     Given a dataset with the following syntax:
         ([(torch.tensor([...]), good_label), ...],
@@ -63,7 +64,7 @@ def generate_automata_from_dataset(dataset):
     """
     good_points, bad_points = dataset
     data = [ (seq[0].tolist(), True) for seq in good_points ] + [ (seq[0].tolist(), False) for seq in bad_points ]
-    dfa = generate_automata(data)
+    dfa = generate_automata(data, load_if_exists)
     if dfa is None:
         raise RuntimeError("DFA is None, aborting")
     dfa = make_input_complete(dfa)
@@ -110,5 +111,12 @@ def generate_single_accepting_sequence_dfa(sequence):
 
     # Return the DFA
     return Dfa(initial_state, states)
- 
+
+
+if __name__ == "__main__":
+    print(f"Generating automata from saved dataset")
+    dataset = load_dataset(load_path="saved/counterfactual_dataset.pickle")
+    dfa = generate_automata_from_dataset(dataset, load_if_exists=False)
+    dfa.visualize()
+
 

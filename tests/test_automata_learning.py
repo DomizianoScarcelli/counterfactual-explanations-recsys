@@ -23,7 +23,7 @@ def automata(dataset):
 @pytest.fixture
 def automata_gt(dataset):
     good_points, _ = dataset
-    return good_points[0][1].item()
+    return good_points[0][1]
 
 @pytest.fixture
 def good_point(dataset):

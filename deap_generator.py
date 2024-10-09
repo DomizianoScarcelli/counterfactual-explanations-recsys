@@ -110,7 +110,14 @@ class GeneticGenerationStrategy():
     def generate(self):
         population = self.toolbox.population(n=self.pop_size)
         population, _ = algorithms.eaSimple(population, self.toolbox, cxpb=0.7, mutpb=0.5, ngen=self.generations, verbose=True)
-        population = [(torch.tensor(x), self.predictor(torch.tensor(x)).argmax(-1).item()) for x in population]
+        new_population = []
+        inserted = set()
+        for x in population:
+            if tuple(x) in inserted:
+                continue
+            new_population.append((torch.tensor(x), self.predictor(torch.tensor(x)).argmax(-1).item()))
+            inserted.add(tuple(x))
+        population = new_population
         label_eval, seq_eval = self.evaluate_generation(population)
         print(f"Good examples = {self.good_examples} ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
         return population

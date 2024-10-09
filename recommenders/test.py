@@ -52,10 +52,10 @@ def generate_counterfactual_dataset(interaction: Interaction):
     sequence = sequence[:torch.nonzero(sequence, as_tuple=False).max().item() + 1] if sequence.nonzero().size(0) > 0 else torch.tensor([])
     sequence = sequence.squeeze(0)
     assert len(sequence.shape) == 1, f"Sequence dim must be 1: {sequence.shape}"
-    good_genetic_strategy = GeneticGenerationStrategy(input_seq=sequence, predictor=lambda x: model_predict(x, True, interaction, model), pop_size=500, good_examples=True, generations=10)
+    good_genetic_strategy = GeneticGenerationStrategy(input_seq=sequence, predictor=lambda x: model_predict(x, True, interaction, model), pop_size=2000, good_examples=True, generations=10)
     good_examples = good_genetic_strategy.generate()
     good_examples = good_genetic_strategy.postprocess(good_examples)
-    bad_genetic_strategy = GeneticGenerationStrategy(input_seq=sequence, predictor=lambda x: model_predict(x, True, interaction, model), pop_size=500, good_examples=False, generations=10)
+    bad_genetic_strategy = GeneticGenerationStrategy(input_seq=sequence, predictor=lambda x: model_predict(x, True, interaction, model), pop_size=2000, good_examples=False, generations=10)
     bad_examples = bad_genetic_strategy.generate()
     bad_examples = bad_genetic_strategy.postprocess(bad_examples)
     return good_examples, bad_examples
