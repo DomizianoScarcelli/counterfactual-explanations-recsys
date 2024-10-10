@@ -10,31 +10,10 @@ import torch
 import numpy as np
 from copy import deepcopy
 import pickle
-from typing import Union
+from typing import Union, Optional
 
-from dataset_generator import GeneticGenerationStrategy
+from deap_generator import GeneticGenerationStrategy
 
-# Set the config file or pass in model/dataset parameters
-parameter_dict_ml1m = {
-        'load_col': {"inter": ['user_id', 'item_id', 'rating', 'timestamp']},
-        'train_neg_sample_args': None,
-        "eval_batch_size": 1
-        }
-config = Config(model='BERT4Rec', dataset='ml-1m', config_dict=parameter_dict_ml1m)
-# Initialize logger and seed
-# init_logger(config)
-init_seed(config['seed'], config['reproducibility'])
-
-# Load dataset and pre-trained model
-dataset = create_dataset(config)
-train_data, valid_data, test_data = data_preparation(config, dataset)
-
-# Load a pre-trained model checkpoint
-model = get_model(config['model'])(config, train_data.dataset).to(config['device'])
-checkpoint_file = "saved/Bert4Rec_ml1m.pth"
-checkpoint = torch.load(checkpoint_file, map_location=config['device'])
-model.load_state_dict(checkpoint["state_dict"])
-model.load_other_parameter(checkpoint.get("other_parameter"))
 
 MAX_LENGTH = 50
 
@@ -49,7 +28,11 @@ def predict(model: SequentialRecommender, interaction: Interaction, argmax: bool
 # def predict(model: SequentialRecommender, sequence: torch.Tensor, user_id: int) -> int:
 #     pass
 
-def model_predict(seq:torch.Tensor, prob: bool=True):
+def model_predict(seq:torch.Tensor, prob: bool=True, default_interaction: Optional[Interaction]=None, default_model: Optional=None):
+    if default_interaction is not None:
+        interaction = default_interaction
+    if default_model is not None:
+        model=default_model
     #Pad with 0s
     seq = torch.cat((seq, torch.zeros((MAX_LENGTH - seq.size(0))))).to(seq.dtype).unsqueeze(0)
     new_interaction = deepcopy(interaction)
@@ -60,7 +43,6 @@ def model_predict(seq:torch.Tensor, prob: bool=True):
     return preds
 
 def generate_counterfactual_dataset(interaction: Interaction):
-    genetic_strategy = GeneticGenerationStrategy()
     sequence = interaction.interaction["item_id_list"] 
     assert sequence.size(0) == 1, f"Only batch size of 1 is supported, sequence shape is: {sequence.shape}"
     user_id = interaction.interaction["user_id"][0].item()
@@ -70,9 +52,12 @@ def generate_counterfactual_dataset(interaction: Interaction):
     sequence = sequence[:torch.nonzero(sequence, as_tuple=False).max().item() + 1] if sequence.nonzero().size(0) > 0 else torch.tensor([])
     sequence = sequence.squeeze(0)
     assert len(sequence.shape) == 1, f"Sequence dim must be 1: {sequence.shape}"
-    good_examples, bad_examples = genetic_strategy.generate(sequence, model=model_predict, clean=True)
-    # print([ex[1].item() for ex in good_examples], [ex[1].item() for ex in bad_examples])
-    # print(len(good_examples), len(bad_examples))
+    good_genetic_strategy = GeneticGenerationStrategy(input_seq=sequence, predictor=lambda x: model_predict(x, True, interaction, model), pop_size=2000, good_examples=True, generations=10)
+    good_examples = good_genetic_strategy.generate()
+    good_examples = good_genetic_strategy.postprocess(good_examples)
+    bad_genetic_strategy = GeneticGenerationStrategy(input_seq=sequence, predictor=lambda x: model_predict(x, True, interaction, model), pop_size=2000, good_examples=False, generations=10)
+    bad_examples = bad_genetic_strategy.generate()
+    bad_examples = bad_genetic_strategy.postprocess(bad_examples)
     return good_examples, bad_examples
 
 def save_dataset(dataset, save_path: str):
@@ -83,7 +68,37 @@ def load_dataset(load_path: str):
     with open(load_path, "rb") as f:
         return pickle.load(f)
 
+
+def load_data(config):
+    # Initialize logger and seed
+    # init_logger(config)
+    init_seed(config['seed'], config['reproducibility'])
+
+    # Load dataset and pre-trained model
+    dataset = create_dataset(config)
+    train_data, valid_data, test_data = data_preparation(config, dataset)
+    return train_data, valid_data, test_data 
+
+def generate_model(config):
+    train_data, _, _= load_data(config)
+    # Load a pre-trained model checkpoint
+    model = get_model(config['model'])(config, train_data.dataset).to(config['device'])
+    checkpoint_file = "saved/Bert4Rec_ml1m.pth"
+    checkpoint = torch.load(checkpoint_file, map_location=config['device'])
+    model.load_state_dict(checkpoint["state_dict"])
+    model.load_other_parameter(checkpoint.get("other_parameter"))
+    return model
+
 if __name__ == "__main__":
+    # Set the config file or pass in model/dataset parameters
+    parameter_dict_ml1m = {
+            'load_col': {"inter": ['user_id', 'item_id', 'rating', 'timestamp']},
+            'train_neg_sample_args': None,
+            "eval_batch_size": 1
+            }
+    config = Config(model='BERT4Rec', dataset='ml-1m', config_dict=parameter_dict_ml1m)
+    train_data, valid_data, test_data = load_data(config)
+    model = generate_model(config)
     for i, data in enumerate(test_data):
         # Interaction is an object and the first of the tuple. 
         # if i < 1:
