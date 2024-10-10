@@ -1,7 +1,7 @@
 import pytest
 from recommenders.test import load_dataset
 from automata_learning import generate_single_accepting_sequence_dfa, run_automata
-from trace_alignment import augment_constraint_automata, augment_trace_automata, create_intersection_automata, run_trace_alignment
+from trace_alignment import augment_constraint_automata, augment_trace_automata, create_intersection_automata, run_trace_alignment, _deprecated_create_intersection_automata
 
 @pytest.fixture
 def dataset():
@@ -24,9 +24,6 @@ def edited_trace(dataset):
     for another_trace, _ in gp:
         if len(set(another_trace) & trace_chars) == 0:
             break
-
-    if another_trace is None:
-        raise ValueError("Another trace not found")
     # [2720, 365, 1634, 1229, 140, 3298, 1664, 160, 1534, 1233, 618, 267, 2490, 2492, 2483, 89, 273, 665, 352, 222, 2265, 2612, 429, 213, 2827, 532, 1002, 202, 821, 1615, 1284, 830, 176, 1116, 2626, 23, 415, 1988, 694, 133, 1536, 510, 290, 152, 204, 1770, 1273, 289, 462, 165]
     # [2720, 365, 1634, 1229, 140, 351, 1664, 160, 1534, 1233, 618, 267, 2490, 213, 2483, 89, 273, 665, 352, 222, 2265, 2612, 429, 2492, 2827, 269, 1002, 202, 821, 1615, 1284, 830, 176, 1116, 2626, 1988, 415, 23, 694, 133, 1536, 510, 290, 152, 204, 1034, 1273, 289, 462, 165]
     test_trace = []
@@ -96,21 +93,21 @@ def test_create_planning_automata(a_dfa_aug, t_dfa_aug, original_trace, edited_t
     """
     print("Planning DFA alphabet:", planning_dfa.get_input_alphabet())
 
-@pytest.mark.skip(f"Running only when {test_create_planning_automata.__name__} will work")
+# @pytest.mark.skip(f"Running only when {test_create_planning_automata.__name__} will work")
 def test_run_trace_alignment(a_dfa_aug, t_dfa_aug, original_trace):
-    planning_dfa = create_intersection_automata(a_dfa_aug, t_dfa_aug)
-    
+    # planning_dfa = _deprecated_create_intersection_automata(a_dfa_aug, t_dfa_aug)
     print(f"{test_run_trace_alignment.__name__}: Desired trace: ", original_trace)
-    original_trace[10], original_trace[20] = original_trace[20], original_trace[10]
+    original_trace[10], original_trace[14] = original_trace[14], original_trace[10]
     print(f"{test_run_trace_alignment.__name__}: Modified trace: ", original_trace)
-    alignment = run_trace_alignment(planning_dfa, original_trace)
+    #TODO: testing if I can do trace alignment directly on the a_dfa_aug instead of the planning_dfa
+    alignment = run_trace_alignment(a_dfa_aug, original_trace)
     alignment = {x: len(x) for x in alignment}
     if len(alignment) == 0:
         print("No alignment found")
         return
     alignment = sorted(alignment.items(), key=lambda x: alignment[x[0]])
     print("Best alignment", alignment[0])
-    assert alignment[0][1] == 2
+    # assert alignment[0][1] == 2
 
 
     

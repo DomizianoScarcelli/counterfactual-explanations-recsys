@@ -103,9 +103,7 @@ def augment_constraint_automata(automata: Dfa, trace_automaton: Dfa) -> Dfa:
 
     return automata
 
-def _deprecated_create_planning_automata(a_aug: Dfa, t_aug: Dfa) -> Dfa:
-    #TODO: fix it, since it should accept if both the automatas accpet, but for
-    # not this is not the case
+def _deprecated_create_intersection_automata(a_aug: Dfa, t_aug: Dfa) -> Dfa:
     states = set()
     state_map = {}
     for a_state in a_aug.states:
@@ -120,7 +118,7 @@ def _deprecated_create_planning_automata(a_aug: Dfa, t_aug: Dfa) -> Dfa:
     
     a_alph = set(a_aug.get_input_alphabet()) 
     t_alph = set(t_aug.get_input_alphabet())
-    alphabet = a_alph & t_alph
+    alphabet = a_alph | t_alph
     
     added = 0
     for state in tqdm(states, desc="Creating states..."): 
@@ -176,7 +174,9 @@ def create_intersection_automata(dfa1: Dfa, dfa2: Dfa) -> Dfa:
                 current_state.transitions[symbol] = state_map[(target1, target2)]
 
     # Create and return the intersection DFA
-    return Dfa(initial_state=initial_state, states=list(new_states))
+    dfa = Dfa(initial_state=initial_state, states=list(new_states))
+    print(f"Intersection DFA automata alphabet is: {dfa.get_input_alphabet()}")
+    return dfa
 
 # def make_planning_automata_correct(p_dfa: Dfa):
 #     print("Correcting p_dfa...")
@@ -246,7 +246,6 @@ def run_trace_alignment(p_dfa: Dfa, trace: List[int]):
     p_dfa.reset_to_initial()
     final_states = set(state for state in p_dfa.states if state.is_accepting)
     accepting_runs = set()
-    print(f"Final states are: {[(s.state_id[0].state_id, s.state_id[1].state_id) for s in final_states]}")
     running_trace = list(reversed(trace)).copy()
     for s in trace:
         try:
