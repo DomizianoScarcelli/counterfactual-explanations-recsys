@@ -53,6 +53,7 @@ def run_automata(automata: Dfa, input: List[int]):
         try:
             result = automata.step(char)
         except KeyError:
+            print(f"Unknown character: {char}, rejecting.")
             return False
     return result
 

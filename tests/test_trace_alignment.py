@@ -1,28 +1,55 @@
 import pytest
 from recommenders.test import load_dataset
 from automata_learning import generate_automata_from_dataset, generate_single_accepting_sequence_dfa, run_automata
-from trace_alignment import augment_constraint_automata, augment_trace_automata
+from trace_alignment import augment_constraint_automata, augment_trace_automata, create_intersection_automata, run_trace_alignment
 
-def test_augmented_trace_automata():
-    good_points, bad_points = load_dataset(load_path="saved/counterfactual_dataset.pickle") 
-    original_trace = good_points[0][0].tolist()
+@pytest.fixture
+def dataset():
+    return load_dataset(load_path="saved/counterfactual_dataset.pickle") 
+
+@pytest.fixture
+def original_trace(dataset):
+    gp, _ = dataset
+    original_trace = gp[0][0].tolist()
+    return original_trace
+
+@pytest.fixture
+def t_dfa(original_trace):
     t_dfa = generate_single_accepting_sequence_dfa(original_trace)
+    return t_dfa
+
+@pytest.fixture
+def a_dfa(original_trace):
+    t_dfa = generate_single_accepting_sequence_dfa(original_trace)
+    return t_dfa
+
+@pytest.fixture
+def t_dfa_aug(t_dfa):
+    return augment_trace_automata(t_dfa)
+
+@pytest.fixture
+def a_dfa_aug(a_dfa, t_dfa):
+    return augment_constraint_automata(a_dfa, t_dfa)
+
+def test_augmented_trace_automata(t_dfa, t_dfa_aug, original_trace):
     t_dfa_accepts = run_automata(t_dfa, original_trace)
 
     repaired_trace = original_trace.copy()
     repaired_trace[10] = f"del_{repaired_trace[10]}"
     repaired_trace[21] = f"del_{repaired_trace[21]}"
     repaired_trace[19] = f"del_{repaired_trace[19]}"
-    t_dfa_aug = augment_trace_automata(t_dfa)
+
     t_dfa_aug_accepts = run_automata(t_dfa_aug, repaired_trace)
     del_p_assert = t_dfa_accepts and t_dfa_aug_accepts
     assert del_p_assert
+
     repaired_trace = original_trace.copy()
     repaired_trace.insert(10, f"add_100")
     repaired_trace.insert(49, f"add_1456")
     t_dfa_aug_accepts = run_automata(t_dfa_aug, repaired_trace)
     add_p_assert = t_dfa_accepts and t_dfa_aug_accepts
     assert add_p_assert
+
     repaired_trace = original_trace.copy()
     repaired_trace[14] = f"del_{repaired_trace[14]}"
     repaired_trace[48] = f"del_{repaired_trace[48]}"
@@ -32,32 +59,56 @@ def test_augmented_trace_automata():
     del_add_p_assert = t_dfa_accepts and t_dfa_aug_accepts
     assert del_add_p_assert
 
-def test_augmented_constraint_automata(): 
-    dataset = load_dataset(load_path="saved/counterfactual_dataset.pickle") 
-    gp, bp = dataset
-    original_trace = gp[0][0].tolist()
-    t_dfa = generate_single_accepting_sequence_dfa(original_trace)
-    a_dfa = generate_automata_from_dataset(dataset)
-    a_dfa_aug = augment_constraint_automata(a_dfa, t_dfa)
-
+def test_augmented_constraint_automata(a_dfa, a_dfa_aug, original_trace): 
     # Test if automata is built correctly
     # a_dfa should accept points from the good_points and reject points from bad_points
-    gp_1 = gp[5][0].tolist()
-    a_dfa_accepts = run_automata(a_dfa, gp_1)
+    a_dfa_accepts = run_automata(a_dfa, original_trace)
     assert a_dfa_accepts, "A_DFA rejected good point"
+
     # a_dfa_aug should accept points from good_points that have been edited
     # with add_p and del_p propositions, and rejecting bad_points that have
     # been edited with add_p and del_p propositions
-    gp_1_edit = gp_1.copy()
-    gp_1_edit[10] = f"del_{gp_1_edit[10]}"
-    a_dfa_accepts = run_automata(a_dfa_aug, gp_1_edit)
-    assert a_dfa_accepts, "A_DFA rejected good point edited with del_p proposition"
-    gp_1_edit = gp_1.copy()
-    gp_1_edit[20] = f"add_{gp_1_edit[20]}"
-    a_dfa_accepts = run_automata(a_dfa_aug, gp_1_edit)
-    a = run_automata(a_dfa, gp_1_edit)
-    assert a_dfa_accepts, "A_DFA rejected good point edited with add_p proposition"
-    print(a)
+
+    #Remove and add the same item, so the point accepted before the edits should be accepted again by the
+    #augmented automaton
+    gp_edit = original_trace.copy()
+    edit_item = gp_edit[10]
+    gp_edit[10] = f"del_{edit_item}"
+    gp_edit.insert(11, f"add_{edit_item}")
+    print("gp", original_trace)
+    print("gp edited", gp_edit)
+    a_dfa_accepts = run_automata(a_dfa_aug, gp_edit)
+    assert a_dfa_accepts, "A_DFA rejected edited good point"
 
 
+def test_create_planning_automata(a_dfa_aug, t_dfa_aug, original_trace):
+    planning_dfa = create_intersection_automata(a_dfa_aug, t_dfa_aug)
 
+    a_dfa_aug_accepts = run_automata(a_dfa_aug, original_trace)
+    t_dfa_aug_accepts = run_automata(t_dfa_aug, original_trace)
+    planning_dfa_accepts = run_automata(planning_dfa, original_trace)
+
+    assert a_dfa_aug_accepts and t_dfa_aug_accepts and planning_dfa_accepts, f"""
+    DFA are not accepting good input
+        a_dfa_aug_accepts: {a_dfa_aug_accepts}
+        t_dfa_aug_accepts: {t_dfa_aug_accepts}
+        planning_dfa_accepts: {planning_dfa_accepts}
+    """
+    print("Planning DFA alphabet:", planning_dfa.get_input_alphabet())
+
+def test_run_trace_alignment(a_dfa_aug, t_dfa_aug, original_trace):
+    planning_dfa = create_intersection_automata(a_dfa_aug, t_dfa_aug)
+    
+    print(f"{test_run_trace_alignment.__name__}: Desired trace: ", original_trace)
+    original_trace[10], original_trace[20] = original_trace[20], original_trace[10]
+    print(f"{test_run_trace_alignment.__name__}: Modified trace: ", original_trace)
+    alignment = run_trace_alignment(planning_dfa, original_trace)
+    alignment = {x: len(x) for x in alignment}
+    alignment = sorted(alignment.items(), key=lambda x: alignment[x[0]])
+    print("Best alignment", alignment[0])
+    assert alignment[0][1] == 2
+
+
+    
+
+    
