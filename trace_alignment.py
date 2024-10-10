@@ -246,21 +246,13 @@ def compute_alignment_cost(alignment) -> int:
     return cost
 
 def run_trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
-    # TODO: remember that the goal is to "disalign" a trace: from being good and accepted to being rejected, 
-    # with minimum cost
     constraint_aut_to_planning_aut(a_dfa_aug)
     a_dfa_aug.reset_to_initial()
     final_states = set(state for state in a_dfa_aug.states if state.is_accepting)
     accepting_runs = set()
     curr_run = []
     running_trace = list(reversed(trace)).copy()
-    for s in trace:
-        # try:
-        #     a_dfa_aug.step(f"sync_{s}")
-        #     curr_run.append(f"sync_{s}")
-        #     running_trace.pop()
-        # except KeyError:
-        #     print("Cannot do sync, finding best action...")
+    while len(running_trace) > 0:
         for f_state in final_states:
             shortest = get_shortest_alignment_dijkstra(a_dfa_aug, a_dfa_aug.current_state, f_state, running_trace)
             if shortest:
@@ -278,4 +270,10 @@ def run_trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
     return curr_run, cost
 
 
+def run_trace_disalignment(a_dfa_aug: Dfa, trace: List[int]):
+    """
+    It finds the changes with minimum cost to do to a trace accepted by the automata in order for it to not be
+    accepted anymore. 
+    """
+    pass
 

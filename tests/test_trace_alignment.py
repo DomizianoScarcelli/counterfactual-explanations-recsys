@@ -98,7 +98,7 @@ def test_get_shortest_alignment_dijkstra(a_dfa_aug, original_trace):
     pass
 
 # @pytest.mark.skip(f"Running only when {test_create_planning_automata.__name__} will work")
-def test_run_trace_alignment(a_dfa_aug, t_dfa_aug, original_trace):
+def test_run_trace_alignment(a_dfa_aug, original_trace):
     # planning_dfa = _deprecated_create_intersection_automata(a_dfa_aug, t_dfa_aug)
 
     print(f"{test_run_trace_alignment.__name__}: Desired trace: ", original_trace)
@@ -114,6 +114,23 @@ def test_run_trace_alignment(a_dfa_aug, t_dfa_aug, original_trace):
     #NOTE: testing if I can do trace alignment directly on the a_dfa_aug instead of the planning_dfa
     alignment, cost= run_trace_alignment(a_dfa_aug, original_trace)
     print(f"Best alignment {alignment} with cost {cost}")
+    assert cost == 2
+
+def test_run_trace_disalignment(a_dfa_aug, original_trace):
+    print(f"{test_run_trace_alignment.__name__}: Desired trace: ", original_trace)
+    a_dfa_aug_accepts = run_automata(a_dfa_aug, original_trace)
+    assert a_dfa_aug_accepts, f"Original trace should be accepted"
+
+    original_trace[10], original_trace[14] = original_trace[14], original_trace[10]
+    print(f"{test_run_trace_alignment.__name__}: Modified trace: ", original_trace)
+
+    a_dfa_aug_accepts = run_automata(a_dfa_aug, original_trace)
+    assert not a_dfa_aug_accepts, f"Modified trace shouldn't be accepted"
+
+    #NOTE: testing if I can do trace alignment directly on the a_dfa_aug instead of the planning_dfa
+    alignment, cost= run_trace_disalignment(a_dfa_aug, original_trace)
+    print(f"Best alignment {alignment} with cost {cost}")
+    assert cost == 2
 
 
     
