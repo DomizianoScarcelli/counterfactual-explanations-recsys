@@ -2,8 +2,9 @@ from aalpy.automata.Dfa import Dfa, DfaState
 from dataset_generator import NumItems
 import itertools
 from tqdm import tqdm
-from typing import List
+from typing import List, Tuple
 import warnings
+import heapq
 
 
 def augment_trace_automata(automata: Dfa) -> Dfa:
@@ -178,87 +179,103 @@ def create_intersection_automata(dfa1: Dfa, dfa2: Dfa) -> Dfa:
     print(f"Intersection DFA automata alphabet is: {dfa.get_input_alphabet()}")
     return dfa
 
-# def make_planning_automata_correct(p_dfa: Dfa):
-#     print("Correcting p_dfa...")
-#     for state in p_dfa.states:
-#         for p, target_state in state.transitions.copy().items():
-#             if type(p) is int:
-#                 state.transitions[f"sync_{p}"] = target_state
-#                 state.transitions[f"add_{p}"] = target_state
-#                 del state.transitions[p]
 
-def get_shortes_alignment(dfa: Dfa, origin_state: DfaState, target_state: DfaState, remaining_trace: List[int]):
+def get_shortest_alignment_dijkstra(dfa, origin_state, target_state, remaining_trace: List[int]):
     """
-    Breath First Search over the automaton to find the optimal alignment. 
+    Dijkstra's algorithm to find the shortest path (alignment) between two states in the DFA, 
+    considering that sync_e actions have a cost of 0 and add_e or del_e actions have a cost of 1.
     """
-    #TODO: insert constraints in order to do a sync_s only if the remaining
-    # trace has that character in that place, otherwise only del_s or add_s
-
-    def get_constrained_neighbours(state: DfaState):
-        neighbours = set()
-        debug_mapping = {}
-        curr_char = remaining_trace[-1]
-        for p, target_state in state.transitions.items():
-            if type(p) is int and curr_char == p:
-                neighbours.add(target_state)
-                debug_mapping[p] = target_state
-            if type(p) is not int:
-                neighbours.add(target_state)
-                debug_mapping[p] = target_state
-        # print(f"Current char = {curr_char}, neighbours: {list(debug_mapping.keys())}")
+    remaining_trace = remaining_trace.copy()
+    def get_constrained_neighbours(state, curr_char):
+        neighbours = []
+        for p, target in state.transitions.items():
+            if "sync" in p:
+                extracted_p = int(p.replace("sync_", ""))
+                if curr_char == extracted_p:
+                    neighbours.append((target, 0, p))  # sync_e cost = 0
+            else:
+                neighbours.append((target, 1, p))  # add_e or del_e cost = 1
         return neighbours
 
     if origin_state not in dfa.states or target_state not in dfa.states:
         warnings.warn('Origin or target state not in automaton. Returning None.')
         return None
 
-    explored = []
-    queue = [[origin_state]]
+    # List of paths: each entry is (cumulative_cost, state, path_to_state, input_sequence)
+    paths = [(0, origin_state, [origin_state], [])]
+    explored = set()
 
-    if origin_state == target_state:
-        return ()
+    while paths:
+        # Find the path with the lowest cumulative cost
+        paths.sort(key=lambda x: x[0])
+        cost, current_state, path, inputs = paths.pop(0)
 
-    while queue:
-        path = queue.pop(0)
-        node = path[-1]
-        if node not in explored:
-            neighbours = get_constrained_neighbours(node)
-            for neighbour in neighbours:
-                new_path = list(path)
-                new_path.append(neighbour)
-                queue.append(new_path)
-                # return path if neighbour is goal
-                if neighbour == target_state:
-                    acc_seq = new_path[:-1]
-                    inputs = []
-                    for ind, state in enumerate(acc_seq):
-                        inputs.append(next(key for key, value in state.transitions.items()
-                                           if value == new_path[ind + 1]))
-                    return tuple(inputs)
+        if current_state in explored:
+            continue
+        explored.add(current_state)
 
-            # mark node as explored
-            explored.append(node)
+        if current_state == target_state:
+            return tuple(inputs)
+
+        if remaining_trace:
+            curr_char = remaining_trace[-1] #TODO: don't know if to use a .pop or a [-1] here
+            neighbours = get_constrained_neighbours(current_state, curr_char)
+            for neighbour, action_cost, action in neighbours:
+                new_cost = cost + action_cost
+                new_path = path + [neighbour]
+                new_inputs = inputs + [action]
+
+                paths.append((new_cost, neighbour, new_path, new_inputs))
+
     return None
 
-def run_trace_alignment(p_dfa: Dfa, trace: List[int]):
+def constraint_aut_to_planning_aut(a_dfa: Dfa):
+    print("Replacing e with sync_e...")
+    for state in a_dfa.states:
+        for p, target_state in state.transitions.copy().items():
+            if type(p) is int:
+                state.transitions[f"sync_{p}"] = target_state
+                del state.transitions[p]
+
+
+def compute_alignment_cost(alignment) -> int:
+    cost = 0
+    for s in alignment:
+        if "add" in s or "del" in s:
+            cost += 1
+    return cost
+
+def run_trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
     # TODO: remember that the goal is to "disalign" a trace: from being good and accepted to being rejected, 
     # with minimum cost
-    p_dfa.reset_to_initial()
-    final_states = set(state for state in p_dfa.states if state.is_accepting)
+    constraint_aut_to_planning_aut(a_dfa_aug)
+    a_dfa_aug.reset_to_initial()
+    final_states = set(state for state in a_dfa_aug.states if state.is_accepting)
     accepting_runs = set()
+    curr_run = []
     running_trace = list(reversed(trace)).copy()
     for s in trace:
-        try:
-            p_dfa.step(s)
-            running_trace.pop()
-        except KeyError:
-            pass
-        saved_state = p_dfa.current_state
+        # try:
+        #     a_dfa_aug.step(f"sync_{s}")
+        #     curr_run.append(f"sync_{s}")
+        #     running_trace.pop()
+        # except KeyError:
+        #     print("Cannot do sync, finding best action...")
         for f_state in final_states:
-            shortest = p_dfa.get_shortest_path(saved_state, f_state)
-            shortest = get_shortes_alignment(p_dfa, saved_state, f_state, trace)
-            accepting_runs.add(shortest)
-    return [run for run in accepting_runs if run is not None]
+            shortest = get_shortest_alignment_dijkstra(a_dfa_aug, a_dfa_aug.current_state, f_state, running_trace)
+            if shortest:
+                accepting_runs.add(shortest)
+        # compute runs cost
+        best_run = min([(run, compute_alignment_cost(run)) for run in accepting_runs], key=lambda x: x[1])
+        #insert the best action into the current run
+        best_action = best_run[0][0] 
+        curr_run.append(best_action)
+        # update running_trace
+        a_dfa_aug.step(best_action)
+        running_trace.pop()
+    cost = compute_alignment_cost(curr_run)
+    # assert a_dfa_aug.current_state.is_accepting, "DFA is not accepting the aligned trace"
+    return curr_run, cost
 
 
 

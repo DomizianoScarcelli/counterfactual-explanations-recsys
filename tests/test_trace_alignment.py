@@ -67,7 +67,7 @@ def test_augmented_constraint_automata(a_dfa, a_dfa_aug, original_trace, edited_
     a_dfa_accepts = run_automata(a_dfa_aug, edited_trace)
     assert a_dfa_accepts, "A_DFA rejected edited good point"
 
-
+@pytest.mark.skip(reason="Planning automata is not being used right now")
 def test_create_planning_automata(a_dfa_aug, t_dfa_aug, original_trace, edited_trace):
     planning_dfa = create_intersection_automata(a_dfa_aug, t_dfa_aug)
 
@@ -93,21 +93,27 @@ def test_create_planning_automata(a_dfa_aug, t_dfa_aug, original_trace, edited_t
     """
     print("Planning DFA alphabet:", planning_dfa.get_input_alphabet())
 
+@pytest.mark.skip()
+def test_get_shortest_alignment_dijkstra(a_dfa_aug, original_trace):
+    pass
+
 # @pytest.mark.skip(f"Running only when {test_create_planning_automata.__name__} will work")
 def test_run_trace_alignment(a_dfa_aug, t_dfa_aug, original_trace):
     # planning_dfa = _deprecated_create_intersection_automata(a_dfa_aug, t_dfa_aug)
+
     print(f"{test_run_trace_alignment.__name__}: Desired trace: ", original_trace)
+    a_dfa_aug_accepts = run_automata(a_dfa_aug, original_trace)
+    assert a_dfa_aug_accepts, f"Original trace should be accepted"
+
     original_trace[10], original_trace[14] = original_trace[14], original_trace[10]
     print(f"{test_run_trace_alignment.__name__}: Modified trace: ", original_trace)
-    #TODO: testing if I can do trace alignment directly on the a_dfa_aug instead of the planning_dfa
-    alignment = run_trace_alignment(a_dfa_aug, original_trace)
-    alignment = {x: len(x) for x in alignment}
-    if len(alignment) == 0:
-        print("No alignment found")
-        return
-    alignment = sorted(alignment.items(), key=lambda x: alignment[x[0]])
-    print("Best alignment", alignment[0])
-    # assert alignment[0][1] == 2
+
+    a_dfa_aug_accepts = run_automata(a_dfa_aug, original_trace)
+    assert not a_dfa_aug_accepts, f"Modified trace shouldn't be accepted"
+
+    #NOTE: testing if I can do trace alignment directly on the a_dfa_aug instead of the planning_dfa
+    alignment, cost= run_trace_alignment(a_dfa_aug, original_trace)
+    print(f"Best alignment {alignment} with cost {cost}")
 
 
     

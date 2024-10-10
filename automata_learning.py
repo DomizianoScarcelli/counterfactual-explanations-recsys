@@ -49,7 +49,7 @@ def run_automata(automata: Dfa, input: List[int]):
     # automata.execute_sequence(origin_state=automata.current_state, seq=input)
     # return automata.current_state.is_accepting
     result = False
-    for i, char in enumerate(tqdm(input, desc="Running automata...")):
+    for char in input:
         try:
             result = automata.step(char)
         except KeyError:
