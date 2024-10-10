@@ -45,7 +45,7 @@ def augment_trace_automata(automata: Dfa) -> Dfa:
         for p in alphabet:
             if p not in state.transitions:
                 add_p = add_propositions[p]
-                # Create a self-loop for add_p, or you can choose a different target state
+                # Create a self-loop for add_p 
                 transitions_to_add.append((add_p, state))
 
         # Now add the new transitions to the state
@@ -205,7 +205,7 @@ def get_shortes_alignment(dfa: Dfa, origin_state: DfaState, target_state: DfaSta
             if type(p) is not int:
                 neighbours.add(target_state)
                 debug_mapping[p] = target_state
-        print(f"Current char = {curr_char}, neighbours: {list(debug_mapping.keys())}")
+        # print(f"Current char = {curr_char}, neighbours: {list(debug_mapping.keys())}")
         return neighbours
 
     if origin_state not in dfa.states or target_state not in dfa.states:

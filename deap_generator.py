@@ -46,6 +46,8 @@ def mutate_replace(seq: List[int], max_value:NumItems=NumItems.ML_1M, num_replac
     for _ in range(num_replaces):
         i = random.sample(range(len(seq)), 1)[0]
         new_value = random.randint(1, max_value.value)
+        while (new_value in seq):
+            new_value = random.randint(1, max_value.value)
         seq[i] = new_value
     return seq,
 
