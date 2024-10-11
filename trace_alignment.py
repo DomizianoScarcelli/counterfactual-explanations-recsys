@@ -84,11 +84,12 @@ def augment_constraint_automata(automata: Dfa, trace_automaton: Dfa) -> Dfa:
     
     # Create the new repair propositions
     add_propositions = {p: f"add_{p}" for p in alphabet}
-    del_propositions = {p: f"del_{p}" for p in trace_alphabet}
+    del_propositions = {p: f"del_{p}" for p in alphabet}
 
     for state in automata.states:
         transitions_to_add = []
-        for trace_p in trace_alphabet:
+        #TODO: this shoube be trace_alphabet, but I'm trying with alphabet
+        for trace_p in alphabet:
             del_p = del_propositions[trace_p]
             transitions_to_add.append((del_p, state))
 
@@ -97,6 +98,7 @@ def augment_constraint_automata(automata: Dfa, trace_automaton: Dfa) -> Dfa:
             # Add (q, add_p, q') transition for each (q, p, q') in transitions
             #TODO: don't know if this is correct
             transitions_to_add.append((add_p, target_state))
+        
     
         # Now add the new transitions to the state
         for new_transition_symbol, target_state in transitions_to_add:
@@ -187,6 +189,9 @@ def get_shortest_alignment_dijkstra(dfa, origin_state, target_state, remaining_t
     """
     remaining_trace = remaining_trace.copy()
     def get_constrained_neighbours(state, curr_char):
+        #TODO: 
+        # - if sync_e does not exist, force the model to do del_e before add_e.
+        # - if sync_e exists but the model chooses add_e, it's ok
         neighbours = []
         for p, target in state.transitions.items():
             if "sync" in p:
@@ -251,6 +256,7 @@ def run_trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
     final_states = set(state for state in a_dfa_aug.states if state.is_accepting)
     accepting_runs = set()
     curr_run = []
+    added_symbols = set()
     running_trace = list(reversed(trace)).copy()
     while len(running_trace) > 0:
         for f_state in final_states:
@@ -260,7 +266,16 @@ def run_trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
         # compute runs cost
         best_run = min([(run, compute_alignment_cost(run)) for run in accepting_runs], key=lambda x: x[1])
         #insert the best action into the current run
-        best_action = best_run[0][0] 
+        best_action = best_run[0][0]
+        # add del_e if best_action = add_e
+        # TODO: this is a workaround for now
+        if "add" in best_action:
+            del_action = f"del_{running_trace[-1]}"
+            curr_run.append(del_action)
+            added_symbols.add(del_action)
+            a_dfa_aug.step(del_action)
+        
+        added_symbols.add(best_action)
         curr_run.append(best_action)
         # update running_trace
         a_dfa_aug.step(best_action)

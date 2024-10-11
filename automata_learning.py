@@ -53,12 +53,15 @@ def run_automata(automata: Dfa, input: List[int]):
         try:
             result = automata.step(char)
         except KeyError:
+            #TODO: see how to handle this case
+            continue
+            # equivalent to go in sink state and early return
             print(f"Unknown character: {char}, rejecting.")
             return False
     return result
 
 
-def generate_automata_from_dataset(dataset, load_if_exists: bool=True):
+def generate_automata_from_dataset(dataset, load_if_exists: bool=True) -> Dfa:
     """
     Given a dataset with the following syntax:
         ([(torch.tensor([...]), good_label), ...],

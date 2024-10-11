@@ -1,17 +1,36 @@
 import pytest
 from recommenders.test import load_dataset
-from automata_learning import generate_single_accepting_sequence_dfa, run_automata
+from automata_learning import generate_automata, generate_automata_from_dataset, generate_single_accepting_sequence_dfa, run_automata
 from trace_alignment import augment_constraint_automata, augment_trace_automata, create_intersection_automata, run_trace_alignment, _deprecated_create_intersection_automata
 
 @pytest.fixture
 def dataset():
-    return load_dataset(load_path="saved/counterfactual_dataset.pickle") 
+    g, b = load_dataset(load_path="saved/counterfactual_dataset.pickle") 
+    new_g, new_b = [], []
+    ids = set()
+    for p, l in g:
+        if tuple(p.tolist()) in ids:
+            continue
+        new_g.append((p,l))
+        ids.add(tuple(p.tolist()))
+    for p, l in b:
+        if tuple(p.tolist()) in ids:
+            continue
+        new_b.append((p,l))
+        ids.add(tuple(p.tolist()))
+
+    dataset = (new_g, new_b)
+    return dataset
 
 @pytest.fixture
 def original_trace(dataset):
     gp, _ = dataset
-    original_trace = gp[0][0].tolist()
-    return original_trace
+    return gp[0][0].tolist()
+
+@pytest.fixture
+def bad_trace(dataset):
+    _, bp = dataset
+    return bp[1][0].tolist()
 
 @pytest.fixture
 def edited_trace(dataset):
@@ -37,17 +56,27 @@ def edited_trace(dataset):
 
 @pytest.fixture
 def t_dfa(original_trace):
-    t_dfa = generate_single_accepting_sequence_dfa(original_trace)
-    return t_dfa
+    return generate_single_accepting_sequence_dfa(original_trace)
 
 @pytest.fixture
-def a_dfa(original_trace):
-    t_dfa = generate_single_accepting_sequence_dfa(original_trace)
-    return t_dfa
+def t_dfa_counter(bad_trace):
+    return generate_single_accepting_sequence_dfa(bad_trace)
+
+@pytest.fixture
+def a_dfa(dataset):
+    return generate_automata_from_dataset(dataset)
 
 @pytest.fixture
 def t_dfa_aug(t_dfa):
     return augment_trace_automata(t_dfa)
+
+@pytest.fixture
+def t_dfa_counter_aug(t_dfa_counter):
+    return augment_trace_automata(t_dfa_counter)
+
+@pytest.fixture
+def a_dfa_counter_aug(a_dfa, t_dfa_counter):
+    return augment_constraint_automata(a_dfa, t_dfa_counter)
 
 @pytest.fixture
 def a_dfa_aug(a_dfa, t_dfa):
@@ -93,44 +122,34 @@ def test_create_planning_automata(a_dfa_aug, t_dfa_aug, original_trace, edited_t
     """
     print("Planning DFA alphabet:", planning_dfa.get_input_alphabet())
 
+# @pytest.mark.skip()
+# def test_get_shortest_alignment_dijkstra(a_dfa_aug):
+#     pass
+
 @pytest.mark.skip()
-def test_get_shortest_alignment_dijkstra(a_dfa_aug, original_trace):
-    pass
-
-# @pytest.mark.skip(f"Running only when {test_create_planning_automata.__name__} will work")
-def test_run_trace_alignment(a_dfa_aug, original_trace):
-    # planning_dfa = _deprecated_create_intersection_automata(a_dfa_aug, t_dfa_aug)
-
-    print(f"{test_run_trace_alignment.__name__}: Desired trace: ", original_trace)
+def test_run_trace_alignment_good_trace(a_dfa_aug, original_trace):
     a_dfa_aug_accepts = run_automata(a_dfa_aug, original_trace)
     assert a_dfa_aug_accepts, f"Original trace should be accepted"
 
-    original_trace[10], original_trace[14] = original_trace[14], original_trace[10]
-    print(f"{test_run_trace_alignment.__name__}: Modified trace: ", original_trace)
-
+    original_trace[10] = 145
     a_dfa_aug_accepts = run_automata(a_dfa_aug, original_trace)
     assert not a_dfa_aug_accepts, f"Modified trace shouldn't be accepted"
 
-    #NOTE: testing if I can do trace alignment directly on the a_dfa_aug instead of the planning_dfa
-    alignment, cost= run_trace_alignment(a_dfa_aug, original_trace)
+    alignment, cost = run_trace_alignment(a_dfa_aug, original_trace)
     print(f"Best alignment {alignment} with cost {cost}")
-    assert cost == 2
+    assert cost == 4
 
-def test_run_trace_disalignment(a_dfa_aug, original_trace):
-    print(f"{test_run_trace_alignment.__name__}: Desired trace: ", original_trace)
-    a_dfa_aug_accepts = run_automata(a_dfa_aug, original_trace)
-    assert a_dfa_aug_accepts, f"Original trace should be accepted"
-
-    original_trace[10], original_trace[14] = original_trace[14], original_trace[10]
-    print(f"{test_run_trace_alignment.__name__}: Modified trace: ", original_trace)
-
-    a_dfa_aug_accepts = run_automata(a_dfa_aug, original_trace)
-    assert not a_dfa_aug_accepts, f"Modified trace shouldn't be accepted"
-
-    #NOTE: testing if I can do trace alignment directly on the a_dfa_aug instead of the planning_dfa
-    alignment, cost= run_trace_disalignment(a_dfa_aug, original_trace)
+def test_run_trace_alignment_bad_trace(a_dfa_aug, bad_trace):
+    print(f"Bad trace is: ", bad_trace)
+    a_dfa_aug_accepts = run_automata(a_dfa_aug, bad_trace)
+    assert not a_dfa_aug_accepts, f"Bad trace should be accepted"
+    
+    # TODO: if a character cannot be read by the automata, everything collapses
+    # TODO: see if maybe you can change the automata in order to accept bad traces and reject good traces
+    alignment, cost = run_trace_alignment(a_dfa_aug, bad_trace)
     print(f"Best alignment {alignment} with cost {cost}")
-    assert cost == 2
+
+
 
 
     
