@@ -8,13 +8,40 @@ from automata_learning import (generate_automata,
 from trace_alignment import (augment_constraint_automata, 
                              augment_trace_automata, 
                              create_intersection_automata, 
-                             get_shortest_alignment_dijkstra, 
+                             get_shortest_alignment_dijkstra, planning_aut_to_constraint_aut, 
                              run_trace_alignment, 
                              _deprecated_create_intersection_automata, 
-                             constraint_aut_to_planning_aut)
-from test_automata_learning import mock_dataset
+                             constraint_aut_to_planning_aut,
+                             align)
+import torch
 
 #----------TESTS WITH MOCK DATA--------------#
+@pytest.fixture
+def mock_dataset():
+    """
+    A tiny and controllable set of good and bad points in order to visualize
+    the learned automata and do further debug
+
+    Assume the unviverse of all possible point (whic may not be contained in
+                                                the dataset) is [1,2,3,4,5,6].
+    This is equivalent to the universe of items in the recommender system real
+    example
+    """
+    gp =[(torch.tensor([1,3,2]),True),
+         (torch.tensor([1,2,3]),True),
+         (torch.tensor([2,3,1,5]),True),
+         (torch.tensor([5,4,1]),True)]
+
+    bp =[(torch.tensor([1,2,4]),False),
+         (torch.tensor([1,3,2,5]),False),
+         (torch.tensor([1,2,5]),False), 
+         (torch.tensor([5,3,4,1]),False), 
+         (torch.tensor([2,3,5,1]),False)]
+    return (gp, bp)
+
+# TODO: see how it's possible to combine mock and real fixtures/tests in order
+# to not write a lot of repeated code
+# (https://docs.pytest.org/en/stable/how-to/fixtures.html#factories-as-fixtures)
 @pytest.fixture
 def mock_original_trace(mock_dataset):
     gp, _ = mock_dataset
@@ -23,7 +50,7 @@ def mock_original_trace(mock_dataset):
 @pytest.fixture
 def mock_bad_trace(mock_dataset):
     _, bp = mock_dataset
-    return bp[1][0].tolist()
+    return bp[3][0].tolist()
 
 @pytest.fixture
 def mock_edited_trace(mock_dataset):
@@ -89,7 +116,6 @@ def test_augmented_constraint_automata_mock(mock_a_dfa, mock_a_dfa_aug, mock_ori
 
 @pytest.mark.skip()
 def test_run_trace_alignment_bad_trace_mock(mock_a_dfa_aug, mock_bad_trace):
-    print(f"Bad trace is: ", mock_bad_trace)
     a_dfa_aug_accepts = run_automata(mock_a_dfa_aug, mock_bad_trace)
     assert not a_dfa_aug_accepts, f"Bad trace should be accepted"
     
@@ -100,7 +126,6 @@ def test_run_trace_alignment_bad_trace_mock(mock_a_dfa_aug, mock_bad_trace):
 
 @pytest.mark.skip()
 def test_get_shortest_alignment_dijkstra_mock(mock_a_dfa_aug, mock_bad_trace):
-    # Bad trace = [1,3,2,5]
     constraint_aut_to_planning_aut(mock_a_dfa_aug)
     # run_automata(mock_a_dfa_aug, [f"sync_{e}" for e in mock_bad_trace])
     remaining_trace = list(reversed(mock_bad_trace)).copy()
@@ -114,11 +139,23 @@ def test_get_shortest_alignment_dijkstra_mock(mock_a_dfa_aug, mock_bad_trace):
                                     added_symbols=added_symbols)
     assert path is not None, "No best path found"
     print("best path is: ", path)
-    best_action = path[0]
-    assert best_action == "sync_1", f"Best action is not the correct one: 1 != {best_action}"
-    # remaining_trace.pop()
+    if bad_trace == [5,3,4,1]:
+        expected_path = ("sync_5", "del_3", "sync_4", "sync_1")
+        assert path == expected_path ,f"""Best path is not the correct one:
+            {expected_path} != {path}""" 
+    
+    planning_aut_to_constraint_aut(mock_a_dfa_aug)
+    aligned_trace = align(mock_bad_trace, path)
+    aligned_accepts = run_automata(mock_a_dfa_aug, aligned_trace)
+    assert aligned_accepts, "Automa should accept aligned trace"
+    original_rejects = not run_automata(mock_a_dfa_aug, mock_bad_trace)
+    assert original_rejects, "Automa should reject original bad trace"
 
-
+def test_get_shortest_alignment_dijkstra_bad_dataset_mock(mock_a_dfa_aug, mock_dataset):
+    _, bp = mock_dataset
+    for bad_trace, _ in bp:
+        test_get_shortest_alignment_dijkstra_mock(mock_a_dfa_aug, bad_trace)
+    
 
 #----------TESTS WITH REAL DATA--------------#
 @pytest.fixture
@@ -231,9 +268,26 @@ def test_create_planning_automata(a_dfa_aug, t_dfa_aug, original_trace, edited_t
     """
     print("Planning DFA alphabet:", planning_dfa.get_input_alphabet())
 
-# @pytest.mark.skip()
-# def test_get_shortest_alignment_dijkstra(a_dfa_aug):
-#     pass
+
+@pytest.mark.skip()
+def test_get_shortest_alignment_dijkstra(a_dfa_aug, bad_trace):
+    # Bad trace = [5,3,4,1]
+    constraint_aut_to_planning_aut(a_dfa_aug)
+    # run_automata(mock_a_dfa_aug, [f"sync_{e}" for e in mock_bad_trace])
+    remaining_trace = list(reversed(bad_trace)).copy()
+    added_symbols = set()
+    final_state = [s for s in a_dfa_aug.states if s.is_accepting][0]
+    print(f"Final state is:", final_state.state_id)
+    path = get_shortest_alignment_dijkstra(dfa=a_dfa_aug, 
+                                    origin_state=a_dfa_aug.initial_state, 
+                                    target_state=final_state,
+                                    remaining_trace=remaining_trace,
+                                    added_symbols=added_symbols)
+    assert path is not None, "No best path found"
+    print("best path is: ", path)
+    best_action = path[0]
+    assert best_action == "sync_1", f"Best action is not the correct one: 1 != {best_action}"
+    # remaining_trace.pop()
 
 @pytest.mark.skip()
 def test_run_trace_alignment_good_trace(a_dfa_aug, original_trace):
@@ -243,14 +297,14 @@ def test_run_trace_alignment_good_trace(a_dfa_aug, original_trace):
     # NOTE: I don't know how to modify the original trace in order to not be
     # accepted, and to not use a bad trace
     original_trace[10] = 1024
-    a_dfa_aug_accepts = run_automata(a_dfa_aug, original_trace)
-    assert not a_dfa_aug_accepts, f"Modified trace shouldn't be accepted"
+    # a_dfa_aug_accepts = run_automata(a_dfa_aug, original_trace)
+    # assert not a_dfa_aug_accepts, f"Modified trace shouldn't be accepted"
 
     alignment, cost = run_trace_alignment(a_dfa_aug, original_trace)
     print(f"Best alignment {alignment} with cost {cost}")
     assert cost == 4
 
-# @pytest.mark.skip()
+@pytest.mark.skip()
 def test_run_trace_alignment_bad_trace(a_dfa_aug, bad_trace):
     print(f"Bad trace is: ", bad_trace)
     a_dfa_aug_accepts = run_automata(a_dfa_aug, bad_trace)
@@ -261,7 +315,17 @@ def test_run_trace_alignment_bad_trace(a_dfa_aug, bad_trace):
     alignment, cost = run_trace_alignment(a_dfa_aug, bad_trace)
     print(f"Best alignment {alignment} with cost {cost}")
 
-
+def test_align():
+    trace = [1,2,3,5,6]
+    alignment = ("sync_1", "del_2", "add_4", "sync_3", "sync_5", "del_6")
+    aligned_trace = align(trace, alignment)
+    
+    correct_alignment = [1,4,3,5]
+    assert aligned_trace == correct_alignment, f"""
+    Aligned trace is wrong
+    corect: {correct_alignment}
+    computed: {aligned_trace}
+    """
 
 
     

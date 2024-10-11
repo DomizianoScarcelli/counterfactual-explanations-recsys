@@ -1,11 +1,12 @@
 from aalpy.automata.Dfa import Dfa, DfaState
 from dataset_generator import NumItems
 from tqdm import tqdm
-from typing import List, Tuple, Set
+from typing import List, Tuple, Set, Dict, Optional
 import warnings
 from automata_learning import run_automata
+from copy import deepcopy
 
-DEBUG = False
+DEBUG = True
 
 
 def printd(statement):
@@ -93,7 +94,7 @@ def augment_constraint_automata(automata: Dfa, trace_automaton: Dfa) -> Dfa:
 
     for state in automata.states:
         transitions_to_add = []
-        #TODO: this shoube be trace_alphabet, but I'm trying with alphabet
+        #TODO: this shoube be trace_alphabet, I'm trying with alphabet, but I should try with universe
         for trace_p in alphabet:
             del_p = del_propositions[trace_p]
             transitions_to_add.append((del_p, state))
@@ -101,7 +102,6 @@ def augment_constraint_automata(automata: Dfa, trace_automaton: Dfa) -> Dfa:
         for p, target_state in state.transitions.items():
             add_p = add_propositions[p]
             # Add (q, add_p, q') transition for each (q, p, q') in transitions
-            #TODO: don't know if this is correct
             transitions_to_add.append((add_p, target_state))
         
     
@@ -187,29 +187,41 @@ def create_intersection_automata(dfa1: Dfa, dfa2: Dfa) -> Dfa:
     return dfa
 
 
-def get_shortest_alignment_dijkstra(dfa, origin_state, target_state, remaining_trace: List[int], added_symbols: Set[int]):
+def get_shortest_alignment_dijkstra(dfa, origin_state, target_state, remaining_trace: List[int], added_symbols: set):
     """
     Dijkstra's algorithm to find the shortest path (alignment) between two states in the DFA, 
     considering that sync_e actions have a cost of 0 and add_e or del_e actions have a cost of 1.
     """
     remaining_trace = remaining_trace.copy()
-    def get_constrained_neighbours(state, curr_char):
+
+    # constraint to keep the aligned trace at a certain length
+    # TODO: implement it in the code
+    min_result_length = 50 
+
+    def get_constrained_neighbours(state, curr_char: Optional[int]):
         neighbours = []
         for p, target in state.transitions.items():
             if p in added_symbols:
                 continue
-            if "sync" in p:
+
+            if p in visited[state.state_id]:
+                continue
+            
+            if "sync" in p and curr_char is not None:
                 extracted_p = int(p.replace("sync_", ""))
                 if curr_char == extracted_p:
                     neighbours.append((target, 0, p))  # sync_e cost = 0
-            if "del" in p:
+            if "del" in p and curr_char is not None:
                 extracted_p = int(p.replace("del_", ""))
                 if curr_char == extracted_p:
                     neighbours.append((target, 1, p))  # sync_e cost = 0
-            else:
-                neighbours.append((target, 1, p))  # add_e or del_e cost = 1
+            if "add" in p:
+                print(f"[DEBUG {p}] synced_added is: ", set(inputs))
+                extracted_p = int(p.replace("add_", ""))
+                if f"sync_{extracted_p}" not in set(inputs) and f"add_{extracted_p}" not in set(inputs):
+                    neighbours.append((target, 1, p))  # add_e or del_e cost = 1
 
-        printd(f"Neighbours for char: {curr_char} are {[(s.state_id, c, p) for (s, c, p) in neighbours]}")
+        printd(f"Neighbours for char: {curr_char} in state {state.state_id} are {[(s.state_id, c, p) for (s, c, p) in neighbours]}")
         return neighbours
 
     if origin_state not in dfa.states or target_state not in dfa.states:
@@ -217,48 +229,65 @@ def get_shortest_alignment_dijkstra(dfa, origin_state, target_state, remaining_t
         return None
 
     # List of paths: each entry is (cumulative_cost, state, path_to_state, input_sequence, remaining_trace)
-    paths = [(0, origin_state, [origin_state], [], remaining_trace)]
-    explored = set()
+    # explored = set()
+    # to avoid infinite loops, track visited edges from states
+    visited: Dict[DfaState, Set[int]] = {state.state_id: set() for state in dfa.states}
+    paths = [(0, origin_state, [origin_state], [], remaining_trace, visited)]
+
 
     while paths:
         # Find the path with the lowest cumulative cost
         paths.sort(key=lambda x: x[0])
-        cost, current_state, path, inputs, remaining_trace = paths.pop(0)
-        
-        # NOTE: We may need to revisit states
-        # TODO: Find a way to avoid the loops
+        cost, current_state, path, inputs, remaining_trace, visited = paths.pop(0)
 
         # if current_state in explored:
         #     continue
         # explored.add(current_state)
-        
+
         # If the current state is also the target state, I can exit only if I
         # don't have any characters to read in the sequence
         if current_state == target_state and len(remaining_trace) == 0:
             return tuple(inputs)
+
+        # print(f"Remaining paths: {len(paths)}")
+        # print(f"Current cost: {cost}")
         
-        print(f"Remaining paths: {len(paths)}")
-        print(f"Current cost: {len(paths)}")
-
+        # if there are still characters to read, you can do all actions
         if remaining_trace:
-            curr_char = remaining_trace.pop() #TODO: don't know if to use a .pop or a [-1] here
-            printd(f"""
-                  ----------
-                  [DEBUG] DIJKSTRA STATE
-                  Cost: {cost}
-                  Current Char: {curr_char}
-                  Current state:{current_state.state_id}
-                  Path:{[s.state_id for s in path]}
-                  Inputs:{inputs}
-                  Remaining Trace: {remaining_trace}
-                  """)
+            curr_char = remaining_trace[-1]
+            # printd(f"""
+            #       ----------
+            #       [DEBUG] DIJKSTRA STATE
+            #       Cost: {cost}
+            #       Current Char: {curr_char}
+            #       Current state:{current_state.state_id}
+            #       Path:{[s.state_id for s in path]}
+            #       Inputs:{inputs}
+            #       Remaining Trace: {remaining_trace}
+            #       """)
             neighbours = get_constrained_neighbours(current_state, curr_char)
-            for neighbour, action_cost, action in neighbours:
-                new_cost = cost + action_cost
-                new_path = path + [neighbour]
-                new_inputs = inputs + [action]
+        else:
+            # otherwise you can only do add_e
+            neighbours = get_constrained_neighbours(current_state, curr_char=None)
 
-                paths.append((new_cost, neighbour, new_path, new_inputs, remaining_trace.copy()))
+        for neighbour, action_cost, action in neighbours:
+            new_cost = cost + action_cost
+            new_path = path + [neighbour]
+            new_inputs = inputs + [action]
+            
+            new_visited = deepcopy(visited)
+            if action in new_visited[current_state.state_id]:
+                printd(f"Action {action} already done in {current_state.state_id}")
+                continue
+            new_visited[current_state.state_id].add(action)
+
+            new_remaining_trace = remaining_trace.copy()
+            if "sync" in action or "del" in action:
+                new_remaining_trace.pop()
+            
+            paths.append((new_cost, neighbour, new_path, new_inputs, new_remaining_trace, new_visited))
+
+
 
     return None
 
@@ -276,6 +305,14 @@ def constraint_aut_to_planning_aut(a_dfa: Dfa):
                 state.transitions[f"sync_{p}"] = target_state
                 del state.transitions[p]
 
+def planning_aut_to_constraint_aut(a_dfa: Dfa):
+    print("Replacing sync_e with e...")
+    for state in a_dfa.states:
+        for p, target_state in state.transitions.copy().items():
+            if "sync" in p:
+                extracted_p = int(p.replace("sync_", ""))
+                state.transitions[extracted_p] = target_state
+                del state.transitions[p]
 
 def compute_alignment_cost(alignment) -> int:
     cost = 0
@@ -332,4 +369,20 @@ def run_trace_disalignment(a_dfa_aug: Dfa, trace: List[int]):
     accepted anymore. 
     """
     pass
+
+
+def align(trace: List[int], alignment: tuple) -> List[int]:
+    aligned_trace = []
+    i = 0
+    for j, a_char in enumerate(alignment):
+        if "sync" in a_char:
+            char = int(a_char.replace("sync_", ""))
+            aligned_trace.append(char)
+        if "add" in a_char:
+            char = int(a_char.replace("add_", ""))
+            aligned_trace.append(char)
+        if "del" in a_char:
+            pass
+    return aligned_trace
+
 
