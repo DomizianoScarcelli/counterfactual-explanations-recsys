@@ -8,7 +8,9 @@ from automata_learning import (generate_automata,
 from trace_alignment import (augment_constraint_automata, 
                              augment_trace_automata, 
                              create_intersection_automata, 
-                             get_shortest_alignment_dijkstra, planning_aut_to_constraint_aut, 
+                             get_shortest_alignment_dijkstra, 
+                             get_shortest_alignment_a_star, 
+                             planning_aut_to_constraint_aut, 
                              trace_alignment, 
                              _deprecated_create_intersection_automata, 
                              constraint_aut_to_planning_aut,
@@ -251,7 +253,7 @@ def test_create_planning_automata(a_dfa_aug, t_dfa_aug, original_trace, edited_t
     print("Planning DFA alphabet:", planning_dfa.get_input_alphabet())
 
 
-@pytest.mark.skip()
+# @pytest.mark.skip()
 def test_trace_alignment_single(a_dfa_aug, bad_trace):
     aligned_trace, _ = trace_alignment(a_dfa_aug, bad_trace)
     aligned_accepts = run_automata(a_dfa_aug, aligned_trace)
