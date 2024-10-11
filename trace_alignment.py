@@ -5,7 +5,7 @@ from typing import List, Tuple, Set
 import warnings
 from automata_learning import run_automata
 
-def augment_trace_automata(automata: Dfa) -> Dfa:
+def augment_trace_automata(automata: Dfa, num_items: NumItems=NumItems.ML_1M) -> Dfa:
     """
     Given an DFA `T` which only accepts a certain sequence `s`, it augments it
     according to the rules explained in the paper "On the Disruptive
@@ -26,7 +26,7 @@ def augment_trace_automata(automata: Dfa) -> Dfa:
     with the corresponding repair propositions.
     """
     # Alphabet is the universe of all the items
-    alphabet = [i for i in range(1, NumItems.ML_1M.value)]
+    alphabet = [i for i in range(1, num_items.value)]
     
     # Create the new repair propositions
     add_propositions = {p: f"add_{p}" for p in alphabet}

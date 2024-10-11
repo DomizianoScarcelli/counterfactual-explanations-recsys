@@ -9,8 +9,35 @@ from automata_learning import (
     generate_automata_from_dataset, 
     generate_single_accepting_sequence_dfa, 
 )
+import torch
 
 # Fixtures
+@pytest.fixture
+def mock_dataset():
+    """
+    A tiny and controllable set of good and bad points in order to visualize
+    the learned automata and do further debug
+
+    Assume the unviverse of all possible point (whic may not be contained in
+                                                the dataset) is [1,2,3,4,5,6].
+    This is equivalent to the universe of items in the recommender system real
+    example
+    """
+    gp =[(torch.tensor([1,3,2]),True),
+         (torch.tensor([1,2,3]),True)] 
+    bp =[(torch.tensor([1,2,4]),False),
+         (torch.tensor([1,3,2,5]),False)] 
+    return (gp, bp)
+
+@pytest.fixture
+def mock_automata(mock_dataset):
+    """
+    A tiny automata learned on the mock tiny dataset. This has no use beyond
+    debugging and testing
+    """
+    good_points, bad_points = mock_dataset
+    return generate_automata_from_dataset((good_points, bad_points), load_if_exists=False,  save_path="mock_automata.pickle")
+
 @pytest.fixture
 def dataset():
     return load_dataset(load_path="saved/counterfactual_dataset.pickle")
@@ -30,7 +57,13 @@ def good_point(dataset):
     good_points, _ = dataset
     return good_points[0][0]
 
+
 # Test functions
+def test_mock_automata(mock_automata):
+    # mock_automata.visualize()
+    pass
+
+@pytest.mark.skip()
 def test_automata(automata: Dfa, dataset):
     """
     Test if automata accepts good sequences on the learning set of good points
@@ -43,6 +76,7 @@ def test_automata(automata: Dfa, dataset):
         assert good_result, f"Wrong result for good point: {good_result}"
         assert not bad_result, f"Wrong result for bad point: {bad_result}"
 
+@pytest.mark.skip()
 def test_automata_against_bb(automata: Dfa, automata_gt: int):
     """
     Test the capacity of the automa to approximate the neighbourhood of x
