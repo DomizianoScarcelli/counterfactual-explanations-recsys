@@ -59,24 +59,12 @@ def t_dfa(original_trace):
     return generate_single_accepting_sequence_dfa(original_trace)
 
 @pytest.fixture
-def t_dfa_counter(bad_trace):
-    return generate_single_accepting_sequence_dfa(bad_trace)
-
-@pytest.fixture
 def a_dfa(dataset):
     return generate_automata_from_dataset(dataset)
 
 @pytest.fixture
 def t_dfa_aug(t_dfa):
     return augment_trace_automata(t_dfa)
-
-@pytest.fixture
-def t_dfa_counter_aug(t_dfa_counter):
-    return augment_trace_automata(t_dfa_counter)
-
-@pytest.fixture
-def a_dfa_counter_aug(a_dfa, t_dfa_counter):
-    return augment_constraint_automata(a_dfa, t_dfa_counter)
 
 @pytest.fixture
 def a_dfa_aug(a_dfa, t_dfa):
@@ -130,8 +118,10 @@ def test_create_planning_automata(a_dfa_aug, t_dfa_aug, original_trace, edited_t
 def test_run_trace_alignment_good_trace(a_dfa_aug, original_trace):
     a_dfa_aug_accepts = run_automata(a_dfa_aug, original_trace)
     assert a_dfa_aug_accepts, f"Original trace should be accepted"
-
-    original_trace[10] = 145
+    
+    # NOTE: I don't know how to modify the original trace in order to not be
+    # accepted, and to not use a bad trace
+    original_trace[10] = 1024
     a_dfa_aug_accepts = run_automata(a_dfa_aug, original_trace)
     assert not a_dfa_aug_accepts, f"Modified trace shouldn't be accepted"
 
@@ -144,8 +134,8 @@ def test_run_trace_alignment_bad_trace(a_dfa_aug, bad_trace):
     a_dfa_aug_accepts = run_automata(a_dfa_aug, bad_trace)
     assert not a_dfa_aug_accepts, f"Bad trace should be accepted"
     
-    # TODO: if a character cannot be read by the automata, everything collapses
-    # TODO: see if maybe you can change the automata in order to accept bad traces and reject good traces
+    # TODO: if a character cannot be read by the automata, everything
+    # collapses, see how to handle this
     alignment, cost = run_trace_alignment(a_dfa_aug, bad_trace)
     print(f"Best alignment {alignment} with cost {cost}")
 

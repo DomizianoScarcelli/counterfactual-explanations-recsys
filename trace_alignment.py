@@ -1,11 +1,9 @@
 from aalpy.automata.Dfa import Dfa, DfaState
 from dataset_generator import NumItems
-import itertools
 from tqdm import tqdm
-from typing import List, Tuple
+from typing import List, Tuple, Set
 import warnings
-import heapq
-
+from automata_learning import run_automata
 
 def augment_trace_automata(automata: Dfa) -> Dfa:
     """
@@ -182,18 +180,17 @@ def create_intersection_automata(dfa1: Dfa, dfa2: Dfa) -> Dfa:
     return dfa
 
 
-def get_shortest_alignment_dijkstra(dfa, origin_state, target_state, remaining_trace: List[int]):
+def get_shortest_alignment_dijkstra(dfa, origin_state, target_state, remaining_trace: List[int], added_symbols: Set[int]):
     """
     Dijkstra's algorithm to find the shortest path (alignment) between two states in the DFA, 
     considering that sync_e actions have a cost of 0 and add_e or del_e actions have a cost of 1.
     """
     remaining_trace = remaining_trace.copy()
     def get_constrained_neighbours(state, curr_char):
-        #TODO: 
-        # - if sync_e does not exist, force the model to do del_e before add_e.
-        # - if sync_e exists but the model chooses add_e, it's ok
         neighbours = []
         for p, target in state.transitions.items():
+            if p in added_symbols:
+                continue
             if "sync" in p:
                 extracted_p = int(p.replace("sync_", ""))
                 if curr_char == extracted_p:
@@ -234,6 +231,12 @@ def get_shortest_alignment_dijkstra(dfa, origin_state, target_state, remaining_t
 
     return None
 
+def negate_automata(automata: Dfa):
+    """
+    
+    """
+    pass
+
 def constraint_aut_to_planning_aut(a_dfa: Dfa):
     print("Replacing e with sync_e...")
     for state in a_dfa.states:
@@ -254,26 +257,31 @@ def run_trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
     constraint_aut_to_planning_aut(a_dfa_aug)
     a_dfa_aug.reset_to_initial()
     final_states = set(state for state in a_dfa_aug.states if state.is_accepting)
-    accepting_runs = set()
     curr_run = []
     added_symbols = set()
     running_trace = list(reversed(trace)).copy()
+    # Before aligning, read the sequence in order to get into the desired state
+    run_automata(a_dfa_aug, trace)
+    print(f"Starting state: ", a_dfa_aug.initial_state.state_id)
+    print(f"State after reading sequence: ", a_dfa_aug.current_state.state_id)
     while len(running_trace) > 0:
+        accepting_runs = set()
         for f_state in final_states:
-            shortest = get_shortest_alignment_dijkstra(a_dfa_aug, a_dfa_aug.current_state, f_state, running_trace)
+            shortest = get_shortest_alignment_dijkstra(a_dfa_aug, a_dfa_aug.current_state, f_state, running_trace, added_symbols)
             if shortest:
                 accepting_runs.add(shortest)
+            print(accepting_runs)
         # compute runs cost
         best_run = min([(run, compute_alignment_cost(run)) for run in accepting_runs], key=lambda x: x[1])
         #insert the best action into the current run
         best_action = best_run[0][0]
         # add del_e if best_action = add_e
         # TODO: this is a workaround for now
-        if "add" in best_action:
-            del_action = f"del_{running_trace[-1]}"
-            curr_run.append(del_action)
-            added_symbols.add(del_action)
-            a_dfa_aug.step(del_action)
+        # if "add" in best_action:
+        #     del_action = f"del_{running_trace[-1]}"
+        #     curr_run.append(del_action)
+        #     added_symbols.add(del_action)
+        #     a_dfa_aug.step(del_action)
         
         added_symbols.add(best_action)
         curr_run.append(best_action)

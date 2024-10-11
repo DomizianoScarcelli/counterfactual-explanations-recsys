@@ -54,10 +54,10 @@ def run_automata(automata: Dfa, input: List[int]):
             result = automata.step(char)
         except KeyError:
             #TODO: see how to handle this case
+            print(f"Unknown character: {char}, self looping...")
             continue
             # equivalent to go in sink state and early return
-            print(f"Unknown character: {char}, rejecting.")
-            return False
+            # return False
     return result
 
 
