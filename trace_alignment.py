@@ -190,16 +190,14 @@ def create_intersection_automata(dfa1: Dfa, dfa2: Dfa) -> Dfa:
 def get_shortest_alignment_dijkstra(dfa: Dfa, 
                                     origin_state: DfaState,
                                     target_state: DfaState,
-                                    remaining_trace: List[int]):
+                                    remaining_trace: List[int],
+                                    min_alignment_length: int):
     """
     Dijkstra's algorithm to find the shortest path (alignment) between two states in the DFA, 
     considering that sync_e actions have a cost of 0 and add_e or del_e actions have a cost of 1.
     """
     remaining_trace = remaining_trace.copy()
-
     # constraint to keep the aligned trace at a certain length
-    # TODO: implement it in the code
-    min_result_length = 50 
 
     def get_constrained_neighbours(state, curr_char: Optional[int]):
         neighbours = []
@@ -224,6 +222,15 @@ def get_shortest_alignment_dijkstra(dfa: Dfa,
         printd(f"Neighbours for char: {curr_char} in state {state.state_id} are {[(s.state_id, c, p) for (s, c, p) in neighbours]}")
         return neighbours
 
+    def alignment_length(curr_alignment):
+        count = 0
+        for c in curr_alignment:
+            if "sync" in c or "add" in c:
+                count += 1
+            if "del" in c:
+                count -= 1
+        return count 
+
     if origin_state not in dfa.states or target_state not in dfa.states:
         warnings.warn('Origin or target state not in automaton. Returning None.')
         return None
@@ -236,6 +243,7 @@ def get_shortest_alignment_dijkstra(dfa: Dfa,
 
 
     while paths:
+        print(f"Number of paths left: {len(paths)}")
         # Find the path with the lowest cumulative cost
         paths.sort(key=lambda x: x[0])
         cost, current_state, path, inputs, remaining_trace, visited = paths.pop(0)
@@ -246,7 +254,8 @@ def get_shortest_alignment_dijkstra(dfa: Dfa,
 
         # If the current state is also the target state, I can exit only if I
         # don't have any characters to read in the sequence
-        if current_state == target_state and len(remaining_trace) == 0:
+        curr_alignment_length = alignment_length(inputs)
+        if current_state == target_state and len(remaining_trace) == 0 and curr_alignment_length >= min_alignment_length:
             return tuple(inputs)
 
         # print(f"Remaining paths: {len(paths)}")
@@ -254,6 +263,7 @@ def get_shortest_alignment_dijkstra(dfa: Dfa,
         
         # if there are still characters to read, you can do all actions
         if remaining_trace:
+            # print(f"Remaining trace length: {len(remaining_trace)}")
             curr_char = remaining_trace[-1]
             # printd(f"""
             #       ----------
@@ -267,6 +277,7 @@ def get_shortest_alignment_dijkstra(dfa: Dfa,
             #       """)
             neighbours = get_constrained_neighbours(current_state, curr_char)
         else:
+            print(f"Alignment length for {inputs} is {curr_alignment_length}")
             # otherwise you can only do add_e
             neighbours = get_constrained_neighbours(current_state, curr_char=None)
 
@@ -322,6 +333,7 @@ def compute_alignment_cost(alignment) -> int:
     return cost
 
 def trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
+    expected_length = len(trace)
     constraint_aut_to_planning_aut(a_dfa_aug)
     remaining_trace = list(reversed(trace)).copy()
     final_state = [s for s in a_dfa_aug.states if s.is_accepting][0]
@@ -329,7 +341,8 @@ def trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
     alignment = get_shortest_alignment_dijkstra(dfa=a_dfa_aug, 
                                     origin_state=a_dfa_aug.initial_state, 
                                     target_state=final_state,
-                                    remaining_trace=remaining_trace)
+                                    remaining_trace=remaining_trace,
+                                    min_alignment_length=expected_length)
     assert alignment is not None, "No best path found"
     print("Best alignment is: ", alignment)
     planning_aut_to_constraint_aut(a_dfa_aug)

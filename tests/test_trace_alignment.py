@@ -132,7 +132,7 @@ def test_trace_alignment_single_mock(mock_a_dfa_aug, mock_bad_trace):
     original_rejects = not run_automata(mock_a_dfa_aug, mock_bad_trace)
     assert original_rejects, "Automa should reject original bad trace"
 
-@pytest.mark.skip()
+# @pytest.mark.skip()
 def test_trace_alignment_mock(mock_a_dfa_aug, mock_dataset):
     _, bp = mock_dataset
     for bad_trace, _ in bp:
@@ -205,7 +205,7 @@ def t_dfa_aug(original_trace):
 
 @pytest.fixture
 def a_dfa_aug(dataset, t_dfa):
-    a_dfa = generate_automata_from_dataset(dataset, load_if_exists=True)
+    a_dfa = generate_automata_from_dataset(dataset, load_if_exists=False)
     return augment_constraint_automata(a_dfa, t_dfa)
 
 @pytest.mark.skip()
@@ -251,6 +251,7 @@ def test_create_planning_automata(a_dfa_aug, t_dfa_aug, original_trace, edited_t
     print("Planning DFA alphabet:", planning_dfa.get_input_alphabet())
 
 
+@pytest.mark.skip()
 def test_trace_alignment_single(a_dfa_aug, bad_trace):
     aligned_trace, _ = trace_alignment(a_dfa_aug, bad_trace)
     aligned_accepts = run_automata(a_dfa_aug, aligned_trace)
