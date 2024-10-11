@@ -1,19 +1,13 @@
 import pytest
 from recommenders.test import load_dataset
-from automata_learning import (generate_automata, 
-                               generate_automata_from_dataset, 
+from automata_learning import (generate_automata_from_dataset, 
                                generate_single_accepting_sequence_dfa, 
                                run_automata, 
                                NumItems)
 from trace_alignment import (augment_constraint_automata, 
                              augment_trace_automata, 
                              create_intersection_automata, 
-                             get_shortest_alignment_dijkstra, 
-                             get_shortest_alignment_a_star, 
-                             planning_aut_to_constraint_aut, 
                              trace_alignment, 
-                             _deprecated_create_intersection_automata, 
-                             constraint_aut_to_planning_aut,
                              align)
 import torch
 
