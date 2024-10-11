@@ -6,7 +6,7 @@ import warnings
 from automata_learning import run_automata
 from copy import deepcopy
 
-DEBUG = True
+DEBUG = False
 
 
 def printd(statement):
@@ -187,7 +187,10 @@ def create_intersection_automata(dfa1: Dfa, dfa2: Dfa) -> Dfa:
     return dfa
 
 
-def get_shortest_alignment_dijkstra(dfa, origin_state, target_state, remaining_trace: List[int], added_symbols: set):
+def get_shortest_alignment_dijkstra(dfa: Dfa, 
+                                    origin_state: DfaState,
+                                    target_state: DfaState,
+                                    remaining_trace: List[int]):
     """
     Dijkstra's algorithm to find the shortest path (alignment) between two states in the DFA, 
     considering that sync_e actions have a cost of 0 and add_e or del_e actions have a cost of 1.
@@ -201,9 +204,6 @@ def get_shortest_alignment_dijkstra(dfa, origin_state, target_state, remaining_t
     def get_constrained_neighbours(state, curr_char: Optional[int]):
         neighbours = []
         for p, target in state.transitions.items():
-            if p in added_symbols:
-                continue
-
             if p in visited[state.state_id]:
                 continue
             
@@ -216,7 +216,7 @@ def get_shortest_alignment_dijkstra(dfa, origin_state, target_state, remaining_t
                 if curr_char == extracted_p:
                     neighbours.append((target, 1, p))  # sync_e cost = 0
             if "add" in p:
-                print(f"[DEBUG {p}] synced_added is: ", set(inputs))
+                printd(f"[DEBUG {p}] synced_added is: {set(inputs)}")
                 extracted_p = int(p.replace("add_", ""))
                 if f"sync_{extracted_p}" not in set(inputs) and f"add_{extracted_p}" not in set(inputs):
                     neighbours.append((target, 1, p))  # add_e or del_e cost = 1
@@ -321,46 +321,23 @@ def compute_alignment_cost(alignment) -> int:
             cost += 1
     return cost
 
-def run_trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
+def trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
     constraint_aut_to_planning_aut(a_dfa_aug)
-    a_dfa_aug.reset_to_initial()
-    final_states = set(state for state in a_dfa_aug.states if state.is_accepting)
-    curr_run = []
-    added_symbols = set()
-    running_trace = list(reversed(trace)).copy()
-    #TODO:
-    # This has to be solved in another way, since if I execute the whole
-    # sequence than I cannot go back.
-    # run_automata(a_dfa_aug, trace)
-    print(f"Starting state: ", a_dfa_aug.initial_state.state_id)
-    print(f"State after reading sequence: ", a_dfa_aug.current_state.state_id)
-    while len(running_trace) > 0:
-        accepting_runs = set()
-        for f_state in final_states:
-            shortest = get_shortest_alignment_dijkstra(a_dfa_aug, a_dfa_aug.current_state, f_state, running_trace, added_symbols)
-            if shortest:
-                accepting_runs.add(shortest)
-            print(accepting_runs)
-        # compute runs cost
-        best_run = min([(run, compute_alignment_cost(run)) for run in accepting_runs], key=lambda x: x[1])
-        #insert the best action into the current run
-        best_action = best_run[0][0]
-        # add del_e if best_action = add_e
-        # TODO: this is a workaround for now
-        # if "add" in best_action:
-        #     del_action = f"del_{running_trace[-1]}"
-        #     curr_run.append(del_action)
-        #     added_symbols.add(del_action)
-        #     a_dfa_aug.step(del_action)
-        
-        added_symbols.add(best_action)
-        curr_run.append(best_action)
-        # update running_trace
-        a_dfa_aug.step(best_action)
-        running_trace.pop()
-    cost = compute_alignment_cost(curr_run)
-    # assert a_dfa_aug.current_state.is_accepting, "DFA is not accepting the aligned trace"
-    return curr_run, cost
+    remaining_trace = list(reversed(trace)).copy()
+    final_state = [s for s in a_dfa_aug.states if s.is_accepting][0]
+    print(f"Final state is:", final_state.state_id)
+    alignment = get_shortest_alignment_dijkstra(dfa=a_dfa_aug, 
+                                    origin_state=a_dfa_aug.initial_state, 
+                                    target_state=final_state,
+                                    remaining_trace=remaining_trace)
+    assert alignment is not None, "No best path found"
+    print("Best alignment is: ", alignment)
+    planning_aut_to_constraint_aut(a_dfa_aug)
+    aligned_trace = align(trace, alignment)
+    aligned_accepts = run_automata(a_dfa_aug, aligned_trace)
+    assert aligned_accepts, "Automa should accept aligned trace"
+    cost = compute_alignment_cost(alignment)
+    return aligned_trace, cost
 
 
 def run_trace_disalignment(a_dfa_aug: Dfa, trace: List[int]):

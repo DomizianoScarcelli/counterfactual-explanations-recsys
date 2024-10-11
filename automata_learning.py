@@ -12,7 +12,7 @@ import random
 from collections import deque
 
 def generate_automata(dataset, load_if_exists: bool=True, save_path: str="automata.pickle") -> Union[None, Dfa]:
-    if os.path.exists(save_path) and load_if_exists:
+    if os.path.exists(os.path.join("saved_automatas", save_path)) and load_if_exists:
         print("Loaded existing automata")
         dfa = load_automata(save_path)
         return dfa
@@ -29,7 +29,7 @@ def save_automata(automata, save_path):
         pickle.dump(automata, f)
 
 def load_automata(load_path):
-    with open(os.path.join("saved_automatas", save_path), "rb") as f:
+    with open(os.path.join("saved_automatas", load_path), "rb") as f:
         return pickle.load(f)
 
 
