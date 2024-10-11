@@ -25,11 +25,11 @@ def generate_automata(dataset, load_if_exists: bool=True, save_path: str="automa
     return dfa
 
 def save_automata(automata, save_path):
-    with open(save_path, "wb") as f:
+    with open(os.path.join("saved_automatas", save_path), "wb") as f:
         pickle.dump(automata, f)
 
 def load_automata(load_path):
-    with open(load_path, "rb") as f:
+    with open(os.path.join("saved_automatas", save_path), "rb") as f:
         return pickle.load(f)
 
 
@@ -42,7 +42,7 @@ def generate_syntetic_point(min_value:int=1, max_value: int=NumItems.ML_1M.value
     return point
     
 
-def run_automata(automata: Dfa, input: List[int]):
+def run_automata(automata: Dfa, input: list):
     automata.reset_to_initial()
     # automata.execute_sequence(origin_state=automata.current_state, seq=input)
     # return automata.current_state.is_accepting

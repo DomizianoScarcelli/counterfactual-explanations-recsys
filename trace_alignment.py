@@ -5,6 +5,13 @@ from typing import List, Tuple, Set
 import warnings
 from automata_learning import run_automata
 
+DEBUG = False
+
+
+def printd(statement):
+    if DEBUG:
+        print(statement)
+
 def augment_trace_automata(automata: Dfa, num_items: NumItems=NumItems.ML_1M) -> Dfa:
     """
     Given an DFA `T` which only accepts a certain sequence `s`, it augments it
@@ -115,7 +122,7 @@ def _deprecated_create_intersection_automata(a_aug: Dfa, t_aug: Dfa) -> Dfa:
             states.add(new_state)
     assert len(states) == len(a_aug.states) * len(t_aug.states)
     accepting_states = set({s for s in states if s.is_accepting})
-    print(f"Automa has {len(accepting_states)} accepting states")
+    printd(f"Automa has {len(accepting_states)} accepting states")
     
     a_alph = set(a_aug.get_input_alphabet()) 
     t_alph = set(t_aug.get_input_alphabet())
@@ -132,7 +139,7 @@ def _deprecated_create_intersection_automata(a_aug: Dfa, t_aug: Dfa) -> Dfa:
                 state.transitions[symbol] = state_map[(a_target_state, t_target_state)]
                 added += 1
 
-    print(f"Added {added} transitions!")
+    printd(f"Added {added} transitions!")
     initial_state = DfaState(a_aug.initial_state, t_aug.initial_state)
     dfa = Dfa(initial_state=initial_state, states=states)
     return dfa
@@ -176,7 +183,7 @@ def create_intersection_automata(dfa1: Dfa, dfa2: Dfa) -> Dfa:
 
     # Create and return the intersection DFA
     dfa = Dfa(initial_state=initial_state, states=list(new_states))
-    print(f"Intersection DFA automata alphabet is: {dfa.get_input_alphabet()}")
+    printd(f"Intersection DFA automata alphabet is: {dfa.get_input_alphabet()}")
     return dfa
 
 
@@ -195,39 +202,63 @@ def get_shortest_alignment_dijkstra(dfa, origin_state, target_state, remaining_t
                 extracted_p = int(p.replace("sync_", ""))
                 if curr_char == extracted_p:
                     neighbours.append((target, 0, p))  # sync_e cost = 0
+            if "del" in p:
+                extracted_p = int(p.replace("del_", ""))
+                if curr_char == extracted_p:
+                    neighbours.append((target, 1, p))  # sync_e cost = 0
             else:
                 neighbours.append((target, 1, p))  # add_e or del_e cost = 1
+
+        printd(f"Neighbours for char: {curr_char} are {[(s.state_id, c, p) for (s, c, p) in neighbours]}")
         return neighbours
 
     if origin_state not in dfa.states or target_state not in dfa.states:
         warnings.warn('Origin or target state not in automaton. Returning None.')
         return None
 
-    # List of paths: each entry is (cumulative_cost, state, path_to_state, input_sequence)
-    paths = [(0, origin_state, [origin_state], [])]
+    # List of paths: each entry is (cumulative_cost, state, path_to_state, input_sequence, remaining_trace)
+    paths = [(0, origin_state, [origin_state], [], remaining_trace)]
     explored = set()
 
     while paths:
         # Find the path with the lowest cumulative cost
         paths.sort(key=lambda x: x[0])
-        cost, current_state, path, inputs = paths.pop(0)
+        cost, current_state, path, inputs, remaining_trace = paths.pop(0)
+        
+        # NOTE: We may need to revisit states
+        # TODO: Find a way to avoid the loops
 
-        if current_state in explored:
-            continue
-        explored.add(current_state)
-
-        if current_state == target_state:
+        # if current_state in explored:
+        #     continue
+        # explored.add(current_state)
+        
+        # If the current state is also the target state, I can exit only if I
+        # don't have any characters to read in the sequence
+        if current_state == target_state and len(remaining_trace) == 0:
             return tuple(inputs)
+        
+        print(f"Remaining paths: {len(paths)}")
+        print(f"Current cost: {len(paths)}")
 
         if remaining_trace:
-            curr_char = remaining_trace[-1] #TODO: don't know if to use a .pop or a [-1] here
+            curr_char = remaining_trace.pop() #TODO: don't know if to use a .pop or a [-1] here
+            printd(f"""
+                  ----------
+                  [DEBUG] DIJKSTRA STATE
+                  Cost: {cost}
+                  Current Char: {curr_char}
+                  Current state:{current_state.state_id}
+                  Path:{[s.state_id for s in path]}
+                  Inputs:{inputs}
+                  Remaining Trace: {remaining_trace}
+                  """)
             neighbours = get_constrained_neighbours(current_state, curr_char)
             for neighbour, action_cost, action in neighbours:
                 new_cost = cost + action_cost
                 new_path = path + [neighbour]
                 new_inputs = inputs + [action]
 
-                paths.append((new_cost, neighbour, new_path, new_inputs))
+                paths.append((new_cost, neighbour, new_path, new_inputs, remaining_trace.copy()))
 
     return None
 
@@ -260,8 +291,10 @@ def run_trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
     curr_run = []
     added_symbols = set()
     running_trace = list(reversed(trace)).copy()
-    # Before aligning, read the sequence in order to get into the desired state
-    run_automata(a_dfa_aug, trace)
+    #TODO:
+    # This has to be solved in another way, since if I execute the whole
+    # sequence than I cannot go back.
+    # run_automata(a_dfa_aug, trace)
     print(f"Starting state: ", a_dfa_aug.initial_state.state_id)
     print(f"State after reading sequence: ", a_dfa_aug.current_state.state_id)
     while len(running_trace) > 0:

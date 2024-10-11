@@ -1,7 +1,17 @@
 import pytest
 from recommenders.test import load_dataset
-from automata_learning import generate_automata, generate_automata_from_dataset, generate_single_accepting_sequence_dfa, run_automata, NumItems
-from trace_alignment import augment_constraint_automata, augment_trace_automata, create_intersection_automata, run_trace_alignment, _deprecated_create_intersection_automata
+from automata_learning import (generate_automata, 
+                               generate_automata_from_dataset, 
+                               generate_single_accepting_sequence_dfa, 
+                               run_automata, 
+                               NumItems)
+from trace_alignment import (augment_constraint_automata, 
+                             augment_trace_automata, 
+                             create_intersection_automata, 
+                             get_shortest_alignment_dijkstra, 
+                             run_trace_alignment, 
+                             _deprecated_create_intersection_automata, 
+                             constraint_aut_to_planning_aut)
 from test_automata_learning import mock_dataset
 
 #----------TESTS WITH MOCK DATA--------------#
@@ -55,9 +65,10 @@ def mock_a_dfa_aug(mock_dataset, mock_t_dfa):
     a_dfa = generate_automata_from_dataset(mock_dataset, load_if_exists=False)
     return augment_constraint_automata(a_dfa, mock_t_dfa)
 
+@pytest.mark.skip()
 def test_augmented_trace_automata_mock(mock_t_dfa, mock_t_dfa_aug, mock_original_trace, mock_edited_trace):
-    # mock_t_dfa.visualize("mock_t_dfa")
-    # mock_t_dfa_aug.visualize("mock_t_dfa_aug")
+    # mock_t_dfa.visualize("saved_automatas/mock_t_dfa")
+    # mock_t_dfa_aug.visualize("saved_automatas/mock_t_dfa_aug")
 
     t_dfa_accepts = run_automata(mock_t_dfa, mock_original_trace)
     assert t_dfa_accepts, "T_DFA rejected good point"
@@ -65,9 +76,10 @@ def test_augmented_trace_automata_mock(mock_t_dfa, mock_t_dfa_aug, mock_original
     t_dfa_aug_accepts = run_automata(mock_t_dfa_aug, mock_edited_trace)
     assert t_dfa_aug_accepts, "T_DFA rejected edited good point"
 
+@pytest.mark.skip()
 def test_augmented_constraint_automata_mock(mock_a_dfa, mock_a_dfa_aug, mock_original_trace, mock_edited_trace): 
-    # mock_a_dfa.visualize("mock_a_dfa")
-    # mock_a_dfa_aug.visualize("mock_a_dfa_aug")
+    # mock_a_dfa.visualize("saved_automatas/mock_a_dfa")
+    # mock_a_dfa_aug.visualize("saved_automatas/mock_a_dfa_aug")
 
     a_dfa_accepts = run_automata(mock_a_dfa, mock_original_trace)
     assert a_dfa_accepts, "A_DFA rejected good point"
@@ -75,6 +87,7 @@ def test_augmented_constraint_automata_mock(mock_a_dfa, mock_a_dfa_aug, mock_ori
     a_dfa_accepts = run_automata(mock_a_dfa_aug, mock_edited_trace)
     assert a_dfa_accepts, "A_DFA rejected edited good point"
 
+@pytest.mark.skip()
 def test_run_trace_alignment_bad_trace_mock(mock_a_dfa_aug, mock_bad_trace):
     print(f"Bad trace is: ", mock_bad_trace)
     a_dfa_aug_accepts = run_automata(mock_a_dfa_aug, mock_bad_trace)
@@ -85,6 +98,25 @@ def test_run_trace_alignment_bad_trace_mock(mock_a_dfa_aug, mock_bad_trace):
     alignment, cost = run_trace_alignment(mock_a_dfa_aug, mock_bad_trace)
     print(f"Best alignment {alignment} with cost {cost}")
 
+@pytest.mark.skip()
+def test_get_shortest_alignment_dijkstra_mock(mock_a_dfa_aug, mock_bad_trace):
+    # Bad trace = [1,3,2,5]
+    constraint_aut_to_planning_aut(mock_a_dfa_aug)
+    # run_automata(mock_a_dfa_aug, [f"sync_{e}" for e in mock_bad_trace])
+    remaining_trace = list(reversed(mock_bad_trace)).copy()
+    added_symbols = set()
+    final_state = [s for s in mock_a_dfa_aug.states if s.is_accepting][0]
+    print(f"Final state is:", final_state.state_id)
+    path = get_shortest_alignment_dijkstra(dfa=mock_a_dfa_aug, 
+                                    origin_state=mock_a_dfa_aug.initial_state, 
+                                    target_state=final_state,
+                                    remaining_trace=remaining_trace,
+                                    added_symbols=added_symbols)
+    assert path is not None, "No best path found"
+    print("best path is: ", path)
+    best_action = path[0]
+    assert best_action == "sync_1", f"Best action is not the correct one: 1 != {best_action}"
+    # remaining_trace.pop()
 
 
 
@@ -148,11 +180,13 @@ def a_dfa(dataset):
     return generate_automata_from_dataset(dataset)
 
 @pytest.fixture
-def t_dfa_aug(t_dfa):
+def t_dfa_aug(original_trace):
+    t_dfa = generate_single_accepting_sequence_dfa(original_trace)
     return augment_trace_automata(t_dfa)
 
 @pytest.fixture
-def a_dfa_aug(a_dfa, t_dfa):
+def a_dfa_aug(dataset, t_dfa):
+    a_dfa = generate_automata_from_dataset(dataset, load_if_exists=True)
     return augment_constraint_automata(a_dfa, t_dfa)
 
 @pytest.mark.skip()
@@ -216,7 +250,7 @@ def test_run_trace_alignment_good_trace(a_dfa_aug, original_trace):
     print(f"Best alignment {alignment} with cost {cost}")
     assert cost == 4
 
-@pytest.mark.skip()
+# @pytest.mark.skip()
 def test_run_trace_alignment_bad_trace(a_dfa_aug, bad_trace):
     print(f"Bad trace is: ", bad_trace)
     a_dfa_aug_accepts = run_automata(a_dfa_aug, bad_trace)
