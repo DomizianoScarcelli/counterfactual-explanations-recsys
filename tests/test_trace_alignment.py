@@ -2,6 +2,7 @@ from copy import deepcopy
 import pytest
 from automata_learning import (run_automata)
 from automata_utils import invert_automata
+from graph_search import encode_action_str
 from trace_alignment import (create_intersection_automata, 
                              trace_alignment, 
                              align, trace_disalignment)
@@ -132,7 +133,7 @@ def test_trace_alignment(a_dfa_aug, dataset):
     for bad_trace, _ in bp:
         test_trace_alignment_single(a_dfa_aug, bad_trace)
 
-# @pytest.mark.skip()
+@pytest.mark.skip()
 def test_trace_disalignment_single(a_dfa_aug, original_trace):
     inv_mock_a_dfa_aug = deepcopy(a_dfa_aug)
     invert_automata(inv_mock_a_dfa_aug)
@@ -144,7 +145,7 @@ def test_trace_disalignment_single(a_dfa_aug, original_trace):
     aligned_accepts = run_automata(inv_mock_a_dfa_aug, aligned_trace)
     assert aligned_accepts, "Inverted Automa should accetps aligned bad trace"
 
-@pytest.mark.skip()
+# @pytest.mark.skip()
 def test_trace_disalignment(a_dfa_aug, dataset):
     gp, _ = dataset
     for good_trace, _ in gp:
@@ -154,7 +155,10 @@ def test_trace_disalignment(a_dfa_aug, dataset):
 def test_align():
     trace = [1,2,3,5,6]
     alignment = ("sync_1", "del_2", "add_4", "sync_3", "sync_5", "del_6")
-    aligned_trace = align(trace, alignment)
+    encoded_alignment = tuple(encode_action_str(a) for a in alignment)
+    # print(f"[{test_align.__name__}] encoded_alignment is {encoded_alignment}")
+    aligned_trace = align(trace, encoded_alignment)
+    # print(f"[{test_align.__name__}] Decoded aligned trace is {aligned_trace}")
     
     correct_alignment = [1,4,3,5]
     assert aligned_trace == correct_alignment, f"""

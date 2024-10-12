@@ -4,9 +4,10 @@ from dataset_generator import NumItems
 from tqdm import tqdm
 from typing import List
 from automata_learning import run_automata
-from graph_search import (get_shortest_alignment_dijkstra, 
+from graph_search import (decode_action, get_shortest_alignment_dijkstra, 
                           get_shortest_alignment_a_star)
 from copy import deepcopy
+from graph_search import Action, decode_action, act_str
 
 DEBUG = False
 
@@ -206,8 +207,9 @@ def planning_aut_to_constraint_aut(a_dfa: Dfa):
 
 def compute_alignment_cost(alignment) -> int:
     cost = 0
-    for s in alignment:
-        if "add" in s or "del" in s:
+    for encoded_e in alignment:
+        action_type, _ = decode_action(encoded_e) 
+        if action_type in {Action.ADD, Action.DEL}:
             cost += 1
     return cost
 
@@ -219,14 +221,14 @@ def trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
     final_states = set(s for s in a_dfa_aug.states if s.is_accepting)
     print(f"Final states are {[s.state_id for s in final_states]}")
     a_dfa_aug.reset_to_initial()
-    alignment = get_shortest_alignment_a_star(dfa=a_dfa_aug, 
+    alignment = get_shortest_alignment_dijkstra(dfa=a_dfa_aug, 
                                               origin_state=a_dfa_aug.initial_state, 
                                               target_states=final_states,
                                               remaining_trace=remaining_trace,
                                               min_alignment_length=None,
                                               max_alignment_length=None)
     assert alignment is not None, "No best path found"
-    print("Alignments is: ", alignment)
+    print("Alignments is: ", [f"{act_str(decode_action(a)[0])}_{decode_action(a)[1]}" for a in alignment])
     planning_aut_to_constraint_aut(a_dfa_aug)
     aligned_trace = align(trace, alignment)
     aligned_accepts = run_automata(a_dfa_aug, aligned_trace)
@@ -250,16 +252,13 @@ def trace_disalignment(a_dfa_aug: Dfa, trace: List[int]):
 
 def align(trace: List[int], alignment: tuple) -> List[int]:
     aligned_trace = []
-    i = 0
-    for j, a_char in enumerate(alignment):
-        if "sync" in a_char:
-            char = int(a_char.replace("sync_", ""))
-            aligned_trace.append(char)
-        if "add" in a_char:
-            char = int(a_char.replace("add_", ""))
-            aligned_trace.append(char)
-        if "del" in a_char:
-            pass
+    print(f"[align] Alignment is: {alignment}")
+    for j, encoded_action in enumerate(alignment):
+        action_type, e = decode_action(encoded_action)
+        if action_type == Action.SYNC:
+            aligned_trace.append(e)
+        if action_type == Action.ADD:
+            aligned_trace.append(e)
     return aligned_trace
 
 
