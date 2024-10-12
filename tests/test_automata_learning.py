@@ -1,6 +1,7 @@
 import pytest
 from aalpy.automata.Dfa import Dfa
-from recommenders.test import model_predict, load_dataset, load_data, generate_model
+from recommenders.test import load_dataset, load_data, generate_model
+from recommenders.model_funcs import model_predict
 from recbole.config import Config
 from tqdm import tqdm
 from automata_learning import (
@@ -45,7 +46,7 @@ def test_automata_against_bb(a_dfa: Dfa, automata_gt: int):
     for _, data in enumerate(tqdm(test_data, "Testing automata against black box model...")):
         interaction = data[0]
         point = interaction.interaction["item_id_list"].squeeze(0)
-        bb_label = model_predict(point, prob=False, default_interaction=interaction, default_model=model)
+        bb_label = model_predict(seq=point, prob=False, interaction=interaction, model=model)
         automata_accepts = run_automata(a_dfa, point.tolist())
         bb_good_point = (bb_label == automata_gt)
         bb_bad_point = (bb_label != automata_gt)

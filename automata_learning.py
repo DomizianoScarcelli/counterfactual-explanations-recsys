@@ -1,7 +1,8 @@
 from aalpy.learning_algs import run_RPNI
 from aalpy.automata.Dfa import Dfa, DfaState
 from dataset_generator import NumItems
-from recommenders.test import model_predict, load_dataset, load_data, generate_model
+from recommenders.test import load_dataset, load_data, generate_model
+from recommenders.model_funcs import model_predict
 import pickle
 import os
 from typing import Union, List

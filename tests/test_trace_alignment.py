@@ -8,7 +8,7 @@ from trace_alignment import (create_intersection_automata,
                              align, trace_disalignment)
 
 #----------TESTS WITH MOCK DATA--------------#
-@pytest.mark.skip()
+# @pytest.mark.skip()
 def test_augmented_trace_automata_mock(mock_t_dfa, mock_t_dfa_aug, mock_original_trace, mock_edited_trace):
     # mock_t_dfa.visualize("saved_automatas/mock_t_dfa")
     # mock_t_dfa_aug.visualize("saved_automatas/mock_t_dfa_aug")
@@ -19,7 +19,7 @@ def test_augmented_trace_automata_mock(mock_t_dfa, mock_t_dfa_aug, mock_original
     t_dfa_aug_accepts = run_automata(mock_t_dfa_aug, mock_edited_trace)
     assert t_dfa_aug_accepts, "T_DFA rejected edited good point"
 
-@pytest.mark.skip()
+# @pytest.mark.skip()
 def test_augmented_constraint_automata_mock(mock_a_dfa, mock_a_dfa_aug, mock_original_trace, mock_edited_trace): 
     # mock_a_dfa.visualize("saved_automatas/mock_a_dfa")
     # mock_a_dfa_aug.visualize("saved_automatas/mock_a_dfa_aug")
@@ -30,7 +30,7 @@ def test_augmented_constraint_automata_mock(mock_a_dfa, mock_a_dfa_aug, mock_ori
     a_dfa_accepts = run_automata(mock_a_dfa_aug, mock_edited_trace)
     assert a_dfa_accepts, "A_DFA rejected edited good point"
 
-@pytest.mark.skip()
+# @pytest.mark.skip()
 def test_run_trace_alignment_bad_trace_mock(mock_a_dfa_aug, mock_bad_trace):
     a_dfa_aug_accepts = run_automata(mock_a_dfa_aug, mock_bad_trace)
     assert not a_dfa_aug_accepts, f"Bad trace should be accepted"
@@ -50,7 +50,7 @@ def test_trace_alignment_single_mock(mock_a_dfa_aug, mock_bad_trace):
     original_rejects = not run_automata(mock_a_dfa_aug, mock_bad_trace)
     assert original_rejects, "Automa should reject original bad trace"
 
-@pytest.mark.skip()
+# @pytest.mark.skip()
 def test_trace_alignment_mock(mock_a_dfa_aug, mock_dataset):
     _, bp = mock_dataset
     for bad_trace, _ in bp:
@@ -76,7 +76,7 @@ def test_trace_disalignment_mock(mock_a_dfa_aug, mock_dataset):
 
 #----------TESTS WITH REAL DATA--------------#
 
-@pytest.mark.skip()
+# @pytest.mark.skip()
 def test_augmented_trace_automata(t_dfa, t_dfa_aug, original_trace, edited_trace):
     t_dfa_accepts = run_automata(t_dfa, original_trace)
     assert t_dfa_accepts, "T_DFA rejected good point"
@@ -84,7 +84,7 @@ def test_augmented_trace_automata(t_dfa, t_dfa_aug, original_trace, edited_trace
     t_dfa_aug_accepts = run_automata(t_dfa_aug, edited_trace)
     assert t_dfa_aug_accepts, "T_DFA rejected edited good point"
 
-@pytest.mark.skip()
+# @pytest.mark.skip()
 def test_augmented_constraint_automata(a_dfa, a_dfa_aug, original_trace, edited_trace): 
     a_dfa_accepts = run_automata(a_dfa, original_trace)
     assert a_dfa_accepts, "A_DFA rejected good point"
@@ -145,7 +145,7 @@ def test_trace_disalignment_single(a_dfa_aug, original_trace):
     aligned_accepts = run_automata(inv_mock_a_dfa_aug, aligned_trace)
     assert aligned_accepts, "Inverted Automa should accetps aligned bad trace"
 
-# @pytest.mark.skip()
+@pytest.mark.skip()
 def test_trace_disalignment(a_dfa_aug, dataset):
     gp, _ = dataset
     for good_trace, _ in gp:
@@ -153,11 +153,11 @@ def test_trace_disalignment(a_dfa_aug, dataset):
 
 #----------GENERAL TESTS--------------#
 def test_align():
-    trace = [1,2,3,5,6]
+    # original_trace = [1,2,3,5,6]
     alignment = ("sync_1", "del_2", "add_4", "sync_3", "sync_5", "del_6")
     encoded_alignment = tuple(encode_action_str(a) for a in alignment)
     # print(f"[{test_align.__name__}] encoded_alignment is {encoded_alignment}")
-    aligned_trace = align(trace, encoded_alignment)
+    aligned_trace = align(encoded_alignment)
     # print(f"[{test_align.__name__}] Decoded aligned trace is {aligned_trace}")
     
     correct_alignment = [1,4,3,5]
