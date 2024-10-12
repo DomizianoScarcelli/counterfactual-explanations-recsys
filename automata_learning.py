@@ -11,27 +11,25 @@ from tqdm import tqdm
 import random
 from collections import deque
 
-automata_save_path = "automata.pickle"
-
-def generate_automata(dataset, load_if_exists: bool=True) -> Union[None, Dfa]:
-    if os.path.exists(automata_save_path) and load_if_exists:
+def generate_automata(dataset, load_if_exists: bool=True, save_path: str="automata.pickle") -> Union[None, Dfa]:
+    if os.path.exists(os.path.join("saved_automatas", save_path)) and load_if_exists:
         print("Loaded existing automata")
-        dfa = load_automata()
+        dfa = load_automata(save_path)
         return dfa
     print("Existing automata not found, generating a new one based on the provided dataset")
     dfa = run_RPNI(data=dataset, automaton_type="dfa")
     if dfa is None:
         return 
-    save_automata(dfa)
-    print(f"Automata saved at {automata_save_path}")
+    save_automata(dfa, save_path)
+    print(f"Automata saved at {save_path}")
     return dfa
 
-def save_automata(automata):
-    with open(automata_save_path, "wb") as f:
+def save_automata(automata, save_path):
+    with open(os.path.join("saved_automatas", save_path), "wb") as f:
         pickle.dump(automata, f)
 
-def load_automata():
-    with open(automata_save_path, "rb") as f:
+def load_automata(load_path):
+    with open(os.path.join("saved_automatas", load_path), "rb") as f:
         return pickle.load(f)
 
 
@@ -44,7 +42,7 @@ def generate_syntetic_point(min_value:int=1, max_value: int=NumItems.ML_1M.value
     return point
     
 
-def run_automata(automata: Dfa, input: List[int]):
+def run_automata(automata: Dfa, input: list):
     automata.reset_to_initial()
     # automata.execute_sequence(origin_state=automata.current_state, seq=input)
     # return automata.current_state.is_accepting
@@ -53,12 +51,15 @@ def run_automata(automata: Dfa, input: List[int]):
         try:
             result = automata.step(char)
         except KeyError:
-            print(f"Unknown character: {char}, rejecting.")
-            return False
+            #TODO: see how to handle this case
+            print(f"Unknown character: {char}, self looping...")
+            continue
+            # equivalent to go in sink state and early return
+            # return False
     return result
 
 
-def generate_automata_from_dataset(dataset, load_if_exists: bool=True):
+def generate_automata_from_dataset(dataset, load_if_exists: bool=True, save_path: str="automata.pickle") -> Dfa:
     """
     Given a dataset with the following syntax:
         ([(torch.tensor([...]), good_label), ...],
@@ -67,7 +68,7 @@ def generate_automata_from_dataset(dataset, load_if_exists: bool=True):
     """
     good_points, bad_points = dataset
     data = [ (seq[0].tolist(), True) for seq in good_points ] + [ (seq[0].tolist(), False) for seq in bad_points ]
-    dfa = generate_automata(data, load_if_exists)
+    dfa = generate_automata(data, load_if_exists, save_path)
     if dfa is None:
         raise RuntimeError("DFA is None, aborting")
     dfa = make_input_complete(dfa)
