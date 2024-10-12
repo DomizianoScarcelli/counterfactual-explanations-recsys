@@ -215,7 +215,7 @@ def trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
     expected_length = len(trace)
     print(f"Expected length: ", expected_length)
     constraint_aut_to_planning_aut(a_dfa_aug)
-    remaining_trace = list(reversed(trace)).copy()
+    remaining_trace = list(trace)
     final_states = set(s for s in a_dfa_aug.states if s.is_accepting)
     print(f"Final states are {[s.state_id for s in final_states]}")
     a_dfa_aug.reset_to_initial()
