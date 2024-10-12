@@ -9,7 +9,7 @@ from aalpy.utils.HelperFunctions import make_input_complete
 from recbole.config import Config
 from tqdm import tqdm
 import random
-from collections import deque
+import torch
 
 def generate_automata(dataset, load_if_exists: bool=True, save_path: str="automata.pickle") -> Union[None, Dfa]:
     if os.path.exists(os.path.join("saved_automatas", save_path)) and load_if_exists:
@@ -47,13 +47,17 @@ def run_automata(automata: Dfa, input: list):
     # automata.execute_sequence(origin_state=automata.current_state, seq=input)
     # return automata.current_state.is_accepting
     result = False
+    if isinstance(input, torch.Tensor):
+        input = input.tolist()
     for char in input:
-        try:
-            result = automata.step(char)
-        except KeyError:
+        # try:
+        result = automata.step(char)
+        # except KeyError:
             #TODO: see how to handle this case
-            print(f"Unknown character: {char}, self looping...")
-            continue
+            # print(f"Unknown character: {char}, self looping...")
+            # continue
+            
+            # pass
             # equivalent to go in sink state and early return
             # return False
     return result
