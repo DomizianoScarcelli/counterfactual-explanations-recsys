@@ -185,14 +185,6 @@ def create_intersection_automata(dfa1: Dfa, dfa2: Dfa) -> Dfa:
     printd(f"Intersection DFA automata alphabet is: {dfa.get_input_alphabet()}")
     return dfa
 
-
-
-def negate_automata(automata: Dfa):
-    """
-    
-    """
-    pass
-
 def constraint_aut_to_planning_aut(a_dfa: Dfa):
     print("Replacing e with sync_e...")
     for state in a_dfa.states:

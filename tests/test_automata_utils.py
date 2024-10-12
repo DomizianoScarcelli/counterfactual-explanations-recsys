@@ -4,6 +4,7 @@ from recommenders.test import load_dataset
 from automata_learning import generate_automata_from_dataset, generate_single_accepting_sequence_dfa
 from automata_utils import has_path_to_accepting_state
 
+
 def test_has_path_to_accepting_state():
     good_points, bad_points = load_dataset(load_path="saved/counterfactual_dataset.pickle") 
     good_point = good_points[0][0].tolist()

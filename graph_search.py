@@ -77,7 +77,8 @@ def get_shortest_alignment_dijkstra(dfa: Dfa,
             
             # Mark this (state, action) pair as visited
             new_visited.add((current_state.state_id, action))
-
+            
+            #TODO: Maybe I don't need the copy, so I can avoid to store it into the heapq
             new_remaining_trace = remaining_trace.copy()
             if "sync" in action or "del" in action:
                 new_remaining_trace.pop()
@@ -96,7 +97,7 @@ def get_shortest_alignment_a_star(dfa: Dfa,
 
     def heuristic(curr_inputs):
         ALPHA = 1
-        return len(inputs) * ALPHA
+        return abs(max_steps - alignment_length(curr_inputs)) * ALPHA
 
     def get_constrained_neighbours(state, curr_char: Optional[int]):
         neighbours = []

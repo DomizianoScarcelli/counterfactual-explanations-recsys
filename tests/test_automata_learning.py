@@ -1,83 +1,32 @@
 import pytest
 from aalpy.automata.Dfa import Dfa
-from dataset_generator import NumItems
 from recommenders.test import model_predict, load_dataset, load_data, generate_model
 from recbole.config import Config
 from tqdm import tqdm
 from automata_learning import (
     run_automata, 
-    generate_automata_from_dataset, 
-    generate_single_accepting_sequence_dfa, 
 )
-import torch
 
-# Fixtures
-@pytest.fixture
-def mock_dataset():
-    """
-    A tiny and controllable set of good and bad points in order to visualize
-    the learned automata and do further debug
-
-    Assume the unviverse of all possible point (whic may not be contained in
-                                                the dataset) is [1,2,3,4,5,6].
-    This is equivalent to the universe of items in the recommender system real
-    example
-    """
-    gp =[(torch.tensor([1,3,2]),True),
-         (torch.tensor([1,2,3]),True)] 
-    bp =[(torch.tensor([1,2,4]),False),
-         (torch.tensor([1,3,2,5]),False)] 
-    return (gp, bp)
-
-@pytest.fixture
-def mock_automata(mock_dataset):
-    """
-    A tiny automata learned on the mock tiny dataset. This has no use beyond
-    debugging and testing
-    """
-    good_points, bad_points = mock_dataset
-    return generate_automata_from_dataset((good_points, bad_points), load_if_exists=False,  save_path="mock_automata.pickle")
-
-@pytest.fixture
-def dataset():
-    return load_dataset(load_path="saved/counterfactual_dataset.pickle")
-
-@pytest.fixture
-def automata(dataset):
-    good_points, bad_points = dataset
-    return generate_automata_from_dataset((good_points, bad_points))
-
-@pytest.fixture
-def automata_gt(dataset):
-    good_points, _ = dataset
-    return good_points[0][1]
-
-@pytest.fixture
-def good_point(dataset):
-    good_points, _ = dataset
-    return good_points[0][0]
-
-
-# Test functions
-def test_mock_automata(mock_automata):
-    # mock_automata.visualize()
-    pass
+# # Test functions
+# def test_mock_automata(mock_automata):
+#     # mock_automata.visualize()
+#     pass
 
 @pytest.mark.skip()
-def test_automata(automata: Dfa, dataset):
+def test_automata(a_dfa: Dfa, dataset):
     """
     Test if automata accepts good sequences on the learning set of good points
     and bad points.
     """
     good_points, bad_points = dataset
     for good_point, bad_point in zip(good_points, bad_points):
-        good_result = run_automata(automata, good_point[0].tolist())
-        bad_result = run_automata(automata, bad_point[0].tolist())
+        good_result = run_automata(a_dfa, good_point[0].tolist())
+        bad_result = run_automata(a_dfa, bad_point[0].tolist())
         assert good_result, f"Wrong result for good point: {good_result}"
         assert not bad_result, f"Wrong result for bad point: {bad_result}"
 
 @pytest.mark.skip()
-def test_automata_against_bb(automata: Dfa, automata_gt: int):
+def test_automata_against_bb(a_dfa: Dfa, automata_gt: int):
     """
     Test the capacity of the automa to approximate the neighbourhood of x
     described by the black box model. The evaluation is in term of precision,
@@ -97,7 +46,7 @@ def test_automata_against_bb(automata: Dfa, automata_gt: int):
         interaction = data[0]
         point = interaction.interaction["item_id_list"].squeeze(0)
         bb_label = model_predict(point, prob=False, default_interaction=interaction, default_model=model)
-        automata_accepts = run_automata(automata, point.tolist())
+        automata_accepts = run_automata(a_dfa, point.tolist())
         bb_good_point = (bb_label == automata_gt)
         bb_bad_point = (bb_label != automata_gt)
         if (bb_good_point and automata_accepts): tp+=1

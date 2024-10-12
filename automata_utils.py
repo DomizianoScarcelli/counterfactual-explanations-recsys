@@ -24,3 +24,11 @@ def has_path_to_accepting_state(automaton: Dfa, seq: List[int]):
     return False
 
 
+def invert_automata(automata: Dfa):
+    """
+    Inverts the automata by inverting the accepting/rejecting states. Each word
+    accepted by the automata will be rejected by the inverse automata and vice
+    versa
+    
+    """
+    pass
