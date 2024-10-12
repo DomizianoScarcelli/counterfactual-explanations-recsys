@@ -1,10 +1,12 @@
 from aalpy.automata.Dfa import Dfa, DfaState
+from automata_utils import invert_automata
 from dataset_generator import NumItems
 from tqdm import tqdm
 from typing import List
 from automata_learning import run_automata
 from graph_search import (get_shortest_alignment_dijkstra, 
                           get_shortest_alignment_a_star)
+from copy import deepcopy
 
 DEBUG = False
 
@@ -211,32 +213,39 @@ def compute_alignment_cost(alignment) -> int:
 
 def trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
     expected_length = len(trace)
+    print(f"Expected length: ", expected_length)
     constraint_aut_to_planning_aut(a_dfa_aug)
     remaining_trace = list(reversed(trace)).copy()
-    final_state = [s for s in a_dfa_aug.states if s.is_accepting][0]
-    print(f"Final state is:", final_state.state_id)
+    final_states = set(s for s in a_dfa_aug.states if s.is_accepting)
+    print(f"Final states are {[s.state_id for s in final_states]}")
+    a_dfa_aug.reset_to_initial()
     alignment = get_shortest_alignment_a_star(dfa=a_dfa_aug, 
-                                    origin_state=a_dfa_aug.initial_state, 
-                                    target_state=final_state,
-                                    remaining_trace=remaining_trace,
-                                    min_alignment_length=expected_length)
+                                              origin_state=a_dfa_aug.initial_state, 
+                                              target_states=final_states,
+                                              remaining_trace=remaining_trace,
+                                              min_alignment_length=None,
+                                              max_alignment_length=None)
     assert alignment is not None, "No best path found"
-    print("Best alignment is: ", alignment)
+    print("Alignments is: ", alignment)
     planning_aut_to_constraint_aut(a_dfa_aug)
     aligned_trace = align(trace, alignment)
     aligned_accepts = run_automata(a_dfa_aug, aligned_trace)
     assert aligned_accepts, "Automa should accept aligned trace"
     cost = compute_alignment_cost(alignment)
     print("Alignment cost: ", cost)
+    # aligned_traces.append((aligned_trace, cost))
+    # best_alignment, best_cost = min(aligned_traces, key=lambda x: x[1])
     return aligned_trace, cost
 
 
-def run_trace_disalignment(a_dfa_aug: Dfa, trace: List[int]):
+def trace_disalignment(a_dfa_aug: Dfa, trace: List[int]):
     """
     It finds the changes with minimum cost to do to a trace accepted by the automata in order for it to not be
     accepted anymore. 
     """
-    pass
+    a_dfa_aug = deepcopy(a_dfa_aug)
+    invert_automata(a_dfa_aug)
+    return trace_alignment(a_dfa_aug, trace)
 
 
 def align(trace: List[int], alignment: tuple) -> List[int]:

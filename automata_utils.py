@@ -29,6 +29,6 @@ def invert_automata(automata: Dfa):
     Inverts the automata by inverting the accepting/rejecting states. Each word
     accepted by the automata will be rejected by the inverse automata and vice
     versa
-    
     """
-    pass
+    for state in automata.states:
+        state.is_accepting = not state.is_accepting

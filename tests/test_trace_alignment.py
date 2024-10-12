@@ -1,8 +1,10 @@
+from copy import deepcopy
 import pytest
 from automata_learning import (run_automata)
+from automata_utils import invert_automata
 from trace_alignment import (create_intersection_automata, 
                              trace_alignment, 
-                             align)
+                             align, trace_disalignment)
 
 #----------TESTS WITH MOCK DATA--------------#
 @pytest.mark.skip()
@@ -41,16 +43,35 @@ def test_run_trace_alignment_bad_trace_mock(mock_a_dfa_aug, mock_bad_trace):
 def test_trace_alignment_single_mock(mock_a_dfa_aug, mock_bad_trace):
     aligned_trace, _ = trace_alignment(mock_a_dfa_aug, mock_bad_trace)
     aligned_accepts = run_automata(mock_a_dfa_aug, aligned_trace)
+    print(f"[{test_trace_alignment_single_mock.__name__}] Original bad trace: {mock_bad_trace}")
+    print(f"[{test_trace_alignment_single_mock.__name__}] Aligned bad trace: {aligned_trace}")
     assert aligned_accepts, "Automa should accept aligned trace"
     original_rejects = not run_automata(mock_a_dfa_aug, mock_bad_trace)
     assert original_rejects, "Automa should reject original bad trace"
 
-# @pytest.mark.skip()
+@pytest.mark.skip()
 def test_trace_alignment_mock(mock_a_dfa_aug, mock_dataset):
     _, bp = mock_dataset
     for bad_trace, _ in bp:
         test_trace_alignment_single_mock(mock_a_dfa_aug, bad_trace)
     
+@pytest.mark.skip()
+def test_trace_disalignment_single_mock(mock_a_dfa_aug, mock_original_trace):
+    inv_mock_a_dfa_aug = deepcopy(mock_a_dfa_aug)
+    invert_automata(inv_mock_a_dfa_aug)
+    good_trace_rejects = not run_automata(inv_mock_a_dfa_aug, mock_original_trace)
+    assert good_trace_rejects, "Inverted Automa should reject good trace"
+    aligned_trace, _ = trace_alignment(inv_mock_a_dfa_aug, mock_original_trace)
+    print(f"[{test_trace_disalignment_single_mock.__name__}] Original trace: {mock_original_trace}")
+    print(f"[{test_trace_disalignment_single_mock.__name__}] Aligned original trace: {aligned_trace}")
+    aligned_accepts = run_automata(inv_mock_a_dfa_aug, aligned_trace)
+    assert aligned_accepts, "Inverted Automa should accetps aligned bad trace"
+
+# @pytest.mark.skip()
+def test_trace_disalignment_mock(mock_a_dfa_aug, mock_dataset):
+    gp, _ = mock_dataset
+    for good_trace, _ in gp:
+        test_trace_disalignment_single_mock(mock_a_dfa_aug, good_trace)
 
 #----------TESTS WITH REAL DATA--------------#
 
@@ -97,7 +118,7 @@ def test_create_planning_automata(a_dfa_aug, t_dfa_aug, original_trace, edited_t
     print("Planning DFA alphabet:", planning_dfa.get_input_alphabet())
 
 
-# @pytest.mark.skip()
+@pytest.mark.skip()
 def test_trace_alignment_single(a_dfa_aug, bad_trace):
     aligned_trace, _ = trace_alignment(a_dfa_aug, bad_trace)
     aligned_accepts = run_automata(a_dfa_aug, aligned_trace)
@@ -111,6 +132,23 @@ def test_trace_alignment(a_dfa_aug, dataset):
     for bad_trace, _ in bp:
         test_trace_alignment_single(a_dfa_aug, bad_trace)
 
+# @pytest.mark.skip()
+def test_trace_disalignment_single(a_dfa_aug, original_trace):
+    inv_mock_a_dfa_aug = deepcopy(a_dfa_aug)
+    invert_automata(inv_mock_a_dfa_aug)
+    good_trace_rejects = not run_automata(inv_mock_a_dfa_aug, original_trace)
+    assert good_trace_rejects, "Inverted Automa should reject good trace"
+    aligned_trace, _ = trace_alignment(inv_mock_a_dfa_aug, original_trace)
+    print(f"[{test_trace_disalignment_single.__name__}] Original trace: {original_trace}")
+    print(f"[{test_trace_disalignment_single.__name__}] Aligned original trace: {aligned_trace}")
+    aligned_accepts = run_automata(inv_mock_a_dfa_aug, aligned_trace)
+    assert aligned_accepts, "Inverted Automa should accetps aligned bad trace"
+
+@pytest.mark.skip()
+def test_trace_disalignment(a_dfa_aug, dataset):
+    gp, _ = dataset
+    for good_trace, _ in gp:
+        test_trace_disalignment_single(a_dfa_aug, good_trace)
 
 #----------GENERAL TESTS--------------#
 def test_align():

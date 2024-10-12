@@ -1,6 +1,6 @@
 import heapq
 from aalpy.automata.Dfa import Dfa, DfaState
-from typing import List, Optional
+from typing import List, Optional, Set
 import warnings
 
 def get_shortest_alignment_dijkstra(dfa: Dfa, 
@@ -89,9 +89,10 @@ def get_shortest_alignment_dijkstra(dfa: Dfa,
 
 def get_shortest_alignment_a_star(dfa: Dfa, 
                                   origin_state: DfaState,
-                                  target_state: DfaState,
+                                  target_states: Set[DfaState],
                                   remaining_trace: List[int],
-                                  min_alignment_length: int,
+                                  min_alignment_length: Optional[int],
+                                  max_alignment_length: Optional[int],
                                   max_steps: int = 10000):
     remaining_trace = remaining_trace.copy()
 
@@ -107,7 +108,8 @@ def get_shortest_alignment_a_star(dfa: Dfa,
 
             if "sync" in p and curr_char is not None:
                 extracted_p = int(p.replace("sync_", ""))
-                if curr_char == extracted_p:
+                already_added = f"sync_{extracted_p}" in set(inputs) or f"add_{extracted_p}" in set(inputs)
+                if curr_char == extracted_p and not already_added:
                     neighbours.append((target, 0, p))  # sync_e cost = 0
             if "del" in p and curr_char is not None:
                 extracted_p = int(p.replace("del_", ""))
@@ -115,15 +117,17 @@ def get_shortest_alignment_a_star(dfa: Dfa,
                     neighbours.append((target, 1, p))  # del_e cost = 1
             if "add" in p:
                 extracted_p = int(p.replace("add_", ""))
-                if f"sync_{extracted_p}" not in set(inputs) and f"add_{extracted_p}" not in set(inputs):
+                already_added = f"sync_{extracted_p}" in set(inputs) or f"add_{extracted_p}" in set(inputs)
+                if not already_added:
                     neighbours.append((target, 1, p))  # add_e cost = 1
 
         return neighbours
 
     def alignment_length(curr_alignment):
-        return sum(1 if "sync" in c or "add" in c else -1 for c in curr_alignment)
-
-    if origin_state not in dfa.states or target_state not in dfa.states:
+        return sum(1 if "sync" in c or "add" in c else 0 for c in curr_alignment)
+    
+    invalid_states = [s for s in target_states if not s in dfa.states]
+    if origin_state not in dfa.states or invalid_states:
         warnings.warn('Origin or target state not in automaton. Returning None.')
         return None
 
@@ -145,8 +149,10 @@ def get_shortest_alignment_a_star(dfa: Dfa,
         cost, _, current_state, path, inputs, remaining_trace, visited = heapq.heappop(paths)
 
         curr_alignment_length = alignment_length(inputs)
-        if current_state == target_state and not remaining_trace and curr_alignment_length >= min_alignment_length:
-            return tuple(inputs)
+        if current_state in target_states and not remaining_trace:
+            if min_alignment_length is None or curr_alignment_length >= min_alignment_length:
+                if max_alignment_length is None or curr_alignment_length <= max_alignment_length:
+                    return tuple(inputs)
 
         if remaining_trace:
             curr_char = remaining_trace[-1]
