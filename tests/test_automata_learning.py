@@ -4,9 +4,7 @@ from recommenders.test import load_dataset, load_data, generate_model
 from recommenders.model_funcs import model_predict
 from recbole.config import Config
 from tqdm import tqdm
-from automata_learning import (
-    run_automata, 
-)
+from automata_utils import run_automata
 
 # # Test functions
 # def test_mock_automata(mock_automata):

@@ -1,7 +1,6 @@
 from copy import deepcopy
 import pytest
-from automata_learning import (run_automata)
-from automata_utils import invert_automata
+from automata_utils import invert_automata, run_automata
 from graph_search import encode_action_str
 from trace_alignment import (create_intersection_automata, 
                              trace_alignment, 

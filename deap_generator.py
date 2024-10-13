@@ -2,13 +2,11 @@ from deap import base, creator, tools, algorithms
 import numpy as np
 import random
 import torch
-from tqdm import tqdm
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Callable
 import torch.nn.functional as F
 from enum import Enum
 import _pickle as cPickle
-from copy import deepcopy
 
 class NumItems(Enum):
     ML_100K=1682
@@ -26,11 +24,6 @@ def cosine_distance(prob1: torch.Tensor, prob2: torch.Tensor) -> float:
 
 def self_indicator(seq1, seq2):
     return float("inf") if (seq1 == seq2).all() else 0
-
-def dummy_model(seq: torch.Tensor) -> torch.Tensor:
-    #NOTE: dummy black box model
-    return torch.randn((1, 1983))
-
 
 def random_points_with_offset(max_value: int, max_offset: int):
     i = random.randint(1, max_value - 1)
@@ -146,6 +139,3 @@ class GeneticGenerationStrategy():
             distances.append(edit_distance(self.input_seq, seq))
         return (same_label / len(examples)), (sum(distances)/len(distances))
 
-if __name__ == "__main__":
-    x = torch.randint(0, NumItems.ML_1M.value, (50,))
-    result = GeneticGenerationStrategy(x, predictor=dummy_model).generate()

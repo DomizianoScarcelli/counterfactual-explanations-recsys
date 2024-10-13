@@ -15,7 +15,7 @@ def predict(model: SequentialRecommender, interaction: Interaction, argmax: bool
     Returns:
         raw logits if argmax is False, label otherwise
     """
-    preds = model.full_sort_predict(interaction)
+    preds = model.full_sort_predict(interaction=interaction)
     if argmax:
         preds = preds.argmax(dim=1)
     return preds
@@ -29,7 +29,7 @@ def model_predict(seq:torch.Tensor,
     seq = torch.cat((seq, torch.zeros((MAX_LENGTH - seq.size(0))))).to(seq.dtype).unsqueeze(0)
     new_interaction = deepcopy(interaction)
     new_interaction.interaction["item_id_list"] = seq
-    preds = predict(model, new_interaction, argmax=not prob)
+    preds = predict(model=model, interaction=new_interaction, argmax=not prob)
     if not prob:
         return preds.item()
     return preds

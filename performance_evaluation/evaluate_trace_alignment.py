@@ -3,7 +3,7 @@ from automata_utils import invert_automata
 from dataset_generator import NumItems
 from tqdm import tqdm
 from typing import List
-from automata_learning import run_automata
+from automata_utils import run_automata
 from graph_search import (decode_action, get_shortest_alignment_dijkstra, 
                           get_shortest_alignment_a_star)
 from copy import deepcopy
