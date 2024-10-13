@@ -22,13 +22,27 @@ def predict(model: SequentialRecommender, seq: Tensor, argmax: bool=True) -> tor
         preds = preds.argmax(dim=1)
     return preds
 
+def batch_predict(model: SequentialRecommender, seq: Tensor, argmax: bool=True) -> torch.Tensor:
+    """Returns the prediction of the model on the interaction.
+
+    Args:
+        model: the SequentialRecommender which is in charge of the prediction
+        interaction: the Interaction on which the prediction has to be made on
+        argmax: if true, it performs argmax on the result to return the label,
+        otherwise it returns the raw logits
+
+    Returns:
+        raw logits if argmax is False, label otherwise
+    """
+    preds = model.batched_full_sort_predict(seq)
+    if argmax:
+        preds = preds.argmax(dim=1)
+    return preds
+
 def model_predict(seq:torch.Tensor, 
                   model: SequentialRecommender,
                   prob: bool=True):
-    #Pad with 0s
-    MAX_LENGTH = 50
-    seq = torch.cat((seq, torch.zeros((MAX_LENGTH - seq.size(0))))).to(seq.dtype).unsqueeze(0)
-    preds = predict(model=model, seq=seq, argmax=not prob)
+    preds = batch_predict(model=model, seq=seq, argmax=not prob)
     if not prob:
         return preds.item()
     return preds

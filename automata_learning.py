@@ -2,7 +2,7 @@ from aalpy.learning_algs import run_RPNI
 from aalpy.automata.Dfa import Dfa, DfaState
 from dataset_generator import NumItems
 from type_hints import Dataset
-from recommenders.generate_dataset import load_dataset
+from recommenders.generate_dataset import load_dataset, make_deterministic
 import pickle
 import os
 from typing import Union, List, Tuple
@@ -114,21 +114,9 @@ if __name__ == "__main__":
     print(f"Generating automata from saved dataset")
 
     #Remove non-determinism
-    g,b= load_dataset(load_path="saved/counterfactual_dataset.pickle")
-    new_g, new_b = [], []
-    ids = set()
-    for p, l in g:
-        if tuple(p.tolist()) in ids:
-            continue
-        new_g.append((p,l))
-        ids.add(tuple(p.tolist()))
-    for p, l in b:
-        if tuple(p.tolist()) in ids:
-            continue
-        new_b.append((p,l))
-        ids.add(tuple(p.tolist()))
+    dataset = load_dataset(load_path="saved/counterfactual_dataset.pickle")
+    dataset = make_deterministic(dataset)
 
-    dataset = (new_g, new_b)
     dfa = generate_automata_from_dataset(dataset, load_if_exists=False)
     # dfa.visualize()
 

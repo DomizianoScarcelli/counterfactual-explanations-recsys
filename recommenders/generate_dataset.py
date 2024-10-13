@@ -36,8 +36,6 @@ def generate_counterfactual_dataset(interaction: Interaction, model: SequentialR
     # user_id = interaction.interaction["user_id"][0].item()
 
     #Trim zeros
-    #TODO: don't know if this is working
-    sequence = sequence[:torch.nonzero(sequence, as_tuple=False).max().item() + 1] if sequence.nonzero().size(0) > 0 else torch.tensor([])
     sequence = sequence.squeeze(0)
     assert len(sequence.shape) == 1, f"Sequence dim must be 1: {sequence.shape}"
     good_genetic_strategy = GeneticGenerationStrategy(input_seq=sequence,

@@ -35,7 +35,6 @@ class ExtendedBERT4Rec(BERT4Rec):
     def batched_full_sort_predict(self, item_seq: Tensor):
         item_seq_len = torch.count_nonzero(item_seq, dim=1).to(torch.int64)
         item_seq = item_seq.to(torch.int64)
-        print(f"item_seq_len is: {item_seq_len}")
         item_seq = self.reconstruct_test_data(item_seq, item_seq_len)
         seq_output = self.forward(item_seq)
         seq_output = self.gather_indexes(seq_output, item_seq_len - 1)  # [B H]

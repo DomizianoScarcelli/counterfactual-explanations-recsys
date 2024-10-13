@@ -45,7 +45,6 @@ def sequences(interactions) -> Tensor:
     assert sequences.size(0) == batch_size, f"Sequences shape {sequences.shape} not matching batch size {batch_size}"
     return sequences
 
-@pytest.mark.skip()
 def test_full_sort_predict_from_sequence(model: ExtendedBERT4Rec, sequences):
     single_seq = sequences[0].unsqueeze(0)
     assert single_seq.size(0) == 1, f"single seq must have shape [1, length], {single_seq.shape}"
