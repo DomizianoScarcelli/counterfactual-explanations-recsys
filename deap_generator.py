@@ -126,7 +126,7 @@ class GeneticGenerationStrategy():
 
     def generate(self):
         population = self.toolbox.population(n=self.pop_size)
-        population, _ = eaSimpleBatched(population, self.toolbox, cxpb=0.7, mutpb=0.5, ngen=self.generations, verbose=True)
+        population, _ = eaSimpleBatched(population, self.toolbox, cxpb=0.7, mutpb=0.5, ngen=self.generations, verbose=False)
         new_population = []
         inserted = set()
         # for x in population:

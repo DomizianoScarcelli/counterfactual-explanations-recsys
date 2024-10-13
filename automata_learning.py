@@ -102,8 +102,7 @@ def generate_single_accepting_sequence_dfa(sequence):
     return dfa
 
 
-def learning_pipeline(source: List[int], dataset: Tuple[Dataset, Dataset]):
-    print(f"[automata_learning.learning_pipeline] source is {source}")
+def learning_pipeline(source, dataset: Tuple[Dataset, Dataset]):
     t_dfa = generate_single_accepting_sequence_dfa(source)
     a_dfa = generate_automata_from_dataset(dataset, load_if_exists=False)
     a_dfa_aug = augment_constraint_automata(a_dfa, t_dfa)

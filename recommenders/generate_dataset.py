@@ -146,7 +146,6 @@ def dataset_generator(config: Config) -> Generator[Tuple[Dataset, Dataset], None
         good_examples, bad_examples = generate_counterfactual_dataset(interaction, model)
         
         yield (good_examples, bad_examples)
-        break #generate just one dataset
 
 def make_deterministic(dataset: Tuple[Dataset, Dataset]) -> Tuple[Dataset, Dataset]:
     g, b = dataset
