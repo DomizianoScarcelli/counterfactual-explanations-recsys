@@ -2,8 +2,10 @@ import torch
 from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
 from copy import deepcopy
+from typing import List
+from torch import Tensor
 
-def predict(model: SequentialRecommender, interaction: Interaction, argmax: bool=True) -> torch.Tensor:
+def predict(model: SequentialRecommender, seq: Tensor, argmax: bool=True) -> torch.Tensor:
     """Returns the prediction of the model on the interaction.
 
     Args:
@@ -15,21 +17,34 @@ def predict(model: SequentialRecommender, interaction: Interaction, argmax: bool
     Returns:
         raw logits if argmax is False, label otherwise
     """
-    preds = model.full_sort_predict(interaction=interaction)
+    preds = model.full_sort_predict(seq)
     if argmax:
         preds = preds.argmax(dim=1)
     return preds
 
 def model_predict(seq:torch.Tensor, 
-                  interaction: Interaction, 
                   model: SequentialRecommender,
                   prob: bool=True):
     #Pad with 0s
     MAX_LENGTH = 50
     seq = torch.cat((seq, torch.zeros((MAX_LENGTH - seq.size(0))))).to(seq.dtype).unsqueeze(0)
-    new_interaction = deepcopy(interaction)
-    new_interaction.interaction["item_id_list"] = seq
-    preds = predict(model=model, interaction=new_interaction, argmax=not prob)
+    preds = predict(model=model, seq=seq, argmax=not prob)
     if not prob:
         return preds.item()
     return preds
+
+
+
+def model_batch_predict(batch_seq:torch.Tensor, 
+                  interactions: List[Interaction], 
+                  model: SequentialRecommender,
+                  prob: bool=True):
+    batch_size = batch_seq.size(0)
+    assert len(interactions) == batch_size, f"Interaction len must be equal to batch size {len(interactions)} != {batch_size}"
+    preds = torch.tensor([])
+    for batch in range(batch_size):
+        seq = batch_seq[batch,:]
+        pred = predict(model=model, seq=seq, argmax=not prob)
+        preds = torch.stack((preds, pred), dim=0)
+    return preds
+

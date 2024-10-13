@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader
 import pickle
 from typing import Generator, Tuple
 from deap_generator import GeneticGenerationStrategy
+from models.ExtendedBERT4Rec import ExtendedBERT4Rec
 from recommenders.model_funcs import model_predict
 from type_hints import Dataset, RecDataset, RecModel
 
@@ -41,7 +42,6 @@ def generate_counterfactual_dataset(interaction: Interaction, model: SequentialR
     assert len(sequence.shape) == 1, f"Sequence dim must be 1: {sequence.shape}"
     good_genetic_strategy = GeneticGenerationStrategy(input_seq=sequence,
                                                       predictor=lambda x: model_predict(seq=x,
-                                                                    interaction=interaction,
                                                                     model=model,
                                                                     prob=True),
                                                       pop_size=1000,
@@ -51,7 +51,6 @@ def generate_counterfactual_dataset(interaction: Interaction, model: SequentialR
     good_examples = good_genetic_strategy.postprocess(good_examples)
     bad_genetic_strategy = GeneticGenerationStrategy(input_seq=sequence,
                                                      predictor=lambda x: model_predict(seq=x,
-                                                                   interaction=interaction,
                                                                    model=model,
                                                                    prob=True),
                                                      pop_size=1000,
@@ -100,7 +99,7 @@ def get_dataloaders(config: Config) -> Tuple[DataLoader, DataLoader, DataLoader]
     train_data, valid_data, test_data = data_preparation(config, dataset)
     return train_data, valid_data, test_data 
 
-def generate_model(config: Config) -> SequentialRecommender:
+def generate_model(config: Config) -> ExtendedBERT4Rec:
     """
     Creates the pytorch model from the config file.
 
@@ -110,7 +109,8 @@ def generate_model(config: Config) -> SequentialRecommender:
         The model.
     """
     train_data, _, _= get_dataloaders(config)
-    model = get_model(config['model'])(config, train_data.dataset).to(config['device'])
+    # model = get_model(config['model'])(config, train_data.dataset).to(config['device'])
+    model = ExtendedBERT4Rec(config, train_data.dataset)
     checkpoint_file = "saved/Bert4Rec_ml1m.pth"
     checkpoint = torch.load(checkpoint_file, map_location=config['device'])
     model.load_state_dict(checkpoint["state_dict"])
@@ -126,7 +126,7 @@ def get_config(dataset: RecDataset, model: RecModel) -> Config:
 
 def get_sequence_from_interaction(interaction: Interaction) -> Tensor:
     sequence = interaction.interaction["item_id_list"] 
-    print(f"[generate_dataset.get_sequence_from_interaction] sequence is {sequence}")
+    # print(f"[generate_dataset.get_sequence_from_interaction] sequence is {sequence}")
     return sequence
 
 def interaction_generator(config: Config) -> Generator[Interaction, None, None]:
