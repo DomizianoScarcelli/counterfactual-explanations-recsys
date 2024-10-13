@@ -1,14 +1,13 @@
-from deap import base, creator, tools, algorithms
+from deap import base, creator, tools
+from extended_ea_algorithms import eaSimpleBatched
 import numpy as np
 import random
 import torch
-from tqdm import tqdm
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Callable
 import torch.nn.functional as F
 from enum import Enum
 import _pickle as cPickle
-from copy import deepcopy
 
 class NumItems(Enum):
     ML_100K=1682
@@ -26,11 +25,6 @@ def cosine_distance(prob1: torch.Tensor, prob2: torch.Tensor) -> float:
 
 def self_indicator(seq1, seq2):
     return float("inf") if (seq1 == seq2).all() else 0
-
-def dummy_model(seq: torch.Tensor) -> torch.Tensor:
-    #NOTE: dummy black box model
-    return torch.randn((1, 1983))
-
 
 def random_points_with_offset(max_value: int, max_offset: int):
     i = random.randint(1, max_value - 1)
@@ -78,7 +72,7 @@ class GeneticGenerationStrategy():
         self.input_seq = input_seq
         self.predictor = predictor
         self.pop_size = pop_size
-        self.gt = self.predictor(input_seq)
+        self.gt = self.predictor(input_seq.unsqueeze(0))
         self.generations = generations
         self.good_examples = good_examples
         # Define the evaluation function
@@ -92,12 +86,12 @@ class GeneticGenerationStrategy():
         self.toolbox.register("clone", cPickle_clone)
 
 
-        self.toolbox.register("evaluate", self.evaluate_fitness)
+        self.toolbox.register("evaluate", self.evaluate_fitness_batch)
         self.toolbox.register("mate", tools.cxTwoPoint)  # Use two-point crossover
         self.toolbox.register("mutate", mutate)
         self.toolbox.register("select", tools.selTournament, tournsize=3)  # Tournament selection
     
-    def evaluate_fitness(self,individual):
+    def evaluate_fitness(self,individual: List[int]):
         ALPHA1= 0.5
         ALPHA2 = 1 - ALPHA1
         candidate_seq = torch.tensor(individual)
@@ -109,16 +103,41 @@ class GeneticGenerationStrategy():
             label_dist = 1 - label_dist
         return ALPHA1 * seq_dist + ALPHA2 * label_dist + self_ind,
 
+    def evaluate_fitness_batch(self, individuals: List[List[int]]) -> List[float]:
+        ALPHA1= 0.5
+        ALPHA2 = 1 - ALPHA1
+        candidate_seqs = torch.tensor(individuals)
+        batch_size = candidate_seqs.size(0)
+        candidate_probs = self.predictor(candidate_seqs)  # Function to assign label based on the recommender system
+        assert candidate_probs.size(0) == batch_size, f"Mismatch in probs shape and batch size: {candidate_probs.shape} != {batch_size}"
+        fitnesses = []
+        for batch_idx in range(batch_size):
+            candidate_seq = candidate_seqs[batch_idx]
+            candidate_prob = candidate_probs[batch_idx]
+            seq_dist = edit_distance(self.input_seq, candidate_seq) #[0,1]
+            label_dist = cosine_distance(self.gt, candidate_prob) #[0,1]
+            self_ind = self_indicator(self.input_seq, candidate_seq) #0 if different, inf if equal
+            if not self.good_examples:
+                label_dist = 1 - label_dist
+            cost = ALPHA1 * seq_dist + ALPHA2 * label_dist + self_ind,
+            fitnesses.append(cost)
+        return fitnesses
+
+
     def generate(self):
         population = self.toolbox.population(n=self.pop_size)
-        population, _ = algorithms.eaSimple(population, self.toolbox, cxpb=0.7, mutpb=0.5, ngen=self.generations, verbose=True)
+        population, _ = eaSimpleBatched(population, self.toolbox, cxpb=0.7, mutpb=0.5, ngen=self.generations, verbose=True)
         new_population = []
         inserted = set()
-        for x in population:
-            if tuple(x) in inserted:
-                continue
-            new_population.append((torch.tensor(x), self.predictor(torch.tensor(x)).argmax(-1).item()))
-            inserted.add(tuple(x))
+        # for x in population:
+        #     if tuple(x) in inserted:
+        #         continue
+        #     new_population.append((torch.tensor(x), self.predictor(torch.tensor(x)).argmax(-1).item()))
+        #     inserted.add(tuple(x))
+        preds = self.predictor(torch.tensor(population)).argmax(-1)
+        print(f"[generate] preds shape is {preds.shape}")
+        for i, x in enumerate(population):
+            new_population.append((torch.tensor(x), preds[i].item()))
         population = new_population
         label_eval, seq_eval = self.evaluate_generation(population)
         print(f"Good examples = {self.good_examples} ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
@@ -146,6 +165,3 @@ class GeneticGenerationStrategy():
             distances.append(edit_distance(self.input_seq, seq))
         return (same_label / len(examples)), (sum(distances)/len(distances))
 
-if __name__ == "__main__":
-    x = torch.randint(0, NumItems.ML_1M.value, (50,))
-    result = GeneticGenerationStrategy(x, predictor=dummy_model).generate()

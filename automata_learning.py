@@ -1,15 +1,14 @@
 from aalpy.learning_algs import run_RPNI
 from aalpy.automata.Dfa import Dfa, DfaState
 from dataset_generator import NumItems
-from recommenders.test import model_predict, load_dataset, load_data, generate_model
+from type_hints import Dataset
+from recommenders.generate_dataset import load_dataset, make_deterministic
 import pickle
 import os
-from typing import Union, List
+from typing import Union, List, Tuple
 from aalpy.utils.HelperFunctions import make_input_complete
-from recbole.config import Config
-from tqdm import tqdm
 import random
-import torch
+from trace_alignment import augment_constraint_automata
 
 def generate_automata(dataset, load_if_exists: bool=True, save_path: str="automata.pickle") -> Union[None, Dfa]:
     if os.path.exists(os.path.join("saved_automatas", save_path)) and load_if_exists:
@@ -42,25 +41,6 @@ def generate_syntetic_point(min_value:int=1, max_value: int=NumItems.ML_1M.value
     return point
     
 
-def run_automata(automata: Dfa, input: list):
-    automata.reset_to_initial()
-    # automata.execute_sequence(origin_state=automata.current_state, seq=input)
-    # return automata.current_state.is_accepting
-    result = False
-    if isinstance(input, torch.Tensor):
-        input = input.tolist()
-    for char in input:
-        # try:
-        result = automata.step(char)
-        # except KeyError:
-            #TODO: see how to handle this case
-            # print(f"Unknown character: {char}, self looping...")
-            # continue
-            
-            # pass
-            # equivalent to go in sink state and early return
-            # return False
-    return result
 
 
 def generate_automata_from_dataset(dataset, load_if_exists: bool=True, save_path: str="automata.pickle") -> Dfa:
@@ -122,25 +102,21 @@ def generate_single_accepting_sequence_dfa(sequence):
     return dfa
 
 
+def learning_pipeline(source: List[int], dataset: Tuple[Dataset, Dataset]):
+    print(f"[automata_learning.learning_pipeline] source is {source}")
+    t_dfa = generate_single_accepting_sequence_dfa(source)
+    a_dfa = generate_automata_from_dataset(dataset, load_if_exists=False)
+    a_dfa_aug = augment_constraint_automata(a_dfa, t_dfa)
+    return a_dfa_aug
+
+
 if __name__ == "__main__":
     print(f"Generating automata from saved dataset")
 
     #Remove non-determinism
-    g,b= load_dataset(load_path="saved/counterfactual_dataset.pickle")
-    new_g, new_b = [], []
-    ids = set()
-    for p, l in g:
-        if tuple(p.tolist()) in ids:
-            continue
-        new_g.append((p,l))
-        ids.add(tuple(p.tolist()))
-    for p, l in b:
-        if tuple(p.tolist()) in ids:
-            continue
-        new_b.append((p,l))
-        ids.add(tuple(p.tolist()))
+    dataset = load_dataset(load_path="saved/counterfactual_dataset.pickle")
+    dataset = make_deterministic(dataset)
 
-    dataset = (new_g, new_b)
     dfa = generate_automata_from_dataset(dataset, load_if_exists=False)
     # dfa.visualize()
 

@@ -2,8 +2,8 @@ from aalpy.automata.Dfa import Dfa, DfaState
 from automata_utils import invert_automata
 from dataset_generator import NumItems
 from tqdm import tqdm
-from typing import List
-from automata_learning import run_automata
+from typing import List, Tuple
+from automata_utils import run_automata
 from graph_search import (decode_action, get_shortest_alignment_dijkstra, 
                           get_shortest_alignment_a_star)
 from copy import deepcopy
@@ -114,6 +114,9 @@ def augment_constraint_automata(automata: Dfa, trace_automaton: Dfa) -> Dfa:
     return automata
 
 def _deprecated_create_intersection_automata(a_aug: Dfa, t_aug: Dfa) -> Dfa:
+    """
+    Given two automatas a_aug and t_aug, it returns the intersection of those automatas
+    """
     states = set()
     state_map = {}
     for a_state in a_aug.states:
@@ -148,6 +151,9 @@ def _deprecated_create_intersection_automata(a_aug: Dfa, t_aug: Dfa) -> Dfa:
 
 
 def create_intersection_automata(dfa1: Dfa, dfa2: Dfa) -> Dfa:
+    """
+    Just another way of doing `_deprecated_create_intersection_automata`
+    """
     state_map = {}
     new_states = set()
 
@@ -189,6 +195,10 @@ def create_intersection_automata(dfa1: Dfa, dfa2: Dfa) -> Dfa:
     return dfa
 
 def constraint_aut_to_planning_aut(a_dfa: Dfa):
+    """
+    Given a constraint automaton `a_dfa` where character are of type `e`,
+    `add_e` and `del_e`, it converts each `e` in `sync_e`.
+    """
     print("Replacing e with sync_e...")
     for state in a_dfa.states:
         for p, target_state in state.transitions.copy().items():
@@ -197,6 +207,10 @@ def constraint_aut_to_planning_aut(a_dfa: Dfa):
                 del state.transitions[p]
 
 def planning_aut_to_constraint_aut(a_dfa: Dfa):
+    """
+    Given a constraint automaton `a_dfa` where character are of type `sync_e`,
+    `add_e` and `del_e`, it converts each `sync_e` in `e`.
+    """
     print("Replacing sync_e with e...")
     for state in a_dfa.states:
         for p, target_state in state.transitions.copy().items():
@@ -205,7 +219,15 @@ def planning_aut_to_constraint_aut(a_dfa: Dfa):
                 state.transitions[extracted_p] = target_state
                 del state.transitions[p]
 
-def compute_alignment_cost(alignment) -> int:
+def compute_alignment_cost(alignment: Tuple[int]) -> int:
+    """
+    Computes the cost of the alignment:
+        - add_e and del_e actions have cost 1
+        - sync_e actions have cost 0
+
+    :param alignment Tuple[int]: a tuple of integers that represents Actions and can be decoded in action_type and number.
+    :rtype int: the alignment cost.
+    """
     cost = 0
     for encoded_e in alignment:
         action_type, _ = decode_action(encoded_e) 
@@ -214,6 +236,8 @@ def compute_alignment_cost(alignment) -> int:
     return cost
 
 def trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
+    """
+    """
     expected_length = len(trace)
     print(f"Expected length: ", expected_length)
     constraint_aut_to_planning_aut(a_dfa_aug)
@@ -230,7 +254,7 @@ def trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
     assert alignment is not None, "No best path found"
     print("Alignments is: ", [f"{act_str(decode_action(a)[0])}_{decode_action(a)[1]}" for a in alignment])
     planning_aut_to_constraint_aut(a_dfa_aug)
-    aligned_trace = align(trace, alignment)
+    aligned_trace = align(alignment)
     aligned_accepts = run_automata(a_dfa_aug, aligned_trace)
     assert aligned_accepts, "Automa should accept aligned trace"
     cost = compute_alignment_cost(alignment)
@@ -250,10 +274,20 @@ def trace_disalignment(a_dfa_aug: Dfa, trace: List[int]):
     return trace_alignment(a_dfa_aug, trace)
 
 
-def align(trace: List[int], alignment: tuple) -> List[int]:
+def align(alignment: Tuple[int]) -> List[int]:
+    """
+    Converts an alignment into an aligned trace
+
+    Args:
+        alignment: A tuple of integers that represent Actions and that can be
+        decoded into action_type, action_number
+
+    Returns:
+        The aligned trace
+    """
     aligned_trace = []
     print(f"[align] Alignment is: {alignment}")
-    for j, encoded_action in enumerate(alignment):
+    for encoded_action in alignment:
         action_type, e = decode_action(encoded_action)
         if action_type == Action.SYNC:
             aligned_trace.append(e)

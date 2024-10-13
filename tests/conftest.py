@@ -1,5 +1,5 @@
 import pytest
-from recommenders.test import load_dataset
+from recommenders.generate_dataset import load_dataset
 from automata_learning import (generate_automata_from_dataset, 
                                generate_single_accepting_sequence_dfa, 
                                NumItems)

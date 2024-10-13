@@ -1,6 +1,7 @@
 from typing import List
 from collections import deque
 from aalpy.automata.Dfa import Dfa
+from torch import Tensor
 
 def has_path_to_accepting_state(automaton: Dfa, seq: List[int]):
     """
@@ -32,3 +33,24 @@ def invert_automata(automata: Dfa):
     """
     for state in automata.states:
         state.is_accepting = not state.is_accepting
+
+
+def run_automata(automata: Dfa, input: list):
+    automata.reset_to_initial()
+    # automata.execute_sequence(origin_state=automata.current_state, seq=input)
+    # return automata.current_state.is_accepting
+    result = False
+    if isinstance(input, Tensor):
+        input = input.tolist()
+    for char in input:
+        # try:
+        result = automata.step(char)
+        # except KeyError:
+            #TODO: see how to handle this case
+            # print(f"Unknown character: {char}, self looping...")
+            # continue
+            
+            # pass
+            # equivalent to go in sink state and early return
+            # return False
+    return result
