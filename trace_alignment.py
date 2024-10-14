@@ -8,6 +8,7 @@ from graph_search import (decode_action, get_shortest_alignment_dijkstra,
                           get_shortest_alignment_a_star)
 from copy import deepcopy
 from graph_search import Action, decode_action, act_str
+from constants import MAX_LENGTH
 
 DEBUG = False
 
@@ -238,8 +239,10 @@ def compute_alignment_cost(alignment: Tuple[int]) -> int:
 def trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
     """
     """
-    expected_length = len(trace)
-    print(f"Expected length: ", expected_length)
+    # min_length = len(trace)
+    min_length = len(trace)
+    max_length = MAX_LENGTH
+    print(f"Expected length interval: ({min_length}, {max_length})")
     constraint_aut_to_planning_aut(a_dfa_aug)
     remaining_trace = list(trace)
     final_states = set(s for s in a_dfa_aug.states if s.is_accepting)
@@ -249,8 +252,8 @@ def trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
                                               origin_state=a_dfa_aug.initial_state, 
                                               target_states=final_states,
                                               remaining_trace=remaining_trace,
-                                              min_alignment_length=None,
-                                              max_alignment_length=None)
+                                              min_alignment_length=min_length,
+                                              max_alignment_length=max_length)
     assert alignment is not None, "No best path found"
     print("Alignments is: ", [f"{act_str(decode_action(a)[0])}_{decode_action(a)[1]}" for a in alignment])
     planning_aut_to_constraint_aut(a_dfa_aug)

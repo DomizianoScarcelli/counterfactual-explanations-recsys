@@ -128,7 +128,7 @@ def get_shortest_alignment_a_star(dfa: Dfa,
         #     print(f"Steps: {pbar_counter}")
         #     print(f"Remaining paths: {len(paths)}")
         #     print(f"Remaining trace idx: {remaining_trace_idx}")
-        #     print(f"Remaining trace: {remaining_trace[-remaining_trace_idx:]}")
+            # print(f"Remaining trace: {remaining_trace[-remaining_trace_idx:]}")
             # log_memory_usage("")
             # analyze_tracemalloc()
 

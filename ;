@@ -11,11 +11,9 @@ def trim_zero(seq: Tensor) -> Tensor:
         the sequence without padded zeros
     """
     assert len(seq.shape) == 1, f"Sequence must have a single dim, {seq.shape}"
-    nnz_count = seq.count_nonzero()
-    n_seq, to_be_removed = seq[:nnz_count], seq[nnz_count:]
-    assert n_seq.count_nonzero() == len(n_seq), "Sequence must use the character 0 only for padding!"
-    assert len(to_be_removed) == len(seq) - nnz_count, f"Something went wrong! {seq} -> {n_seq}, {to_be_removed}"
-    return n_seq
+    nnz_count = torch.count_nonzero(seq)
+    seq, to_be_removed = seq[:nnz_count], seq[nnz_count:]
+    pass
 
 
 def pad_zero(seq: Tensor, length: int) -> Tensor:
@@ -28,6 +26,4 @@ def pad_zero(seq: Tensor, length: int) -> Tensor:
     Returns:
         the sequence with padded zeros
     """
-    assert len(seq.shape) == 1, f"Sequence must have a single dim, {seq.shape}"
-    assert seq.count_nonzero() == len(seq), "Sequence must not contain the character 0!"
-    return torch.cat((seq, torch.zeros((length - len(seq),))))
+    pass

@@ -14,37 +14,67 @@ from type_hints import (Dataset, RecModel, RecDataset, LabeledTensor)
 from recommenders.generate_dataset import (dataset_generator, get_config,
                                            interaction_generator,
                                            get_sequence_from_interaction)
+from recommenders.utils import pad_zero, trim_zero
 import torch
+from constants import MAX_LENGTH
+import time
+import json
 
+def save_log(log, original, counterfactual, status: str, time: float):
+    path = "evaluation_log.json"
+    info = {"original": original, "counterfactual": counterfactual, "status": status, "time_to_generate": time}
+    log.append(info)
+    with open(path, "w") as f:
+        json.dump(log, f)
+    print("Log saved!", log)
+    return log
 
 def evaluate_trace_disalignment(interactions, 
                                 datasets, 
                                 oracle,
                                 num_counterfactuals: int=20):
-    good, bad = 0, 0
+    good, bad, not_found, skipped = 0, 0, 0, 0
+    evaluation_log = []
+    status = "unknown"
     for i, (_dataset, interaction) in enumerate(tqdm(zip(datasets, interactions), desc="Performance evaluation...")):
+        start = time.time()
         if i == num_counterfactuals:
             print(f"Generated {num_counterfactuals}, exiting...")
             break
         source_sequence = get_sequence_from_interaction(interaction)
-        print(f"Source sequence:", source_sequence.tolist())
         source_gt = oracle.full_sort_predict(source_sequence).argmax(-1).item()
-        aligned, cost = single_run(source_sequence, _dataset)
-        # aligned_size = len(aligned)
-        # aligned = torch.cat( (torch.tensor(aligned), torch.zeros((aligned_size,)) )).unsqueeze(0)
-        #TODO: does it need zero padding?
-        aligned = torch.tensor(aligned).unsqueeze(0).to(torch.int64)
+        source_sequence = trim_zero(source_sequence.squeeze(0)).tolist()
+        print(f"Source sequence:", source_sequence)
+        try:
+            aligned, cost = single_run(source_sequence, _dataset)
+        except AssertionError:
+            not_found += 1
+            evaluation_log = save_log(evaluation_log, original=source_sequence, counterfactual=None, status="not_found", time=0)
+            print(f"Counterfactual not found")
+            continue
+        if len(aligned) == MAX_LENGTH:
+            aligned = torch.tensor(aligned).unsqueeze(0).to(torch.int64)
+        elif len(aligned) < MAX_LENGTH:
+            aligned = pad_zero(torch.tensor(aligned), MAX_LENGTH).unsqueeze(0).to(torch.int64)
+        else:
+            print(f"Aligned sequence exceedes the maximum length that the model is capable of ingesting: {len(aligned)} > {MAX_LENGTH}")
+            skipped += 1
+            evaluation_log = save_log(evaluation_log, original=source_sequence, counterfactual=aligned, status="skipped", time=0)
+            continue
         print(f"Aligned sequence:", aligned.tolist())
         aligned_gt = oracle.full_sort_predict(aligned).argmax(-1).item()
         correct = source_gt != aligned_gt
         # assert correct, "Source and aligned have the same label {source_gt} == {aligned_gt}"
         if correct: 
+            status = "good"
             good += 1
             print(f"Good counterfactual! {source_gt} != {aligned_gt}")
         else:
+            status = "bad"
             bad += 1
             print(f"Bad counterfactual! {source_gt} == {aligned_gt}")
-        print(f"[{i}] Good: {good}, Bad: {bad}")
+        print(f"[{i}] Good: {good}, Bad: {bad}, Not Found: {not_found}, Skipped: {skipped} in time {time.time() - start}")
+        evaluation_log = save_log(evaluation_log, original=source_sequence, counterfactual=aligned.tolist(), status=status, time=time.time() - start)
 
 
 if __name__ == "__main__":

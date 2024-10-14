@@ -11,6 +11,7 @@ from typing import Generator, Tuple
 from deap_generator import GeneticGenerationStrategy
 from models.ExtendedBERT4Rec import ExtendedBERT4Rec
 from recommenders.model_funcs import model_predict
+from recommenders.utils import trim_zero
 from type_hints import Dataset, RecDataset, RecModel
 
 
@@ -42,7 +43,7 @@ def generate_counterfactual_dataset(interaction: Interaction, model: SequentialR
                                                       predictor=lambda x: model_predict(seq=x,
                                                                     model=model,
                                                                     prob=True),
-                                                      pop_size=1000,
+                                                      pop_size=4000,
                                                       good_examples=True,
                                                       generations=10)
     good_examples = good_genetic_strategy.generate()
@@ -51,7 +52,7 @@ def generate_counterfactual_dataset(interaction: Interaction, model: SequentialR
                                                      predictor=lambda x: model_predict(seq=x,
                                                                    model=model,
                                                                    prob=True),
-                                                     pop_size=1000,
+                                                     pop_size=4000,
                                                      good_examples=False,
                                                      generations=10)
     bad_examples = bad_genetic_strategy.generate()
@@ -149,6 +150,7 @@ def dataset_generator(config: Config) -> Generator[Tuple[Dataset, Dataset], None
 
 def make_deterministic(dataset: Tuple[Dataset, Dataset]) -> Tuple[Dataset, Dataset]:
     g, b = dataset
+    print(f"Dataset len before making it deterministic: {len(b)}, {len(b)}")
     new_g, new_b = [], []
     ids = set()
     for p, l in g:
@@ -162,6 +164,7 @@ def make_deterministic(dataset: Tuple[Dataset, Dataset]) -> Tuple[Dataset, Datas
         new_b.append((p,l))
         ids.add(tuple(p.tolist()))
     dataset = (new_g, new_b)
+    print(f"Dataset len after making it deterministic: {len(new_g)}, {len(new_b)}")
     return dataset
 
 if __name__ == "__main__":
