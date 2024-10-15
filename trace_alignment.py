@@ -241,7 +241,7 @@ def trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
     """
     """
     # min_length = len(trace)
-    min_length = len(trace)
+    min_length = 0
     max_length = MAX_LENGTH
     print(f"Expected length interval: ({min_length}, {max_length})")
     constraint_aut_to_planning_aut(a_dfa_aug)

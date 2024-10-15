@@ -162,7 +162,6 @@ def test_align():
     """
 
 #-----------Particular Cases--------------#
-@pytest.mark.skip()
 def test_all_sync(model):
     """
     For some traces, the counterfactual only does sync. The problem with this
