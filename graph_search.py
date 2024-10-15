@@ -124,10 +124,10 @@ def get_shortest_alignment_a_star(dfa: Dfa,
     pbar_counter = 0
     while paths:
         pbar_counter += 1
-        # if pbar_counter % 1000 == 0:
-        #     print(f"Steps: {pbar_counter}")
-        #     print(f"Remaining paths: {len(paths)}")
-        #     print(f"Remaining trace idx: {remaining_trace_idx}")
+        if pbar_counter % 1000 == 0:
+            print(f"Steps: {pbar_counter}")
+            print(f"Remaining paths: {len(paths)}")
+            print(f"Remaining trace idx: {remaining_trace_idx}")
             # print(f"Remaining trace: {remaining_trace[-remaining_trace_idx:]}")
             # log_memory_usage("")
             # analyze_tracemalloc()
@@ -145,10 +145,10 @@ def get_shortest_alignment_a_star(dfa: Dfa,
 
         for neighbour, action_cost, action in neighbours:
             new_cost = cost + action_cost
-            new_path = path + (neighbour,)  # This creates a new tuple (efficient due to reference copying)
-            new_inputs = inputs + (action,)  # This creates a new tuple (efficient due to reference copying)
+            new_path = path + (neighbour,) 
+            new_inputs = inputs + (action,) 
 
-            new_visited = visited
+            new_visited = visited.copy()
             if (current_state.state_id, action) in new_visited:
                 continue
             

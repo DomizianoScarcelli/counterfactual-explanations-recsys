@@ -1,5 +1,4 @@
 import pytest
-from recommenders.generate_dataset import load_dataset
 from automata_learning import (generate_automata_from_dataset, 
                                generate_single_accepting_sequence_dfa, 
                                NumItems)
@@ -7,6 +6,9 @@ from trace_alignment import (augment_constraint_automata,
                              augment_trace_automata)
 
 import torch
+from recbole.config import Config
+from models.ExtendedBERT4Rec import ExtendedBERT4Rec
+from recommenders.generate_dataset import generate_model, get_sequence_from_interaction, interaction_generator, load_dataset
 
 @pytest.fixture(scope="module")
 def mock_dataset():
@@ -168,3 +170,18 @@ def t_dfa_aug(original_trace):
 def a_dfa_aug(dataset, t_dfa):
     a_dfa = generate_automata_from_dataset(dataset, load_if_exists=False)
     return augment_constraint_automata(a_dfa, t_dfa)
+
+
+@pytest.fixture(scope="module")
+def config():
+    parameter_dict_ml1m = {
+        'load_col': {"inter": ['user_id', 'item_id', 'rating', 'timestamp']},
+        'train_neg_sample_args': None,
+        "eval_batch_size": 1
+    }
+    return Config(model='BERT4Rec', dataset='ml-1m', config_dict=parameter_dict_ml1m)
+
+@pytest.fixture(scope="module")
+def model(config) -> ExtendedBERT4Rec:
+    model = generate_model(config)
+    return model

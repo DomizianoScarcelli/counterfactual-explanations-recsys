@@ -1,6 +1,7 @@
 from aalpy.automata.Dfa import Dfa, DfaState
 from automata_utils import invert_automata
 from dataset_generator import NumItems
+from exceptions import CounterfactualNotFound, DfaNotAccepting, DfaNotRejecting
 from graph_search import (decode_action, get_shortest_alignment_dijkstra, 
                           get_shortest_alignment_a_star)
 from tqdm import tqdm
@@ -19,10 +20,15 @@ import torch
 from constants import MAX_LENGTH
 import time
 import json
+import random
 
-def save_log(log, original, counterfactual, status: str, time: float):
+seed = 42
+torch.manual_seed(seed)
+random.seed(seed)
+
+def save_log(log, original, alignment, status: str, cost: int, time: float):
     path = "evaluation_log.json"
-    info = {"original": original, "counterfactual": counterfactual, "status": status, "time_to_generate": time}
+    info = {"original": original, "alignment": alignment, "status":status, "cost": cost, "time_to_generate": time}
     log.append(info)
     with open(path, "w") as f:
         json.dump(log, f)
@@ -46,12 +52,19 @@ def evaluate_trace_disalignment(interactions,
         source_sequence = trim_zero(source_sequence.squeeze(0)).tolist()
         print(f"Source sequence:", source_sequence)
         try:
-            aligned, cost = single_run(source_sequence, _dataset)
-        except AssertionError:
+            aligned, cost, alignment = single_run(source_sequence, _dataset)
+        except CounterfactualNotFound:
             not_found += 1
-            evaluation_log = save_log(evaluation_log, original=source_sequence, counterfactual=None, status="not_found", time=0)
+            evaluation_log = save_log(evaluation_log, original=source_sequence, alignment=None, status="not_found", cost=0, time=0)
             print(f"Counterfactual not found")
             continue
+        except DfaNotAccepting as e:
+            print(e)
+            continue
+        except DfaNotRejecting as e:
+            print(e.with_traceback)
+            continue
+
         if len(aligned) == MAX_LENGTH:
             aligned = torch.tensor(aligned).unsqueeze(0).to(torch.int64)
         elif len(aligned) < MAX_LENGTH:
@@ -59,7 +72,7 @@ def evaluate_trace_disalignment(interactions,
         else:
             print(f"Aligned sequence exceedes the maximum length that the model is capable of ingesting: {len(aligned)} > {MAX_LENGTH}")
             skipped += 1
-            evaluation_log = save_log(evaluation_log, original=source_sequence, counterfactual=aligned, status="skipped", time=0)
+            evaluation_log = save_log(evaluation_log, original=source_sequence, alignment=alignment, status="skipped", cost=0, time=0)
             continue
         print(f"Aligned sequence:", aligned.tolist())
         aligned_gt = oracle.full_sort_predict(aligned).argmax(-1).item()
@@ -74,7 +87,7 @@ def evaluate_trace_disalignment(interactions,
             bad += 1
             print(f"Bad counterfactual! {source_gt} == {aligned_gt}")
         print(f"[{i}] Good: {good}, Bad: {bad}, Not Found: {not_found}, Skipped: {skipped} in time {time.time() - start}")
-        evaluation_log = save_log(evaluation_log, original=source_sequence, counterfactual=aligned.tolist(), status=status, time=time.time() - start)
+        evaluation_log = save_log(evaluation_log, original=source_sequence, alignment=alignment, status=status, cost=cost, time=time.time() - start)
 
 
 if __name__ == "__main__":

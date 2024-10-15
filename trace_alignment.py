@@ -4,6 +4,7 @@ from dataset_generator import NumItems
 from tqdm import tqdm
 from typing import List, Tuple
 from automata_utils import run_automata
+from exceptions import CounterfactualNotFound, DfaNotAccepting, DfaNotRejecting
 from graph_search import (decode_action, get_shortest_alignment_dijkstra, 
                           get_shortest_alignment_a_star)
 from copy import deepcopy
@@ -254,7 +255,8 @@ def trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
                                               remaining_trace=remaining_trace,
                                               min_alignment_length=min_length,
                                               max_alignment_length=max_length)
-    assert alignment is not None, "No best path found"
+    if alignment is None:
+        raise CounterfactualNotFound("No best path found")
     print("Alignments is: ", [f"{act_str(decode_action(a)[0])}_{decode_action(a)[1]}" for a in alignment])
     planning_aut_to_constraint_aut(a_dfa_aug)
     aligned_trace = align(alignment)
@@ -264,7 +266,7 @@ def trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
     print("Alignment cost: ", cost)
     # aligned_traces.append((aligned_trace, cost))
     # best_alignment, best_cost = min(aligned_traces, key=lambda x: x[1])
-    return aligned_trace, cost
+    return aligned_trace, cost, alignment
 
 
 def trace_disalignment(a_dfa_aug: Dfa, trace: List[int]):
@@ -274,7 +276,14 @@ def trace_disalignment(a_dfa_aug: Dfa, trace: List[int]):
     """
     a_dfa_aug = deepcopy(a_dfa_aug)
     invert_automata(a_dfa_aug)
-    return trace_alignment(a_dfa_aug, trace)
+    aligned_trace, cost, alignment =  trace_alignment(a_dfa_aug, trace)
+    dfa_rejects = not run_automata(a_dfa_aug, trace)
+    if not dfa_rejects:
+        raise DfaNotRejecting("Dfa is not rejecting original sequence")
+    dfa_accepts = run_automata(a_dfa_aug, aligned_trace)
+    if not dfa_accepts:
+        raise DfaNotAccepting("Dfa is not accepting counterfactual sequence")
+    return aligned_trace, cost, alignment
 
 
 def align(alignment: Tuple[int]) -> List[int]:
@@ -289,7 +298,6 @@ def align(alignment: Tuple[int]) -> List[int]:
         The aligned trace
     """
     aligned_trace = []
-    print(f"[align] Alignment is: {alignment}")
     for encoded_action in alignment:
         action_type, e = decode_action(encoded_action)
         if action_type == Action.SYNC:

@@ -7,7 +7,7 @@ import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
 import pickle
-from typing import Generator, Tuple
+from typing import Generator, Tuple, Union
 from deap_generator import GeneticGenerationStrategy
 from models.ExtendedBERT4Rec import ExtendedBERT4Rec
 from recommenders.model_funcs import model_predict
@@ -15,7 +15,7 @@ from recommenders.utils import trim_zero
 from type_hints import Dataset, RecDataset, RecModel
 
 
-def generate_counterfactual_dataset(interaction: Interaction, model: SequentialRecommender) -> Tuple[Dataset,Dataset]:
+def generate_counterfactual_dataset(interaction: Union[Interaction, Tensor], model: SequentialRecommender) -> Tuple[Dataset,Dataset]:
     """
     Generates the dataset of good and bad points from a sequence in the
     Interaction, using the model as a black box oracle. The dataset can be used
@@ -32,7 +32,10 @@ def generate_counterfactual_dataset(interaction: Interaction, model: SequentialR
         The dataset in the form of a tuple (good_points, bad_points), where
         good_points and bad_points are lists of LabeledTensors.
     """
-    sequence = get_sequence_from_interaction(interaction)
+    if isinstance(interaction, Interaction):
+        sequence = get_sequence_from_interaction(interaction)
+    elif isinstance(interaction, Tensor):
+        sequence = interaction
     assert sequence.size(0) == 1, f"Only batch size of 1 is supported, sequence shape is: {sequence.shape}"
     # user_id = interaction.interaction["user_id"][0].item()
 
@@ -43,7 +46,7 @@ def generate_counterfactual_dataset(interaction: Interaction, model: SequentialR
                                                       predictor=lambda x: model_predict(seq=x,
                                                                     model=model,
                                                                     prob=True),
-                                                      pop_size=4000,
+                                                      pop_size=2000,
                                                       good_examples=True,
                                                       generations=10)
     good_examples = good_genetic_strategy.generate()
@@ -52,7 +55,7 @@ def generate_counterfactual_dataset(interaction: Interaction, model: SequentialR
                                                      predictor=lambda x: model_predict(seq=x,
                                                                    model=model,
                                                                    prob=True),
-                                                     pop_size=4000,
+                                                     pop_size=2000,
                                                      good_examples=False,
                                                      generations=10)
     bad_examples = bad_genetic_strategy.generate()
@@ -150,7 +153,7 @@ def dataset_generator(config: Config) -> Generator[Tuple[Dataset, Dataset], None
 
 def make_deterministic(dataset: Tuple[Dataset, Dataset]) -> Tuple[Dataset, Dataset]:
     g, b = dataset
-    print(f"Dataset len before making it deterministic: {len(b)}, {len(b)}")
+    print(f"Dataset len before making it deterministic: {len(g)}, {len(b)}")
     new_g, new_b = [], []
     ids = set()
     for p, l in g:

@@ -3,6 +3,7 @@ from extended_ea_algorithms import eaSimpleBatched
 import numpy as np
 import random
 import torch
+from torch import Tensor
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Callable
 import torch.nn.functional as F
@@ -27,7 +28,7 @@ def edit_distance(seq1, seq2):
 
     return 1 - np.sum(np.array(seq1) == np.array(seq2)) / len(seq1)  # Fraction of matching elements
 
-def cosine_distance(prob1: torch.Tensor, prob2: torch.Tensor) -> float:
+def cosine_distance(prob1: Tensor, prob2: Tensor) -> float:
     return 1 - F.cosine_similarity(prob1, prob2, dim=-1).item()
 
 def self_indicator(seq1, seq2):
@@ -89,13 +90,14 @@ def mutate_add(seq: List[int], max_value: NumItems=NumItems.ML_1M):
 
 
 class GeneticGenerationStrategy():
-    def __init__(self, input_seq: torch.Tensor, predictor: Callable, pop_size: int=1000, generations: int=20, good_examples: bool=True):
+    def __init__(self, input_seq: Tensor, predictor: Callable, pop_size: int=1000, generations: int=20, good_examples: bool=True):
         self.input_seq = trim_zero(input_seq)
         self.predictor = predictor
         self.pop_size = pop_size
         self.gt = self.predictor(input_seq.unsqueeze(0))
         self.generations = generations
         self.good_examples = good_examples
+        self.halloffame_ratio = 0.1
         # Define the evaluation function
         creator.create("fitness", base.Fitness, weights=(-1.0,))  # Minimize fitness
         creator.create("individual", list, fitness=creator.fitness)
@@ -128,7 +130,7 @@ class GeneticGenerationStrategy():
         #TODO: add a batch_size mechanism
         ALPHA1= 0.5
         ALPHA2 = 1 - ALPHA1
-        candidate_seqs = torch.tensor(individuals)
+        candidate_seqs = torch.stack([pad_zero(torch.tensor(i), MAX_LENGTH) for i in individuals])
         batch_size = candidate_seqs.size(0)
         candidate_probs = self.predictor(candidate_seqs)  # Function to assign label based on the recommender system
         assert candidate_probs.size(0) == batch_size, f"Mismatch in probs shape and batch size: {candidate_probs.shape} != {batch_size}"
@@ -148,21 +150,49 @@ class GeneticGenerationStrategy():
 
     def generate(self):
         population = self.toolbox.population(n=self.pop_size)
-        population, _ = eaSimpleBatched(population, self.toolbox, cxpb=0.7, mutpb=0.5, ngen=self.generations, verbose=False)
+
+        halloffame_size = int(np.round(self.pop_size * self.halloffame_ratio))
+        halloffame = tools.HallOfFame(halloffame_size)
+
+        population, _ = eaSimpleBatched(population, self.toolbox, cxpb=0.7,
+                                        mutpb=0.5, ngen=self.generations,
+                                        halloffame=halloffame, verbose=False)
         new_population = []
-        inserted = set()
-        # for x in population:
-        #     if tuple(x) in inserted:
-        #         continue
-        #     new_population.append((torch.tensor(x), self.predictor(torch.tensor(x)).argmax(-1).item()))
-        #     inserted.add(tuple(x))
-        preds = self.predictor(torch.tensor(population)).argmax(-1)
+        preds = self.predictor(torch.stack([pad_zero(torch.tensor(p), MAX_LENGTH) for p in population])).argmax(-1)
         for i, x in enumerate(population):
             new_population.append((torch.tensor(x), preds[i].item()))
-        population = new_population
-        label_eval, seq_eval = self.evaluate_generation(population)
+        label_eval, seq_eval = self.evaluate_generation(new_population)
         print(f"Good examples = {self.good_examples} ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
-        return population
+        return new_population
+
+        augmented = self.augment_pop(population, halloffame)
+        new_augmented = []
+        preds = self.predictor(torch.tensor(augmented)).argmax(-1)
+        for i, x in enumerate(augmented):
+            new_augmented.append((torch.tensor(x), preds[i].item()))
+        label_eval, seq_eval = self.evaluate_generation(new_augmented)
+        print(f"[Augmented] Good examples = {self.good_examples} ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
+        return new_augmented
+
+    def augment_pop(self, population, halloffame):
+        fitness_values = [p.fitness.wvalues[0] for p in population if p.fitness.wvalues[0] != float("-inf")]
+        fitness_values = sorted(fitness_values)
+        fitness_diff = [fitness_values[i+1] - fitness_values[i] for i in range(0, len(fitness_values)-1)]
+
+        index = np.max(np.argwhere(fitness_diff == np.amax(fitness_diff)).flatten().tolist())
+        fitness_value_thr = fitness_values[index]
+        
+        oversample = list()
+        
+        for p in population:
+            if p.fitness.wvalues[0] > fitness_value_thr:
+                oversample.append(list(p))
+                
+        for h in halloffame:
+            if h.fitness.wvalues[0] > fitness_value_thr:
+                oversample.append(list(h))
+                
+        return oversample
     
     def clean(self, examples):
         label = self.gt.argmax(-1).item()
