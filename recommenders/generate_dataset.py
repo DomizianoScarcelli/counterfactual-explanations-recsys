@@ -7,18 +7,17 @@ from recbole.config import Config
 from recbole.data import create_dataset, data_preparation
 from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
-from recbole.utils import get_model, init_seed
+from recbole.utils import init_seed
 from torch import Tensor
 from torch.utils.data import DataLoader
 
 from deap_generator import GeneticGenerationStrategy
 from models.ExtendedBERT4Rec import ExtendedBERT4Rec
 from recommenders.model_funcs import model_predict
-from recommenders.utils import trim_zero
-from type_hints import Dataset, RecDataset, RecModel
+from type_hints import Dataset, GoodBadDataset, RecDataset, RecModel
 
 
-def generate_counterfactual_dataset(interaction: Union[Interaction, Tensor], model: SequentialRecommender) -> Tuple[Dataset,Dataset]:
+def generate_counterfactual_dataset(interaction: Union[Interaction, Tensor], model: SequentialRecommender) -> Tuple[GoodBadDataset, GoodBadDataset]:
     """
     Generates the dataset of good and bad points from a sequence in the
     Interaction, using the model as a black box oracle. The dataset can be used
@@ -64,8 +63,20 @@ def generate_counterfactual_dataset(interaction: Union[Interaction, Tensor], mod
     bad_examples = bad_genetic_strategy.generate()
     bad_examples = bad_genetic_strategy.postprocess(bad_examples)
     
-    dataset = (good_examples, bad_examples)
-    return dataset
+    train_good, test_good = train_test_split(good_examples)
+    train_bad, test_bad = train_test_split(bad_examples)
+    train_dataset = (train_good, train_bad)
+    test_dataset = (test_good, test_bad)
+    return train_dataset, test_dataset
+
+def train_test_split(dataset: GoodBadDataset, test_split:float=0.2):
+    train, test = [], []
+    train_end = round(len(dataset) * (1-test_split))
+    for i in range(train_end):
+        train.append(dataset[i])
+    for i in range(train_end, len(dataset)-1):
+        test.append(dataset[i])
+    return train, test
 
 def save_dataset(dataset: Tuple[Dataset, Dataset], save_path: str):
     """
@@ -149,19 +160,22 @@ def interaction_generator(config: Config) -> Generator[Interaction, None, None]:
         interaction = data[0]
         yield interaction
 
-def dataset_generator(config: Config, use_cache: bool=True) -> Generator[Tuple[Dataset, Dataset], None, None]:
+def dataset_generator(config: Config, use_cache: bool=True) -> Generator[Tuple[GoodBadDataset, GoodBadDataset], None, None]:
     interactions = interaction_generator(config)
     model = generate_model(config)
     for i, interaction in enumerate(interactions):
-        cache_path = os.path.join(f"dataset_cache/interaction_{i}_dataset.pickle")
-        if os.path.exists(cache_path) and use_cache:
-            dataset = load_dataset(cache_path)
+        train_cache_path = os.path.join(f"dataset_cache/interaction_{i}_dataset_train.pickle")
+        test_cache_path = os.path.join(f"dataset_cache/interaction_{i}_dataset_test.pickle")
+        if os.path.exists(train_cache_path) and os.path.exists(test_cache_path) and use_cache:
+            train = load_dataset(train_cache_path)
+            test = load_dataset(test_cache_path)
         else:
-            dataset = generate_counterfactual_dataset(interaction, model)
+            train, test = generate_counterfactual_dataset(interaction, model)
             if use_cache:
-                save_dataset(dataset, cache_path)
+                save_dataset(train, train_cache_path)
+                save_dataset(test, test_cache_path)
         
-        yield dataset
+        yield train, test
 
 def make_deterministic(dataset: Tuple[Dataset, Dataset]) -> Tuple[Dataset, Dataset]:
     g, b = dataset

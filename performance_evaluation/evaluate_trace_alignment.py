@@ -21,11 +21,11 @@ set_seed()
 
 def save_log(log, original, alignment, status: str, cost: int, time: float):
     path = "evaluation_log.json"
-    info = {"original": ", ".join(original), "alignment": ", ".join(alignment), "status":status, "cost": cost, "time_to_generate": time}
+    info = {"original": ", ".join(str(c) for c in original), "alignment": ", ".join(alignment) if alignment else alignment, "status":status, "cost": cost, "time_to_generate": time}
     log.append(info)
     with open(path, "w") as f:
         json.dump(log, f)
-    print("Log saved!", log)
+    print("Log saved!")
     return log
 
 def evaluate_trace_disalignment(interactions, 
@@ -48,16 +48,18 @@ def evaluate_trace_disalignment(interactions,
             aligned, cost, alignment = single_run(source_sequence, _dataset)
         except CounterfactualNotFound:
             not_found += 1
-            evaluation_log = save_log(evaluation_log, original=source_sequence, alignment=None, status="not_found", cost=0, time=0)
+            evaluation_log = save_log(evaluation_log, original=source_sequence, alignment=None, status="CounterfactualNotFound", cost=0, time=0)
             print(f"Counterfactual not found")
             continue
         except DfaNotAccepting as e:
             print(e)
             skipped += 1
+            evaluation_log = save_log(evaluation_log, original=source_sequence, alignment=None, status="DfaNotAccepting", cost=0, time=0)
             continue
         except DfaNotRejecting as e:
             print(e.with_traceback)
             skipped += 1
+            evaluation_log = save_log(evaluation_log, original=source_sequence, alignment=None, status="DfaNotRejecting", cost=0, time=0)
             continue
 
         if len(aligned) == MAX_LENGTH:

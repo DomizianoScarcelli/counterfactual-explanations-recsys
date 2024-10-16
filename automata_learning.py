@@ -34,18 +34,6 @@ def load_automata(load_path):
     with open(os.path.join("saved_automatas", load_path), "rb") as f:
         return pickle.load(f)
 
-
-def generate_syntetic_point(min_value:int=1, max_value: int=NumItems.ML_1M.value, length: int = 50):
-    point = []
-    while len(point) < length:
-        item = random.randint(min_value, max_value)
-        if item not in point:
-            point.append(item)
-    return point
-    
-
-
-
 def generate_automata_from_dataset(dataset, load_if_exists: bool=True, save_path: str="automata.pickle") -> Dfa:
     """
     Given a dataset with the following syntax:

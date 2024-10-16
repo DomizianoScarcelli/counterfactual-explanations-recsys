@@ -165,7 +165,8 @@ def faster_dijkstra(dfa: Dfa,
     print(f"-----FASTER DIJKSTRA------")
     print(f"Initial remaining trace: ", remaining_trace)
     #TODO: start low and if not found go higher with a certain step
-    remaining_items = len(remaining_trace) // 5
+    MIN_REMAINING_ITEMS = 10
+    remaining_items = max(MIN_REMAINING_ITEMS, len(remaining_trace) // 5)
     initial_alignment = []
     end = len(remaining_trace) - remaining_items
     for i in range(end):
@@ -284,7 +285,8 @@ def a_star(dfa: Dfa,
                 if current_state_action not in visited:
                     visited[current_state_action] = 1
                 else:
-                    continue #TODO: experiment with this
+                    continue #TODO: experiment with this.
+                #TODO: you may also try to keep track of the path that, once arrived at the end, do not change the result, and for each state, action taken, void taking them again.
                     visited[current_state_action] +=1
 
             new_cost = cost + action_cost

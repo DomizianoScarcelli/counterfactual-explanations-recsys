@@ -6,9 +6,20 @@ from automata_learning import (NumItems, generate_automata_from_dataset,
                                generate_single_accepting_sequence_dfa)
 from models.ExtendedBERT4Rec import ExtendedBERT4Rec
 from recommenders.generate_dataset import (generate_model,
-                                           get_sequence_from_interaction,
-                                           interaction_generator, load_dataset)
+                                           load_dataset)
 from trace_alignment import augment_constraint_automata, augment_trace_automata
+
+# By marking a class with @pytest.mark.incremental, if a test fails, all the other ones in the class are skipped
+def pytest_runtest_makereport(item, call):
+    if "incremental" in item.keywords:
+        if call.excinfo is not None:
+            parent = item.parent
+            parent._previousfailed = item
+
+def pytest_runtest_setup(item):
+    previousfailed = getattr(item.parent, "_previousfailed", None)
+    if previousfailed is not None:
+        pytest.xfail("previous test failed (%s)" % previousfailed.name)
 
 
 @pytest.fixture(scope="module")
