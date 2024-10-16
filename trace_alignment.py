@@ -13,7 +13,6 @@ from graph_search import (Action, a_star, act_str, decode_action, dijkstra,
 
 DEBUG = False
 
-
 def printd(statement):
     if DEBUG:
         print(statement)
@@ -39,7 +38,7 @@ def augment_trace_automata(automata: Dfa, num_items: NumItems=NumItems.ML_1M) ->
     with the corresponding repair propositions.
     """
     # Alphabet is the universe of all the items
-    alphabet = [i for i in range(0, num_items.value)] #TODO: when zero trimming will work, put a 1 here
+    alphabet = [i for i in range(1, num_items.value)]
     
     # Create the new repair propositions
     add_propositions = {p: f"add_{p}" for p in alphabet}

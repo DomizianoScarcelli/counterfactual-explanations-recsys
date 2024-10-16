@@ -1,15 +1,7 @@
-from copy import deepcopy
-from typing import List
-
-import numpy as np
-import torch
 from recbole.config import Config
 from recbole.data import create_dataset, data_preparation
-from recbole.model.abstract_recommender import SequentialRecommender
-from recbole.model.sequential_recommender import BERT4Rec
-from recbole.quick_start import run_recbole
-from recbole.trainer import Interaction, Trainer
-from recbole.utils import get_model, init_logger, init_seed
+from recbole.trainer import Trainer
+from recbole.utils import get_model
 
 parameter_dict = {
         'load_col': {"inter": ['user_id', 'item_id', 'rating', 'timestamp']},

@@ -65,7 +65,7 @@ def evaluate_trace_disalignment(interactions,
         if len(aligned) == MAX_LENGTH:
             aligned = torch.tensor(aligned).unsqueeze(0).to(torch.int64)
         elif len(aligned) < MAX_LENGTH:
-            aligned = pad_zero(torch.tensor(aligned), MAX_LENGTH).unsqueeze(0).to(torch.int64)
+            aligned = pad_zero(trim_zero(torch.tensor(aligned)), MAX_LENGTH).unsqueeze(0).to(torch.int64)
         else:
             print(f"Aligned sequence exceedes the maximum length that the model is capable of ingesting: {len(aligned)} > {MAX_LENGTH}")
             skipped += 1

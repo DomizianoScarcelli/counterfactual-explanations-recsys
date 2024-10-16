@@ -162,29 +162,33 @@ def faster_dijkstra(dfa: Dfa,
     execute partially the trace with sync_e actions, until a certain index i, and then run dijkstra on the current state
     and the remaining trace.
     """
-    print(f"-----FASTER DIJKSTRA------")
+    print(f"-----F-DIJKSTRA------")
     print(f"Initial remaining trace: ", remaining_trace)
-    #TODO: start low and if not found go higher with a certain step
-    MIN_REMAINING_ITEMS = 10
-    remaining_items = max(MIN_REMAINING_ITEMS, len(remaining_trace) // 3)
-    initial_alignment = []
-    end = len(remaining_trace) - remaining_items
-    for i in range(end):
-        char = f"sync_{remaining_trace[i]}"
-        dfa.step(char)
-        encoded_char = encode_action_str(char)
-        initial_alignment.append(encoded_char)
-    print(f"Initial state: {dfa.initial_state.state_id}, current state: {dfa.current_state.state_id}")
-    print(f"Initial alignment is: ", tuple(initial_alignment))
-    remaining_trace = remaining_trace[end:]
-    print(f"Remaining trace is: ", remaining_trace)
-    remaining_alignment = a_star(dfa=dfa, origin_state=dfa.current_state,
-                                 target_states=target_states,
-                                 remaining_trace=remaining_trace,
-                                 min_alignment_length=min_alignment_length ,
-                                 max_alignment_length=max_alignment_length,
-                                 initial_alignment=tuple(initial_alignment))
-    return remaining_alignment
+    for iter in range(1, len(remaining_trace)):
+        dfa.reset_to_initial()
+        initial_alignment = []
+        end = len(remaining_trace) - iter
+        for i in range(end):
+            char = f"sync_{remaining_trace[i]}"
+            dfa.step(char)
+            encoded_char = encode_action_str(char)
+            initial_alignment.append(encoded_char)
+        print(f"-----F-DIJKSTRA ITER {iter}------")
+        print(f"Initial state: {dfa.initial_state.state_id}, current state: {dfa.current_state.state_id}")
+        print(f"Initial alignment is: ", tuple(initial_alignment))
+        remaining_trace = remaining_trace[end:]
+        print(f"Remaining trace is: ", remaining_trace)
+        print(f"---------------------------------")
+        remaining_alignment = a_star(dfa=dfa, 
+                                     origin_state=dfa.current_state,
+                                     target_states=target_states,
+                                     remaining_trace=remaining_trace,
+                                     min_alignment_length=min_alignment_length ,
+                                     max_alignment_length=max_alignment_length,
+                                     initial_alignment=tuple(initial_alignment))
+        if remaining_alignment:
+            return remaining_alignment
+    return None
 
 def a_star(dfa: Dfa, 
            origin_state: DfaState,
@@ -201,7 +205,8 @@ def a_star(dfa: Dfa,
         if heuristic_fn:
             return heuristic_fn(curr_state, action)
         
-        return visited.get((curr_state.state_id, action), 0)
+        ALPHA = 0.001
+        return visited.get((curr_state.state_id, action), 0) * ALPHA
 
     def get_constrained_neighbours(state, curr_char: Optional[int]):
         neighbours = []
@@ -255,7 +260,7 @@ def a_star(dfa: Dfa,
         # if pbar_counter % 100 == 0:
         #     paths = prune_paths_by_length(paths, max_paths=1_000_000)
         if pbar_counter % 1000 == 0:
-            paths = prune_paths_by_length(paths, max_paths=500_000)
+            paths = prune_paths_by_length(paths, max_paths=10_000)
             print(f"Steps: {pbar_counter}")
             # print(get_path_statistics(paths))
             print(f"Num paths: {len(paths)}")
@@ -285,9 +290,9 @@ def a_star(dfa: Dfa,
                 if current_state_action not in visited:
                     visited[current_state_action] = 1
                 else:
-                    continue #TODO: experiment with this.
+                    # continue #TODO: experiment with this.
                 #TODO: you may also try to keep track of the path that, once arrived at the end, do not change the result, and for each state, action taken, void taking them again.
-                    visited[current_state_action] +=1
+                    visited[current_state_action] += 1
 
             new_cost = cost + action_cost
             new_path = path + (neighbour,) 
