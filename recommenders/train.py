@@ -29,8 +29,8 @@ model = get_model(config['model'])(config, train_data.dataset).to(config['device
 
 # Perform inference
 trainer = Trainer(config, model)
-# latest_checkpoint = "saved/Bert4Rec_ml1m.pth"
-# trainer.resume_checkpoint(latest_checkpoint)
-results = trainer.fit(train_data, show_progress=True)
-# results = trainer.evaluate(test_data, show_progress=True, model_file=latest_checkpoint)
+latest_checkpoint = "saved/Bert4Rec_ml1m.pth"
+trainer.resume_checkpoint(latest_checkpoint)
+# results = trainer.fit(train_data, show_progress=True)
+results = trainer.evaluate(test_data, show_progress=True, model_file=latest_checkpoint)
 print(results)
