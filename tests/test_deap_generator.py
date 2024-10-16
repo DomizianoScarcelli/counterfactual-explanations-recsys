@@ -1,15 +1,17 @@
-from deap import base, creator, tools, algorithms
-import numpy as np
 import random
-import torch
 from abc import ABC, abstractmethod
-from typing import List, Tuple, Callable
-import torch.nn.functional as F
 from enum import Enum
+from typing import Callable, List, Tuple
+
 import _pickle as cPickle
-from deap_generator import edit_distance
-from deap_generator import GeneticGenerationStrategy
+import numpy as np
 import pytest
+import torch
+import torch.nn.functional as F
+from deap import algorithms, base, creator, tools
+
+from deap_generator import GeneticGenerationStrategy, edit_distance
+
 
 @pytest.fixture()
 def sequence():

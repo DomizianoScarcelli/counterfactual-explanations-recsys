@@ -1,7 +1,10 @@
-import torch
-import pytest
 import re
-from recommenders.utils import trim_zero, pad_zero
+
+import pytest
+import torch
+
+from recommenders.utils import pad_zero, trim_zero
+
 
 def test_trim_zero_valid():
     x = torch.tensor([1,2,3,4,5,6,7,8,0,0,0,0,0,0])

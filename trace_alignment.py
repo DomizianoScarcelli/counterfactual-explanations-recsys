@@ -1,15 +1,15 @@
-from aalpy.automata.Dfa import Dfa, DfaState
-from automata_utils import invert_automata
-from dataset_generator import NumItems
-from tqdm import tqdm
-from typing import List, Tuple
-from automata_utils import run_automata
-from exceptions import CounterfactualNotFound, DfaNotAccepting, DfaNotRejecting
-from graph_search import (decode_action, get_shortest_alignment_dijkstra, 
-                          get_shortest_alignment_a_star)
 from copy import deepcopy
-from graph_search import Action, decode_action, act_str
+from typing import List, Tuple
+
+from aalpy.automata.Dfa import Dfa, DfaState
+from tqdm import tqdm
+
+from automata_utils import invert_automata, run_automata
 from constants import MAX_LENGTH
+from dataset_generator import NumItems
+from exceptions import CounterfactualNotFound, DfaNotAccepting, DfaNotRejecting
+from graph_search import (Action, a_star, act_str, decode_action, dijkstra,
+                          faster_dijkstra)
 
 DEBUG = False
 
@@ -66,7 +66,12 @@ def augment_trace_automata(automata: Dfa, num_items: NumItems=NumItems.ML_1M) ->
 
     return automata
 
-
+def ingoing_states(dfa: Dfa, curr_state: DfaState):
+    ingoing = set()
+    for state in dfa.states:
+        if curr_state in state.transitions.values():
+            ingoing.add(state)
+    return ingoing
 
 def augment_constraint_automata(automata: Dfa, trace_automaton: Dfa) -> Dfa:
     """
@@ -99,7 +104,6 @@ def augment_constraint_automata(automata: Dfa, trace_automaton: Dfa) -> Dfa:
 
     for state in automata.states:
         transitions_to_add = []
-        #TODO: I should try with universe
         for trace_p in trace_alphabet:
             del_p = del_propositions[trace_p]
             transitions_to_add.append((del_p, state))
@@ -249,12 +253,12 @@ def trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
     final_states = set(s for s in a_dfa_aug.states if s.is_accepting)
     print(f"Final states are {[s.state_id for s in final_states]}")
     a_dfa_aug.reset_to_initial()
-    alignment = get_shortest_alignment_dijkstra(dfa=a_dfa_aug, 
-                                              origin_state=a_dfa_aug.initial_state, 
-                                              target_states=final_states,
-                                              remaining_trace=remaining_trace,
-                                              min_alignment_length=min_length,
-                                              max_alignment_length=max_length)
+    alignment = faster_dijkstra(dfa=a_dfa_aug, 
+                                origin_state=a_dfa_aug.initial_state, 
+                                target_states=final_states,
+                                remaining_trace=remaining_trace,
+                                min_alignment_length=min_length,
+                                max_alignment_length=max_length)
     if alignment is None:
         raise CounterfactualNotFound("No best path found")
     print("Alignments is: ", [f"{act_str(decode_action(a)[0])}_{decode_action(a)[1]}" for a in alignment])

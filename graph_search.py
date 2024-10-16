@@ -1,8 +1,14 @@
 import heapq
-from aalpy.automata.Dfa import Dfa, DfaState
-from typing import List, Optional, Set, Callable, Tuple
 import warnings
+from pickle import decode_long
 from statistics import mean
+from typing import Callable, Dict, List, Optional, Set, Tuple
+
+from aalpy.automata.Dfa import Dfa, DfaState
+from torch import is_deterministic_algorithms_warn_only_enabled
+
+from automata_utils import run_automata
+
 # from memory_profiler import memory_usage
 # import tracemalloc
 
@@ -45,6 +51,10 @@ def act_str(action: int):
         return "add"
     if action == Action.DEL:
         return "del"
+
+def print_action(encoded_action: int):
+    action_type, e = decode_action(encoded_action)
+    return f"{act_str(action_type)}_{e}"
 
 # def log_memory_usage(message: str):
 #     mem = memory_usage(-1, interval=0.1, timeout=1)
@@ -110,6 +120,7 @@ def get_path_statistics(paths, max_alignment_length=None, min_alignment_length=N
     }
 
     return stats
+
 def prune_paths_by_length(paths, max_paths: int = 100_000):
     """
     Prunes the heapq to ensure it contains at most `max_paths` paths using heapq.nsmallest.
@@ -130,36 +141,66 @@ def prune_paths_by_length(paths, max_paths: int = 100_000):
     
     return paths
 
-def get_shortest_alignment_dijkstra(dfa: Dfa, 
-                                    origin_state: DfaState,
-                                    target_states: Set[DfaState],
-                                    remaining_trace: List[int],
-                                    min_alignment_length: Optional[int],
-                                    max_alignment_length: Optional[int]):
+def dijkstra(dfa: Dfa, 
+             origin_state: DfaState,
+             target_states: Set[DfaState],
+             remaining_trace: List[int],
+             min_alignment_length: Optional[int],
+             max_alignment_length: Optional[int],
+             initial_alignment: Optional[List[int]]):
     heuristic = lambda _: 0
-    return get_shortest_alignment_a_star(dfa, origin_state, target_states, remaining_trace, min_alignment_length, max_alignment_length, heuristic)
+    return a_star(dfa, origin_state, target_states, remaining_trace, min_alignment_length, max_alignment_length, heuristic, initial_alignment)
 
-def get_shortest_alignment_a_star(dfa: Dfa, 
+def faster_dijkstra(dfa: Dfa, 
+                    origin_state: DfaState,
+                    target_states: Set[DfaState],
+                    remaining_trace: List[int],
+                    min_alignment_length: Optional[int],
+                    max_alignment_length: Optional[int]):
+    """
+    Instead of starting from the initial state and doing dijkstra on the whole remaining trace,
+    execute partially the trace with sync_e actions, until a certain index i, and then run dijkstra on the current state
+    and the remaining trace.
+    """
+    print(f"-----FASTER DIJKSTRA------")
+    print(f"Initial remaining trace: ", remaining_trace)
+    #TODO: start low and if not found go higher with a certain step
+    remaining_items = len(remaining_trace) // 5
+    initial_alignment = []
+    end = len(remaining_trace) - remaining_items
+    for i in range(end):
+        char = f"sync_{remaining_trace[i]}"
+        dfa.step(char)
+        encoded_char = encode_action_str(char)
+        initial_alignment.append(encoded_char)
+    print(f"Initial state: {dfa.initial_state.state_id}, current state: {dfa.current_state.state_id}")
+    print(f"Initial alignment is: ", tuple(initial_alignment))
+    remaining_trace = remaining_trace[end:]
+    print(f"Remaining trace is: ", remaining_trace)
+    remaining_alignment = a_star(dfa=dfa, origin_state=dfa.current_state,
+                                 target_states=target_states,
+                                 remaining_trace=remaining_trace,
+                                 min_alignment_length=min_alignment_length ,
+                                 max_alignment_length=max_alignment_length,
+                                 initial_alignment=tuple(initial_alignment))
+    return remaining_alignment
+
+def a_star(dfa: Dfa, 
                                   origin_state: DfaState,
                                   target_states: Set[DfaState],
                                   remaining_trace: List[int],
                                   min_alignment_length: Optional[int],
                                   max_alignment_length: Optional[int],
-                                  heuristic_fn: Optional[Callable] = None):
+                                  heuristic_fn: Optional[Callable] = None,
+                                  initial_alignment: Optional[Tuple[int]] = None):
     remaining_trace_idx = len(remaining_trace)
     # tracemalloc.start()
     
-    def heuristic(curr_inputs):
+    def heuristic(curr_state, action):
         if heuristic_fn:
-            return heuristic_fn(curr_inputs)
+            return heuristic_fn(curr_state, action)
         
-        ALPHA = 0.05
-
-        # Optimized action type extraction (avoid decoding fully)
-        # Only check the action type (top 2 bits of the encoded action)
-        sync_count = sum(1 for action in curr_inputs if (action >> 13) & 0b11 == Action.SYNC)
-        
-        return -sync_count * ALPHA
+        return visited.get((curr_state.state_id, action), 0)
 
     def get_constrained_neighbours(state, curr_char: Optional[int]):
         neighbours = []
@@ -176,7 +217,11 @@ def get_shortest_alignment_a_star(dfa: Dfa,
                 if curr_char == e and not already_added:
                     neighbours.append((target, 0, encoded_p))  # sync_e cost = 0
             elif action_type == Action.DEL and curr_char is not None:
-                if curr_char == e:
+                #TODO: see if already added is useful here
+                sync_e = encode_action(Action.SYNC, e)
+                add_e = encode_action(Action.ADD, e)
+                already_added = p in inputs or sync_e in inputs or add_e in inputs
+                if curr_char == e and not already_added:
                     neighbours.append((target, 1, encoded_p))  # del_e cost = 1
             elif action_type == Action.ADD:
                 sync_e = encode_action(Action.SYNC, e)
@@ -194,17 +239,25 @@ def get_shortest_alignment_a_star(dfa: Dfa,
 
     paths = []
     heap_counter = 0
-
-    heapq.heappush(paths, (0, heap_counter, origin_state, (origin_state,), (), remaining_trace_idx))
+    # Dictionary that takes count of the number of times a tuple (state, action) has been considered, when action is not a sync.
+    # In A*, we give more weight to the actions that have been considered less times
+    visited: Dict[Tuple[str, int], int] = {}
+    
+    if initial_alignment:
+        heapq.heappush(paths, (0, heap_counter, origin_state, (origin_state,), initial_alignment, remaining_trace_idx))
+    else: 
+        heapq.heappush(paths, (0, heap_counter, origin_state, (origin_state,), (), remaining_trace_idx))
     
     pbar_counter = 0
     while paths:
-        if pbar_counter % 100 == 0:
-            paths = prune_paths_by_length(paths, max_paths=1_000_000)
         pbar_counter += 1
+        # if pbar_counter % 100 == 0:
+        #     paths = prune_paths_by_length(paths, max_paths=1_000_000)
         if pbar_counter % 1000 == 0:
+            paths = prune_paths_by_length(paths, max_paths=500_000)
             print(f"Steps: {pbar_counter}")
             # print(get_path_statistics(paths))
+            print(f"Num paths: {len(paths)}")
             print(f"Remaining trace idx: {remaining_trace_idx}")
             # print(f"Remaining trace: {remaining_trace[-remaining_trace_idx:]}")
             # log_memory_usage("")
@@ -222,10 +275,17 @@ def get_shortest_alignment_a_star(dfa: Dfa,
         neighbours = get_constrained_neighbours(current_state, curr_char)
 
         for neighbour, action_cost, action in neighbours:
-            # visited = set((state.state_id, action) for (state, action) in zip(path, inputs))
 
             if action in set(inputs):
                 continue
+
+            current_state_action = (current_state.state_id, action)
+            if decode_action(action)[0] != Action.SYNC:
+                if current_state_action not in visited:
+                    visited[current_state_action] = 1
+                else:
+                    continue #TODO: experiment with this
+                    visited[current_state_action] +=1
 
             new_cost = cost + action_cost
             new_path = path + (neighbour,) 
@@ -237,7 +297,7 @@ def get_shortest_alignment_a_star(dfa: Dfa,
                 new_remaining_trace_idx -= 1
 
             heap_counter += 1
-            priority = new_cost + heuristic(curr_inputs=new_inputs)
+            priority = new_cost + heuristic(current_state, action)
             heapq.heappush(paths, (priority, heap_counter, neighbour, new_path, new_inputs, new_remaining_trace_idx))
 
     return None

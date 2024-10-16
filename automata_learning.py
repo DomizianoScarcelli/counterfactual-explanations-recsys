@@ -1,14 +1,17 @@
-from aalpy.learning_algs import run_RPNI
-from aalpy.automata.Dfa import Dfa, DfaState
-from dataset_generator import NumItems
-from type_hints import Dataset
-from recommenders.generate_dataset import load_dataset, make_deterministic
-import pickle
 import os
-from typing import Union, List, Tuple
-from aalpy.utils.HelperFunctions import make_input_complete
+import pickle
 import random
+from typing import List, Tuple, Union
+
+from aalpy.automata.Dfa import Dfa, DfaState
+from aalpy.learning_algs import run_RPNI
+from aalpy.utils.HelperFunctions import make_input_complete
+
+from dataset_generator import NumItems
+from recommenders.generate_dataset import load_dataset
 from trace_alignment import augment_constraint_automata
+from type_hints import Dataset
+
 
 def generate_automata(dataset, load_if_exists: bool=True, save_path: str="automata.pickle") -> Union[None, Dfa]:
     if os.path.exists(os.path.join("saved_automatas", save_path)) and load_if_exists:
@@ -114,7 +117,7 @@ if __name__ == "__main__":
 
     #Remove non-determinism
     dataset = load_dataset(load_path="saved/counterfactual_dataset.pickle")
-    dataset = make_deterministic(dataset)
+    # dataset = make_deterministic(dataset)
 
     dfa = generate_automata_from_dataset(dataset, load_if_exists=False)
     # dfa.visualize()

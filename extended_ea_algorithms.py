@@ -1,5 +1,7 @@
 from deap.algorithms import tools, varAnd
 from tqdm import tqdm
+
+
 # Taken from deap.algorithms.eaSimple
 # Solution taken from https://github.com/DEAP/deap/issues/508
 def eaSimpleBatched(population, toolbox, cxpb, mutpb, ngen, stats=None,

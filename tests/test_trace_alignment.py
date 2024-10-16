@@ -1,13 +1,15 @@
 from copy import deepcopy
+
 import pytest
+import torch
+
+from automata_learning import learning_pipeline
 from automata_utils import invert_automata, run_automata
 from graph_search import encode_action_str
-from trace_alignment import (create_intersection_automata, 
-                             trace_alignment, 
-                             align, trace_disalignment)
 from recommenders.generate_dataset import generate_counterfactual_dataset
-from automata_learning import learning_pipeline
-import torch
+from trace_alignment import (align, create_intersection_automata,
+                             trace_alignment, trace_disalignment)
+
 
 #----------TESTS WITH MOCK DATA--------------#
 def test_augmented_trace_automata_mock(mock_t_dfa, mock_t_dfa_aug, mock_original_trace, mock_edited_trace):
@@ -162,6 +164,7 @@ def test_align():
     """
 
 #-----------Particular Cases--------------#
+# @pytest.mark.skip()
 def test_all_sync(model):
     """
     For some traces, the counterfactual only does sync. The problem with this

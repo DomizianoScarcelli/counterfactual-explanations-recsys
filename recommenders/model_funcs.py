@@ -1,9 +1,11 @@
+from copy import deepcopy
+from typing import List
+
 import torch
 from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
-from copy import deepcopy
-from typing import List
 from torch import Tensor
+
 
 def predict(model: SequentialRecommender, seq: Tensor, argmax: bool=True) -> torch.Tensor:
     """Returns the prediction of the model on the interaction.

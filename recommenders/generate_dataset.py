@@ -1,13 +1,16 @@
-from recbole.utils import init_seed, get_model
+import os
+import pickle
+from typing import Generator, Tuple, Union
+
+import torch
 from recbole.config import Config
 from recbole.data import create_dataset, data_preparation
 from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
-import torch
+from recbole.utils import get_model, init_seed
 from torch import Tensor
 from torch.utils.data import DataLoader
-import pickle
-from typing import Generator, Tuple, Union
+
 from deap_generator import GeneticGenerationStrategy
 from models.ExtendedBERT4Rec import ExtendedBERT4Rec
 from recommenders.model_funcs import model_predict
@@ -61,7 +64,8 @@ def generate_counterfactual_dataset(interaction: Union[Interaction, Tensor], mod
     bad_examples = bad_genetic_strategy.generate()
     bad_examples = bad_genetic_strategy.postprocess(bad_examples)
     
-    return make_deterministic((good_examples, bad_examples))
+    dataset = (good_examples, bad_examples)
+    return dataset
 
 def save_dataset(dataset: Tuple[Dataset, Dataset], save_path: str):
     """
@@ -72,6 +76,7 @@ def save_dataset(dataset: Tuple[Dataset, Dataset], save_path: str):
         save_path: The save path
     """
     with open(save_path, "wb") as f:
+        print(f"Dataset saved to {save_path}")
         pickle.dump(dataset, f)
 
 def load_dataset(load_path: str) -> Tuple[Dataset, Dataset]:
@@ -84,6 +89,7 @@ def load_dataset(load_path: str) -> Tuple[Dataset, Dataset]:
         The dataset (good_points, bad_points).
     """
     with open(load_path, "rb") as f:
+        print(f"Dataset loaded from {load_path}")
         return pickle.load(f)
 
 
@@ -143,13 +149,19 @@ def interaction_generator(config: Config) -> Generator[Interaction, None, None]:
         interaction = data[0]
         yield interaction
 
-def dataset_generator(config: Config) -> Generator[Tuple[Dataset, Dataset], None, None]:
+def dataset_generator(config: Config, use_cache: bool=True) -> Generator[Tuple[Dataset, Dataset], None, None]:
     interactions = interaction_generator(config)
     model = generate_model(config)
-    for interaction in interactions:
-        good_examples, bad_examples = generate_counterfactual_dataset(interaction, model)
+    for i, interaction in enumerate(interactions):
+        cache_path = os.path.join(f"dataset_cache/interaction_{i}_dataset.pickle")
+        if os.path.exists(cache_path) and use_cache:
+            dataset = load_dataset(cache_path)
+        else:
+            dataset = generate_counterfactual_dataset(interaction, model)
+            if use_cache:
+                save_dataset(dataset, cache_path)
         
-        yield (good_examples, bad_examples)
+        yield dataset
 
 def make_deterministic(dataset: Tuple[Dataset, Dataset]) -> Tuple[Dataset, Dataset]:
     g, b = dataset

@@ -1,14 +1,15 @@
 import pytest
-from automata_learning import (generate_automata_from_dataset, 
-                               generate_single_accepting_sequence_dfa, 
-                               NumItems)
-from trace_alignment import (augment_constraint_automata, 
-                             augment_trace_automata)
-
 import torch
 from recbole.config import Config
+
+from automata_learning import (NumItems, generate_automata_from_dataset,
+                               generate_single_accepting_sequence_dfa)
 from models.ExtendedBERT4Rec import ExtendedBERT4Rec
-from recommenders.generate_dataset import generate_model, get_sequence_from_interaction, interaction_generator, load_dataset
+from recommenders.generate_dataset import (generate_model,
+                                           get_sequence_from_interaction,
+                                           interaction_generator, load_dataset)
+from trace_alignment import augment_constraint_automata, augment_trace_automata
+
 
 @pytest.fixture(scope="module")
 def mock_dataset():

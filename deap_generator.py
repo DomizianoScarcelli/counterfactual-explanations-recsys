@@ -1,16 +1,21 @@
-from deap import base, creator, tools
-from extended_ea_algorithms import eaSimpleBatched
-import numpy as np
 import random
-import torch
-from torch import Tensor
 from abc import ABC, abstractmethod
-from typing import List, Tuple, Callable
-import torch.nn.functional as F
 from enum import Enum
+from typing import Callable, List, Tuple
+
 import _pickle as cPickle
-from recommenders.utils import pad_zero, trim_zero
+import numpy as np
+import torch
+import torch.nn.functional as F
+from deap import base, creator, tools
+from torch import Tensor
+
 from constants import MAX_LENGTH
+from extended_ea_algorithms import eaSimpleBatched
+from recommenders.utils import pad_zero, trim_zero
+from utils import set_seed
+
+set_seed()
 
 class NumItems(Enum):
     ML_100K=1682

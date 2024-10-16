@@ -1,18 +1,20 @@
+import time
+import warnings
+from typing import List, Tuple
+
+import fire
+from recbole.trainer import Interaction
+from torch import Tensor
+
+from automata_learning import learning_pipeline
 from automata_utils import run_automata
+from recommenders.generate_dataset import (dataset_generator, get_config,
+                                           get_sequence_from_interaction,
+                                           interaction_generator)
 from recommenders.utils import trim_zero
 from trace_alignment import trace_alignment, trace_disalignment
-from automata_learning import learning_pipeline
-from recommenders.generate_dataset import (dataset_generator, get_config,
-                                           interaction_generator,
-                                           get_sequence_from_interaction)
-from type_hints import (Dataset, RecModel, RecDataset, LabeledTensor)
-import fire
-from torch import Tensor
-import time
-from typing import Tuple, List
-from recbole.trainer import Interaction
+from type_hints import Dataset, LabeledTensor, RecDataset, RecModel
 
-import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 def single_run(source_sequence: List[int], _dataset: Tuple[Dataset, Dataset]):

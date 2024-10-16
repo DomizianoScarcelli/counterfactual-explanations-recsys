@@ -1,6 +1,7 @@
 import torch
 from torch import Tensor
 
+
 def trim_zero(seq: Tensor) -> Tensor:
     """ Trims the final zeros of the tensor
 
@@ -29,5 +30,6 @@ def pad_zero(seq: Tensor, length: int) -> Tensor:
         the sequence with padded zeros
     """
     assert len(seq.shape) == 1, f"Sequence must have a single dim, {seq.shape}"
-    assert seq.count_nonzero() == len(seq), "Sequence must not contain the character 0!"
+    if len(seq) == length: return seq
+    assert seq.count_nonzero() == len(seq), f"Sequence must not contain the character 0!: {seq}"
     return torch.cat((seq, torch.zeros((length - len(seq),))))
