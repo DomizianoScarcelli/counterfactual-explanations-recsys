@@ -14,15 +14,19 @@ from recommenders.generate_dataset import (dataset_generator, get_config,
 from recommenders.utils import trim_zero
 from trace_alignment import trace_alignment, trace_disalignment
 from type_hints import Dataset, LabeledTensor, RecDataset, RecModel
+from utils import TimedFunction
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
+
+timed_learning_pipeline = TimedFunction(learning_pipeline)
+timed_trace_disalignment = TimedFunction(trace_disalignment)
 
 def single_run(source_sequence: List[int], _dataset: Tuple[Dataset, Dataset]):
     assert isinstance(source_sequence, list), f"Source sequence is not a list, but a {type(source_sequence)}"
     assert isinstance(source_sequence[0], int), f"Elements of the source sequences are not ints, but {type(source_sequence[0])}"
 
-    dfa = learning_pipeline(source=source_sequence, dataset=_dataset)
-    aligned, cost, alignment = trace_disalignment(dfa, source_sequence)
+    dfa = timed_learning_pipeline(source=source_sequence, dataset=_dataset)
+    aligned, cost, alignment = timed_trace_disalignment(dfa, source_sequence)
     return aligned, cost, alignment
 
 def main(dataset:RecDataset=RecDataset.ML_1M, 

@@ -1,14 +1,16 @@
+import warnings
+
 from aalpy.automata.Dfa import Dfa
 from torch._prims_common import number_type
-from performance_evaluation.evaluation_utils import compute_metrics, print_confusion_matrix
-from type_hints import GoodBadDataset, RecDataset, RecModel
-from recommenders.generate_dataset import (dataset_generator, 
-                                           get_config,
-                                           get_sequence_from_interaction,
-                                           interaction_generator)
+
 from automata_learning import learning_pipeline
 from automata_utils import run_automata
-import warnings
+from performance_evaluation.evaluation_utils import (compute_metrics,
+                                                     print_confusion_matrix)
+from recommenders.generate_dataset import (dataset_generator, get_config,
+                                           get_sequence_from_interaction,
+                                           interaction_generator)
+from type_hints import GoodBadDataset, RecDataset, RecModel
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 

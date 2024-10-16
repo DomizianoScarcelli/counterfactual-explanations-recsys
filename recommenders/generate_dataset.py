@@ -130,7 +130,7 @@ def generate_model(config: Config) -> ExtendedBERT4Rec:
     train_data, _, _= get_dataloaders(config)
     # model = get_model(config['model'])(config, train_data.dataset).to(config['device'])
     model = ExtendedBERT4Rec(config, train_data.dataset)
-    checkpoint_file = "saved/Bert4Rec_ml1m.pth"
+    checkpoint_file = "saved/Old/Bert4Rec_ml1m.pth"
     checkpoint = torch.load(checkpoint_file, map_location=config['device'])
     model.load_state_dict(checkpoint["state_dict"])
     model.load_other_parameter(checkpoint.get("other_parameter"))

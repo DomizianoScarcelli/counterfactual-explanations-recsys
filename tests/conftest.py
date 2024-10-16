@@ -5,9 +5,9 @@ from recbole.config import Config
 from automata_learning import (NumItems, generate_automata_from_dataset,
                                generate_single_accepting_sequence_dfa)
 from models.ExtendedBERT4Rec import ExtendedBERT4Rec
-from recommenders.generate_dataset import (generate_model,
-                                           load_dataset)
+from recommenders.generate_dataset import generate_model, load_dataset
 from trace_alignment import augment_constraint_automata, augment_trace_automata
+
 
 # By marking a class with @pytest.mark.incremental, if a test fails, all the other ones in the class are skipped
 def pytest_runtest_makereport(item, call):

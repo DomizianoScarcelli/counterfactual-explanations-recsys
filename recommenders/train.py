@@ -1,9 +1,10 @@
+import warnings
+
 from recbole.config import Config
 from recbole.data import create_dataset, data_preparation
 from recbole.trainer import Trainer
-from recbole.utils import get_model
-from recbole.utils import init_seed
-import warnings
+from recbole.utils import get_model, init_seed
+
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 #Bert4Rec hyperparameters taken from https://github.com/asash/bert4rec_repro
@@ -29,7 +30,7 @@ model = get_model(config['model'])(config, train_data.dataset).to(config['device
 
 # Perform inference
 trainer = Trainer(config, model)
-latest_checkpoint = "saved/Bert4Rec_ml1m.pth"
+latest_checkpoint = "saved/Old/Bert4Rec_ml1m.pth"
 trainer.resume_checkpoint(latest_checkpoint)
 # results = trainer.fit(train_data, show_progress=True)
 results = trainer.evaluate(test_data, show_progress=True, model_file=latest_checkpoint)
