@@ -1,7 +1,9 @@
-from typing import List
 from collections import deque
+from typing import List
+
 from aalpy.automata.Dfa import Dfa
 from torch import Tensor
+
 
 def has_path_to_accepting_state(automaton: Dfa, seq: List[int]):
     """

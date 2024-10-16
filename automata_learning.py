@@ -1,14 +1,17 @@
-from aalpy.learning_algs import run_RPNI
-from aalpy.automata.Dfa import Dfa, DfaState
-from dataset_generator import NumItems
-from type_hints import Dataset
-from recommenders.generate_dataset import load_dataset, make_deterministic
-import pickle
 import os
-from typing import Union, List, Tuple
-from aalpy.utils.HelperFunctions import make_input_complete
+import pickle
 import random
+from typing import List, Tuple, Union
+
+from aalpy.automata.Dfa import Dfa, DfaState
+from aalpy.learning_algs import run_RPNI
+from aalpy.utils.HelperFunctions import make_input_complete
+
+from dataset_generator import NumItems
+from recommenders.generate_dataset import load_dataset
 from trace_alignment import augment_constraint_automata
+from type_hints import Dataset
+
 
 def generate_automata(dataset, load_if_exists: bool=True, save_path: str="automata.pickle") -> Union[None, Dfa]:
     if os.path.exists(os.path.join("saved_automatas", save_path)) and load_if_exists:
@@ -30,18 +33,6 @@ def save_automata(automata, save_path):
 def load_automata(load_path):
     with open(os.path.join("saved_automatas", load_path), "rb") as f:
         return pickle.load(f)
-
-
-def generate_syntetic_point(min_value:int=1, max_value: int=NumItems.ML_1M.value, length: int = 50):
-    point = []
-    while len(point) < length:
-        item = random.randint(min_value, max_value)
-        if item not in point:
-            point.append(item)
-    return point
-    
-
-
 
 def generate_automata_from_dataset(dataset, load_if_exists: bool=True, save_path: str="automata.pickle") -> Dfa:
     """
@@ -102,8 +93,7 @@ def generate_single_accepting_sequence_dfa(sequence):
     return dfa
 
 
-def learning_pipeline(source: List[int], dataset: Tuple[Dataset, Dataset]):
-    print(f"[automata_learning.learning_pipeline] source is {source}")
+def learning_pipeline(source: List[int], dataset: Tuple[Dataset, Dataset]) -> Dfa:
     t_dfa = generate_single_accepting_sequence_dfa(source)
     a_dfa = generate_automata_from_dataset(dataset, load_if_exists=False)
     a_dfa_aug = augment_constraint_automata(a_dfa, t_dfa)
@@ -115,7 +105,7 @@ if __name__ == "__main__":
 
     #Remove non-determinism
     dataset = load_dataset(load_path="saved/counterfactual_dataset.pickle")
-    dataset = make_deterministic(dataset)
+    # dataset = make_deterministic(dataset)
 
     dfa = generate_automata_from_dataset(dataset, load_if_exists=False)
     # dfa.visualize()

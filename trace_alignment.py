@@ -1,16 +1,17 @@
-from aalpy.automata.Dfa import Dfa, DfaState
-from automata_utils import invert_automata
-from dataset_generator import NumItems
-from tqdm import tqdm
-from typing import List, Tuple
-from automata_utils import run_automata
-from graph_search import (decode_action, get_shortest_alignment_dijkstra, 
-                          get_shortest_alignment_a_star)
 from copy import deepcopy
-from graph_search import Action, decode_action, act_str
+from typing import List, Tuple
+
+from aalpy.automata.Dfa import Dfa, DfaState
+from tqdm import tqdm
+
+from automata_utils import invert_automata, run_automata
+from constants import MAX_LENGTH
+from dataset_generator import NumItems
+from exceptions import CounterfactualNotFound, DfaNotAccepting, DfaNotRejecting
+from graph_search import (Action, a_star, act_str, decode_action, dijkstra,
+                          faster_dijkstra)
 
 DEBUG = False
-
 
 def printd(statement):
     if DEBUG:
@@ -37,7 +38,7 @@ def augment_trace_automata(automata: Dfa, num_items: NumItems=NumItems.ML_1M) ->
     with the corresponding repair propositions.
     """
     # Alphabet is the universe of all the items
-    alphabet = [i for i in range(0, num_items.value)] #TODO: when zero trimming will work, put a 1 here
+    alphabet = [i for i in range(1, num_items.value)]
     
     # Create the new repair propositions
     add_propositions = {p: f"add_{p}" for p in alphabet}
@@ -64,7 +65,12 @@ def augment_trace_automata(automata: Dfa, num_items: NumItems=NumItems.ML_1M) ->
 
     return automata
 
-
+def ingoing_states(dfa: Dfa, curr_state: DfaState):
+    ingoing = set()
+    for state in dfa.states:
+        if curr_state in state.transitions.values():
+            ingoing.add(state)
+    return ingoing
 
 def augment_constraint_automata(automata: Dfa, trace_automaton: Dfa) -> Dfa:
     """
@@ -97,7 +103,6 @@ def augment_constraint_automata(automata: Dfa, trace_automaton: Dfa) -> Dfa:
 
     for state in automata.states:
         transitions_to_add = []
-        #TODO: I should try with universe
         for trace_p in trace_alphabet:
             del_p = del_propositions[trace_p]
             transitions_to_add.append((del_p, state))
@@ -199,7 +204,6 @@ def constraint_aut_to_planning_aut(a_dfa: Dfa):
     Given a constraint automaton `a_dfa` where character are of type `e`,
     `add_e` and `del_e`, it converts each `e` in `sync_e`.
     """
-    print("Replacing e with sync_e...")
     for state in a_dfa.states:
         for p, target_state in state.transitions.copy().items():
             if type(p) is int:
@@ -211,7 +215,6 @@ def planning_aut_to_constraint_aut(a_dfa: Dfa):
     Given a constraint automaton `a_dfa` where character are of type `sync_e`,
     `add_e` and `del_e`, it converts each `sync_e` in `e`.
     """
-    print("Replacing sync_e with e...")
     for state in a_dfa.states:
         for p, target_state in state.transitions.copy().items():
             if "sync" in p:
@@ -238,30 +241,31 @@ def compute_alignment_cost(alignment: Tuple[int]) -> int:
 def trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
     """
     """
-    expected_length = len(trace)
-    print(f"Expected length: ", expected_length)
+    min_length = len(trace)
+    # min_length = 0
+    max_length = MAX_LENGTH
+    print(f"Expected length interval: ({min_length}, {max_length})")
     constraint_aut_to_planning_aut(a_dfa_aug)
     remaining_trace = list(trace)
     final_states = set(s for s in a_dfa_aug.states if s.is_accepting)
-    print(f"Final states are {[s.state_id for s in final_states]}")
     a_dfa_aug.reset_to_initial()
-    alignment = get_shortest_alignment_dijkstra(dfa=a_dfa_aug, 
-                                              origin_state=a_dfa_aug.initial_state, 
-                                              target_states=final_states,
-                                              remaining_trace=remaining_trace,
-                                              min_alignment_length=None,
-                                              max_alignment_length=None)
-    assert alignment is not None, "No best path found"
-    print("Alignments is: ", [f"{act_str(decode_action(a)[0])}_{decode_action(a)[1]}" for a in alignment])
+    alignment = faster_dijkstra(dfa=a_dfa_aug, 
+                                origin_state=a_dfa_aug.initial_state, 
+                                target_states=final_states,
+                                remaining_trace=remaining_trace,
+                                min_alignment_length=min_length,
+                                max_alignment_length=max_length)
+    if alignment is None:
+        raise CounterfactualNotFound("No best path found")
+    # print("Alignments is: ", [f"{act_str(decode_action(a)[0])}_{decode_action(a)[1]}" for a in alignment])
     planning_aut_to_constraint_aut(a_dfa_aug)
     aligned_trace = align(alignment)
     aligned_accepts = run_automata(a_dfa_aug, aligned_trace)
     assert aligned_accepts, "Automa should accept aligned trace"
     cost = compute_alignment_cost(alignment)
-    print("Alignment cost: ", cost)
     # aligned_traces.append((aligned_trace, cost))
     # best_alignment, best_cost = min(aligned_traces, key=lambda x: x[1])
-    return aligned_trace, cost
+    return aligned_trace, cost, alignment
 
 
 def trace_disalignment(a_dfa_aug: Dfa, trace: List[int]):
@@ -271,7 +275,14 @@ def trace_disalignment(a_dfa_aug: Dfa, trace: List[int]):
     """
     a_dfa_aug = deepcopy(a_dfa_aug)
     invert_automata(a_dfa_aug)
-    return trace_alignment(a_dfa_aug, trace)
+    aligned_trace, cost, alignment =  trace_alignment(a_dfa_aug, trace)
+    dfa_rejects = not run_automata(a_dfa_aug, trace)
+    if not dfa_rejects:
+        raise DfaNotRejecting("Dfa is not rejecting original sequence")
+    dfa_accepts = run_automata(a_dfa_aug, aligned_trace)
+    if not dfa_accepts:
+        raise DfaNotAccepting("Dfa is not accepting counterfactual sequence")
+    return aligned_trace, cost, alignment
 
 
 def align(alignment: Tuple[int]) -> List[int]:
@@ -286,7 +297,6 @@ def align(alignment: Tuple[int]) -> List[int]:
         The aligned trace
     """
     aligned_trace = []
-    print(f"[align] Alignment is: {alignment}")
     for encoded_action in alignment:
         action_type, e = decode_action(encoded_action)
         if action_type == Action.SYNC:

@@ -1,12 +1,19 @@
+from typing import Union
+
+import torch
 from recbole.model.sequential_recommender import BERT4Rec
 from recbole.trainer import Interaction
-import torch
 from torch import Tensor
-from typing import Union
+
+from utils import set_seed
+
 
 class ExtendedBERT4Rec(BERT4Rec):
     def __init__(self, config, dataset):
+        set_seed()
         super().__init__(config=config, dataset=dataset)
+        self.eval()
+        
         # self.item_length = torch.tensor([50])
 
     def full_sort_predict(self, interaction: Union[Interaction, Tensor]):

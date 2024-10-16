@@ -1,30 +1,20 @@
-from numpy import single
-from recbole.model.sequential_recommender import BERT4Rec
-import torch
-from torch import Tensor
-from recbole.model.abstract_recommender import SequentialRecommender
-from recbole.trainer import Interaction
 from copy import deepcopy
-import pytest
-from recommenders.generate_dataset import generate_model, get_sequence_from_interaction, interaction_generator
-from recommenders.model_funcs import model_predict, model_batch_predict
-from recbole.config import Config
-from models.ExtendedBERT4Rec import ExtendedBERT4Rec
 from typing import List
 
-@pytest.fixture()
-def config():
-    parameter_dict_ml1m = {
-        'load_col': {"inter": ['user_id', 'item_id', 'rating', 'timestamp']},
-        'train_neg_sample_args': None,
-        "eval_batch_size": 1
-    }
-    return Config(model='BERT4Rec', dataset='ml-1m', config_dict=parameter_dict_ml1m)
+import pytest
+import torch
+from numpy import single
+from recbole.model.abstract_recommender import SequentialRecommender
+from recbole.model.sequential_recommender import BERT4Rec
+from recbole.trainer import Interaction
+from torch import Tensor
 
-@pytest.fixture()
-def model(config) -> ExtendedBERT4Rec:
-    model = generate_model(config)
-    return model
+from models.ExtendedBERT4Rec import ExtendedBERT4Rec
+from recommenders.generate_dataset import (generate_model,
+                                           get_sequence_from_interaction,
+                                           interaction_generator)
+from recommenders.model_funcs import model_batch_predict, model_predict
+
 
 @pytest.fixture()
 def interactions(config, batch_size: int=16) -> List[Interaction]:
@@ -54,3 +44,10 @@ def test_full_sort_predict_from_sequence(model: ExtendedBERT4Rec, sequences):
 def test_batched_full_sort_predict(model: ExtendedBERT4Rec, sequences):
     pred = model.batched_full_sort_predict(sequences)
     print(f"[test_full_sort_predict_from_sequence] pred is: {pred} with shape {pred.shape}")
+
+def test_determination(model: ExtendedBERT4Rec, sequences):
+    single_seq = sequences[0].unsqueeze(0)
+    assert single_seq.size(0) == 1, f"single seq must have shape [1, length], {single_seq.shape}"
+    first_pred = model._full_sort_predict_from_sequence(single_seq)
+    second_pred = model._full_sort_predict_from_sequence(single_seq)
+    assert torch.allclose(first_pred, second_pred)

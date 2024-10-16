@@ -1,12 +1,17 @@
+from copy import deepcopy
+
+import pytest
 import torch
-from torch import Tensor
+from recbole.config import Config
 from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
-from copy import deepcopy
-import pytest
-from recommenders.generate_dataset import generate_model, get_sequence_from_interaction, interaction_generator
-from recommenders.model_funcs import model_predict, model_batch_predict
-from recbole.config import Config
+from torch import Tensor
+
+from recommenders.generate_dataset import (generate_model,
+                                           get_sequence_from_interaction,
+                                           interaction_generator)
+from recommenders.model_funcs import model_batch_predict, model_predict
+
 
 @pytest.fixture()
 def config():

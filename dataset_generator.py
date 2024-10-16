@@ -1,13 +1,15 @@
-from sys import orig_argv
-import numpy as np
-from abc import ABC, abstractmethod
-from typing import List, Tuple, Callable, Union
-import random
 import itertools
-from tqdm import tqdm
-import torch.nn.functional as F
-import torch
+import random
+from abc import ABC, abstractmethod
 from enum import Enum
+from sys import orig_argv
+from typing import Callable, List, Tuple, Union
+
+import numpy as np
+import torch
+import torch.nn.functional as F
+from tqdm import tqdm
+
 
 class NumItems(Enum):
     ML_100K=1682

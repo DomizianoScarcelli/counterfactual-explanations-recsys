@@ -1,13 +1,29 @@
-from trace_alignment import trace_alignment, trace_disalignment
-from automata_learning import learning_pipeline
-from recommenders.generate_dataset import (dataset_generator, get_config,
-                                           interaction_generator,
-                                           get_sequence_from_interaction)
-from type_hints import (Dataset, RecModel, RecDataset, LabeledTensor)
-import fire
-from torch import Tensor
 import time
+import warnings
+from typing import List, Tuple
 
+import fire
+from recbole.trainer import Interaction
+from torch import Tensor
+
+from automata_learning import learning_pipeline
+from automata_utils import run_automata
+from recommenders.generate_dataset import (dataset_generator, get_config,
+                                           get_sequence_from_interaction,
+                                           interaction_generator)
+from recommenders.utils import trim_zero
+from trace_alignment import trace_alignment, trace_disalignment
+from type_hints import Dataset, LabeledTensor, RecDataset, RecModel
+
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
+def single_run(source_sequence: List[int], _dataset: Tuple[Dataset, Dataset]):
+    assert isinstance(source_sequence, list), f"Source sequence is not a list, but a {type(source_sequence)}"
+    assert isinstance(source_sequence[0], int), f"Elements of the source sequences are not ints, but {type(source_sequence[0])}"
+
+    dfa = learning_pipeline(source=source_sequence, dataset=_dataset)
+    aligned, cost, alignment = trace_disalignment(dfa, source_sequence)
+    return aligned, cost, alignment
 
 def main(dataset:RecDataset=RecDataset.ML_1M, 
          model:RecModel=RecModel.BERT4Rec, 
@@ -33,19 +49,17 @@ def main(dataset:RecDataset=RecDataset.ML_1M,
     interactions = interaction_generator(config)
     datasets = dataset_generator(config=config)
     for i, (_dataset, interaction) in enumerate(zip(datasets, interactions)):
+
         start = time.time()
-        if i >= num_counterfactuals:
+        if i == num_counterfactuals:
             print(f"Generated {num_counterfactuals}, exiting...")
             break
-        source_sequence = get_sequence_from_interaction(interaction)
-        if isinstance(source_sequence, Tensor):
-            print("Converting source_sequence from Tensor to list")
-            source_sequence = source_sequence.tolist()[0]
-        dfa = learning_pipeline(source=source_sequence, dataset=_dataset)
-        aligned, cost = trace_disalignment(dfa, source_sequence)
+        source_sequence = get_sequence_from_interaction(interaction).squeeze(0)
+        source_sequence = trim_zero(source_sequence)
+        aligned, cost, _ = single_run(source_sequence.tolist(), _dataset)
         end = time.time()
-        generation_time = end-start
-        print(f"ALIGNED! {source_sequence} -> {aligned}, C={cost}, Generation time: {generation_time} sec")
+        align_time = end-start
+        print(f"[{i}] Align time: {align_time}")
         
 if __name__ == '__main__':
   fire.Fire(main)

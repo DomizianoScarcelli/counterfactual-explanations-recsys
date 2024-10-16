@@ -1,6 +1,9 @@
 import pytest
-from graph_search import Action, encode_action, decode_action, encode_action_str
 from memory_profiler import memory_usage
+
+from graph_search import (Action, decode_action, encode_action,
+                          encode_action_str)
+
 
 @pytest.fixture
 def action_map():

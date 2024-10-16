@@ -1,4 +1,7 @@
 from deap.algorithms import tools, varAnd
+from tqdm import tqdm
+
+
 # Taken from deap.algorithms.eaSimple
 # Solution taken from https://github.com/DEAP/deap/issues/508
 def eaSimpleBatched(population, toolbox, cxpb, mutpb, ngen, stats=None,
@@ -79,7 +82,7 @@ def eaSimpleBatched(population, toolbox, cxpb, mutpb, ngen, stats=None,
         print(logbook.stream)
 
     # Begin the generational process
-    for gen in range(1, ngen + 1):
+    for gen in tqdm(range(1, ngen + 1), "Running genetic algorithm..."):
         # Select the next generation individuals
         offspring = toolbox.select(population, len(population))
 
