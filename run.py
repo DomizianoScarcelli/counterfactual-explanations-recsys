@@ -23,7 +23,6 @@ def single_run(source_sequence: List[int], _dataset: Tuple[Dataset, Dataset]):
 
     dfa = learning_pipeline(source=source_sequence, dataset=_dataset)
     aligned, cost, alignment = trace_disalignment(dfa, source_sequence)
-    print(f"ALIGNED! {source_sequence} -> {aligned}, C={cost}")
     return aligned, cost, alignment
 
 def main(dataset:RecDataset=RecDataset.ML_1M, 

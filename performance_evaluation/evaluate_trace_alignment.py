@@ -35,7 +35,7 @@ def evaluate_trace_disalignment(interactions,
     good, bad, not_found, skipped = 0, 0, 0, 0
     evaluation_log = []
     status = "unknown"
-    for i, (_dataset, interaction) in enumerate(tqdm(zip(datasets, interactions), desc="Performance evaluation...")):
+    for i, ((train, _), interaction) in enumerate(tqdm(zip(datasets, interactions), desc="Performance evaluation...")):
         start = time.time()
         if i == num_counterfactuals:
             print(f"Generated {num_counterfactuals}, exiting...")
@@ -45,7 +45,7 @@ def evaluate_trace_disalignment(interactions,
         source_sequence = trim_zero(source_sequence.squeeze(0)).tolist()
         print(f"Source sequence:", source_sequence)
         try:
-            aligned, cost, alignment = single_run(source_sequence, _dataset)
+            aligned, cost, alignment = single_run(source_sequence, train)
         except CounterfactualNotFound:
             not_found += 1
             evaluation_log = save_log(evaluation_log, original=source_sequence, alignment=None, status="CounterfactualNotFound", cost=0, time=0)
@@ -71,7 +71,7 @@ def evaluate_trace_disalignment(interactions,
             skipped += 1
             evaluation_log = save_log(evaluation_log, original=source_sequence, alignment=alignment, status="skipped", cost=0, time=0)
             continue
-        print(f"Aligned sequence:", aligned.tolist())
+        print(f"Alignment:", [print_action(a) for a in alignment])
         aligned_gt = oracle.full_sort_predict(aligned).argmax(-1).item()
         correct = source_gt != aligned_gt
         # assert correct, "Source and aligned have the same label {source_gt} == {aligned_gt}"

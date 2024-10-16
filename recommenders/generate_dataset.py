@@ -48,18 +48,18 @@ def generate_counterfactual_dataset(interaction: Union[Interaction, Tensor], mod
                                                       predictor=lambda x: model_predict(seq=x,
                                                                     model=model,
                                                                     prob=True),
-                                                      pop_size=2000,
+                                                      pop_size=1000,
                                                       good_examples=True,
-                                                      generations=10)
+                                                      generations=20)
     good_examples = good_genetic_strategy.generate()
     good_examples = good_genetic_strategy.postprocess(good_examples)
     bad_genetic_strategy = GeneticGenerationStrategy(input_seq=sequence,
                                                      predictor=lambda x: model_predict(seq=x,
                                                                    model=model,
                                                                    prob=True),
-                                                     pop_size=2000,
+                                                     pop_size=1000,
                                                      good_examples=False,
-                                                     generations=10)
+                                                     generations=20)
     bad_examples = bad_genetic_strategy.generate()
     bad_examples = bad_genetic_strategy.postprocess(bad_examples)
     
@@ -69,7 +69,7 @@ def generate_counterfactual_dataset(interaction: Union[Interaction, Tensor], mod
     test_dataset = (test_good, test_bad)
     return train_dataset, test_dataset
 
-def train_test_split(dataset: GoodBadDataset, test_split:float=0.2):
+def train_test_split(dataset: GoodBadDataset, test_split:float=0):
     train, test = [], []
     train_end = round(len(dataset) * (1-test_split))
     for i in range(train_end):

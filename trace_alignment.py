@@ -205,7 +205,6 @@ def constraint_aut_to_planning_aut(a_dfa: Dfa):
     Given a constraint automaton `a_dfa` where character are of type `e`,
     `add_e` and `del_e`, it converts each `e` in `sync_e`.
     """
-    print("Replacing e with sync_e...")
     for state in a_dfa.states:
         for p, target_state in state.transitions.copy().items():
             if type(p) is int:
@@ -217,7 +216,6 @@ def planning_aut_to_constraint_aut(a_dfa: Dfa):
     Given a constraint automaton `a_dfa` where character are of type `sync_e`,
     `add_e` and `del_e`, it converts each `sync_e` in `e`.
     """
-    print("Replacing sync_e with e...")
     for state in a_dfa.states:
         for p, target_state in state.transitions.copy().items():
             if "sync" in p:
@@ -244,14 +242,13 @@ def compute_alignment_cost(alignment: Tuple[int]) -> int:
 def trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
     """
     """
-    # min_length = len(trace)
-    min_length = 0
+    min_length = len(trace)
+    # min_length = 0
     max_length = MAX_LENGTH
     print(f"Expected length interval: ({min_length}, {max_length})")
     constraint_aut_to_planning_aut(a_dfa_aug)
     remaining_trace = list(trace)
     final_states = set(s for s in a_dfa_aug.states if s.is_accepting)
-    print(f"Final states are {[s.state_id for s in final_states]}")
     a_dfa_aug.reset_to_initial()
     alignment = faster_dijkstra(dfa=a_dfa_aug, 
                                 origin_state=a_dfa_aug.initial_state, 
@@ -261,13 +258,12 @@ def trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
                                 max_alignment_length=max_length)
     if alignment is None:
         raise CounterfactualNotFound("No best path found")
-    print("Alignments is: ", [f"{act_str(decode_action(a)[0])}_{decode_action(a)[1]}" for a in alignment])
+    # print("Alignments is: ", [f"{act_str(decode_action(a)[0])}_{decode_action(a)[1]}" for a in alignment])
     planning_aut_to_constraint_aut(a_dfa_aug)
     aligned_trace = align(alignment)
     aligned_accepts = run_automata(a_dfa_aug, aligned_trace)
     assert aligned_accepts, "Automa should accept aligned trace"
     cost = compute_alignment_cost(alignment)
-    print("Alignment cost: ", cost)
     # aligned_traces.append((aligned_trace, cost))
     # best_alignment, best_cost = min(aligned_traces, key=lambda x: x[1])
     return aligned_trace, cost, alignment

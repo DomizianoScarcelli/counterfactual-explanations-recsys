@@ -166,7 +166,7 @@ def faster_dijkstra(dfa: Dfa,
     print(f"Initial remaining trace: ", remaining_trace)
     #TODO: start low and if not found go higher with a certain step
     MIN_REMAINING_ITEMS = 10
-    remaining_items = max(MIN_REMAINING_ITEMS, len(remaining_trace) // 5)
+    remaining_items = max(MIN_REMAINING_ITEMS, len(remaining_trace) // 3)
     initial_alignment = []
     end = len(remaining_trace) - remaining_items
     for i in range(end):
@@ -187,13 +187,13 @@ def faster_dijkstra(dfa: Dfa,
     return remaining_alignment
 
 def a_star(dfa: Dfa, 
-                                  origin_state: DfaState,
-                                  target_states: Set[DfaState],
-                                  remaining_trace: List[int],
-                                  min_alignment_length: Optional[int],
-                                  max_alignment_length: Optional[int],
-                                  heuristic_fn: Optional[Callable] = None,
-                                  initial_alignment: Optional[Tuple[int]] = None):
+           origin_state: DfaState,
+           target_states: Set[DfaState],
+           remaining_trace: List[int],
+           min_alignment_length: Optional[int],
+           max_alignment_length: Optional[int],
+           heuristic_fn: Optional[Callable] = None,
+           initial_alignment: Optional[Tuple[int]] = None):
     remaining_trace_idx = len(remaining_trace)
     # tracemalloc.start()
     

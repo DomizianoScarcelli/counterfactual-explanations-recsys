@@ -6,10 +6,10 @@ import torch
 from automata_learning import learning_pipeline
 from automata_utils import invert_automata, run_automata
 from graph_search import encode_action_str, print_action
-from models.ExtendedBERT4Rec import ExtendedBERT4Rec
 from recommenders.generate_dataset import generate_counterfactual_dataset
-from trace_alignment import (align, create_intersection_automata,
-                             trace_alignment, trace_disalignment)
+from trace_alignment import (align, 
+                             trace_alignment, 
+                             trace_disalignment)
 
 
 class TestMockData:
@@ -153,17 +153,17 @@ class TestParticularCases:
                               1138, 1204, 2544, 2137, 2055]).unsqueeze(0)
         original_label = model._full_sort_predict_from_sequence(trace).argmax(-1).item()
         train, _ = generate_counterfactual_dataset(trace, model)
+
         trace = trace.squeeze(0).tolist()
         a_dfa_aug = learning_pipeline(trace, train)
-        original_rejects = not run_automata(a_dfa_aug, trace)
-        #TODO: the problem is here, meaning that the problem is not the
-        #alignment, but the automata learning on this particular trace
-        assert original_rejects, "Automata doesn't reject the original sequence"
+        original_accepts = run_automata(a_dfa_aug, trace)
+        assert original_accepts, "Original Automata doesn't accept the original sequence"
 
         a_dfa_aug.reset_to_initial()
-        aligned, cost, alignment = trace_disalignment(a_dfa_aug, trace)
-        aligned_accepts = run_automata(a_dfa_aug, aligned)
-        assert aligned_accepts, "Automata doesn't accept the counterfactual sequence"
+        aligned, _, alignment = trace_disalignment(a_dfa_aug, trace)
+        a_dfa_aug.reset_to_initial()
+        counterfactual_rejects = not run_automata(a_dfa_aug, aligned)
+        assert counterfactual_rejects, "Automata doesn't reject the counterfactual sequence"
 
         print(f"Alignment is {[print_action(a) for a in alignment]}")
         counter_label = model._full_sort_predict_from_sequence(torch.tensor(aligned).unsqueeze(0)).argmax(-1).item()

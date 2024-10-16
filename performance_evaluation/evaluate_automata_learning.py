@@ -1,4 +1,5 @@
 from aalpy.automata.Dfa import Dfa
+from torch._prims_common import number_type
 from performance_evaluation.evaluation_utils import compute_metrics, print_confusion_matrix
 from type_hints import GoodBadDataset, RecDataset, RecModel
 from recommenders.generate_dataset import (dataset_generator, 
@@ -50,7 +51,7 @@ def single_evaluation(dfa: Dfa, test_dataset: GoodBadDataset):
     print(f"Accuracy: {accuracy}")
     print(f"Recall: {recall}")
     total = tp + tn + fn + fp
-    print(f"Skipped: {(good_skipped, bad_skipped)} over total: {total}")
+    print(f"Skipped: {good_skipped + bad_skipped} over total: {total}")
     print_confusion_matrix(tp=tp, fp=fp, tn=tn, fn=fn)
 
 
@@ -58,11 +59,13 @@ def evaluate_automata_learning():
     config = get_config(dataset=RecDataset.ML_1M, model=RecModel.BERT4Rec)
     interactions = interaction_generator(config)
     datasets = dataset_generator(config, use_cache=True)
-    for interaction, (train, test) in zip(interactions, datasets):
+    num_tests = 10
+    for idx, (interaction, (train, test)) in enumerate(zip(interactions, datasets)):
+        if idx == num_tests:
+            print(f"Executed {num_tests} tests, exiting...")
         source_sequence = get_sequence_from_interaction(interaction).squeeze(0).tolist()
         dfa = learning_pipeline(source_sequence, train)
         single_evaluation(dfa, test)
-        break
 
 if __name__ == "__main__": 
     evaluate_automata_learning()
