@@ -7,9 +7,7 @@ from automata_learning import learning_pipeline
 from automata_utils import invert_automata, run_automata
 from graph_search import encode_action_str, print_action
 from recommenders.generate_dataset import generate_counterfactual_dataset
-from trace_alignment import (align, 
-                             trace_alignment, 
-                             trace_disalignment)
+from trace_alignment import align, trace_alignment, trace_disalignment
 
 
 class TestMockData:
