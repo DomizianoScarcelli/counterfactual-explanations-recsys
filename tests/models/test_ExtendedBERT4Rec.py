@@ -38,16 +38,16 @@ def sequences(interactions) -> Tensor:
 def test_full_sort_predict_from_sequence(model: ExtendedBERT4Rec, sequences):
     single_seq = sequences[0].unsqueeze(0)
     assert single_seq.size(0) == 1, f"single seq must have shape [1, length], {single_seq.shape}"
-    pred = model._full_sort_predict_from_sequence(single_seq)
+    pred = model.full_sort_predict_from_sequence(single_seq)
     print(f"[test_full_sort_predict_from_sequence] pred is: {pred} with shape {pred.shape}")
 
 def test_batched_full_sort_predict(model: ExtendedBERT4Rec, sequences):
-    pred = model.batched_full_sort_predict(sequences)
+    pred = model.full_sort_predict_from_sequence(sequences)
     print(f"[test_full_sort_predict_from_sequence] pred is: {pred} with shape {pred.shape}")
 
 def test_determination(model: ExtendedBERT4Rec, sequences):
     single_seq = sequences[0].unsqueeze(0)
     assert single_seq.size(0) == 1, f"single seq must have shape [1, length], {single_seq.shape}"
-    first_pred = model._full_sort_predict_from_sequence(single_seq)
-    second_pred = model._full_sort_predict_from_sequence(single_seq)
+    first_pred = model.full_sort_predict_from_sequence(single_seq)
+    second_pred = model.full_sort_predict_from_sequence(single_seq)
     assert torch.allclose(first_pred, second_pred)

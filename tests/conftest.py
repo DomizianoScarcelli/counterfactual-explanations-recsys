@@ -1,10 +1,10 @@
 import pytest
 import torch
 from recbole.config import Config
+from recbole.model.abstract_recommender import SequentialRecommender
 
 from automata_learning import (NumItems, generate_automata_from_dataset,
                                generate_single_accepting_sequence_dfa)
-from models.ExtendedBERT4Rec import ExtendedBERT4Rec
 from recommenders.generate_dataset import generate_model, load_dataset
 from trace_alignment import augment_constraint_automata, augment_trace_automata
 
@@ -194,6 +194,6 @@ def config():
     return Config(model='BERT4Rec', dataset='ml-1m', config_dict=parameter_dict_ml1m)
 
 @pytest.fixture(scope="module")
-def model(config) -> ExtendedBERT4Rec:
+def model(config) -> SequentialRecommender:
     model = generate_model(config)
     return model

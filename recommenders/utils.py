@@ -31,5 +31,5 @@ def pad_zero(seq: Tensor, length: int) -> Tensor:
     """
     assert len(seq.shape) == 1, f"Sequence must have a single dim, {seq.shape}"
     if len(seq) == length: return seq
-    assert seq.count_nonzero() == len(seq), f"Sequence must not contain the character 0!: {seq}"
+    # assert seq.count_nonzero() == len(seq), f"Sequence must not contain the character 0!: {seq}"
     return torch.cat((seq, torch.zeros((length - len(seq),))))

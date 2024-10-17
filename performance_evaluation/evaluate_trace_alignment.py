@@ -1,14 +1,14 @@
 import json
-import time
 from typing import Dict, List, Optional
 
 import torch
+from recbole.model.abstract_recommender import SequentialRecommender
 from tqdm import tqdm
 
+from config import DATASET, MODEL
 from constants import MAX_LENGTH
 from exceptions import CounterfactualNotFound, DfaNotAccepting, DfaNotRejecting
 from graph_search import print_action
-from models.ExtendedBERT4Rec import ExtendedBERT4Rec
 from recommenders.generate_dataset import (dataset_generator, generate_model,
                                            get_config,
                                            get_sequence_from_interaction,
@@ -84,6 +84,9 @@ def evaluate_trace_disalignment(interactions,
         source_sequence = get_sequence_from_interaction(interaction)
         source_gt = oracle.full_sort_predict(source_sequence).argmax(-1).item()
         source_sequence = trim_zero(source_sequence.squeeze(0)).tolist()
+        # if len(source_sequence) > 45:
+        #     print(f"DEBUG: skipping long sequence for now")
+        #     continue
         print(f"Source sequence:", source_sequence)
         time_dataset_generation = datasets.get_times()[i]
         try:
@@ -136,7 +139,6 @@ def evaluate_trace_disalignment(interactions,
         print(f"Alignment:", [print_action(a) for a in alignment])
         aligned_gt = oracle.full_sort_predict(aligned).argmax(-1).item()
         correct = source_gt != aligned_gt
-        # assert correct, "Source and aligned have the same label {source_gt} == {aligned_gt}"
         if correct: 
             status = "good"
             good += 1
@@ -156,8 +158,8 @@ def evaluate_trace_disalignment(interactions,
 
 
 if __name__ == "__main__":
-    config = get_config(dataset=RecDataset.ML_1M, model=RecModel.BERT4Rec)
-    oracle: ExtendedBERT4Rec = generate_model(config)
+    config = get_config(dataset=DATASET, model=MODEL)
+    oracle: SequentialRecommender = generate_model(config)
     interactions = interaction_generator(config)
-    datasets = TimedGenerator(dataset_generator(config=config, use_cache=False))
+    datasets = TimedGenerator(dataset_generator(config=config, use_cache=True))
     evaluate_trace_disalignment(interactions, datasets, oracle)

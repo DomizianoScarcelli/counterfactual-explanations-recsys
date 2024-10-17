@@ -3,17 +3,15 @@ import warnings
 from typing import List, Tuple
 
 import fire
-from recbole.trainer import Interaction
-from torch import Tensor
 
 from automata_learning import learning_pipeline
-from automata_utils import run_automata
+from config import DATASET, MODEL
 from recommenders.generate_dataset import (dataset_generator, get_config,
                                            get_sequence_from_interaction,
                                            interaction_generator)
 from recommenders.utils import trim_zero
-from trace_alignment import trace_alignment, trace_disalignment
-from type_hints import Dataset, LabeledTensor, RecDataset, RecModel
+from trace_alignment import trace_disalignment
+from type_hints import Dataset, RecDataset, RecModel
 from utils import TimedFunction
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -29,8 +27,8 @@ def single_run(source_sequence: List[int], _dataset: Tuple[Dataset, Dataset]):
     aligned, cost, alignment = timed_trace_disalignment(dfa, source_sequence)
     return aligned, cost, alignment
 
-def main(dataset:RecDataset=RecDataset.ML_1M, 
-         model:RecModel=RecModel.BERT4Rec, 
+def main(dataset:RecDataset=DATASET, 
+         model:RecModel=MODEL, 
          num_counterfactuals: int=1,
          num_generations: int=20,
          dataset_examples: int=2000):

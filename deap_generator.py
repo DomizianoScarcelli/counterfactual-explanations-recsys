@@ -10,9 +10,10 @@ import torch.nn.functional as F
 from deap import base, creator, tools
 from torch import Tensor
 
-from constants import MAX_LENGTH
+from constants import MAX_LENGTH, MIN_LENGTH
 from extended_ea_algorithms import eaSimpleBatched
 from recommenders.utils import pad_zero, trim_zero
+from type_hints import Dataset, GoodBadDataset
 from utils import set_seed
 
 set_seed()
@@ -51,6 +52,8 @@ def mutate(seq: List[int]):
     mutations = [mutate_replace, mutate_swap, mutate_shuffle, mutate_reverse]
     if len(seq) < MAX_LENGTH:
         mutations.append(mutate_add)
+    if len(seq) > MIN_LENGTH:
+        mutations.append(mutate_delete)
     mutation = random.choice(mutations)
     return mutation(seq)
 
@@ -85,7 +88,6 @@ def mutate_shuffle(seq: List[int], offset_ratio:float=0.3):
     return seq,
 
 def mutate_add(seq: List[int], max_value: NumItems=NumItems.ML_1M):
-    #TODO: test if add is a good mutation
     random_item = random.randint(1, max_value.value)
     while random_item in seq:
         random_item = random.randint(1, max_value.value)
@@ -93,6 +95,10 @@ def mutate_add(seq: List[int], max_value: NumItems=NumItems.ML_1M):
     seq.insert(i, random_item)
     return seq,
 
+def mutate_delete(seq: List[int]):
+    i = random.sample(range(len(seq)), 1)[0]
+    seq.remove(seq[i])
+    return seq,
 
 class GeneticGenerationStrategy():
     def __init__(self, input_seq: Tensor, predictor: Callable, pop_size: int=1000, generations: int=20, good_examples: bool=True):
@@ -153,7 +159,7 @@ class GeneticGenerationStrategy():
         return fitnesses
 
 
-    def generate(self):
+    def generate(self) -> Dataset:
         population = self.toolbox.population(n=self.pop_size)
 
         halloffame_size = int(np.round(self.pop_size * self.halloffame_ratio))
@@ -162,10 +168,8 @@ class GeneticGenerationStrategy():
         population, _ = eaSimpleBatched(population, self.toolbox, cxpb=0.7,
                                         mutpb=0.5, ngen=self.generations,
                                         halloffame=halloffame, verbose=False)
-        new_population = []
         preds = self.predictor(torch.stack([pad_zero(torch.tensor(p), MAX_LENGTH) for p in population])).argmax(-1)
-        for i, x in enumerate(population):
-            new_population.append((torch.tensor(x), preds[i].item()))
+        new_population = [(torch.tensor(x), preds[i].item()) for (i, x) in enumerate(population)]
         label_eval, seq_eval = self.evaluate_generation(new_population)
         print(f"Good examples = {self.good_examples} ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
         return new_population
@@ -199,13 +203,13 @@ class GeneticGenerationStrategy():
                 
         return oversample
     
-    def clean(self, examples):
+    def clean(self, examples: Dataset) -> Dataset:
         label = self.gt.argmax(-1).item()
         if self.good_examples:
             return [ex for ex in examples if ex[1] == label]
         return [ex for ex in examples if ex[1] != label]
 
-    def postprocess(self, population):
+    def postprocess(self, population: Dataset) -> Dataset:
         clean_pop = self.clean(population)
         label_eval, seq_eval = self.evaluate_generation(clean_pop)
         print(f"[After clean] Good examples={self.good_examples} ({len(clean_pop)}) ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")

@@ -5,17 +5,20 @@ from recbole.data import create_dataset, data_preparation
 from recbole.trainer import Trainer
 from recbole.utils import get_model, init_seed
 
+from type_hints import RecDataset, RecModel
+
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 #Bert4Rec hyperparameters taken from https://github.com/asash/bert4rec_repro
 parameter_dict = {
         'load_col': {"inter": ['user_id', 'item_id', 'rating', 'timestamp']},
-        "loss_type": "BPR",
-        "train_neg_sample_args":{'distribution': 'uniform', 'sample_num': 100},
+        # "loss_type": "BPR",
+        # "train_neg_sample_args":{'distribution': 'uniform', 'sample_num': 100},
+        "train_neg_sample_args": None,
         "train_batch_size": 12288,
         }
 
-config = Config(model='BERT4Rec', dataset='ml-1m', config_dict=parameter_dict)
+config = Config(model=RecModel.SASRec.value, dataset=RecDataset.ML_1M.value, config_dict=parameter_dict)
 
 # Initialize logger and seed
 # init_logger(config)
@@ -30,7 +33,7 @@ model = get_model(config['model'])(config, train_data.dataset).to(config['device
 
 # Perform inference
 trainer = Trainer(config, model)
-latest_checkpoint = "saved/Old/Bert4Rec_ml1m.pth"
+latest_checkpoint = "saved/SASRec_ml1m_latest.pth"
 trainer.resume_checkpoint(latest_checkpoint)
 # results = trainer.fit(train_data, show_progress=True)
 results = trainer.evaluate(test_data, show_progress=True, model_file=latest_checkpoint)

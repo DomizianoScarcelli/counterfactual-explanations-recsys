@@ -11,8 +11,10 @@ from recbole.utils import init_seed
 from torch import Tensor
 from torch.utils.data import DataLoader
 
+from config import DATASET, MODEL
 from deap_generator import GeneticGenerationStrategy
 from models.ExtendedBERT4Rec import ExtendedBERT4Rec
+from models.ExtendedSASRec import ExtendedSASRec
 from recommenders.model_funcs import model_predict
 from type_hints import Dataset, GoodBadDataset, RecDataset, RecModel
 
@@ -48,18 +50,18 @@ def generate_counterfactual_dataset(interaction: Union[Interaction, Tensor], mod
                                                       predictor=lambda x: model_predict(seq=x,
                                                                     model=model,
                                                                     prob=True),
-                                                      pop_size=1000,
+                                                      pop_size=2000,
                                                       good_examples=True,
-                                                      generations=20)
+                                                      generations=10)
     good_examples = good_genetic_strategy.generate()
     good_examples = good_genetic_strategy.postprocess(good_examples)
     bad_genetic_strategy = GeneticGenerationStrategy(input_seq=sequence,
                                                      predictor=lambda x: model_predict(seq=x,
                                                                    model=model,
                                                                    prob=True),
-                                                     pop_size=1000,
+                                                     pop_size=2000,
                                                      good_examples=False,
-                                                     generations=20)
+                                                     generations=10)
     bad_examples = bad_genetic_strategy.generate()
     bad_examples = bad_genetic_strategy.postprocess(bad_examples)
     
@@ -69,7 +71,7 @@ def generate_counterfactual_dataset(interaction: Union[Interaction, Tensor], mod
     test_dataset = (test_good, test_bad)
     return train_dataset, test_dataset
 
-def train_test_split(dataset: GoodBadDataset, test_split:float=0):
+def train_test_split(dataset: Dataset, test_split:float=0):
     train, test = [], []
     train_end = round(len(dataset) * (1-test_split))
     for i in range(train_end):
@@ -78,7 +80,7 @@ def train_test_split(dataset: GoodBadDataset, test_split:float=0):
         test.append(dataset[i])
     return train, test
 
-def save_dataset(dataset: Tuple[Dataset, Dataset], save_path: str):
+def save_dataset(dataset: Tuple[GoodBadDataset, GoodBadDataset], save_path: str):
     """
     Saves the dataset as a .pickle file
 
@@ -118,7 +120,7 @@ def get_dataloaders(config: Config) -> Tuple[DataLoader, DataLoader, DataLoader]
     train_data, valid_data, test_data = data_preparation(config, dataset)
     return train_data, valid_data, test_data 
 
-def generate_model(config: Config) -> ExtendedBERT4Rec:
+def generate_model(config: Config) -> SequentialRecommender:
     """
     Creates the pytorch model from the config file.
 
@@ -128,12 +130,22 @@ def generate_model(config: Config) -> ExtendedBERT4Rec:
         The model.
     """
     train_data, _, _= get_dataloaders(config)
-    # model = get_model(config['model'])(config, train_data.dataset).to(config['device'])
-    model = ExtendedBERT4Rec(config, train_data.dataset)
-    checkpoint_file = "saved/Old/Bert4Rec_ml1m.pth"
-    checkpoint = torch.load(checkpoint_file, map_location=config['device'])
-    model.load_state_dict(checkpoint["state_dict"])
-    model.load_other_parameter(checkpoint.get("other_parameter"))
+    checkpoint_map = {
+            RecModel.BERT4Rec.value:"saved/Old/Bert4Rec_ml1m.pth",
+            RecModel.SASRec.value: "saved/SASRec_ml1m.pth"
+            }
+
+    if config.model == RecModel.BERT4Rec.value:
+        model = ExtendedBERT4Rec(config, train_data.dataset)
+    elif config.model == RecModel.SASRec.value:
+        model = ExtendedSASRec(config, train_data.dataset)
+    else:
+        raise ValueError(f"Model {config.model} not supported")
+    checkpoint_file = checkpoint_map[config.model]
+    if checkpoint_file:
+        checkpoint = torch.load(checkpoint_file, map_location=config['device'])
+        model.load_state_dict(checkpoint["state_dict"])
+        model.load_other_parameter(checkpoint.get("other_parameter"))
     return model
 
 def get_config(dataset: RecDataset, model: RecModel) -> Config:
@@ -197,7 +209,7 @@ def make_deterministic(dataset: Tuple[Dataset, Dataset]) -> Tuple[Dataset, Datas
     return dataset
 
 if __name__ == "__main__":
-    config = get_config(model=RecModel.BERT4Rec, dataset=RecDataset.ML_1M)
+    config = get_config(model=MODEL, dataset=DATASET)
     datasets = dataset_generator(config)
     for dataset in datasets:
         dataset_save_path = "saved/counterfactual_dataset.pickle"
