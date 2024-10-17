@@ -1,4 +1,5 @@
 import json
+from statistics import mean
 from typing import Dict, List, Optional
 
 import torch
@@ -66,9 +67,48 @@ def evaluate_stats(log_path: str):
     Given an evaluation log path, it returns the stats of the evaluation.
 
     Args:
-        log_path: [TODO:description]
+        log_path: The path of the evaluation log to load.
     """
-    pass
+    with open(log_path) as f:
+        evaluation_log = json.load(f)
+    
+    stats = {"total_runs": 0, "good_runs": 0, "bad_runs":
+             {"counterfactual_not_found": 0, "malformed_dfa": 0, "other": 0},
+             "mean_time_dataset_generation": 0, "mean_time_automata_learning":
+             0, "mean_time_alignment": 0, "mean_total_time": 0, "min_cost": 0,
+             "max_cost": 0, "mean_cost": 0}
+    costs = []
+    for run in evaluation_log:
+        stats["total_runs"] += 1
+        if run["status"] == "good":
+            stats["good_runs"] += 1
+        elif run["status"] == "bad":
+            stats["bad_runs"]["counterfactual_not_found"] += 1
+        elif run["status"] == "DfaNotRejecting" or run["status"] == "DfaNotAccepting":
+            stats["bad_runs"]["malformed_dfa"] += 1
+        elif run["status"] == "skipped":
+            stats["bad_runs"]["other"] += 1
+        
+        if run["status"] == "good":
+            stats["mean_time_dataset_generation"] += run["times"]["time_dataset_generation"]
+            stats["mean_time_automata_learning"] += run["times"]["time_automata_learning"]
+            stats["mean_time_alignment"] += run["times"]["time_alignment"]
+            stats["mean_total_time"] += run["times"]["total_time"]
+
+            costs.append(run["cost"])
+    stats["mean_time_dataset_generation"] /= stats["good_runs"]
+    stats["mean_time_automata_learning"] /= stats["good_runs"]
+    stats["mean_time_alignment"] /= stats["good_runs"]
+    stats["mean_total_time"] /= stats["good_runs"]
+
+    stats["min_cost"] = min(costs)
+    stats["max_cost"] = max(costs)
+    stats["mean_cost"] = mean(costs)
+
+    with open("stats.json", "w") as f:
+        json.dump(stats, f)
+
+    return stats
 
 def evaluate_trace_disalignment(interactions, 
                                 datasets, 
@@ -158,8 +198,10 @@ def evaluate_trace_disalignment(interactions,
 
 
 if __name__ == "__main__":
-    config = get_config(dataset=DATASET, model=MODEL)
-    oracle: SequentialRecommender = generate_model(config)
-    interactions = interaction_generator(config)
-    datasets = TimedGenerator(dataset_generator(config=config, use_cache=True))
-    evaluate_trace_disalignment(interactions, datasets, oracle)
+    # config = get_config(dataset=DATASET, model=MODEL)
+    # oracle: SequentialRecommender = generate_model(config)
+    # interactions = interaction_generator(config)
+    # datasets = TimedGenerator(dataset_generator(config=config, use_cache=False))
+    # evaluate_trace_disalignment(interactions, datasets, oracle)
+    evaluate_stats("evaluation_log.json")
+    
