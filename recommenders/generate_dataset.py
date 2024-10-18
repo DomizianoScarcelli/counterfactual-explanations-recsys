@@ -131,7 +131,7 @@ def generate_model(config: Config) -> SequentialRecommender:
     """
     train_data, _, _= get_dataloaders(config)
     checkpoint_map = {
-            RecModel.BERT4Rec.value:"saved/Old/Bert4Rec_ml1m.pth",
+            RecModel.BERT4Rec.value:"saved/Bert4Rec_ml1m.pth",
             RecModel.SASRec.value: "saved/SASRec_ml1m.pth"
             }
 

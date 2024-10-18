@@ -164,7 +164,7 @@ def faster_dijkstra(dfa: Dfa,
     """
     print(f"-----F-DIJKSTRA------")
     print(f"Initial remaining trace: ", remaining_trace)
-    starting_point = 1 
+    starting_point = 6
     for iter in range(starting_point, len(remaining_trace)):
         dfa.reset_to_initial()
         initial_alignment = []

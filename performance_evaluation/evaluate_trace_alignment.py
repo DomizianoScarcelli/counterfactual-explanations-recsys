@@ -198,10 +198,10 @@ def evaluate_trace_disalignment(interactions,
 
 
 if __name__ == "__main__":
-    # config = get_config(dataset=DATASET, model=MODEL)
-    # oracle: SequentialRecommender = generate_model(config)
-    # interactions = interaction_generator(config)
-    # datasets = TimedGenerator(dataset_generator(config=config, use_cache=False))
-    # evaluate_trace_disalignment(interactions, datasets, oracle)
-    evaluate_stats("evaluation_log.json")
+    config = get_config(dataset=DATASET, model=MODEL)
+    oracle: SequentialRecommender = generate_model(config)
+    interactions = interaction_generator(config)
+    datasets = TimedGenerator(dataset_generator(config=config, use_cache=False))
+    evaluate_trace_disalignment(interactions, datasets, oracle)
+    # evaluate_stats("evaluation_log.json")
     
