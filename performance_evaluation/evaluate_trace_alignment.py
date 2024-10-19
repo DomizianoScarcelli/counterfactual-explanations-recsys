@@ -1,4 +1,3 @@
-import json
 from statistics import mean
 from typing import Dict, List, Optional
 
@@ -18,6 +17,7 @@ from recommenders.utils import pad_zero, trim_zero
 from run import single_run, timed_learning_pipeline, timed_trace_disalignment
 from type_hints import RecDataset, RecModel
 from utils import TimedGenerator, set_seed
+import json
 
 set_seed()
 

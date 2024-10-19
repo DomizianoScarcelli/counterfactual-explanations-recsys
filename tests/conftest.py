@@ -2,9 +2,8 @@ import pytest
 import torch
 from recbole.config import Config
 from recbole.model.abstract_recommender import SequentialRecommender
-
-from automata_learning import (NumItems, generate_automata_from_dataset,
-                               generate_single_accepting_sequence_dfa)
+from deap_generator import NumItems
+from automata_learning import generate_automata_from_dataset, generate_single_accepting_sequence_dfa
 from recommenders.generate_dataset import generate_model, load_dataset
 from trace_alignment import augment_constraint_automata, augment_trace_automata
 

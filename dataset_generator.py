@@ -10,12 +10,6 @@ import torch
 import torch.nn.functional as F
 from tqdm import tqdm
 
-
-class NumItems(Enum):
-    ML_100K=1682
-    ML_1M= 3952 - 500
-    MOCK= 6
-
 # A function to calculate distance between two sequences (e.g., edit distance)
 def edit_distance(seq1, seq2):
     return 1 - np.sum(np.array(seq1) == np.array(seq2)) / len(seq1)  # Fraction of matching elements

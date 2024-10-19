@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 from automata_utils import invert_automata, run_automata
 from constants import MAX_LENGTH
-from dataset_generator import NumItems
+from deap_generator import NumItems
 from exceptions import CounterfactualNotFound, DfaNotAccepting, DfaNotRejecting
 from graph_search import (Action, a_star, act_str, decode_action, dijkstra,
                           faster_dijkstra)

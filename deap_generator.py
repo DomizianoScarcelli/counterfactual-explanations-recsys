@@ -12,7 +12,7 @@ from torch import Tensor
 
 from constants import MAX_LENGTH, MIN_LENGTH
 from extended_ea_algorithms import eaSimpleBatched
-from recommenders.utils import pad_zero, trim_zero
+from recommenders.utils import pad_zero, pad_zero_batch, trim_zero
 from type_hints import Dataset, GoodBadDataset
 from utils import set_seed
 
@@ -20,7 +20,8 @@ set_seed()
 
 class NumItems(Enum):
     ML_100K=1682
-    ML_1M= 3952 - 500
+    ML_1M=3703
+    MOCK=6
 
 def cPickle_clone(x):
     # return deepcopy(x)
@@ -49,7 +50,8 @@ def random_points_with_offset(max_value: int, max_offset: int):
     return tuple(sorted([i, j]))
 
 def mutate(seq: List[int]):
-    mutations = [mutate_replace, mutate_swap, mutate_shuffle, mutate_reverse]
+    # mutations = [mutate_replace, mutate_swap, mutate_shuffle, mutate_reverse]
+    mutations = [mutate_replace, mutate_swap]
     if len(seq) < MAX_LENGTH:
         mutations.append(mutate_add)
     if len(seq) > MIN_LENGTH:
@@ -171,16 +173,18 @@ class GeneticGenerationStrategy():
         preds = self.predictor(torch.stack([pad_zero(torch.tensor(p), MAX_LENGTH) for p in population])).argmax(-1)
         new_population = [(torch.tensor(x), preds[i].item()) for (i, x) in enumerate(population)]
         label_eval, seq_eval = self.evaluate_generation(new_population)
-        print(f"Good examples = {self.good_examples} ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
-        return new_population
-
+        print(f"Good examples = {self.good_examples} [{len(new_population)}] ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
+        if not self.good_examples:
+            # Augment only good examples, which are the rarest
+            return new_population
+        
         augmented = self.augment_pop(population, halloffame)
         new_augmented = []
-        preds = self.predictor(torch.tensor(augmented)).argmax(-1)
+        preds = self.predictor(pad_zero_batch(augmented, MAX_LENGTH)).argmax(-1)
         for i, x in enumerate(augmented):
             new_augmented.append((torch.tensor(x), preds[i].item()))
         label_eval, seq_eval = self.evaluate_generation(new_augmented)
-        print(f"[Augmented] Good examples = {self.good_examples} ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
+        print(f"[Augmented] Good examples = {self.good_examples} [{len(new_augmented)}] ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
         return new_augmented
 
     def augment_pop(self, population, halloffame):

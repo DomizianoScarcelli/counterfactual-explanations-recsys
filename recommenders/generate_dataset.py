@@ -17,6 +17,11 @@ from models.ExtendedBERT4Rec import ExtendedBERT4Rec
 from models.ExtendedSASRec import ExtendedSASRec
 from recommenders.model_funcs import model_predict
 from type_hints import Dataset, GoodBadDataset, RecDataset, RecModel
+from utils import set_seed
+import warnings
+
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 
 
 def generate_counterfactual_dataset(interaction: Union[Interaction, Tensor], model: SequentialRecommender) -> Tuple[GoodBadDataset, GoodBadDataset]:
@@ -209,8 +214,9 @@ def make_deterministic(dataset: Tuple[Dataset, Dataset]) -> Tuple[Dataset, Datas
     return dataset
 
 if __name__ == "__main__":
+    set_seed()
     config = get_config(model=MODEL, dataset=DATASET)
-    datasets = dataset_generator(config)
+    datasets = dataset_generator(config, use_cache=False)
     for dataset in datasets:
         dataset_save_path = "saved/counterfactual_dataset.pickle"
         save_dataset(dataset, save_path=dataset_save_path)
