@@ -5,9 +5,7 @@ from statistics import mean
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
 from aalpy.automata.Dfa import Dfa, DfaState
-from torch import is_deterministic_algorithms_warn_only_enabled
-
-from automata_utils import run_automata
+from torch import Tensor
 
 # from memory_profiler import memory_usage
 # import tracemalloc
@@ -152,9 +150,7 @@ def dijkstra(dfa: Dfa,
     return a_star(dfa, origin_state, target_states, remaining_trace, min_alignment_length, max_alignment_length, heuristic, initial_alignment)
 
 def faster_dijkstra(dfa: Dfa, 
-                    origin_state: DfaState,
-                    target_states: Set[DfaState],
-                    remaining_trace: List[int],
+                    trace: List,
                     min_alignment_length: Optional[int],
                     max_alignment_length: Optional[int]):
     """
@@ -162,33 +158,65 @@ def faster_dijkstra(dfa: Dfa,
     execute partially the trace with sync_e actions, until a certain index i, and then run dijkstra on the current state
     and the remaining trace.
     """
-    print(f"-----F-DIJKSTRA------")
-    print(f"Initial remaining trace: ", remaining_trace)
-    starting_point = 4
-    for iter in range(starting_point, len(remaining_trace)):
-        dfa.reset_to_initial()
-        initial_alignment = []
-        end = len(remaining_trace) - iter
-        for i in range(end):
-            char = f"sync_{remaining_trace[i]}"
-            dfa.step(char)
-            encoded_char = encode_action_str(char)
-            initial_alignment.append(encoded_char)
-        print(f"-----F-DIJKSTRA ITER {iter}------")
-        print(f"Initial state: {dfa.initial_state.state_id}, current state: {dfa.current_state.state_id}")
-        print(f"Initial alignment is: ", tuple(initial_alignment))
-        remaining_trace = remaining_trace[end:]
-        print(f"Remaining trace is: ", remaining_trace)
-        print(f"---------------------------------")
-        remaining_alignment = a_star(dfa=dfa, 
-                                     origin_state=dfa.current_state,
-                                     target_states=target_states,
-                                     remaining_trace=remaining_trace,
-                                     min_alignment_length=min_alignment_length ,
-                                     max_alignment_length=max_alignment_length,
-                                     initial_alignment=tuple(initial_alignment))
-        if remaining_alignment:
-            return remaining_alignment
+    def get_target_states(accepting_states, fixed_trace):
+        final_states = set()
+        for state in dfa.states:
+            curr_state = state
+            for c in fixed_trace:
+                new_state = curr_state.transitions[f"sync_{c}"]
+                # print(f"{curr_state.state_id}, sync_{c} -> {new_state.state_id}, is final? {new_state in final_states}")
+                curr_state = new_state
+            if curr_state in accepting_states:
+                final_states.add(curr_state)
+        return final_states
+                
+    print(f"-----FAST-DIJKSTRA------")
+    start, end = (0, len(trace)) # the split is [:start], [start:end], [end:]
+    accepting_states = set(s for s in dfa.states if s.is_accepting)
+    # for iter in range(*window_range):
+    dfa.reset_to_initial()
+    initial_alignment = []
+    if isinstance(trace[0], Tensor):
+        trace = [int(x.item()) for x in trace]
+    trace_to_execute = trace[:start]
+    mutable_trace = trace[start:end]
+    fixed_end_trace = trace[end:]
+    for char in trace_to_execute:
+        char = f"sync_{char}"
+        dfa.step(char)
+        encoded_char = encode_action_str(char)
+        initial_alignment.append(encoded_char)
+    initial_alignment = tuple(initial_alignment)
+    #TODO: even if alignment is found, the automa doesn't accept. I need to investigate
+    target_states = get_target_states(accepting_states, fixed_end_trace)
+    if min_alignment_length and fixed_end_trace:
+        min_alignment_length -= len(fixed_end_trace)
+    if max_alignment_length and fixed_end_trace:
+        max_alignment_length -= len(fixed_end_trace)
+    print(f"""
+          ---DEBUG---
+          Original trace: {trace}
+          Executed trace: {trace_to_execute}
+          Mutable trace: {mutable_trace}
+          Fixed end trace: {fixed_end_trace}
+          Initial alignment: {[print_action(a) for a in initial_alignment]}
+          ---
+          Initial state: {dfa.initial_state.state_id}
+          State after executed trace: {dfa.current_state.state_id}
+          Accepting sates: {[s.state_id for s in accepting_states]}
+          Target states: {[s.state_id for s in target_states]}
+          ---
+          (Min, Max) Alignment Length: ({min_alignment_length}, {max_alignment_length})
+          """)
+    remaining_alignment = a_star(dfa=dfa, 
+                                 origin_state=dfa.current_state,
+                                 target_states=target_states,
+                                 remaining_trace=mutable_trace,
+                                 min_alignment_length=min_alignment_length ,
+                                 max_alignment_length=max_alignment_length,
+                                 initial_alignment=initial_alignment)
+    if remaining_alignment:
+        return remaining_alignment + tuple(encode_action_str(action) for action in [f"sync_{c}" for c in fixed_end_trace])
     return None
 
 def a_star(dfa: Dfa, 
@@ -202,29 +230,35 @@ def a_star(dfa: Dfa,
     remaining_trace_idx = len(remaining_trace)
     # tracemalloc.start()
     
-    def heuristic(curr_state, action):
+    def heuristic(curr_state, curr_alignment):
         if heuristic_fn:
-            return heuristic_fn(curr_state, action)
+            return heuristic_fn(curr_state, curr_alignment)
         
         ALPHA = 0.001
-        return visited.get((curr_state.state_id, action), 0) * ALPHA
+        add, _del = 0, 0
+        for action in curr_alignment:
+            action_type, _ = decode_action(action)
+            if action_type == Action.DEL:
+                _del += 1
+            if action_type == Action.ADD:
+                add += 1
+        if add + _del == 2: return 0
+        else: return add + _del
 
     def get_constrained_neighbours(state, curr_char: Optional[int]):
         neighbours = []
         for p, target in state.transitions.items():
-            # if (state.state_id, p) in visited:
-            #     continue
             
             encoded_p = encode_action_str(p) if isinstance(p, str) else p
             action_type, e = decode_action(encoded_p)
-            
+            #TODO: see if the already_added is really useful            
             if action_type == Action.SYNC and curr_char is not None:
                 add_e = encode_action(Action.ADD, e)
-                already_added = p in inputs or add_e in inputs
+                del_e = encode_action(Action.DEL, e)
+                already_added = p in inputs or add_e in inputs or del_e in inputs
                 if curr_char == e and not already_added:
                     neighbours.append((target, 0, encoded_p))  # sync_e cost = 0
             elif action_type == Action.DEL and curr_char is not None:
-                #TODO: see if already added is useful here
                 sync_e = encode_action(Action.SYNC, e)
                 add_e = encode_action(Action.ADD, e)
                 already_added = p in inputs or sync_e in inputs or add_e in inputs
@@ -232,12 +266,12 @@ def a_star(dfa: Dfa,
                     neighbours.append((target, 1, encoded_p))  # del_e cost = 1
             elif action_type == Action.ADD:
                 sync_e = encode_action(Action.SYNC, e)
-                already_added = p in inputs or sync_e in inputs
+                del_e = encode_action(Action.DEL, e)
+                already_added = p in inputs or sync_e in inputs or del_e in inputs
                 if not already_added:
                     neighbours.append((target, 1, encoded_p))  # add_e cost = 1
 
         return neighbours
-
     
     invalid_states = [s for s in target_states if s not in dfa.states]
     if origin_state not in dfa.states or invalid_states:
@@ -246,9 +280,7 @@ def a_star(dfa: Dfa,
 
     paths = []
     heap_counter = 0
-    # Dictionary that takes count of the number of times a tuple (state, action) has been considered, when action is not a sync.
-    # In A*, we give more weight to the actions that have been considered less times
-    visited: Dict[Tuple[str, int], int] = {}
+    visited = set()
     
     if initial_alignment:
         heapq.heappush(paths, (0, heap_counter, origin_state, (origin_state,), initial_alignment, remaining_trace_idx))
@@ -266,6 +298,7 @@ def a_star(dfa: Dfa,
             # print(get_path_statistics(paths))
             print(f"Num paths: {len(paths)}")
             print(f"Remaining trace idx: {remaining_trace_idx}")
+            print(f"Paths head (20) costs", [p[0] for p in paths[:20]])
             # print(f"Remaining trace: {remaining_trace[-remaining_trace_idx:]}")
             # log_memory_usage("")
             # analyze_tracemalloc()
@@ -286,13 +319,11 @@ def a_star(dfa: Dfa,
             if action in set(inputs):
                 continue
 
-            current_state_action = (current_state.state_id, action)
+            current_state_trace = (current_state.state_id, remaining_trace_idx)
             if decode_action(action)[0] != Action.SYNC:
-                if current_state_action not in visited:
-                    visited[current_state_action] = 1
-                else:
-                    continue #MAJOR TODO: experiment with this.
-                    visited[current_state_action] += 1
+                if current_state_trace in visited:
+                    continue
+                visited.add(current_state_trace)
 
             new_cost = cost + action_cost
             new_path = path + (neighbour,) 
@@ -304,7 +335,7 @@ def a_star(dfa: Dfa,
                 new_remaining_trace_idx -= 1
 
             heap_counter += 1
-            priority = new_cost + heuristic(current_state, action)
+            priority = new_cost + heuristic(current_state, new_inputs)
             heapq.heappush(paths, (priority, heap_counter, neighbour, new_path, new_inputs, new_remaining_trace_idx))
 
     return None

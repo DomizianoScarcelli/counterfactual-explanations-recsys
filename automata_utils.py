@@ -49,6 +49,7 @@ def run_automata(automata: Dfa, input: list):
         result = automata.step(char)
         # except KeyError:
             #TODO: see how to handle this case
+            # continue
             # print(f"Unknown character: {char}, self looping...")
             # continue
             

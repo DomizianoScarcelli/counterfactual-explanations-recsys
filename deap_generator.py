@@ -52,10 +52,10 @@ def random_points_with_offset(max_value: int, max_offset: int):
 def mutate(seq: List[int]):
     # mutations = [mutate_replace, mutate_swap, mutate_shuffle, mutate_reverse]
     mutations = [mutate_replace, mutate_swap]
-    if len(seq) < MAX_LENGTH:
-        mutations.append(mutate_add)
-    if len(seq) > MIN_LENGTH:
-        mutations.append(mutate_delete)
+    # if len(seq) < MAX_LENGTH:
+    #     mutations.append(mutate_add)
+    # if len(seq) > MIN_LENGTH:
+    #     mutations.append(mutate_delete)
     mutation = random.choice(mutations)
     return mutation(seq)
 
@@ -175,6 +175,7 @@ class GeneticGenerationStrategy():
         label_eval, seq_eval = self.evaluate_generation(new_population)
         print(f"Good examples = {self.good_examples} [{len(new_population)}] ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
         if not self.good_examples:
+            # new_population.append((self.input_seq, self.gt.argmax(-1).item()))
             # Augment only good examples, which are the rarest
             return new_population
         

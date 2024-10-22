@@ -24,7 +24,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
 
-def generate_counterfactual_dataset(interaction: Union[Interaction, Tensor], model: SequentialRecommender) -> Tuple[GoodBadDataset, GoodBadDataset]:
+def generate_counterfactual_dataset(interaction: Union[Interaction, Tensor], model: SequentialRecommender) -> Tuple[Tuple[GoodBadDataset, GoodBadDataset], Tuple[GoodBadDataset, GoodBadDataset]]:
     """
     Generates the dataset of good and bad points from a sequence in the
     Interaction, using the model as a black box oracle. The dataset can be used
@@ -76,7 +76,7 @@ def generate_counterfactual_dataset(interaction: Union[Interaction, Tensor], mod
     test_dataset = (test_good, test_bad)
     return train_dataset, test_dataset
 
-def train_test_split(dataset: Dataset, test_split:float=0):
+def train_test_split(dataset: Dataset, test_split:float=0.2):
     train, test = [], []
     train_end = round(len(dataset) * (1-test_split))
     for i in range(train_end):
@@ -97,7 +97,7 @@ def save_dataset(dataset: Tuple[GoodBadDataset, GoodBadDataset], save_path: str)
         print(f"Dataset saved to {save_path}")
         pickle.dump(dataset, f)
 
-def load_dataset(load_path: str) -> Tuple[Dataset, Dataset]:
+def load_dataset(load_path: str) -> Tuple[GoodBadDataset, GoodBadDataset]:
     """
     Loads the dataset from disk.
 
@@ -177,7 +177,7 @@ def interaction_generator(config: Config) -> Generator[Interaction, None, None]:
         interaction = data[0]
         yield interaction
 
-def dataset_generator(config: Config, use_cache: bool=True) -> Generator[Tuple[GoodBadDataset, GoodBadDataset], None, None]:
+def dataset_generator(config: Config, use_cache: bool=True) -> Generator[Tuple[Tuple[GoodBadDataset, GoodBadDataset], Tuple[GoodBadDataset, GoodBadDataset]], None, None]:
     interactions = interaction_generator(config)
     model = generate_model(config)
     for i, interaction in enumerate(interactions):

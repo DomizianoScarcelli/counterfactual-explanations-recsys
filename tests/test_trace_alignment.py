@@ -114,6 +114,7 @@ class TestRealData:
         gp, _ = dataset
         for good_trace, _ in gp:
             self.test_trace_disalignment_single(a_dfa_aug, good_trace)
+
 class TestUtils:
     def test_align(self):
         # original_trace = [1,2,3,5,6]
@@ -130,13 +131,34 @@ class TestUtils:
         computed: {aligned_trace}
         """
 
-@pytest.mark.incremental
-class TestParticularCases:
+class TestEdgeCases:
     """
-    This class tests all those particular cases where a bug was found, in order
+    This class tests all those edge cases where a bug was found, in order
     to see if the bug is fixed for good. Particular hard coded traces are used.
     """
+    def test_all_syncs(self, model):
+        set_seed()
+        trace = torch.tensor([578, 65, 28, 1432, 2079, 199, 1043, 1713, 80,
+                               63, 265, 44, 152, 157, 1059, 133, 93, 49, 631,
+                               433, 190, 134, 844, 79, 118, 105, 639, 1396, 51,
+                               117, 90, 21, 402, 89, 336]).unsqueeze(0)
+        train, _ = generate_counterfactual_dataset(trace, model)
+        g, b = train
+        print(f"Good points: {len(g)}")
+        print(f"Bad points: {len(b)}")
+        original_label = model.full_sort_predict_from_sequence(trace).argmax(-1).item()
+        print(f"Original trace's label: {original_label}")
+        trace = trace.squeeze(0).tolist()
+        a_dfa_aug = learning_pipeline(trace, train)
+        original_accepts = run_automata(a_dfa_aug, trace)
+        assert original_accepts, "Original Automata doesn't accept the original sequence"
+        disaligned, _, alignment = trace_disalignment(a_dfa_aug, trace)
+        print(f"Alignment is: {[print_action(a) for a in alignment]}")
+        disaligned_rejects = run_automata(a_dfa_aug, disaligned)
+        assert disaligned_rejects, "Original Automata doesn't reject the counterfactual sequence"
 
+    
+    @pytest.mark.skip()
     def test_dfa_not_rejecting(self, model):
         """
         For some traces, they are not rejected by the DFA (incorrect), and

@@ -201,7 +201,7 @@ if __name__ == "__main__":
     config = get_config(dataset=DATASET, model=MODEL)
     oracle: SequentialRecommender = generate_model(config)
     interactions = interaction_generator(config)
-    datasets = TimedGenerator(dataset_generator(config=config, use_cache=False))
+    datasets = TimedGenerator(dataset_generator(config=config, use_cache=True))
     evaluate_trace_disalignment(interactions, datasets, oracle)
     # evaluate_stats("evaluation_log.json")
     

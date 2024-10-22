@@ -8,7 +8,7 @@ from aalpy.learning_algs import run_RPNI
 from aalpy.utils.HelperFunctions import make_input_complete
 from recommenders.generate_dataset import load_dataset
 from trace_alignment import augment_constraint_automata
-from type_hints import Dataset
+from type_hints import Dataset, GoodBadDataset
 
 
 def generate_automata(dataset, load_if_exists: bool=True, save_path: str="automata.pickle") -> Union[None, Dfa]:
@@ -91,7 +91,7 @@ def generate_single_accepting_sequence_dfa(sequence):
     return dfa
 
 
-def learning_pipeline(source: List[int], dataset: Tuple[Dataset, Dataset]) -> Dfa:
+def learning_pipeline(source: List[int], dataset: Tuple[GoodBadDataset, GoodBadDataset]) -> Dfa:
     t_dfa = generate_single_accepting_sequence_dfa(source)
     a_dfa = generate_automata_from_dataset(dataset, load_if_exists=False)
     a_dfa_aug = augment_constraint_automata(a_dfa, t_dfa)
