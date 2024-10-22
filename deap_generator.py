@@ -23,6 +23,7 @@ class NumItems(Enum):
     ML_1M=3703
     MOCK=6
 
+
 def cPickle_clone(x):
     # return deepcopy(x)
     return cPickle.loads(cPickle.dumps(x))
@@ -49,15 +50,6 @@ def random_points_with_offset(max_value: int, max_offset: int):
     # Sort i and j to ensure i <= j
     return tuple(sorted([i, j]))
 
-def mutate(seq: List[int]):
-    # mutations = [mutate_replace, mutate_swap, mutate_shuffle, mutate_reverse]
-    mutations = [mutate_replace, mutate_swap]
-    # if len(seq) < MAX_LENGTH:
-    #     mutations.append(mutate_add)
-    # if len(seq) > MIN_LENGTH:
-    #     mutations.append(mutate_delete)
-    mutation = random.choice(mutations)
-    return mutation(seq)
 
 def mutate_replace(seq: List[int], max_value:NumItems=NumItems.ML_1M, num_replaces:int=1):
     for _ in range(num_replaces):
@@ -102,8 +94,24 @@ def mutate_delete(seq: List[int]):
     seq.remove(seq[i])
     return seq,
 
+
+class Mutations(Enum):
+    SWAP = mutate_swap
+    REPLACE = mutate_replace
+    SHUFFLE = mutate_shuffle
+    REVERSE = mutate_reverse
+    ADD = mutate_add
+    DELETE = mutate_delete
+
+ALL_MUTATIONS: List[Mutations] = [Mutations.SWAP, Mutations.REPLACE,
+                                  Mutations.SHUFFLE, Mutations.REVERSE,
+                                  Mutations.ADD, Mutations.DELETE]
+
 class GeneticGenerationStrategy():
-    def __init__(self, input_seq: Tensor, predictor: Callable, pop_size: int=1000, generations: int=20, good_examples: bool=True):
+    def __init__(self, input_seq: Tensor, predictor: Callable,
+                 allowed_mutations: List[Mutations] = ALL_MUTATIONS, pop_size:
+                 int=1000, generations: int=20, good_examples: bool=True,
+                 verbose: bool=True):
         self.input_seq = trim_zero(input_seq)
         self.predictor = predictor
         self.pop_size = pop_size
@@ -111,6 +119,8 @@ class GeneticGenerationStrategy():
         self.generations = generations
         self.good_examples = good_examples
         self.halloffame_ratio = 0.1
+        self.allowed_mutations = allowed_mutations
+        self.verbose = verbose
         # Define the evaluation function
         creator.create("fitness", base.Fitness, weights=(-1.0,))  # Minimize fitness
         creator.create("individual", list, fitness=creator.fitness)
@@ -123,21 +133,21 @@ class GeneticGenerationStrategy():
 
         self.toolbox.register("evaluate", self.evaluate_fitness_batch)
         self.toolbox.register("mate", tools.cxTwoPoint)  # Use two-point crossover
-        self.toolbox.register("mutate", mutate)
+        self.toolbox.register("mutate", self.mutate)
         self.toolbox.register("select", tools.selTournament, tournsize=3)  # Tournament selection
     
-    def evaluate_fitness(self,individual: List[int]):
-        #TODO: delete function
-        ALPHA1= 0.5
-        ALPHA2 = 1 - ALPHA1
-        candidate_seq = torch.tensor(individual)
-        candidate_prob = self.predictor(candidate_seq)  # Function to assign label based on the recommender system
-        seq_dist = edit_distance(self.input_seq, candidate_seq) #[0,1]
-        label_dist = cosine_distance(self.gt, candidate_prob) #[0,1]
-        self_ind = self_indicator(self.input_seq, candidate_seq) #0 if different, inf if equal
-        if not self.good_examples:
-            label_dist = 1 - label_dist
-        return ALPHA1 * seq_dist + ALPHA2 * label_dist + self_ind,
+    def print(self, s):
+        if self.verbose:
+            print(s)
+
+    def mutate(self, seq: List[int]):
+        mutations = self.allowed_mutations.copy()
+        if not len(seq) < MAX_LENGTH and mutate_add in mutations:
+            mutations.remove(mutate_add)
+        if not len(seq) > MIN_LENGTH and mutate_delete in mutations:
+            mutations.remove(mutate_delete)
+        mutation = random.choice(mutations)
+        return mutation(seq)
 
     def evaluate_fitness_batch(self, individuals: List[List[int]]) -> List[float]:
         #TODO: add a batch_size mechanism
@@ -173,7 +183,7 @@ class GeneticGenerationStrategy():
         preds = self.predictor(torch.stack([pad_zero(torch.tensor(p), MAX_LENGTH) for p in population])).argmax(-1)
         new_population = [(torch.tensor(x), preds[i].item()) for (i, x) in enumerate(population)]
         label_eval, seq_eval = self.evaluate_generation(new_population)
-        print(f"Good examples = {self.good_examples} [{len(new_population)}] ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
+        self.print(f"Good examples = {self.good_examples} [{len(new_population)}] ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
         if not self.good_examples:
             # new_population.append((self.input_seq, self.gt.argmax(-1).item()))
             # Augment only good examples, which are the rarest
@@ -185,7 +195,7 @@ class GeneticGenerationStrategy():
         for i, x in enumerate(augmented):
             new_augmented.append((torch.tensor(x), preds[i].item()))
         label_eval, seq_eval = self.evaluate_generation(new_augmented)
-        print(f"[Augmented] Good examples = {self.good_examples} [{len(new_augmented)}] ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
+        self.print(f"[Augmented] Good examples = {self.good_examples} [{len(new_augmented)}] ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
         return new_augmented
 
     def augment_pop(self, population, halloffame):
@@ -217,7 +227,7 @@ class GeneticGenerationStrategy():
     def postprocess(self, population: Dataset) -> Dataset:
         clean_pop = self.clean(population)
         label_eval, seq_eval = self.evaluate_generation(clean_pop)
-        print(f"[After clean] Good examples={self.good_examples} ({len(clean_pop)}) ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
+        self.print(f"[After clean] Good examples={self.good_examples} ({len(clean_pop)}) ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
         return clean_pop
 
     def evaluate_generation(self, examples):

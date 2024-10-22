@@ -12,7 +12,7 @@ from torch import Tensor
 from torch.utils.data import DataLoader
 
 from config import DATASET, MODEL
-from deap_generator import GeneticGenerationStrategy
+from deap_generator import GeneticGenerationStrategy, Mutations
 from models.ExtendedBERT4Rec import ExtendedBERT4Rec
 from models.ExtendedSASRec import ExtendedSASRec
 from recommenders.model_funcs import model_predict
@@ -21,7 +21,6 @@ from utils import set_seed
 import warnings
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
-
 
 
 def generate_counterfactual_dataset(interaction: Union[Interaction, Tensor], model: SequentialRecommender) -> Tuple[Tuple[GoodBadDataset, GoodBadDataset], Tuple[GoodBadDataset, GoodBadDataset]]:
