@@ -6,6 +6,7 @@ import json
 from recbole.model.abstract_recommender import SequentialRecommender
 
 from config import DATASET, MODEL
+from statistics import mean
 from deap_generator import GeneticGenerationStrategy, Mutations
 from recommenders.model_funcs import model_predict
 from utils import set_seed
@@ -82,13 +83,32 @@ def get_stats(results: Dict):
     """
     """
     mutation_stats = {} 
-    for interaction_run in results:
-        for mutation_run in interaction_run:
-            allowed_mutations = tuple(mutation_run["mutations_allowed"])
-            if allowed_mutations not in mutation_stats:
-                mutation_stats[allowed_mutations] = {}
+    for interaction_run in results.values():
+        for mutation_run in interaction_run[0]: #TODO: next time the log is generated, with the extend, remove this [0]
+            good_avg_distance_post = mutation_run["good_stats"]["avg_distance_post"]
+            good_len_population_post = mutation_run["good_stats"]["len_population_post"]
+            bad_avg_distance_post = mutation_run["bad_stats"]["avg_distance_post"]
+            bad_len_population_post = mutation_run["bad_stats"]["len_population_post"]
 
-    pass
+            allowed_mutations = ", ".join(mutation_run["mutations_allowed"])
+            if allowed_mutations not in mutation_stats:
+                mutation_stats[allowed_mutations] = {"good_stats": {"avg_distance_post": [good_avg_distance_post], "len_population_post": [good_len_population_post]},
+                                                     "bad_stats": {"avg_distance_post": [bad_avg_distance_post], "len_population_post": [bad_len_population_post]} }
+            else:
+                mutation_stats[allowed_mutations]["good_stats"]["avg_distance_post"].append(good_avg_distance_post)
+                mutation_stats[allowed_mutations]["good_stats"]["len_population_post"].append(good_len_population_post)
+                mutation_stats[allowed_mutations]["bad_stats"]["avg_distance_post"].append(bad_avg_distance_post)
+                mutation_stats[allowed_mutations]["bad_stats"]["len_population_post"].append(bad_len_population_post)
+
+    for mutations_comb in mutation_stats.values():
+        mutations_comb["good_stats"]["avg_distance_post"] = mean(mutations_comb["good_stats"]["avg_distance_post"])
+        mutations_comb["good_stats"]["len_population_post"] = mean(mutations_comb["good_stats"]["len_population_post"])
+        mutations_comb["bad_stats"]["avg_distance_post"] = mean(mutations_comb["bad_stats"]["avg_distance_post"])
+        mutations_comb["bad_stats"]["len_population_post"] = mean(mutations_comb["bad_stats"]["len_population_post"])
+
+    with open("deap_generation_stats.json", "w") as f:
+        json.dump(mutation_stats, f)
+
 
 def evaluate_deap(start_from: Optional[str] = None, num_iterations: Optional[int] = 100):
     config = get_config(model=MODEL, dataset=DATASET)
@@ -111,11 +131,15 @@ def evaluate_deap(start_from: Optional[str] = None, num_iterations: Optional[int
 
         sequence = get_sequence_from_interaction(interaction).squeeze(0)
         curr_results = evaluation_step(sequence, model)
-        results[idx].append(curr_results)
+        results[idx].extend(curr_results)
         with open("deap_generator_log.json", "w") as f:
             json.dump(results, f)
             print("Results saved!")
 
 
 if __name__ == "__main__":
-    evaluate_deap(start_from="deap_generator_log.json", num_iterations=10)
+    start_from = "deap_generator_log.json"
+    # evaluate_deap(start_from=start_from, num_iterations=10)
+    with open(start_from, "r") as f:
+        results = json.load(f)
+    get_stats(results)

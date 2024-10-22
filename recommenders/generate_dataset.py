@@ -50,10 +50,12 @@ def generate_counterfactual_dataset(interaction: Union[Interaction, Tensor], mod
     #Trim zeros
     sequence = sequence.squeeze(0)
     assert len(sequence.shape) == 1, f"Sequence dim must be 1: {sequence.shape}"
+    allowed_mutations = [Mutations.SWAP, Mutations.REPLACE]
     good_genetic_strategy = GeneticGenerationStrategy(input_seq=sequence,
                                                       predictor=lambda x: model_predict(seq=x,
-                                                                    model=model,
-                                                                    prob=True),
+                                                                                        model=model,
+                                                                                        prob=True),
+                                                      allowed_mutations=allowed_mutations,
                                                       pop_size=2000,
                                                       good_examples=True,
                                                       generations=10)
@@ -61,14 +63,15 @@ def generate_counterfactual_dataset(interaction: Union[Interaction, Tensor], mod
     good_examples = good_genetic_strategy.postprocess(good_examples)
     bad_genetic_strategy = GeneticGenerationStrategy(input_seq=sequence,
                                                      predictor=lambda x: model_predict(seq=x,
-                                                                   model=model,
-                                                                   prob=True),
+                                                                                       model=model,
+                                                                                       prob=True),
+                                                     allowed_mutations=allowed_mutations,
                                                      pop_size=2000,
                                                      good_examples=False,
                                                      generations=10)
     bad_examples = bad_genetic_strategy.generate()
     bad_examples = bad_genetic_strategy.postprocess(bad_examples)
-    
+
     train_good, test_good = train_test_split(good_examples)
     train_bad, test_bad = train_test_split(bad_examples)
     train_dataset = (train_good, train_bad)
