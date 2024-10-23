@@ -3,10 +3,13 @@ import torch
 from recbole.config import Config
 from recbole.model.abstract_recommender import SequentialRecommender
 
-from automata_learning import (NumItems, generate_automata_from_dataset,
-                               generate_single_accepting_sequence_dfa)
-from recommenders.generate_dataset import generate_model, load_dataset
-from trace_alignment import augment_constraint_automata, augment_trace_automata
+from alignment.alignment import (augment_constraint_automata,
+                                 augment_trace_automata)
+from automata_learning.learning import (generate_automata_from_dataset,
+                                        generate_single_accepting_sequence_dfa)
+from genetic.dataset.utils import load_dataset
+from genetic.utils import NumItems
+from models.config_utils import generate_model
 
 
 # By marking a class with @pytest.mark.incremental, if a test fails, all the other ones in the class are skipped
@@ -111,22 +114,7 @@ def mock_a_dfa_aug(mock_dataset, mock_t_dfa):
 
 @pytest.fixture(scope="module")
 def dataset():
-    g, b = load_dataset(load_path="saved/counterfactual_dataset.pickle") 
-    new_g, new_b = [], []
-    ids = set()
-    for p, l in g:
-        if tuple(p.tolist()) in ids:
-            continue
-        new_g.append((p,l))
-        ids.add(tuple(p.tolist()))
-    for p, l in b:
-        if tuple(p.tolist()) in ids:
-            continue
-        new_b.append((p,l))
-        ids.add(tuple(p.tolist()))
-
-    dataset = (new_g, new_b)
-    return dataset
+    return load_dataset(load_path="saved/counterfactual_dataset.pickle")[0]
 
 @pytest.fixture(scope="module")
 def automata_gt(dataset):

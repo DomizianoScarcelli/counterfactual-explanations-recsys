@@ -1,9 +1,19 @@
+import os
+import pickle
 from collections import deque
 from typing import List
 
 from aalpy.automata.Dfa import Dfa
 from torch import Tensor
 
+
+def save_automata(automata, save_path):
+    with open(os.path.join("saved_automatas", save_path), "wb") as f:
+        pickle.dump(automata, f)
+
+def load_automata(load_path):
+    with open(os.path.join("saved_automatas", load_path), "rb") as f:
+        return pickle.load(f)
 
 def has_path_to_accepting_state(automaton: Dfa, seq: List[int]):
     """
@@ -49,6 +59,7 @@ def run_automata(automata: Dfa, input: list):
         result = automata.step(char)
         # except KeyError:
             #TODO: see how to handle this case
+            # continue
             # print(f"Unknown character: {char}, self looping...")
             # continue
             

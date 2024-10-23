@@ -1,22 +1,22 @@
 import json
+import os
 from statistics import mean
 from typing import Dict, List, Optional
 
+import fire
 import torch
 from recbole.model.abstract_recommender import SequentialRecommender
 from tqdm import tqdm
 
+from alignment.actions import print_action
 from config import DATASET, MODEL
 from constants import MAX_LENGTH
 from exceptions import CounterfactualNotFound, DfaNotAccepting, DfaNotRejecting
-from graph_search import print_action
-from recommenders.generate_dataset import (dataset_generator, generate_model,
-                                           get_config,
-                                           get_sequence_from_interaction,
-                                           interaction_generator)
-from recommenders.utils import pad_zero, trim_zero
+from genetic.dataset.generate import dataset_generator, interaction_generator
+from genetic.dataset.utils import get_sequence_from_interaction
+from models.config_utils import generate_model, get_config
+from models.utils import pad_zero, trim_zero
 from run import single_run, timed_learning_pipeline, timed_trace_disalignment
-from type_hints import RecDataset, RecModel
 from utils import TimedGenerator, set_seed
 
 set_seed()
@@ -62,7 +62,7 @@ def save_log(log: List[Dict],
     print("Log saved!")
     return log
 
-def evaluate_stats(log_path: str):
+def evaluate_stats(log_path: str, output_path: str):
     """
     Given an evaluation log path, it returns the stats of the evaluation.
 
@@ -105,7 +105,7 @@ def evaluate_stats(log_path: str):
     stats["max_cost"] = max(costs)
     stats["mean_cost"] = mean(costs)
 
-    with open("stats.json", "w") as f:
+    with open(output_path, "w") as f:
         json.dump(stats, f)
 
     return stats
@@ -197,11 +197,27 @@ def evaluate_trace_disalignment(interactions,
                                   time_alignment=timed_trace_disalignment.get_last_time())
 
 
+def main(mode:str ="evaluate", use_cache: bool=True, evaluation_log: Optional[str]=None, stats_output: Optional[str]=None):
+    if mode == "evaluate":
+        config = get_config(dataset=DATASET, model=MODEL)
+        oracle: SequentialRecommender = generate_model(config)
+        interactions = interaction_generator(config)
+        datasets = TimedGenerator(dataset_generator(config=config, use_cache=use_cache))
+        evaluate_trace_disalignment(interactions, datasets, oracle)
+    elif mode == "stats":
+        if not evaluation_log:
+            raise ValueError("Evaluation log path needed for stats")
+        if not os.path.exists(evaluation_log):
+            raise FileNotFoundError(f"File {evaluation_log} does not exists")
+        if not stats_output:
+            raise ValueError("Evaluation stats output needed")
+        evaluate_stats(evaluation_log, stats_output)
+        
+    else:
+        raise ValueError(f"Mode {mode} not supported, choose between [evaluate, stats]")
+
+
+
 if __name__ == "__main__":
-    config = get_config(dataset=DATASET, model=MODEL)
-    oracle: SequentialRecommender = generate_model(config)
-    interactions = interaction_generator(config)
-    datasets = TimedGenerator(dataset_generator(config=config, use_cache=False))
-    evaluate_trace_disalignment(interactions, datasets, oracle)
-    # evaluate_stats("evaluation_log.json")
+    fire.Fire(main)
     

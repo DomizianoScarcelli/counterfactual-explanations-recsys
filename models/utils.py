@@ -1,3 +1,5 @@
+from typing import List
+
 import torch
 from torch import Tensor
 
@@ -33,3 +35,6 @@ def pad_zero(seq: Tensor, length: int) -> Tensor:
     if len(seq) == length: return seq
     # assert seq.count_nonzero() == len(seq), f"Sequence must not contain the character 0!: {seq}"
     return torch.cat((seq, torch.zeros((length - len(seq),))))
+
+def pad_zero_batch(seqs: List[Tensor], length: int) -> Tensor:
+    return torch.stack([pad_zero(torch.tensor(s), length) for s in seqs])

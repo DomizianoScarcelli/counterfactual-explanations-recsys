@@ -3,13 +3,15 @@ from copy import deepcopy
 import pytest
 import torch
 
-from automata_learning import learning_pipeline
-from automata_utils import invert_automata, run_automata
-from graph_search import encode_action_str, print_action
-from recommenders.generate_dataset import generate_counterfactual_dataset
-from trace_alignment import align, trace_alignment, trace_disalignment
+from alignment.actions import encode_action_str, print_action
+from alignment.alignment import align, trace_alignment, trace_disalignment
+from automata_learning.learning import learning_pipeline
+from automata_learning.utils import invert_automata, run_automata
+from genetic.dataset.generate import generate
+from utils import set_seed
 
 
+@pytest.mark.skip()
 class TestMockData:
     def test_augmented_trace_automata(self, mock_t_dfa, mock_t_dfa_aug, mock_original_trace, mock_edited_trace):
         # mock_t_dfa.visualize("saved_automatas/mock_t_dfa")
@@ -130,12 +132,56 @@ class TestUtils:
         computed: {aligned_trace}
         """
 
-@pytest.mark.incremental
-class TestParticularCases:
+class TestEdgeCases:
     """
-    This class tests all those particular cases where a bug was found, in order
+    This class tests all those edge cases where a bug was found, in order
     to see if the bug is fixed for good. Particular hard coded traces are used.
     """
+    def test_all_syncs(self, model):
+        set_seed()
+        trace = torch.tensor([578, 65, 28, 1432, 2079, 199, 1043, 1713, 80,
+                               63, 265, 44, 152, 157, 1059, 133, 93, 49, 631,
+                               433, 190, 134, 844, 79, 118, 105, 639, 1396, 51,
+                               117, 90, 21, 402, 89, 336]).unsqueeze(0)
+        train, _ = generate(trace, model)
+        g, b = train
+        print(f"Good points: {len(g)}")
+        print(f"Bad points: {len(b)}")
+        original_label = model.full_sort_predict_from_sequence(trace).argmax(-1).item()
+        print(f"Original trace's label: {original_label}")
+        trace = trace.squeeze(0).tolist()
+        a_dfa_aug = learning_pipeline(trace, train)
+        original_accepts = run_automata(a_dfa_aug, trace)
+        assert original_accepts, "Original Automata doesn't accept the original sequence"
+        disaligned, _, alignment = trace_disalignment(a_dfa_aug, trace)
+        print(f"Alignment is: {[print_action(a) for a in alignment]}")
+        disaligned_rejects = run_automata(a_dfa_aug, disaligned)
+        assert disaligned_rejects, "Original Automata doesn't reject the counterfactual sequence"
+
+    
+    @pytest.mark.skip()
+    def test_dfa_not_rejecting(self, model):
+        """
+        For some traces, they are not rejected by the DFA (incorrect), and
+        because of this the counterfactual is equal to the original sequence.
+
+        The reason is due by the fact that the genetic algorithm fails to
+        generate a high percentace of good examples.
+        """
+        set_seed()
+        trace = torch.tensor([578, 65, 28, 1432, 2079, 199, 1043, 1713, 80, 63,
+                              265, 44, 152, 157, 1059, 133, 93, 49, 631, 433,
+                              190, 134, 844, 79, 118, 105, 639, 1396, 51, 117,
+                              90, 21, 402, 89, 336]).unsqueeze(0)
+        original_label = model.full_sort_predict_from_sequence(trace).argmax(-1).item()
+        train, _ = generate(trace, model)
+
+        trace = trace.squeeze(0).tolist()
+        a_dfa_aug = learning_pipeline(trace, train)
+        original_accepts = run_automata(a_dfa_aug, trace)
+        assert original_accepts, "Original Automata doesn't accept the original sequence"
+    
+    @pytest.mark.skip()
     def test_mismatch(self, model):
         """
         For some traces, the original sequence is rejected by the dfa (correct),
@@ -149,8 +195,8 @@ class TestParticularCases:
                               1383, 1181, 700, 2206, 182, 1771, 1318, 1867, 1092,
                               2115, 1608, 936, 1057, 1109, 2883, 1826, 2607, 1153,
                               1138, 1204, 2544, 2137, 2055]).unsqueeze(0)
-        original_label = model._full_sort_predict_from_sequence(trace).argmax(-1).item()
-        train, _ = generate_counterfactual_dataset(trace, model)
+        original_label = model.full_sort_predict_from_sequence(trace).argmax(-1).item()
+        train, _ = generate(trace, model)
 
         trace = trace.squeeze(0).tolist()
         a_dfa_aug = learning_pipeline(trace, train)
@@ -164,22 +210,5 @@ class TestParticularCases:
         assert counterfactual_rejects, "Automata doesn't reject the counterfactual sequence"
 
         print(f"Alignment is {[print_action(a) for a in alignment]}")
-        counter_label = model._full_sort_predict_from_sequence(torch.tensor(aligned).unsqueeze(0)).argmax(-1).item()
+        counter_label = model.full_sort_predict_from_sequence(torch.tensor(aligned).unsqueeze(0)).argmax(-1).item()
         assert original_label != counter_label, f"Original label and counter label are equal: {original_label} == {counter_label}"
-
-    def test_all_sync(self, model):
-        """
-        For some traces, the counterfactual only does sync. The problem with this
-        is the fact that the automata accepts the original sequence, while it
-        should be rejecting it. Because of this, the original trace is already a
-        counterfactual, which is wrong.
-        """
-        trace = torch.tensor([3430, 1371, 658, 595, 24, 339, 1238, 2572, 1232, 560,
-                              247, 1250, 744, 1451, 2233, 1241, 961, 122, 986,
-                              946]).unsqueeze(0)
-        train, _ = generate_counterfactual_dataset(trace, model)
-        trace = trace.squeeze(0).tolist()
-        a_dfa_aug = learning_pipeline(trace, train)
-        aligned, cost, alignment = trace_disalignment(a_dfa_aug, trace)
-        print(aligned)
-

@@ -4,13 +4,13 @@ from typing import List, Tuple
 
 import fire
 
-from automata_learning import learning_pipeline
+from alignment.alignment import trace_disalignment
+from automata_learning.learning import learning_pipeline
 from config import DATASET, MODEL
-from recommenders.generate_dataset import (dataset_generator, get_config,
-                                           get_sequence_from_interaction,
-                                           interaction_generator)
-from recommenders.utils import trim_zero
-from trace_alignment import trace_disalignment
+from genetic.dataset.generate import dataset_generator, interaction_generator
+from genetic.dataset.utils import get_sequence_from_interaction
+from models.config_utils import get_config
+from models.utils import trim_zero
 from type_hints import Dataset, RecDataset, RecModel
 from utils import TimedFunction
 

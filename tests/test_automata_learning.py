@@ -2,14 +2,12 @@ from typing import Tuple
 
 import pytest
 from aalpy.automata.Dfa import Dfa
+from automata_learning.utils import run_automata
 from recbole.config import Config
 from tqdm import tqdm
 
-from automata_utils import run_automata
-from performance_evaluation.evaluation_utils import (compute_metrics,
-                                                     print_confusion_matrix)
-from recommenders.model_funcs import model_predict
-from recommenders.test import generate_model, load_data, load_dataset
+from models.model_funcs import model_predict
+from models.test import generate_model, load_data, load_dataset
 from type_hints import Dataset, GoodBadDataset
 
 
