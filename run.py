@@ -4,7 +4,7 @@ from typing import List, Tuple
 
 import fire
 
-from alignment.alignment import trace_disalignment
+from alignment.alignment import split_trace, trace_disalignment
 from automata_learning.learning import learning_pipeline
 from config import DATASET, MODEL
 from genetic.dataset.generate import dataset_generator, interaction_generator
@@ -19,16 +19,19 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 timed_learning_pipeline = TimedFunction(learning_pipeline)
 timed_trace_disalignment = TimedFunction(trace_disalignment)
 
-def single_run(source_sequence: List[int], _dataset: Tuple[Dataset, Dataset]):
+def single_run(source_sequence: List[int], _dataset: Tuple[Dataset, Dataset], splits:Tuple[float, float, float]=(1/3,1/3,1/3)):
     assert isinstance(source_sequence, list), f"Source sequence is not a list, but a {type(source_sequence)}"
     assert isinstance(source_sequence[0], int), f"Elements of the source sequences are not ints, but {type(source_sequence[0])}"
 
     dfa = timed_learning_pipeline(source=source_sequence, dataset=_dataset)
-    aligned, cost, alignment = timed_trace_disalignment(dfa, source_sequence)
+
+    splitted_source_sequence = split_trace(source_sequence, splits=splits)
+
+    aligned, cost, alignment = timed_trace_disalignment(dfa, splitted_source_sequence)
     return aligned, cost, alignment
 
-def main(dataset:RecDataset=DATASET, 
-         model:RecModel=MODEL, 
+def main(dataset:RecDataset=DATASET,
+         model:RecModel=MODEL,
          num_counterfactuals: int=1,
          num_generations: int=20,
          dataset_examples: int=2000):

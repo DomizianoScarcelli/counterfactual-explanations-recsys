@@ -4,10 +4,10 @@ from typing import Callable, List
 import numpy as np
 import torch
 from deap import base, creator, tools
-from genetic.extended_ea_algorithms import eaSimpleBatched
 from torch import Tensor
 
 from constants import MAX_LENGTH, MIN_LENGTH
+from genetic.extended_ea_algorithms import eaSimpleBatched
 from genetic.mutations import (ALL_MUTATIONS, Mutations, mutate_add,
                                mutate_delete)
 from genetic.utils import (cosine_distance, cPickle_clone, edit_distance,

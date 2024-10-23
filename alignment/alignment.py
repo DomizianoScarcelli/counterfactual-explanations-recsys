@@ -1,23 +1,28 @@
+import math
 from copy import deepcopy
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 from aalpy.automata.Dfa import Dfa, DfaState
-from automata_learning.utils import invert_automata, run_automata
+from torch import Tensor, instance_norm
 from tqdm import tqdm
 
 from alignment.a_star import faster_dijkstra
 from alignment.actions import Action, decode_action, print_action
+from automata_learning.utils import invert_automata, run_automata
 from constants import MAX_LENGTH
 from exceptions import CounterfactualNotFound, DfaNotAccepting, DfaNotRejecting
 from genetic.utils import NumItems
+from type_hints import Trace, TraceSplit
 
 DEBUG = False
+
 
 def printd(statement):
     if DEBUG:
         print(statement)
 
-def augment_trace_automata(automata: Dfa, num_items: NumItems=NumItems.ML_1M) -> Dfa:
+
+def augment_trace_automata(automata: Dfa, num_items: NumItems = NumItems.ML_1M) -> Dfa:
     """
     Given an DFA `T` which only accepts a certain sequence `s`, it augments it
     according to the rules explained in the paper "On the Disruptive
@@ -29,7 +34,7 @@ def augment_trace_automata(automata: Dfa, num_items: NumItems=NumItems.ML_1M) ->
         proposition `p` in the `T` alphabet and for each state q in the transition
         function, if there is no transition `(q, p, q')` for all `q'` in the transition
         function.
-    
+
     `add_p` and `del_p` are called "repair propositions", and their purpose it to
     mark the repairs done to the sequence.
 
@@ -39,7 +44,7 @@ def augment_trace_automata(automata: Dfa, num_items: NumItems=NumItems.ML_1M) ->
     """
     # Alphabet is the universe of all the items
     alphabet = [i for i in range(1, num_items.value)]
-    
+
     # Create the new repair propositions
     add_propositions = {p: f"add_{p}" for p in alphabet}
     del_propositions = {p: f"del_{p}" for p in alphabet}
@@ -56,7 +61,7 @@ def augment_trace_automata(automata: Dfa, num_items: NumItems=NumItems.ML_1M) ->
         for p in alphabet:
             if p not in state.transitions:
                 add_p = add_propositions[p]
-                # Create a self-loop for add_p 
+                # Create a self-loop for add_p
                 transitions_to_add.append((add_p, state))
 
         # Now add the new transitions to the state
@@ -65,12 +70,14 @@ def augment_trace_automata(automata: Dfa, num_items: NumItems=NumItems.ML_1M) ->
 
     return automata
 
+
 def ingoing_states(dfa: Dfa, curr_state: DfaState):
     ingoing = set()
     for state in dfa.states:
         if curr_state in state.transitions.values():
             ingoing.add(state)
     return ingoing
+
 
 def augment_constraint_automata(automata: Dfa, trace_automaton: Dfa) -> Dfa:
     """
@@ -85,7 +92,7 @@ def augment_constraint_automata(automata: Dfa, trace_automaton: Dfa) -> Dfa:
             proposition `p` in the `T` alphabet and for each state q in the transition
             function; and a new transition `(q, add_p, q)` is added for all
             transitions (q, phi, q') such that p satisfies the formula phi.
-    
+
     The `phi` formula is the constraint that checks a trace against `A`. It
     returns true only on good sequences.
 
@@ -96,7 +103,7 @@ def augment_constraint_automata(automata: Dfa, trace_automaton: Dfa) -> Dfa:
     # alphabet = [i for i in range(1, NumItems.ML_1M.value)]
     alphabet = automata.get_input_alphabet()
     trace_alphabet = trace_automaton.get_input_alphabet()
-    
+
     # Create the new repair propositions
     add_propositions = {p: f"add_{p}" for p in alphabet}
     del_propositions = {p: f"del_{p}" for p in trace_alphabet}
@@ -111,93 +118,13 @@ def augment_constraint_automata(automata: Dfa, trace_automaton: Dfa) -> Dfa:
             add_p = add_propositions[p]
             # Add (q, add_p, q') transition for each (q, p, q') in transitions
             transitions_to_add.append((add_p, target_state))
-    
+
         # Now add the new transitions to the state
         for new_transition_symbol, target_state in transitions_to_add:
             state.transitions[new_transition_symbol] = target_state
 
     return automata
 
-def _deprecated_create_intersection_automata(a_aug: Dfa, t_aug: Dfa) -> Dfa:
-    """
-    Given two automatas a_aug and t_aug, it returns the intersection of those automatas
-    """
-    states = set()
-    state_map = {}
-    for a_state in a_aug.states:
-        for t_state in t_aug.states:
-            is_accepting = a_state.is_accepting and t_state.is_accepting
-            new_state = DfaState((a_state, t_state), is_accepting=is_accepting)
-            state_map[(a_state, t_state)] = new_state
-            states.add(new_state)
-    assert len(states) == len(a_aug.states) * len(t_aug.states)
-    accepting_states = set({s for s in states if s.is_accepting})
-    printd(f"Automa has {len(accepting_states)} accepting states")
-    
-    a_alph = set(a_aug.get_input_alphabet()) 
-    t_alph = set(t_aug.get_input_alphabet())
-    alphabet = a_alph | t_alph
-    
-    added = 0
-    for state in tqdm(states, desc="Creating states..."): 
-        a_state, t_state = state.state_id
-        for symbol in alphabet:
-            a_target_state = a_state.transitions.get(symbol, None)
-            t_target_state = t_state.transitions.get(symbol, None)
-            if a_target_state and t_target_state:
-                is_accpeting = a_target_state.is_accepting and t_target_state.is_accepting
-                state.transitions[symbol] = state_map[(a_target_state, t_target_state)]
-                added += 1
-
-    printd(f"Added {added} transitions!")
-    initial_state = DfaState(a_aug.initial_state, t_aug.initial_state)
-    dfa = Dfa(initial_state=initial_state, states=states)
-    return dfa
-
-
-def create_intersection_automata(dfa1: Dfa, dfa2: Dfa) -> Dfa:
-    """
-    Just another way of doing `_deprecated_create_intersection_automata`
-    """
-    state_map = {}
-    new_states = set()
-
-    # Create initial state in the intersection DFA
-    initial_state = DfaState((dfa1.initial_state, dfa2.initial_state),
-                             is_accepting=(dfa1.initial_state.is_accepting and dfa2.initial_state.is_accepting))
-    state_map[(dfa1.initial_state, dfa2.initial_state)] = initial_state
-    new_states.add(initial_state)
-
-    # Queue for breadth-first search (BFS) over state pairs
-    queue = [(dfa1.initial_state, dfa2.initial_state)]
-    alphabet = set(dfa1.get_input_alphabet()) & set(dfa2.get_input_alphabet())
-    while queue:
-        (state1, state2) = queue.pop(0)
-        current_state = state_map[(state1, state2)]
-
-        # Get common input alphabet for both DFAs
-        for symbol in alphabet:
-            # Get transitions for the current symbol
-            target1 = state1.transitions.get(symbol, None)
-            target2 = state2.transitions.get(symbol, None)
-
-            # If both DFAs have transitions for the symbol
-            if target1 and target2:
-                if (target1, target2) not in state_map:
-                    # Create the new state in the intersection DFA
-                    is_accepting = target1.is_accepting and target2.is_accepting
-                    new_state = DfaState((target1, target2), is_accepting=is_accepting)
-                    state_map[(target1, target2)] = new_state
-                    new_states.add(new_state)
-                    queue.append((target1, target2))
-
-                # Add the transition to the current state
-                current_state.transitions[symbol] = state_map[(target1, target2)]
-
-    # Create and return the intersection DFA
-    dfa = Dfa(initial_state=initial_state, states=list(new_states))
-    printd(f"Intersection DFA automata alphabet is: {dfa.get_input_alphabet()}")
-    return dfa
 
 def constraint_aut_to_planning_aut(a_dfa: Dfa):
     """
@@ -209,6 +136,7 @@ def constraint_aut_to_planning_aut(a_dfa: Dfa):
             if type(p) is int:
                 state.transitions[f"sync_{p}"] = target_state
                 del state.transitions[p]
+
 
 def planning_aut_to_constraint_aut(a_dfa: Dfa):
     """
@@ -222,6 +150,7 @@ def planning_aut_to_constraint_aut(a_dfa: Dfa):
                 state.transitions[extracted_p] = target_state
                 del state.transitions[p]
 
+
 def compute_alignment_cost(alignment: Tuple[int]) -> int:
     """
     Computes the cost of the alignment:
@@ -233,23 +162,41 @@ def compute_alignment_cost(alignment: Tuple[int]) -> int:
     """
     cost = 0
     for encoded_e in alignment:
-        action_type, _ = decode_action(encoded_e) 
+        action_type, _ = decode_action(encoded_e)
         if action_type in {Action.ADD, Action.DEL}:
             cost += 1
     return cost
 
-def trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
+
+def split_trace(trace: List[int], splits: Tuple[float, float, float]=(1/3, 1/3, 1/3)) -> TraceSplit:
+    assert sum(splits) == 1, "Splits must sum to 1"
+    l1, l2, l3 = tuple(math.floor(len(trace) * s) for s in splits)
+
+    traces = trace[:l1], trace[l1: l1+l2], trace[l1+l2:]
+    assert len(traces[0]) + len(traces[1]) + len(traces[2]) == len(trace), f"{len(traces[0])} + {len(traces[1])} + {len(traces[2])} != {len(trace)}"
+
+    return traces
+
+
+def trace_alignment(a_dfa_aug: Dfa, trace_split: Union[Trace, TraceSplit]):
     """
     """
-    min_length = len(trace)
-    # min_length = 0
-    max_length = MAX_LENGTH
-    print(f"Expected length interval: ({min_length}, {max_length})")
     constraint_aut_to_planning_aut(a_dfa_aug)
-    remaining_trace = list(trace)
+    
+    if not (isinstance(trace_split, tuple) and len(trace_split) == 3):
+        trace_split = ([], trace_split, [])
+    safe_trace_split: TraceSplit = tuple([int(c.item()) if isinstance(
+        c, Tensor) else c for c in trace] for trace in trace_split)
+
     a_dfa_aug.reset_to_initial()
-    alignment = faster_dijkstra(dfa=a_dfa_aug, 
-                                trace=remaining_trace,
+
+    # min_length = len(safe_trace_split[0] + safe_trace_split[1])
+    # max_length = min_length + len(safe_trace_split[2])
+    min_length = None
+    max_length = None
+
+    alignment = faster_dijkstra(dfa=a_dfa_aug,
+                                trace_split=safe_trace_split,
                                 min_alignment_length=min_length,
                                 max_alignment_length=max_length)
     if alignment is None:
@@ -259,22 +206,23 @@ def trace_alignment(a_dfa_aug: Dfa, trace: List[int]):
     planning_aut_to_constraint_aut(a_dfa_aug)
     aligned_trace = align(alignment)
     aligned_accepts = run_automata(a_dfa_aug, aligned_trace)
-    #TODO: insert it back
+    # TODO: insert it back
     # assert aligned_accepts, "Automa should accept aligned trace"
     cost = compute_alignment_cost(alignment)
     return aligned_trace, cost, alignment
 
 
-def trace_disalignment(a_dfa_aug: Dfa, trace: List[int]):
+def trace_disalignment(a_dfa_aug: Dfa, trace_split: Union[Trace, TraceSplit]):
     """
     It finds the changes with minimum cost to do to a trace accepted by the automata in order for it to not be
     accepted anymore. 
     """
     a_dfa_aug = deepcopy(a_dfa_aug)
     invert_automata(a_dfa_aug)
-    aligned_trace, cost, alignment =  trace_alignment(a_dfa_aug, trace)
-    dfa_rejects = not run_automata(a_dfa_aug, trace)
-    #TODO: maybe insert this back
+    aligned_trace, cost, alignment = trace_alignment(a_dfa_aug, trace_split)
+
+    # TODO: maybe insert this back
+    # dfa_rejects = not run_automata(a_dfa_aug, trace)
     # if not dfa_rejects:
     #     raise DfaNotRejecting("Dfa is not rejecting original sequence")
     # dfa_accepts = run_automata(a_dfa_aug, aligned_trace)
@@ -302,5 +250,3 @@ def align(alignment: Tuple[int]) -> List[int]:
         if action_type == Action.ADD:
             aligned_trace.append(e)
     return aligned_trace
-
-

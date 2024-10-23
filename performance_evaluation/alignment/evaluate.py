@@ -16,99 +16,10 @@ from genetic.dataset.generate import dataset_generator, interaction_generator
 from genetic.dataset.utils import get_sequence_from_interaction
 from models.config_utils import generate_model, get_config
 from models.utils import pad_zero, trim_zero
+from performance_evaluation.alignment.utils import evaluate_stats, save_log
 from run import single_run, timed_learning_pipeline, timed_trace_disalignment
 from utils import TimedGenerator, set_seed
 
-set_seed()
-
-def save_log(log: List[Dict], 
-             original: List[int], 
-             alignment:Optional[List[str]], 
-             status: str, 
-             cost: int, 
-             time_dataset_generation: float,
-             time_automata_learning: float, 
-             time_alignment: float):
-    """ 
-    Saves the log with the evaluation information on the disk
-
-    Args:
-        log: [TODO:description]
-        original: [TODO:description]
-        alignment: [TODO:description]
-        status: [TODO:description]
-        cost: [TODO:description]
-        time_dataset_generation: [TODO:description]
-        time_automata_learning: [TODO:description]
-        time_alignment: [TODO:description]
-    """
-    path = "evaluation_log.json"
-    original_tostr = ", ".join(str(c) for c in original)
-    alignment_tostr = ", ".join(alignment) if alignment else alignment
-    total_time =  time_dataset_generation + time_automata_learning + time_alignment
-    info = {"original": original_tostr, 
-            "alignment": alignment_tostr, 
-            "status":status, 
-            "cost": cost, 
-            "times": {"time_dataset_generation": time_dataset_generation,
-                      "time_automata_learning": time_automata_learning,
-                      "time_alignment": time_alignment, 
-                      "total_time": total_time}
-            }
-
-    log.append(info)
-    with open(path, "w") as f:
-        json.dump(log, f)
-    print("Log saved!")
-    return log
-
-def evaluate_stats(log_path: str, output_path: str):
-    """
-    Given an evaluation log path, it returns the stats of the evaluation.
-
-    Args:
-        log_path: The path of the evaluation log to load.
-    """
-    with open(log_path) as f:
-        evaluation_log = json.load(f)
-    
-    stats = {"total_runs": 0, "good_runs": 0, "bad_runs":
-             {"counterfactual_not_found": 0, "malformed_dfa": 0, "other": 0},
-             "mean_time_dataset_generation": 0, "mean_time_automata_learning":
-             0, "mean_time_alignment": 0, "mean_total_time": 0, "min_cost": 0,
-             "max_cost": 0, "mean_cost": 0}
-    costs = []
-    for run in evaluation_log:
-        stats["total_runs"] += 1
-        if run["status"] == "good":
-            stats["good_runs"] += 1
-        elif run["status"] == "bad":
-            stats["bad_runs"]["counterfactual_not_found"] += 1
-        elif run["status"] == "DfaNotRejecting" or run["status"] == "DfaNotAccepting":
-            stats["bad_runs"]["malformed_dfa"] += 1
-        elif run["status"] == "skipped":
-            stats["bad_runs"]["other"] += 1
-        
-        if run["status"] == "good":
-            stats["mean_time_dataset_generation"] += run["times"]["time_dataset_generation"]
-            stats["mean_time_automata_learning"] += run["times"]["time_automata_learning"]
-            stats["mean_time_alignment"] += run["times"]["time_alignment"]
-            stats["mean_total_time"] += run["times"]["total_time"]
-
-            costs.append(run["cost"])
-    stats["mean_time_dataset_generation"] /= stats["good_runs"]
-    stats["mean_time_automata_learning"] /= stats["good_runs"]
-    stats["mean_time_alignment"] /= stats["good_runs"]
-    stats["mean_total_time"] /= stats["good_runs"]
-
-    stats["min_cost"] = min(costs)
-    stats["max_cost"] = max(costs)
-    stats["mean_cost"] = mean(costs)
-
-    with open(output_path, "w") as f:
-        json.dump(stats, f)
-
-    return stats
 
 def evaluate_trace_disalignment(interactions, 
                                 datasets, 
@@ -124,17 +35,16 @@ def evaluate_trace_disalignment(interactions,
         source_sequence = get_sequence_from_interaction(interaction)
         source_gt = oracle.full_sort_predict(source_sequence).argmax(-1).item()
         source_sequence = trim_zero(source_sequence.squeeze(0)).tolist()
-        # if len(source_sequence) > 45:
-        #     print(f"DEBUG: skipping long sequence for now")
-        #     continue
         print(f"Source sequence:", source_sequence)
         time_dataset_generation = datasets.get_times()[i]
+        splits = (9/12, 2/12, 1/12)
         try:
-            aligned, cost, alignment = single_run(source_sequence, train)
+            aligned, cost, alignment = single_run(source_sequence=source_sequence, _dataset=train, splits=splits)
         except CounterfactualNotFound:
             not_found += 1
             evaluation_log = save_log(evaluation_log, original=source_sequence,
                                       alignment=None,
+                                      splits=splits,
                                       status="CounterfactualNotFound", cost=0,
                                       time_dataset_generation=time_dataset_generation,
                                       time_automata_learning=0,
@@ -144,7 +54,9 @@ def evaluate_trace_disalignment(interactions,
         except DfaNotAccepting as e:
             print(e)
             skipped += 1
-            evaluation_log = save_log(evaluation_log, original=source_sequence,
+            evaluation_log = save_log(evaluation_log, 
+                                      original=source_sequence,
+                                      splits=splits,
                                       alignment=None,
                                       status="DfaNotAccepting", cost=0,
                                       time_dataset_generation=time_dataset_generation,
@@ -156,6 +68,7 @@ def evaluate_trace_disalignment(interactions,
             skipped += 1
             evaluation_log = save_log(evaluation_log, original=source_sequence,
                                       alignment=None,
+                                      splits=splits,
                                       status="DfaNotRejecting", cost=0,
                                       time_dataset_generation=time_dataset_generation,
                                       time_automata_learning=0,
@@ -170,6 +83,7 @@ def evaluate_trace_disalignment(interactions,
             skipped += 1
             evaluation_log = save_log(evaluation_log, original=source_sequence,
                                       alignment=alignment,
+                                      splits=splits,
                                       status="MaximumLengthReached", 
                                       cost=cost,
                                       time_dataset_generation=time_dataset_generation,
@@ -190,6 +104,7 @@ def evaluate_trace_disalignment(interactions,
         print(f"[{i}] Good: {good}, Bad: {bad}, Not Found: {not_found}, Skipped: {skipped}")
         evaluation_log = save_log(evaluation_log, original=source_sequence,
                                   alignment=[print_action(a) for a in alignment],
+                                  splits=splits,
                                   status=status, 
                                   cost=cost,
                                   time_dataset_generation=time_dataset_generation,
@@ -198,6 +113,7 @@ def evaluate_trace_disalignment(interactions,
 
 
 def main(mode:str ="evaluate", use_cache: bool=True, evaluation_log: Optional[str]=None, stats_output: Optional[str]=None):
+    set_seed()
     if mode == "evaluate":
         config = get_config(dataset=DATASET, model=MODEL)
         oracle: SequentialRecommender = generate_model(config)

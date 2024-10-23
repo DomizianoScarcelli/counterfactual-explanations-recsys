@@ -3,9 +3,9 @@ from recbole.config import Config
 from recbole.model.abstract_recommender import SequentialRecommender
 
 from genetic.dataset.utils import get_dataloaders
-from type_hints import RecDataset, RecModel
 from models.extended_models.ExtendedBERT4Rec import ExtendedBERT4Rec
 from models.extended_models.ExtendedSASRec import ExtendedSASRec
+from type_hints import RecDataset, RecModel
 
 
 def generate_model(config: Config) -> SequentialRecommender:

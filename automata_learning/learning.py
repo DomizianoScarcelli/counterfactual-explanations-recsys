@@ -11,7 +11,7 @@ from genetic.dataset.utils import load_dataset
 from type_hints import GoodBadDataset
 
 
-def generate_automata(dataset, load_if_exists: bool=True, save_path: str="automata.pickle") -> Union[None, Dfa]:
+def generate_automata(dataset, load_if_exists: bool = True, save_path: str = "automata.pickle") -> Union[None, Dfa]:
     if os.path.exists(os.path.join("saved_automatas", save_path)) and load_if_exists:
         print("Loaded existing automata")
         dfa = load_automata(save_path)
@@ -19,13 +19,13 @@ def generate_automata(dataset, load_if_exists: bool=True, save_path: str="automa
     print("Existing automata not found, generating a new one based on the provided dataset")
     dfa = run_RPNI(data=dataset, automaton_type="dfa")
     if dfa is None:
-        return 
+        return
     save_automata(dfa, save_path)
     print(f"Automata saved at {save_path}")
     return dfa
 
 
-def generate_automata_from_dataset(dataset, load_if_exists: bool=True, save_path: str="automata.pickle") -> Dfa:
+def generate_automata_from_dataset(dataset, load_if_exists: bool = True, save_path: str = "automata.pickle") -> Dfa:
     """
     Given a dataset with the following syntax:
         ([(torch.tensor([...]), good_label), ...],
@@ -33,7 +33,7 @@ def generate_automata_from_dataset(dataset, load_if_exists: bool=True, save_path
     it learns a DFA that accepts good points and rejects bad points
     """
     good_points, bad_points = dataset
-    data = [ (seq[0].tolist(), True) for seq in good_points ] + [ (seq[0].tolist(), False) for seq in bad_points ]
+    data = [(seq[0].tolist(), True) for seq in good_points] + [(seq[0].tolist(), False) for seq in bad_points]
     dfa = generate_automata(data, load_if_exists, save_path)
     if dfa is None:
         raise RuntimeError("DFA is None, aborting")
@@ -48,26 +48,26 @@ def generate_single_accepting_sequence_dfa(sequence):
     """
     # Create the initial state
     initial_state = DfaState('q0')
-    
+
     # Create the states for each step in the sequence
     current_state = initial_state
     states = [initial_state]
-    
+
     # For each character in the sequence, create a state and add transitions
     for i, symbol in enumerate(sequence):
         next_state = DfaState(f'q{i + 1}')
         current_state.transitions[symbol] = next_state
         states.append(next_state)
         current_state = next_state
-    
+
     # Final state is the accepting state
     accepting_state = current_state
     accepting_state.is_accepting = True
-    
+
     # Create a reject state for invalid transitions
     reject_state = DfaState('reject')
     states.append(reject_state)
-    
+
     # Set up transitions to the reject state for all incorrect inputs
 
     # assuming sequence contains all possible symbols, since symbols not in the
@@ -92,13 +92,11 @@ def learning_pipeline(source: List[int], dataset: Tuple[GoodBadDataset, GoodBadD
 
 
 if __name__ == "__main__":
-    print(f"Generating automata from saved dataset")
+    print("Generating automata from saved dataset")
 
-    #Remove non-determinism
+    # Remove non-determinism
     dataset = load_dataset(load_path="saved/counterfactual_dataset.pickle")
     # dataset = make_deterministic(dataset)
 
     dfa = generate_automata_from_dataset(dataset, load_if_exists=False)
     # dfa.visualize()
-
-

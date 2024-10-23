@@ -2,10 +2,10 @@ from typing import Tuple
 
 import pytest
 from aalpy.automata.Dfa import Dfa
-from automata_learning.utils import run_automata
 from recbole.config import Config
 from tqdm import tqdm
 
+from automata_learning.utils import run_automata
 from models.model_funcs import model_predict
 from models.test import generate_model, load_data, load_dataset
 from type_hints import Dataset, GoodBadDataset
