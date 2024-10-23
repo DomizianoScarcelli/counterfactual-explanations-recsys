@@ -14,8 +14,8 @@ from constants import MAX_LENGTH
 from exceptions import CounterfactualNotFound, DfaNotAccepting, DfaNotRejecting
 from genetic.dataset.generate import dataset_generator, interaction_generator
 from genetic.dataset.utils import get_sequence_from_interaction
-from recommenders.config_utils import generate_model, get_config
-from recommenders.utils import pad_zero, trim_zero
+from models.config_utils import generate_model, get_config
+from models.utils import pad_zero, trim_zero
 from run import single_run, timed_learning_pipeline, timed_trace_disalignment
 from utils import TimedGenerator, set_seed
 

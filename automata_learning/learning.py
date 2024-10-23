@@ -1,15 +1,14 @@
 import os
-import pickle
-import random
 from typing import List, Tuple, Union
 
 from aalpy.automata.Dfa import Dfa, DfaState
 from aalpy.learning_algs import run_RPNI
 from aalpy.utils.HelperFunctions import make_input_complete
 
+from alignment.alignment import augment_constraint_automata
+from automata_learning.utils import load_automata, save_automata
 from genetic.dataset.utils import load_dataset
-from trace_alignment import augment_constraint_automata
-from type_hints import Dataset, GoodBadDataset
+from type_hints import GoodBadDataset
 
 
 def generate_automata(dataset, load_if_exists: bool=True, save_path: str="automata.pickle") -> Union[None, Dfa]:
@@ -25,13 +24,6 @@ def generate_automata(dataset, load_if_exists: bool=True, save_path: str="automa
     print(f"Automata saved at {save_path}")
     return dfa
 
-def save_automata(automata, save_path):
-    with open(os.path.join("saved_automatas", save_path), "wb") as f:
-        pickle.dump(automata, f)
-
-def load_automata(load_path):
-    with open(os.path.join("saved_automatas", load_path), "rb") as f:
-        return pickle.load(f)
 
 def generate_automata_from_dataset(dataset, load_if_exists: bool=True, save_path: str="automata.pickle") -> Dfa:
     """

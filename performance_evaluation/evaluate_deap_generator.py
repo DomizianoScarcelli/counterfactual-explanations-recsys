@@ -11,8 +11,8 @@ from genetic.dataset.generate import interaction_generator
 from genetic.dataset.utils import get_sequence_from_interaction
 from genetic.genetic import GeneticGenerationStrategy
 from genetic.mutations import Mutations
-from recommenders.config_utils import generate_model, get_config
-from recommenders.model_funcs import model_predict
+from models.config_utils import generate_model, get_config
+from models.model_funcs import model_predict
 from utils import set_seed
 
 set_seed()

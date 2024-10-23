@@ -4,10 +4,10 @@ import pytest
 import torch
 
 from alignment.actions import encode_action_str, print_action
-from automata_learning import learning_pipeline
-from automata_utils import invert_automata, run_automata
+from alignment.alignment import align, trace_alignment, trace_disalignment
+from automata_learning.learning import learning_pipeline
+from automata_learning.utils import invert_automata, run_automata
 from genetic.dataset.generate import generate
-from trace_alignment import align, trace_alignment, trace_disalignment
 from utils import set_seed
 
 

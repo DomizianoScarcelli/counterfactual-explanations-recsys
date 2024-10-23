@@ -6,7 +6,7 @@ import numpy as np
 import torch.nn.functional as F
 from torch import Tensor
 
-from recommenders.utils import pad_zero
+from models.utils import pad_zero
 
 
 class NumItems(Enum):

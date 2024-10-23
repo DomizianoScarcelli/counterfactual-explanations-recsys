@@ -13,8 +13,8 @@ from genetic.dataset.utils import (get_dataloaders,
                                    save_dataset, train_test_split)
 from genetic.genetic import GeneticGenerationStrategy
 from genetic.mutations import Mutations
-from recommenders.config_utils import generate_model, get_config
-from recommenders.model_funcs import model_predict
+from models.config_utils import generate_model, get_config
+from models.model_funcs import model_predict
 from type_hints import GoodBadDataset
 from utils import set_seed
 

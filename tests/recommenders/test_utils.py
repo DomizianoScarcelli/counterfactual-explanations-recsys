@@ -7,8 +7,8 @@ from config import DATASET, MODEL
 from genetic.dataset.generate import interaction_generator
 from genetic.dataset.utils import get_sequence_from_interaction
 from genetic.utils import NumItems
-from recommenders.config_utils import get_config
-from recommenders.utils import pad_zero, pad_zero_batch, trim_zero
+from models.config_utils import get_config
+from models.utils import pad_zero, pad_zero_batch, trim_zero
 
 
 class TestTrimZeros:

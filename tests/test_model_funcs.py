@@ -9,8 +9,8 @@ from torch import Tensor
 
 from genetic.dataset.generate import interaction_generator
 from genetic.dataset.utils import get_sequence_from_interaction
-from recommenders.config_utils import generate_model
-from recommenders.model_funcs import model_batch_predict, model_predict
+from models.config_utils import generate_model
+from models.model_funcs import model_batch_predict, model_predict
 
 
 @pytest.fixture()

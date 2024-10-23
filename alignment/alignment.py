@@ -2,11 +2,11 @@ from copy import deepcopy
 from typing import List, Tuple
 
 from aalpy.automata.Dfa import Dfa, DfaState
+from automata_utils import invert_automata, run_automata
 from tqdm import tqdm
 
 from alignment.a_star import faster_dijkstra
 from alignment.actions import Action, decode_action, print_action
-from automata_utils import invert_automata, run_automata
 from constants import MAX_LENGTH
 from exceptions import CounterfactualNotFound, DfaNotAccepting, DfaNotRejecting
 from genetic.utils import NumItems

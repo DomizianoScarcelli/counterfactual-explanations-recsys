@@ -4,15 +4,15 @@ from typing import Callable, List
 import numpy as np
 import torch
 from deap import base, creator, tools
+from extended_ea_algorithms import eaSimpleBatched
 from torch import Tensor
 
 from constants import MAX_LENGTH, MIN_LENGTH
-from extended_ea_algorithms import eaSimpleBatched
 from genetic.mutations import (ALL_MUTATIONS, Mutations, mutate_add,
                                mutate_delete)
 from genetic.utils import (cosine_distance, cPickle_clone, edit_distance,
                            self_indicator)
-from recommenders.utils import pad_zero, pad_zero_batch, trim_zero
+from models.utils import pad_zero, pad_zero_batch, trim_zero
 from type_hints import Dataset
 from utils import set_seed
 
