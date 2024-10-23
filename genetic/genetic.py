@@ -4,7 +4,7 @@ from typing import Callable, List
 import numpy as np
 import torch
 from deap import base, creator, tools
-from extended_ea_algorithms import eaSimpleBatched
+from genetic.extended_ea_algorithms import eaSimpleBatched
 from torch import Tensor
 
 from constants import MAX_LENGTH, MIN_LENGTH

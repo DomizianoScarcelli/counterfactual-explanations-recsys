@@ -87,9 +87,6 @@ def faster_dijkstra(dfa: Dfa,
         return remaining_alignment + tuple(encode_action_str(action) for action in [f"sync_{c}" for c in fixed_end_trace])
     return None
 
-
-        return 0
-
 def a_star(dfa: Dfa, 
            origin_state: DfaState,
            target_states: Set[DfaState],

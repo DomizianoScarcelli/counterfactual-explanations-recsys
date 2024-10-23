@@ -2,7 +2,7 @@ from typing import Tuple
 
 import pytest
 from aalpy.automata.Dfa import Dfa
-from automata_utils import run_automata
+from automata_learning.utils import run_automata
 from recbole.config import Config
 from tqdm import tqdm
 
