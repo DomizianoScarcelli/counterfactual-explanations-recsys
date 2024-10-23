@@ -1,6 +1,8 @@
 import pytest
 import torch
+
 from genetic.utils import edit_distance
+
 
 @pytest.mark.skip()
 def test_edit_distance():

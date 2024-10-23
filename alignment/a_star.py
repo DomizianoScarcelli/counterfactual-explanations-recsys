@@ -1,8 +1,15 @@
-from alignment.actions import (Action, encode_action, decode_action,
-                               print_action, encode_action_str)
+import heapq
+import warnings
+from typing import Callable, Dict, List, Optional, Set, Tuple
+
+from aalpy.automata.Dfa import Dfa, DfaState
 from torch import Tensor
-from aalpy.automata.Dfa import DfaState, Dfa
-from typing import Set, List, Optional
+
+from alignment.actions import (Action, decode_action, encode_action,
+                               encode_action_str, print_action)
+from alignment.utils import alignment_length, prune_paths_by_length
+from heuristics.heuristics import hops
+
 
 def dijkstra(dfa: Dfa, 
              origin_state: DfaState,
@@ -98,7 +105,7 @@ def a_star(dfa: Dfa,
         if heuristic_fn:
             return heuristic_fn(curr_state)
 
-        return Heuristics.hops(curr_state, remaining_trace, target_states)
+        return hops(curr_state, remaining_trace, target_states)
 
     def get_constrained_neighbours(state, curr_char: Optional[int]):
         neighbours = []

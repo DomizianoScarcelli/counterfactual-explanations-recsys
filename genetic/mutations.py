@@ -1,7 +1,9 @@
-from genetic.utils import NumItems, random_points_with_offset
+import random
 from enum import Enum
 from typing import List
-import random
+
+from genetic.utils import NumItems, random_points_with_offset
+
 
 def mutate_replace(seq: List[int], max_value:NumItems=NumItems.ML_1M, num_replaces:int=1):
     for _ in range(num_replaces):

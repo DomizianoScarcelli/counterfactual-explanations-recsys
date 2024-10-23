@@ -1,21 +1,19 @@
-from utils import set_seed
-from typing import Generator, Tuple, Union, List, Optional, Dict
-
-from tqdm import tqdm
 import json
+import warnings
+from statistics import mean
+from typing import Dict, Generator, List, Optional, Tuple, Union
+
 from recbole.model.abstract_recommender import SequentialRecommender
+from tqdm import tqdm
 
 from config import DATASET, MODEL
-from statistics import mean
-from genetic.genetic import GeneticGenerationStrategy
-from genetic.mutations import Mutations
-from recommenders.model_funcs import model_predict
-from utils import set_seed
-from recommenders.config_utils import get_config, generate_model
 from genetic.dataset.generate import interaction_generator
 from genetic.dataset.utils import get_sequence_from_interaction
-import warnings
-
+from genetic.genetic import GeneticGenerationStrategy
+from genetic.mutations import Mutations
+from recommenders.config_utils import generate_model, get_config
+from recommenders.model_funcs import model_predict
+from utils import set_seed
 
 set_seed()
 warnings.simplefilter(action='ignore', category=FutureWarning)

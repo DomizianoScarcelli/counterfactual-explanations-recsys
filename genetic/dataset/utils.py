@@ -1,13 +1,17 @@
-from type_hints import Dataset, GoodBadDataset
-from torch.utils.data import DataLoader
+import pickle
 from typing import Tuple
+
 from recbole.config import Config
 from recbole.data import create_dataset, data_preparation
+from recbole.data.interaction import Interaction
 from recbole.utils import init_seed
-import pickle
 from torch import Tensor
+from torch.utils.data import DataLoader
 
-def train_test_split(dataset: Dataset, test_split:float=0.2):
+from type_hints import Dataset, GoodBadDataset
+
+
+def train_test_split(dataset: Dataset, test_split: float = 0.2):
     train, test = [], []
     train_end = round(len(dataset) * (1-test_split))
     for i in range(train_end):
@@ -15,6 +19,7 @@ def train_test_split(dataset: Dataset, test_split:float=0.2):
     for i in range(train_end, len(dataset)-1):
         test.append(dataset[i])
     return train, test
+
 
 def save_dataset(dataset: Tuple[GoodBadDataset, GoodBadDataset], save_path: str):
     """
@@ -27,6 +32,7 @@ def save_dataset(dataset: Tuple[GoodBadDataset, GoodBadDataset], save_path: str)
     with open(save_path, "wb") as f:
         print(f"Dataset saved to {save_path}")
         pickle.dump(dataset, f)
+
 
 def load_dataset(load_path: str) -> Tuple[GoodBadDataset, GoodBadDataset]:
     """
@@ -41,6 +47,7 @@ def load_dataset(load_path: str) -> Tuple[GoodBadDataset, GoodBadDataset]:
         print(f"Dataset loaded from {load_path}")
         return pickle.load(f)
 
+
 def get_dataloaders(config: Config) -> Tuple[DataLoader, DataLoader, DataLoader]:
     """
     Creates the train, val, test dataloaders from the dataset in the config file.
@@ -53,7 +60,8 @@ def get_dataloaders(config: Config) -> Tuple[DataLoader, DataLoader, DataLoader]
     init_seed(config['seed'], config['reproducibility'])
     dataset = create_dataset(config)
     train_data, valid_data, test_data = data_preparation(config, dataset)
-    return train_data, valid_data, test_data 
+    return train_data, valid_data, test_data
+
 
 def make_deterministic(dataset: Tuple[Dataset, Dataset]) -> Tuple[Dataset, Dataset]:
     g, b = dataset
@@ -63,18 +71,20 @@ def make_deterministic(dataset: Tuple[Dataset, Dataset]) -> Tuple[Dataset, Datas
     for p, l in g:
         if tuple(p.tolist()) in ids:
             continue
-        new_g.append((p,l))
+        new_g.append((p, l))
         ids.add(tuple(p.tolist()))
     for p, l in b:
         if tuple(p.tolist()) in ids:
             continue
-        new_b.append((p,l))
+        new_b.append((p, l))
         ids.add(tuple(p.tolist()))
     dataset = (new_g, new_b)
-    print(f"Dataset len after making it deterministic: {len(new_g)}, {len(new_b)}")
+    print(f"Dataset len after making it deterministic: {
+          len(new_g)}, {len(new_b)}")
     return dataset
 
+
 def get_sequence_from_interaction(interaction: Interaction) -> Tensor:
-    sequence = interaction.interaction["item_id_list"] 
+    sequence = interaction.interaction["item_id_list"]
     # print(f"[generate_dataset.get_sequence_from_interaction] sequence is {sequence}")
     return sequence

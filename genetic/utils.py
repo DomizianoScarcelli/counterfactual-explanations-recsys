@@ -1,10 +1,13 @@
-from enum import Enum
-import _pickle as cPickle
-from recommenders.utils import pad_zero
-from torch import Tensor
-import torch.nn.functional as F
-import numpy as np
 import random
+from enum import Enum
+
+import _pickle as cPickle
+import numpy as np
+import torch.nn.functional as F
+from torch import Tensor
+
+from recommenders.utils import pad_zero
+
 
 class NumItems(Enum):
     ML_100K=1682

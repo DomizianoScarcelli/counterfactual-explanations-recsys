@@ -5,9 +5,9 @@ import torch
 from recbole.trainer import Interaction
 from torch import Tensor
 
-from models.ExtendedBERT4Rec import ExtendedBERT4Rec
 from genetic.dataset.generate import interaction_generator
 from genetic.dataset.utils import get_sequence_from_interaction
+from models.ExtendedBERT4Rec import ExtendedBERT4Rec
 
 
 @pytest.fixture()

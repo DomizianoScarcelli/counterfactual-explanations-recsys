@@ -1,6 +1,10 @@
-from alignment.actions import (Action, decode_action)
-from statistics import mean
 import heapq
+from statistics import mean
+
+from aalpy.automata.Dfa import DfaState
+
+from alignment.actions import Action, decode_action
+
 
 def alignment_length(curr_alignment):
     return sum(1 for encoded_action in curr_alignment if decode_action(encoded_action)[0] in {Action.SYNC, Action.ADD})

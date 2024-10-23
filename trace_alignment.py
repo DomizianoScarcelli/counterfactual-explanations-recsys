@@ -4,12 +4,12 @@ from typing import List, Tuple
 from aalpy.automata.Dfa import Dfa, DfaState
 from tqdm import tqdm
 
+from alignment.a_star import faster_dijkstra
+from alignment.actions import Action, decode_action, print_action
 from automata_utils import invert_automata, run_automata
 from constants import MAX_LENGTH
-from genetic.utils import NumItems
 from exceptions import CounterfactualNotFound, DfaNotAccepting, DfaNotRejecting
-from alignment.actions import Action, decode_action, print_action
-from alignment.a_star import faster_dijkstra
+from genetic.utils import NumItems
 
 DEBUG = False
 

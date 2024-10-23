@@ -1,4 +1,5 @@
 import os
+import warnings
 from typing import Generator, Tuple, Union
 
 from recbole.config import Config
@@ -7,17 +8,24 @@ from recbole.trainer import Interaction
 from torch import Tensor
 
 from config import DATASET, MODEL
-from genetic.mutations import Mutations
+from genetic.dataset.utils import (get_dataloaders,
+                                   get_sequence_from_interaction, load_dataset,
+                                   save_dataset, train_test_split)
 from genetic.genetic import GeneticGenerationStrategy
+from genetic.mutations import Mutations
+from recommenders.config_utils import generate_model, get_config
 from recommenders.model_funcs import model_predict
 from type_hints import GoodBadDataset
 from utils import set_seed
-import warnings
 
-warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.simplefilter(action="ignore", category=FutureWarning)
 
 
-def generate(interaction: Union[Interaction, Tensor], model: SequentialRecommender) -> Tuple[Tuple[GoodBadDataset, GoodBadDataset], Tuple[GoodBadDataset, GoodBadDataset]]:
+def generate(
+    interaction: Union[Interaction, Tensor], model: SequentialRecommender
+) -> Tuple[
+    Tuple[GoodBadDataset, GoodBadDataset], Tuple[GoodBadDataset, GoodBadDataset]
+]:
     """
     Generates the dataset of good and bad points from a sequence in the
     Interaction, using the model as a black box oracle. The dataset can be used
@@ -38,31 +46,34 @@ def generate(interaction: Union[Interaction, Tensor], model: SequentialRecommend
         sequence = get_sequence_from_interaction(interaction)
     elif isinstance(interaction, Tensor):
         sequence = interaction
-    assert sequence.size(0) == 1, f"Only batch size of 1 is supported, sequence shape is: {sequence.shape}"
+    assert (
+        sequence.size(0) == 1
+    ), f"Only batch size of 1 is supported, sequence shape is: {sequence.shape}"
     # user_id = interaction.interaction["user_id"][0].item()
 
-    #Trim zeros
+    # Trim zeros
     sequence = sequence.squeeze(0)
-    assert len(sequence.shape) == 1, f"Sequence dim must be 1: {sequence.shape}"
+    assert len(sequence.shape) == 1, f"Sequence dim must be 1: {
+        sequence.shape}"
     allowed_mutations = [Mutations.SWAP, Mutations.REPLACE]
-    good_genetic_strategy = GeneticGenerationStrategy(input_seq=sequence,
-                                                      predictor=lambda x: model_predict(seq=x,
-                                                                                        model=model,
-                                                                                        prob=True),
-                                                      allowed_mutations=allowed_mutations,
-                                                      pop_size=2000,
-                                                      good_examples=True,
-                                                      generations=10)
+    good_genetic_strategy = GeneticGenerationStrategy(
+        input_seq=sequence,
+        predictor=lambda x: model_predict(seq=x, model=model, prob=True),
+        allowed_mutations=allowed_mutations,
+        pop_size=2000,
+        good_examples=True,
+        generations=10,
+    )
     good_examples = good_genetic_strategy.generate()
     good_examples = good_genetic_strategy.postprocess(good_examples)
-    bad_genetic_strategy = GeneticGenerationStrategy(input_seq=sequence,
-                                                     predictor=lambda x: model_predict(seq=x,
-                                                                                       model=model,
-                                                                                       prob=True),
-                                                     allowed_mutations=allowed_mutations,
-                                                     pop_size=2000,
-                                                     good_examples=False,
-                                                     generations=10)
+    bad_genetic_strategy = GeneticGenerationStrategy(
+        input_seq=sequence,
+        predictor=lambda x: model_predict(seq=x, model=model, prob=True),
+        allowed_mutations=allowed_mutations,
+        pop_size=2000,
+        good_examples=False,
+        generations=10,
+    )
     bad_examples = bad_genetic_strategy.generate()
     bad_examples = bad_genetic_strategy.postprocess(bad_examples)
 
@@ -85,13 +96,29 @@ def interaction_generator(config: Config) -> Generator[Interaction, None, None]:
         interaction = data[0]
         yield interaction
 
-def dataset_generator(config: Config, use_cache: bool=True) -> Generator[Tuple[Tuple[GoodBadDataset, GoodBadDataset], Tuple[GoodBadDataset, GoodBadDataset]], None, None]:
+
+def dataset_generator(
+    config: Config, use_cache: bool = True
+) -> Generator[
+    Tuple[Tuple[GoodBadDataset, GoodBadDataset],
+          Tuple[GoodBadDataset, GoodBadDataset]],
+    None,
+    None,
+]:
     interactions = interaction_generator(config)
     model = generate_model(config)
     for i, interaction in enumerate(interactions):
-        train_cache_path = os.path.join(f"dataset_cache/interaction_{i}_dataset_train.pickle")
-        test_cache_path = os.path.join(f"dataset_cache/interaction_{i}_dataset_test.pickle")
-        if os.path.exists(train_cache_path) and os.path.exists(test_cache_path) and use_cache:
+        train_cache_path = os.path.join(
+            f"dataset_cache/interaction_{i}_dataset_train.pickle"
+        )
+        test_cache_path = os.path.join(
+            f"dataset_cache/interaction_{i}_dataset_test.pickle"
+        )
+        if (
+            os.path.exists(train_cache_path)
+            and os.path.exists(test_cache_path)
+            and use_cache
+        ):
             train = load_dataset(train_cache_path)
             test = load_dataset(test_cache_path)
         else:
@@ -99,8 +126,9 @@ def dataset_generator(config: Config, use_cache: bool=True) -> Generator[Tuple[T
             if use_cache:
                 save_dataset(train, train_cache_path)
                 save_dataset(test, test_cache_path)
-        
+
         yield train, test
+
 
 if __name__ == "__main__":
     set_seed()
@@ -110,7 +138,3 @@ if __name__ == "__main__":
         dataset_save_path = "saved/counterfactual_dataset.pickle"
         save_dataset(dataset, save_path=dataset_save_path)
         break
-
-
-
-

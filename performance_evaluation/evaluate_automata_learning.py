@@ -5,11 +5,11 @@ from torch._prims_common import number_type
 
 from automata_learning import learning_pipeline
 from automata_utils import run_automata
+from genetic.dataset.generate import dataset_generator, interaction_generator
+from genetic.dataset.utils import get_sequence_from_interaction
 from performance_evaluation.evaluation_utils import (compute_metrics,
                                                      print_confusion_matrix)
 from recommenders.config_utils import get_config
-from genetic.dataset.generate import interaction_generator, dataset_generator
-from genetic.dataset.utils import get_sequence_from_interaction
 from type_hints import GoodBadDataset, RecDataset, RecModel
 
 warnings.simplefilter(action='ignore', category=FutureWarning)

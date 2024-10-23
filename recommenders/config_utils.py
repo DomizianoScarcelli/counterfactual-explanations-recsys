@@ -1,10 +1,12 @@
-from type_hints import RecModel, RecDataset
-from models.ExtendedSASRec import ExtendedSASRec
-from models.ExtendedBERT4Rec import ExtendedBERT4Rec
-from genetic.dataset.utils import get_dataloaders
-from recbole.model.abstract_recommender import SequentialRecommender
-from recbole.config import Config
 import torch
+from recbole.config import Config
+from recbole.model.abstract_recommender import SequentialRecommender
+
+from genetic.dataset.utils import get_dataloaders
+from models.ExtendedBERT4Rec import ExtendedBERT4Rec
+from models.ExtendedSASRec import ExtendedSASRec
+from type_hints import RecDataset, RecModel
+
 
 def generate_model(config: Config) -> SequentialRecommender:
     """
