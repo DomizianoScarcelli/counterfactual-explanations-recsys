@@ -1,8 +1,8 @@
 import pytest
 from memory_profiler import memory_usage
 
-from graph_search import (Action, decode_action, encode_action,
-                          encode_action_str)
+from alignment.actions import (Action, decode_action, encode_action,
+                               encode_action_str)
 
 
 @pytest.fixture

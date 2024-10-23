@@ -8,8 +8,8 @@ from automata_utils import invert_automata, run_automata
 from constants import MAX_LENGTH
 from deap_generator import NumItems
 from exceptions import CounterfactualNotFound, DfaNotAccepting, DfaNotRejecting
-from graph_search import (Action, a_star, act_str, decode_action, dijkstra,
-                          faster_dijkstra, print_action)
+from alignment.actions import Action, decode_action, print_action
+from alignment.a_star import faster_dijkstra
 
 DEBUG = False
 

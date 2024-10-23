@@ -9,14 +9,13 @@ import fire
 from config import DATASET, MODEL
 from constants import MAX_LENGTH
 from exceptions import CounterfactualNotFound, DfaNotAccepting, DfaNotRejecting
-from graph_search import print_action
+from alignment.actions import print_action
 from recommenders.generate_dataset import (dataset_generator, generate_model,
                                            get_config,
                                            get_sequence_from_interaction,
                                            interaction_generator)
 from recommenders.utils import pad_zero, trim_zero
 from run import single_run, timed_learning_pipeline, timed_trace_disalignment
-from type_hints import RecDataset, RecModel
 from utils import TimedGenerator, set_seed
 import json
 
