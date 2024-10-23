@@ -1,14 +1,14 @@
 import re
 
 import pytest
-from recbole.config import Config
 import torch
 
 from config import DATASET, MODEL
-from deap_generator import NumItems
-from recommenders.generate_dataset import get_sequence_from_interaction, interaction_generator
+from genetic.utils import NumItems
+from genetic.dataset.utils import get_sequence_from_interaction
+from genetic.dataset.generate import interaction_generator
 from recommenders.utils import pad_zero, pad_zero_batch, trim_zero
-from recommenders.generate_dataset import get_config
+from recommenders.config_utils import get_config
 
 class TestTrimZeros:
     def test_trim_zero_valid(self):

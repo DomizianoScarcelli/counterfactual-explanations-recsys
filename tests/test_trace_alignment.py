@@ -6,7 +6,7 @@ import torch
 from automata_learning import learning_pipeline
 from automata_utils import invert_automata, run_automata
 from alignment.actions import encode_action_str, print_action
-from recommenders.generate_dataset import generate_counterfactual_dataset
+from genetic.dataset.generate import generate
 from trace_alignment import align, trace_alignment, trace_disalignment
 from utils import set_seed
 
@@ -142,7 +142,7 @@ class TestEdgeCases:
                                63, 265, 44, 152, 157, 1059, 133, 93, 49, 631,
                                433, 190, 134, 844, 79, 118, 105, 639, 1396, 51,
                                117, 90, 21, 402, 89, 336]).unsqueeze(0)
-        train, _ = generate_counterfactual_dataset(trace, model)
+        train, _ = generate(trace, model)
         g, b = train
         print(f"Good points: {len(g)}")
         print(f"Bad points: {len(b)}")
@@ -173,7 +173,7 @@ class TestEdgeCases:
                               190, 134, 844, 79, 118, 105, 639, 1396, 51, 117,
                               90, 21, 402, 89, 336]).unsqueeze(0)
         original_label = model.full_sort_predict_from_sequence(trace).argmax(-1).item()
-        train, _ = generate_counterfactual_dataset(trace, model)
+        train, _ = generate(trace, model)
 
         trace = trace.squeeze(0).tolist()
         a_dfa_aug = learning_pipeline(trace, train)
@@ -195,7 +195,7 @@ class TestEdgeCases:
                               2115, 1608, 936, 1057, 1109, 2883, 1826, 2607, 1153,
                               1138, 1204, 2544, 2137, 2055]).unsqueeze(0)
         original_label = model.full_sort_predict_from_sequence(trace).argmax(-1).item()
-        train, _ = generate_counterfactual_dataset(trace, model)
+        train, _ = generate(trace, model)
 
         trace = trace.squeeze(0).tolist()
         a_dfa_aug = learning_pipeline(trace, train)

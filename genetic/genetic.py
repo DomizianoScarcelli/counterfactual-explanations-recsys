@@ -1,111 +1,20 @@
 import random
-from abc import ABC, abstractmethod
-from enum import Enum
-from typing import Callable, List, Tuple
+from typing import Callable, List
 
-import _pickle as cPickle
-import numpy as np
 import torch
-import torch.nn.functional as F
 from deap import base, creator, tools
 from torch import Tensor
 
 from constants import MAX_LENGTH, MIN_LENGTH
 from extended_ea_algorithms import eaSimpleBatched
 from recommenders.utils import pad_zero, pad_zero_batch, trim_zero
-from type_hints import Dataset, GoodBadDataset
 from utils import set_seed
+from genetic.mutations import ALL_MUTATIONS, Mutations, mutate_add, mutate_delete
+from genetic.utils import cPickle_clone, edit_distance, cosine_distance, self_indicator
+import numpy as np
+from type_hints import Dataset
 
 set_seed()
-
-class NumItems(Enum):
-    ML_100K=1682
-    ML_1M=3703
-    MOCK=6
-
-
-def cPickle_clone(x):
-    # return deepcopy(x)
-    return cPickle.loads(cPickle.dumps(x))
-
-def edit_distance(seq1, seq2):
-    if len(seq1) < len(seq2):
-        seq1 = pad_zero(seq1, len(seq2))
-    if len(seq2) < len(seq1):
-        seq2 = pad_zero(seq2, len(seq1))
-
-    return 1 - np.sum(np.array(seq1) == np.array(seq2)) / len(seq1)  # Fraction of matching elements
-
-def cosine_distance(prob1: Tensor, prob2: Tensor) -> float:
-    return 1 - F.cosine_similarity(prob1, prob2, dim=-1).item()
-
-def self_indicator(seq1, seq2):
-    if len(seq1) != len(seq2):
-        return 0
-    return float("inf") if (seq1 == seq2).all() else 0
-
-def random_points_with_offset(max_value: int, max_offset: int):
-    i = random.randint(1, max_value - 1)
-    j = random.randint(max(0, i - max_offset), min(max_value - 1, i + max_offset))
-    # Sort i and j to ensure i <= j
-    return tuple(sorted([i, j]))
-
-
-def mutate_replace(seq: List[int], max_value:NumItems=NumItems.ML_1M, num_replaces:int=1):
-    for _ in range(num_replaces):
-        i = random.sample(range(len(seq)), 1)[0]
-        new_value = random.randint(1, max_value.value)
-        while (new_value in seq):
-            new_value = random.randint(1, max_value.value)
-        seq[i] = new_value
-    return seq,
-
-def mutate_swap(seq: List[int], offset_ratio: float=0.8):
-    max_offset = round(len(seq) * offset_ratio)
-    i, j = random_points_with_offset(len(seq)-1, max_offset)
-    seq[i], seq[j] = seq[j], seq[i]
-    return seq,
-
-def mutate_reverse(seq: List[int], offset_ratio:float=0.3):
-    max_offset = round(len(seq) * offset_ratio)
-    i, j = random_points_with_offset(len(seq)-1, max_offset)
-    seq[i:j+1] = seq[i:j+1][::-1]
-    return seq,
-
-# Mutation: Shuffles a random subsequence
-def mutate_shuffle(seq: List[int], offset_ratio:float=0.3):
-    max_offset = round(len(seq) * offset_ratio)
-    i, j = random_points_with_offset(len(seq)-1, max_offset)
-    subseq = seq[i:j+1]  
-    random.shuffle(subseq) 
-    seq[i:j+1] = subseq  
-    return seq,
-
-def mutate_add(seq: List[int], max_value: NumItems=NumItems.ML_1M):
-    random_item = random.randint(1, max_value.value)
-    while random_item in seq:
-        random_item = random.randint(1, max_value.value)
-    i = random.sample(range(len(seq)), 1)[0]
-    seq.insert(i, random_item)
-    return seq,
-
-def mutate_delete(seq: List[int]):
-    i = random.sample(range(len(seq)), 1)[0]
-    seq.remove(seq[i])
-    return seq,
-
-
-class Mutations(Enum):
-    SWAP = mutate_swap
-    REPLACE = mutate_replace
-    SHUFFLE = mutate_shuffle
-    REVERSE = mutate_reverse
-    ADD = mutate_add
-    DELETE = mutate_delete
-
-ALL_MUTATIONS: List[Mutations] = [Mutations.SWAP, Mutations.REPLACE,
-                                  Mutations.SHUFFLE, Mutations.REVERSE,
-                                  Mutations.ADD, Mutations.DELETE]
 
 class GeneticGenerationStrategy():
     def __init__(self, input_seq: Tensor, predictor: Callable,

@@ -6,9 +6,9 @@ import fire
 
 from automata_learning import learning_pipeline
 from config import DATASET, MODEL
-from recommenders.generate_dataset import (dataset_generator, get_config,
-                                           get_sequence_from_interaction,
-                                           interaction_generator)
+from recommenders.config_utils import get_config
+from genetic.dataset.generate import interaction_generator, dataset_generator
+from genetic.dataset.utils import get_sequence_from_interaction
 from recommenders.utils import trim_zero
 from trace_alignment import trace_disalignment
 from type_hints import Dataset, RecDataset, RecModel

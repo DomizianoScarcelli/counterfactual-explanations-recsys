@@ -6,7 +6,7 @@ from typing import List, Tuple, Union
 from aalpy.automata.Dfa import Dfa, DfaState
 from aalpy.learning_algs import run_RPNI
 from aalpy.utils.HelperFunctions import make_input_complete
-from recommenders.generate_dataset import load_dataset
+from genetic.dataset.utils import load_dataset
 from trace_alignment import augment_constraint_automata
 from type_hints import Dataset, GoodBadDataset
 

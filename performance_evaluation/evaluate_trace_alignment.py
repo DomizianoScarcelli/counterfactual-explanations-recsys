@@ -10,10 +10,9 @@ from config import DATASET, MODEL
 from constants import MAX_LENGTH
 from exceptions import CounterfactualNotFound, DfaNotAccepting, DfaNotRejecting
 from alignment.actions import print_action
-from recommenders.generate_dataset import (dataset_generator, generate_model,
-                                           get_config,
-                                           get_sequence_from_interaction,
-                                           interaction_generator)
+from recommenders.config_utils import get_config, generate_model
+from genetic.dataset.generate import interaction_generator, dataset_generator
+from genetic.dataset.utils import get_sequence_from_interaction
 from recommenders.utils import pad_zero, trim_zero
 from run import single_run, timed_learning_pipeline, timed_trace_disalignment
 from utils import TimedGenerator, set_seed

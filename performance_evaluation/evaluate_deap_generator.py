@@ -7,10 +7,13 @@ from recbole.model.abstract_recommender import SequentialRecommender
 
 from config import DATASET, MODEL
 from statistics import mean
-from deap_generator import GeneticGenerationStrategy, Mutations
+from genetic.genetic import GeneticGenerationStrategy
+from genetic.mutations import Mutations
 from recommenders.model_funcs import model_predict
 from utils import set_seed
-from recommenders.generate_dataset import get_config, get_sequence_from_interaction, generate_model, interaction_generator
+from recommenders.config_utils import get_config, generate_model
+from genetic.dataset.generate import interaction_generator
+from genetic.dataset.utils import get_sequence_from_interaction
 import warnings
 
 

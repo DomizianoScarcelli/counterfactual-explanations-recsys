@@ -1,16 +1,6 @@
-import random
-from abc import ABC, abstractmethod
-from enum import Enum
-from typing import Callable, List, Tuple
-
-import _pickle as cPickle
-import numpy as np
 import pytest
 import torch
-import torch.nn.functional as F
-from deap import algorithms, base, creator, tools
-
-from deap_generator import GeneticGenerationStrategy, edit_distance
+from genetic.utils import edit_distance
 
 @pytest.mark.skip()
 def test_edit_distance():

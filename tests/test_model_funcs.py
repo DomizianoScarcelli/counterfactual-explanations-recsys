@@ -7,10 +7,10 @@ from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
 from torch import Tensor
 
-from recommenders.generate_dataset import (generate_model,
-                                           get_sequence_from_interaction,
-                                           interaction_generator)
+from genetic.dataset.generate import interaction_generator
+from genetic.dataset.utils import get_sequence_from_interaction
 from recommenders.model_funcs import model_batch_predict, model_predict
+from recommenders.config_utils import generate_model
 
 
 @pytest.fixture()

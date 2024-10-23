@@ -2,6 +2,6 @@
 **/__pycache__/**
 **/data/**
 **/.DS_store/**
-**/dataset/**
+/dataset/**
 **/dataset_cache/**
 **/log_tensorboard/**
