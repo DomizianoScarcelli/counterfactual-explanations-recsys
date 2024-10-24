@@ -6,3 +6,6 @@ class DfaNotAccepting(Exception):
 
 class CounterfactualNotFound(Exception):
     pass
+
+class NoTargetStatesError(Exception):
+    pass

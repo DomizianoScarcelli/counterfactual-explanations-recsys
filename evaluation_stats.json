@@ -1,0 +1,1 @@
+{"total_runs": 7, "good_runs": 1, "bad_runs": {"counterfactual_not_found": 6, "malformed_dfa": 0, "other": 0}, "mean_time_dataset_generation": 0.09288501739501953, "mean_time_automata_learning": 2.7353153228759766, "mean_time_alignment": 65.60631203651428, "mean_total_time": 68.43451237678528, "min_cost": 1, "max_cost": 1, "mean_cost": 1}

@@ -5,6 +5,7 @@ from typing import List, Tuple, Union
 from aalpy.automata.Dfa import Dfa, DfaState
 from torch import Tensor, instance_norm
 from tqdm import tqdm
+from utils import printd
 
 from alignment.a_star import faster_dijkstra
 from alignment.actions import Action, decode_action, print_action
@@ -13,13 +14,6 @@ from constants import MAX_LENGTH
 from exceptions import CounterfactualNotFound, DfaNotAccepting, DfaNotRejecting
 from genetic.utils import NumItems
 from type_hints import Trace, TraceSplit
-
-DEBUG = False
-
-
-def printd(statement):
-    if DEBUG:
-        print(statement)
 
 
 def augment_trace_automata(automata: Dfa, num_items: NumItems = NumItems.ML_1M) -> Dfa:
@@ -168,12 +162,13 @@ def compute_alignment_cost(alignment: Tuple[int]) -> int:
     return cost
 
 
-def split_trace(trace: List[int], splits: Tuple[float, float, float]=(1/3, 1/3, 1/3)) -> TraceSplit:
+def split_trace(trace: List[int], splits: Tuple[float, float, float] = (1/3, 1/3, 1/3)) -> TraceSplit:
     assert sum(splits) == 1, "Splits must sum to 1"
     l1, l2, l3 = tuple(math.floor(len(trace) * s) for s in splits)
 
     traces = trace[:l1], trace[l1: l1+l2], trace[l1+l2:]
-    assert len(traces[0]) + len(traces[1]) + len(traces[2]) == len(trace), f"{len(traces[0])} + {len(traces[1])} + {len(traces[2])} != {len(trace)}"
+    assert len(traces[0]) + len(traces[1]) + len(traces[2]) == len(trace), f"{
+        len(traces[0])} + {len(traces[1])} + {len(traces[2])} != {len(trace)}"
 
     return traces
 
@@ -182,7 +177,7 @@ def trace_alignment(a_dfa_aug: Dfa, trace_split: Union[Trace, TraceSplit]):
     """
     """
     constraint_aut_to_planning_aut(a_dfa_aug)
-    
+
     if not (isinstance(trace_split, tuple) and len(trace_split) == 3):
         trace_split = ([], trace_split, [])
     safe_trace_split: TraceSplit = tuple([int(c.item()) if isinstance(
@@ -192,8 +187,8 @@ def trace_alignment(a_dfa_aug: Dfa, trace_split: Union[Trace, TraceSplit]):
 
     # min_length = len(safe_trace_split[0] + safe_trace_split[1])
     # max_length = min_length + len(safe_trace_split[2])
-    min_length = None
-    max_length = None
+    min_length = len(safe_trace_split[1])
+    max_length = MAX_LENGTH
 
     alignment = faster_dijkstra(dfa=a_dfa_aug,
                                 trace_split=safe_trace_split,
@@ -201,7 +196,7 @@ def trace_alignment(a_dfa_aug: Dfa, trace_split: Union[Trace, TraceSplit]):
                                 max_alignment_length=max_length)
     if alignment is None:
         raise CounterfactualNotFound("No best path found")
-    print(f"Alignment is: {[print_action(a) for a in alignment]}")
+    printd(f"Alignment is: {[print_action(a) for a in alignment]}")
     # print("Alignments is: ", [f"{act_str(decode_action(a)[0])}_{decode_action(a)[1]}" for a in alignment])
     planning_aut_to_constraint_aut(a_dfa_aug)
     aligned_trace = align(alignment)

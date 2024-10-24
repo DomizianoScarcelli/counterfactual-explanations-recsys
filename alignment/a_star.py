@@ -3,13 +3,14 @@ import warnings
 from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 from aalpy.automata.Dfa import Dfa, DfaState
-from torch import Tensor
+from utils import printd
 
-from alignment.actions import (Action, decode_action, encode_action,
-                               encode_action_str, print_action)
+from alignment.actions import (Action, decode_action, encode_action, encode_action_str)
 from alignment.utils import alignment_length, prune_paths_by_length
 from heuristics.heuristics import hops
 from type_hints import TraceSplit
+
+from exceptions import NoTargetStatesError
 
 
 def dijkstra(
@@ -38,6 +39,7 @@ def dijkstra(
 
 def get_target_states(dfa: Dfa, leftover_trace: Sequence[int]):
     accepting_states = set({state for state in dfa.states if state.is_accepting})
+    printd(f"Accepting states: {[s.state_id for s in accepting_states]}")
     final_states = set()
     for state in dfa.states:
         curr_state = state
@@ -45,7 +47,7 @@ def get_target_states(dfa: Dfa, leftover_trace: Sequence[int]):
             new_state = curr_state.transitions[f"sync_{c}"]
             curr_state = new_state
         if curr_state in accepting_states:
-            final_states.add(curr_state)
+            final_states.add(state)
     return final_states
 
 
@@ -55,7 +57,7 @@ def faster_dijkstra(
     min_alignment_length: Optional[int],
     max_alignment_length: Optional[int],
 ):
-    print("-----FAST-DIJKSTRA------")
+    printd("-----FAST-DIJKSTRA------")
 
     accepting_states = set(s for s in dfa.states if s.is_accepting)
     executed_t, alignable_t, leftover_t = trace_split
@@ -86,19 +88,22 @@ def faster_dijkstra(
     # TODO: Test if target states are actually computed correctly
     target_states = get_target_states(dfa, leftover_t)
 
+
+    if len(target_states) == 0:
+        raise NoTargetStatesError()
+    
     # # Adjust min and max alignment length according to the leftover trace length
     # if min_alignment_length and leftover_t:
     #     min_alignment_length -= len(leftover_t)
     # if max_alignment_length and leftover_t:
     #     max_alignment_length -= len(leftover_t)
 
-    print(f"""
+    printd(f"""
           ---DEBUG---
           Original trace: {executed_t + alignable_t + leftover_t}
           Executed trace: {executed_t}
           Mutable trace: {alignable_t}
           Fixed end trace: {leftover_t}
-          Initial alignment: {[print_action(a) for a in initial_alignment]}
           ---
           Initial state: {dfa.initial_state.state_id}
           State after executed trace: {dfa.current_state.state_id}
@@ -207,15 +212,13 @@ def a_star(
     pbar_counter = 0
     while paths:
         pbar_counter += 1
-        # if pbar_counter % 100 == 0:
-        #     paths = prune_paths_by_length(paths, max_paths=1_000_000)
-        if pbar_counter % 1000 == 0:
+        if pbar_counter % 1000 == 0 :
             paths = prune_paths_by_length(paths, max_paths=1_000_000)
-            print(f"Steps: {pbar_counter}")
-            print(f"Num paths: {len(paths)}")
-            print(f"Remaining trace idx: {remaining_trace_idx}")
-            print("Paths head (20) costs", [p[0] for p in paths[:20]])
-            print("Paths tail (20) costs", [p[0] for p in paths[-20:]])
+            printd(f"Steps: {pbar_counter}", level=2)
+            printd(f"Num paths: {len(paths)}", level=2)
+            printd(f"Remaining trace idx: {remaining_trace_idx}", level=2)
+            printd(f"Paths head (20) costs {[p[0] for p in paths[:20]]}", level=2)
+            printd(f"Paths tail (20) costs {[p[0] for p in paths[-20:]]}", level=2)
 
         cost, heuristic_value, _, current_state, path, inputs, remaining_trace_idx = heapq.heappop(
             paths

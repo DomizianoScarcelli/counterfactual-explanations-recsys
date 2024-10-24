@@ -6,7 +6,7 @@ from typing import Dict, Generator, List, Optional, Tuple, Union
 from recbole.model.abstract_recommender import SequentialRecommender
 from tqdm import tqdm
 
-from config import DATASET, MODEL
+from config import DATASET, MODEL, POP_SIZE, GENERATIONS
 from genetic.dataset.generate import interaction_generator
 from genetic.dataset.utils import get_sequence_from_interaction
 from genetic.genetic import GeneticGenerationStrategy
@@ -27,8 +27,6 @@ def evaluation_step(sequence, model: SequentialRecommender):
                         [Mutations.SWAP, Mutations.REPLACE, Mutations.ADD, Mutations.DELETE],
                         [Mutations.SWAP, Mutations.REPLACE, Mutations.REVERSE, Mutations.SHUFFLE],
                         [Mutations.SWAP, Mutations.REPLACE, Mutations.ADD, Mutations.DELETE, Mutations.REVERSE, Mutations.SHUFFLE]]
-    GENERATIONS = 10 
-    POP_SIZE = 2000
     for allowed_mutations in tqdm(search_mutations, desc="Evalutaion step..."):
         good_genetic_strategy = GeneticGenerationStrategy(input_seq=sequence,
                                                           allowed_mutations=allowed_mutations,

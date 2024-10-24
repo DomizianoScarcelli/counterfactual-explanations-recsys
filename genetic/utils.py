@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from torch import Tensor
 
 from models.utils import pad_zero
+import Levenshtein
 
 
 class NumItems(Enum):
@@ -19,13 +20,8 @@ def cPickle_clone(x):
     # return deepcopy(x)
     return cPickle.loads(cPickle.dumps(x))
 
-def edit_distance(seq1, seq2):
-    if len(seq1) < len(seq2):
-        seq1 = pad_zero(seq1, len(seq2))
-    if len(seq2) < len(seq1):
-        seq2 = pad_zero(seq2, len(seq1))
-
-    return 1 - np.sum(np.array(seq1) == np.array(seq2)) / len(seq1)  # Fraction of matching elements
+def edit_distance(str1, str2):
+    return 1 - Levenshtein.ratio(str1, str2)
 
 def cosine_distance(prob1: Tensor, prob2: Tensor) -> float:
     return 1 - F.cosine_similarity(prob1, prob2, dim=-1).item()

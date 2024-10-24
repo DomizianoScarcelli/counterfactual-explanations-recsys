@@ -7,7 +7,7 @@ from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
 from torch import Tensor
 
-from config import DATASET, MODEL
+from config import DATASET, MODEL, POP_SIZE, GENERATIONS
 from genetic.dataset.utils import (get_dataloaders,
                                    get_sequence_from_interaction, load_dataset,
                                    save_dataset, train_test_split)
@@ -50,7 +50,7 @@ def generate(
         sequence.size(0) == 1
     ), f"Only batch size of 1 is supported, sequence shape is: {sequence.shape}"
     # user_id = interaction.interaction["user_id"][0].item()
-
+    
     # Trim zeros
     sequence = sequence.squeeze(0)
     assert len(sequence.shape) == 1, f"Sequence dim must be 1: {
@@ -60,9 +60,9 @@ def generate(
         input_seq=sequence,
         predictor=lambda x: model_predict(seq=x, model=model, prob=True),
         allowed_mutations=allowed_mutations,
-        pop_size=2000,
+        pop_size=POP_SIZE,
         good_examples=True,
-        generations=10,
+        generations=GENERATIONS,
     )
     good_examples = good_genetic_strategy.generate()
     good_examples = good_genetic_strategy.postprocess(good_examples)
@@ -70,9 +70,9 @@ def generate(
         input_seq=sequence,
         predictor=lambda x: model_predict(seq=x, model=model, prob=True),
         allowed_mutations=allowed_mutations,
-        pop_size=2000,
+        pop_size=POP_SIZE,
         good_examples=False,
-        generations=10,
+        generations=GENERATIONS,
     )
     bad_examples = bad_genetic_strategy.generate()
     bad_examples = bad_genetic_strategy.postprocess(bad_examples)

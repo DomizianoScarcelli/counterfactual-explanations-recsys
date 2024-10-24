@@ -15,3 +15,4 @@ class RecDataset(Enum):
 class RecModel(Enum):
     BERT4Rec = "BERT4Rec"
     SASRec = "SASRec"
+

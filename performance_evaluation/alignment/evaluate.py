@@ -1,6 +1,4 @@
-import json
 import os
-from statistics import mean
 from typing import Dict, List, Optional
 
 import fire
@@ -11,7 +9,7 @@ from tqdm import tqdm
 from alignment.actions import print_action
 from config import DATASET, MODEL
 from constants import MAX_LENGTH
-from exceptions import CounterfactualNotFound, DfaNotAccepting, DfaNotRejecting
+from exceptions import CounterfactualNotFound, DfaNotAccepting, DfaNotRejecting, NoTargetStatesError
 from genetic.dataset.generate import dataset_generator, interaction_generator
 from genetic.dataset.utils import get_sequence_from_interaction
 from models.config_utils import generate_model, get_config
@@ -37,39 +35,24 @@ def evaluate_trace_disalignment(interactions,
         source_sequence = trim_zero(source_sequence.squeeze(0)).tolist()
         print(f"Source sequence:", source_sequence)
         time_dataset_generation = datasets.get_times()[i]
-        splits = (9/12, 2/12, 1/12)
+        splits = (20/50, 28/50, 2/50)
+        # splits = (0,1,0)
         try:
             aligned, cost, alignment = single_run(source_sequence=source_sequence, _dataset=train, splits=splits)
-        except CounterfactualNotFound:
-            not_found += 1
-            evaluation_log = save_log(evaluation_log, original=source_sequence,
-                                      alignment=None,
-                                      splits=splits,
-                                      status="CounterfactualNotFound", cost=0,
-                                      time_dataset_generation=time_dataset_generation,
-                                      time_automata_learning=0,
-                                      time_alignment=0)
-            print(f"Counterfactual not found")
-            continue
-        except DfaNotAccepting as e:
+        except (DfaNotAccepting, DfaNotRejecting, NoTargetStatesError, CounterfactualNotFound) as e:
             print(e)
+            error_messages = {
+                    DfaNotAccepting: "DfaNotAccepting",
+                    DfaNotRejecting: "DfaNotRejecting",
+                    NoTargetStatesError: "NoTargetStatesError",
+                    CounterfactualNotFound: "CounterfactualNotFound"
+                    }
             skipped += 1
             evaluation_log = save_log(evaluation_log, 
                                       original=source_sequence,
                                       splits=splits,
                                       alignment=None,
-                                      status="DfaNotAccepting", cost=0,
-                                      time_dataset_generation=time_dataset_generation,
-                                      time_automata_learning=0,
-                                      time_alignment=0)
-            continue
-        except DfaNotRejecting as e:
-            print(e.with_traceback)
-            skipped += 1
-            evaluation_log = save_log(evaluation_log, original=source_sequence,
-                                      alignment=None,
-                                      splits=splits,
-                                      status="DfaNotRejecting", cost=0,
+                                      status=error_messages[type(e)], cost=0,
                                       time_dataset_generation=time_dataset_generation,
                                       time_automata_learning=0,
                                       time_alignment=0)
@@ -82,7 +65,7 @@ def evaluate_trace_disalignment(interactions,
         else:
             skipped += 1
             evaluation_log = save_log(evaluation_log, original=source_sequence,
-                                      alignment=alignment,
+                                      alignment=[print_action(a) for a in alignment],
                                       splits=splits,
                                       status="MaximumLengthReached", 
                                       cost=cost,
@@ -112,7 +95,10 @@ def evaluate_trace_disalignment(interactions,
                                   time_alignment=timed_trace_disalignment.get_last_time())
 
 
-def main(mode:str ="evaluate", use_cache: bool=True, evaluation_log: Optional[str]=None, stats_output: Optional[str]=None):
+def main(mode: str = "evaluate", 
+         use_cache: bool = True, 
+         evaluation_log: Optional[str] = None,
+         stats_output: Optional[str] = None):
     set_seed()
     if mode == "evaluate":
         config = get_config(dataset=DATASET, model=MODEL)
@@ -128,7 +114,7 @@ def main(mode:str ="evaluate", use_cache: bool=True, evaluation_log: Optional[st
         if not stats_output:
             raise ValueError("Evaluation stats output needed")
         evaluate_stats(evaluation_log, stats_output)
-        
+
     else:
         raise ValueError(f"Mode {mode} not supported, choose between [evaluate, stats]")
 

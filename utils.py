@@ -4,6 +4,16 @@ from typing import Any, Callable, Generator, List
 
 import numpy as np
 import torch
+from config import DEBUG
+
+
+def printd(statement, level=1):
+    """
+    Prints the statement only if the specified level is lower than the debug 
+    level.
+    """
+    if DEBUG and level <= DEBUG:
+        print(statement)
 
 
 def set_seed(seed: int = 42):
@@ -12,7 +22,6 @@ def set_seed(seed: int = 42):
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
-
 
 
 class TimedGenerator:
@@ -29,7 +38,7 @@ class TimedGenerator:
                     measuring the time taken for each yield.
         get_times(): Returns the list of times taken for each yield operation.
     """
-    
+
     def __init__(self, generator: Generator):
         """
         Initializes the TimedGenerator with the original generator.
@@ -58,6 +67,7 @@ class TimedGenerator:
             except StopIteration:
                 # Exit the loop when the generator is exhausted
                 break
+
     def get_times(self) -> List[float]:
         """
         Returns the list of times taken for each yield operation.
@@ -68,8 +78,6 @@ class TimedGenerator:
         return self.times
 
 
-
-
 class TimedFunction:
     """
     A wrapper class for timing the execution of a specific function.
@@ -77,12 +85,12 @@ class TimedFunction:
     Attributes:
         func (Callable): The function to be timed.
         last_time (float): The time taken by the last execution of the function.
-    
+
     Methods:
         __call__(*args, **kwargs): Executes the function, measuring the time taken.
         get_last_time(): Returns the time taken for the last function execution.
     """
-    
+
     def __init__(self, func: Callable):
         """
         Initializes the TimedFunction with the function to be timed.
