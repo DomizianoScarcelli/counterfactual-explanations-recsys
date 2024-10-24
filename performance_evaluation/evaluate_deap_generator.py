@@ -6,7 +6,7 @@ from typing import Dict, Generator, List, Optional, Tuple, Union
 from recbole.model.abstract_recommender import SequentialRecommender
 from tqdm import tqdm
 
-from config import DATASET, MODEL, POP_SIZE, GENERATIONS
+from config import DATASET, GENERATIONS, MODEL, POP_SIZE
 from genetic.dataset.generate import interaction_generator
 from genetic.dataset.utils import get_sequence_from_interaction
 from genetic.genetic import GeneticGenerationStrategy

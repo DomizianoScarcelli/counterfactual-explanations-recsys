@@ -6,24 +6,28 @@ import torch
 from deap import base, creator, tools
 from torch import Tensor
 
+from config import GENERATIONS, POP_SIZE
 from constants import MAX_LENGTH, MIN_LENGTH
 from genetic.extended_ea_algorithms import eaSimpleBatched
 from genetic.mutations import (ALL_MUTATIONS, Mutations, mutate_add,
                                mutate_delete)
 from genetic.utils import (cosine_distance, cPickle_clone, edit_distance,
                            self_indicator)
-from models.utils import pad_zero, pad_zero_batch, trim_zero
+from models.utils import pad, pad_batch, trim
 from type_hints import Dataset
 from utils import set_seed
 
 set_seed()
 
 class GeneticGenerationStrategy():
-    def __init__(self, input_seq: Tensor, predictor: Callable,
-                 allowed_mutations: List[Mutations] = ALL_MUTATIONS, pop_size:
-                 int=1000, generations: int=20, good_examples: bool=True,
+    def __init__(self, input_seq: Tensor, 
+                 predictor: Callable,
+                 allowed_mutations: List[Mutations] = ALL_MUTATIONS, 
+                 pop_size: int=POP_SIZE, 
+                 generations: int=GENERATIONS, 
+                 good_examples: bool=True,
                  verbose: bool=True):
-        self.input_seq = trim_zero(input_seq)
+        self.input_seq = trim(input_seq)
         self.predictor = predictor
         self.pop_size = pop_size
         self.gt = self.predictor(input_seq.unsqueeze(0))
@@ -35,7 +39,7 @@ class GeneticGenerationStrategy():
         # Define the evaluation function
         creator.create("fitness", base.Fitness, weights=(-1.0,))  # Minimize fitness
         creator.create("individual", list, fitness=creator.fitness)
-        
+
         self.toolbox = base.Toolbox()
         self.toolbox.register("feature_values", lambda x: x.tolist(), input_seq)
         self.toolbox.register("individual", tools.initIterate, creator.individual, self.toolbox.feature_values)
@@ -64,7 +68,7 @@ class GeneticGenerationStrategy():
         #TODO: add a batch_size mechanism
         ALPHA1= 0.5
         ALPHA2 = 1 - ALPHA1
-        candidate_seqs = torch.stack([pad_zero(torch.tensor(i), MAX_LENGTH) for i in individuals])
+        candidate_seqs = torch.stack([pad(torch.tensor(i), MAX_LENGTH) for i in individuals])
         batch_size = candidate_seqs.size(0)
         candidate_probs = self.predictor(candidate_seqs)  # Function to assign label based on the recommender system
         assert candidate_probs.size(0) == batch_size, f"Mismatch in probs shape and batch size: {candidate_probs.shape} != {batch_size}"
@@ -91,10 +95,10 @@ class GeneticGenerationStrategy():
         population, _ = eaSimpleBatched(population, self.toolbox, cxpb=0.7,
                                         mutpb=0.5, ngen=self.generations,
                                         halloffame=halloffame, verbose=False)
-        preds = self.predictor(torch.stack([pad_zero(torch.tensor(p), MAX_LENGTH) for p in population])).argmax(-1)
+        preds = self.predictor(torch.stack([pad(torch.tensor(p), MAX_LENGTH) for p in population])).argmax(-1)
         new_population = [(torch.tensor(x), preds[i].item()) for (i, x) in enumerate(population)]
         label_eval, seq_eval = self.evaluate_generation(new_population)
-        self.print(f"Good examples = {self.good_examples} [{len(new_population)}] ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
+        self.print(f"[Original] Good examples = {self.good_examples} [{len(new_population)}] ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
         if not self.good_examples:
             # new_population.append((self.input_seq, self.gt.argmax(-1).item()))
             # Augment only good examples, which are the rarest
@@ -102,7 +106,7 @@ class GeneticGenerationStrategy():
         
         augmented = self.augment_pop(population, halloffame)
         new_augmented = []
-        preds = self.predictor(pad_zero_batch(augmented, MAX_LENGTH)).argmax(-1)
+        preds = self.predictor(pad_batch(augmented, MAX_LENGTH)).argmax(-1)
         for i, x in enumerate(augmented):
             new_augmented.append((torch.tensor(x), preds[i].item()))
         label_eval, seq_eval = self.evaluate_generation(new_augmented)

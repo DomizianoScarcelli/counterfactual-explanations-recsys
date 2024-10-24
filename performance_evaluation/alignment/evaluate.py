@@ -1,3 +1,4 @@
+import json
 import os
 from typing import Dict, List, Optional
 
@@ -9,22 +10,29 @@ from tqdm import tqdm
 from alignment.actions import print_action
 from config import DATASET, MODEL
 from constants import MAX_LENGTH
-from exceptions import CounterfactualNotFound, DfaNotAccepting, DfaNotRejecting, NoTargetStatesError
+from exceptions import (CounterfactualNotFound, DfaNotAccepting,
+                        DfaNotRejecting, NoTargetStatesError)
 from genetic.dataset.generate import dataset_generator, interaction_generator
 from genetic.dataset.utils import get_sequence_from_interaction
 from models.config_utils import generate_model, get_config
-from models.utils import pad_zero, trim_zero
+from models.utils import pad, trim
 from performance_evaluation.alignment.utils import evaluate_stats, save_log
 from run import single_run, timed_learning_pipeline, timed_trace_disalignment
+from type_hints import Split, Trace
 from utils import TimedGenerator, set_seed
 
 
-def evaluate_trace_disalignment(interactions, 
-                                datasets, 
-                                oracle,
-                                num_counterfactuals: int=20):
+def evaluate_trace_disalignment(interactions: TimedGenerator, 
+                                datasets: TimedGenerator, 
+                                oracle: SequentialRecommender,
+                                num_counterfactuals: int=20,
+                                force: bool=False):
     good, bad, not_found, skipped = 0, 0, 0, 0
-    evaluation_log = []
+    evaluation_log: Dict[str, List[Dict]] = {}
+    if os.path.exists("evaluation_log.json"):
+        with open("evaluation_log.json", "r") as f:
+            evaluation_log = json.load(f)
+
     status = "unknown"
     for i, ((train, _), interaction) in enumerate(tqdm(zip(datasets, interactions), desc="Performance evaluation...")):
         if i == num_counterfactuals:
@@ -32,11 +40,17 @@ def evaluate_trace_disalignment(interactions,
             break
         source_sequence = get_sequence_from_interaction(interaction)
         source_gt = oracle.full_sort_predict(source_sequence).argmax(-1).item()
-        source_sequence = trim_zero(source_sequence.squeeze(0)).tolist()
+        source_sequence = trim(source_sequence.squeeze(0)).tolist()
         print(f"Source sequence:", source_sequence)
         time_dataset_generation = datasets.get_times()[i]
-        splits = (20/50, 28/50, 2/50)
-        # splits = (0,1,0)
+        splits: Split = (35/50, 15/50, 0/50)
+        # splits: Split = (0, 1, 0)
+        splits_key = ", ".join(f"{i}" for i in splits)
+
+        if splits_key in evaluation_log and source_sequence in [run["original"] for run in evaluation_log[splits_key]] and not force:
+            raise ValueError(f"Splits {splits} already evaluated for the current trace, set force=True if you want to override them")
+
+        evaluation_log[splits_key] = []
         try:
             aligned, cost, alignment = single_run(source_sequence=source_sequence, _dataset=train, splits=splits)
         except (DfaNotAccepting, DfaNotRejecting, NoTargetStatesError, CounterfactualNotFound) as e:
@@ -50,7 +64,7 @@ def evaluate_trace_disalignment(interactions,
             skipped += 1
             evaluation_log = save_log(evaluation_log, 
                                       original=source_sequence,
-                                      splits=splits,
+                                      splits_key=splits_key,
                                       alignment=None,
                                       status=error_messages[type(e)], cost=0,
                                       time_dataset_generation=time_dataset_generation,
@@ -61,12 +75,12 @@ def evaluate_trace_disalignment(interactions,
         if len(aligned) == MAX_LENGTH:
             aligned = torch.tensor(aligned).unsqueeze(0).to(torch.int64)
         elif len(aligned) < MAX_LENGTH:
-            aligned = pad_zero(trim_zero(torch.tensor(aligned)), MAX_LENGTH).unsqueeze(0).to(torch.int64)
+            aligned = pad(trim(torch.tensor(aligned)), MAX_LENGTH).unsqueeze(0).to(torch.int64)
         else:
             skipped += 1
             evaluation_log = save_log(evaluation_log, original=source_sequence,
                                       alignment=[print_action(a) for a in alignment],
-                                      splits=splits,
+                                      splits_key=splits_key,
                                       status="MaximumLengthReached", 
                                       cost=cost,
                                       time_dataset_generation=time_dataset_generation,
@@ -87,7 +101,7 @@ def evaluate_trace_disalignment(interactions,
         print(f"[{i}] Good: {good}, Bad: {bad}, Not Found: {not_found}, Skipped: {skipped}")
         evaluation_log = save_log(evaluation_log, original=source_sequence,
                                   alignment=[print_action(a) for a in alignment],
-                                  splits=splits,
+                                  splits_key=splits_key,
                                   status=status, 
                                   cost=cost,
                                   time_dataset_generation=time_dataset_generation,

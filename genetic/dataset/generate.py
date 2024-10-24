@@ -7,7 +7,7 @@ from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
 from torch import Tensor
 
-from config import DATASET, MODEL, POP_SIZE, GENERATIONS
+from config import DATASET, GENERATIONS, MODEL, POP_SIZE
 from genetic.dataset.utils import (get_dataloaders,
                                    get_sequence_from_interaction, load_dataset,
                                    save_dataset, train_test_split)
@@ -95,6 +95,13 @@ def interaction_generator(config: Config) -> Generator[Interaction, None, None]:
     for data in test_data:
         interaction = data[0]
         yield interaction
+
+def sequence_generator(config: Config) -> Generator[Tensor, None, None]:
+    _, _, test_data = get_dataloaders(config)
+    assert test_data is not None, "Test data is None"
+    for data in test_data:
+        interaction = data[0]
+        yield get_sequence_from_interaction(interaction)
 
 
 def dataset_generator(

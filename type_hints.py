@@ -7,6 +7,7 @@ LabeledTensor: TypeAlias = Tuple[Tensor, int]
 Dataset: TypeAlias = List[LabeledTensor]
 GoodBadDataset: TypeAlias = Tuple[Dataset, Dataset]
 TraceSplit: TypeAlias = Tuple[List[int], List[int], List[int]]
+Split: TypeAlias = Tuple[float, float, float]
 Trace: TypeAlias = List[Tensor|int]
 
 class RecDataset(Enum):

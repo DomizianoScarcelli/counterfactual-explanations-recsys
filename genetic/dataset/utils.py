@@ -8,6 +8,7 @@ from recbole.utils import init_seed
 from torch import Tensor
 from torch.utils.data import DataLoader
 
+from models.utils import pad
 from type_hints import Dataset, GoodBadDataset
 
 
@@ -86,5 +87,13 @@ def make_deterministic(dataset: Tuple[Dataset, Dataset]) -> Tuple[Dataset, Datas
 
 def get_sequence_from_interaction(interaction: Interaction) -> Tensor:
     sequence = interaction.interaction["item_id_list"]
-    # print(f"[generate_dataset.get_sequence_from_interaction] sequence is {sequence}")
-    return sequence
+    length = interaction.interaction["item_length"]
+    # print(f"""Interaction-Sequence info: 
+    #       Sequence: {sequence} 
+    #       Length: {length}
+    #       Unpadded: {sequence[:, :length]}
+    #       """)
+
+    # Changes padding character from 0 to -1
+    unpadded = sequence[:, :length].flatten()
+    return pad(unpadded, sequence.size(-1)).unsqueeze(0)

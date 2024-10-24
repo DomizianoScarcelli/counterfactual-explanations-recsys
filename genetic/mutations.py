@@ -8,9 +8,9 @@ from genetic.utils import NumItems, random_points_with_offset
 def mutate_replace(seq: List[int], max_value:NumItems=NumItems.ML_1M, num_replaces:int=1):
     for _ in range(num_replaces):
         i = random.sample(range(len(seq)), 1)[0]
-        new_value = random.randint(1, max_value.value)
+        new_value = random.randint(0, max_value.value)
         while (new_value in seq):
-            new_value = random.randint(1, max_value.value)
+            new_value = random.randint(0, max_value.value)
         seq[i] = new_value
     return seq,
 
@@ -36,9 +36,9 @@ def mutate_shuffle(seq: List[int], offset_ratio:float=0.3):
     return seq,
 
 def mutate_add(seq: List[int], max_value: NumItems=NumItems.ML_1M):
-    random_item = random.randint(1, max_value.value)
+    random_item = random.randint(0, max_value.value)
     while random_item in seq:
-        random_item = random.randint(1, max_value.value)
+        random_item = random.randint(0, max_value.value)
     i = random.sample(range(len(seq)), 1)[0]
     seq.insert(i, random_item)
     return seq,

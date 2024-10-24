@@ -1,18 +1,18 @@
+import warnings
 from copy import deepcopy
 
 import pytest
 import torch
-import warnings
 
 from alignment.actions import encode_action_str, print_action
-from alignment.alignment import align, split_trace, trace_alignment, trace_disalignment
+from alignment.alignment import (align, split_trace, trace_alignment,
+                                 trace_disalignment)
 from automata_learning.learning import learning_pipeline
 from automata_learning.utils import invert_automata, run_automata
-from genetic.dataset.generate import generate
-from utils import set_seed
-from models.utils import pad_zero, trim_zero
 from constants import MAX_LENGTH
-
+from genetic.dataset.generate import generate
+from models.utils import pad, trim
+from utils import set_seed
 
 
 @pytest.mark.skip()
@@ -35,7 +35,7 @@ class TestMockData:
 
         a_dfa_accepts = run_automata(mock_a_dfa_aug, mock_edited_trace)
         assert a_dfa_accepts, "A_DFA rejected edited good point"
-
+    
     def test_run_trace_alignment_bad_trace(self, mock_a_dfa_aug, mock_bad_trace):
         a_dfa_aug_accepts = run_automata(mock_a_dfa_aug, mock_bad_trace)
         assert not a_dfa_aug_accepts, "Bad trace should be accepted"
@@ -46,6 +46,7 @@ class TestMockData:
             mock_a_dfa_aug, ([], mock_bad_trace, []))
         print(f"Best alignment {alignment} with cost {cost}")
 
+    @pytest.mark.heavy
     def test_trace_alignment_single(self, mock_a_dfa_aug, mock_bad_trace):
         aligned_trace, _, _ = trace_alignment(
             mock_a_dfa_aug, ([], mock_bad_trace, []))
@@ -58,11 +59,13 @@ class TestMockData:
         original_rejects = not run_automata(mock_a_dfa_aug, mock_bad_trace)
         assert original_rejects, "Automa should reject original bad trace"
 
+    @pytest.mark.heavy
     def test_trace_alignment(self, mock_a_dfa_aug, mock_dataset):
         _, bp = mock_dataset
         for bad_trace, _ in bp:
             self.test_trace_alignment_single(mock_a_dfa_aug, bad_trace)
-
+    
+    @pytest.mark.heavy
     def test_trace_disalignment_single(self, mock_a_dfa_aug, mock_original_trace):
         inv_mock_a_dfa_aug = deepcopy(mock_a_dfa_aug)
         invert_automata(inv_mock_a_dfa_aug)
@@ -77,7 +80,8 @@ class TestMockData:
               aligned_trace}")
         aligned_accepts = run_automata(inv_mock_a_dfa_aug, aligned_trace)
         assert aligned_accepts, "Inverted Automa should accetps aligned bad trace"
-
+    
+    @pytest.mark.heavy
     def test_trace_disalignment(self, mock_a_dfa_aug, mock_dataset):
         gp, _ = mock_dataset
         for good_trace, _ in gp:
@@ -94,10 +98,15 @@ class TestMockSubsequence:
     #         aligned_trace} != {expected}"
 
     def test_subtrace_disalignment(self, mock_a_dfa_aug):
-        expected = [[5,4,1], [5,2,4,1]]
+        """
+        If an alignment, exists for the entire trace, then it should be found
+        by the algorithm. If an alignment exist for a subtrace, then it should
+        be found by the algorithm.
+        """
+        expected = [[5,4,1], [5,2,4,1], [5,4,1,2]]
         trace_1 = ([], [5,3], [4,1])
         trace_2 = [5,3,4, 1]
-        #I'm doing alignment because I designed the trace to work on the original automa
+        #I'm doing alignment (over disalignment) because I designed the trace to work on the original automa
         aligned_trace2, _, _ = trace_alignment(mock_a_dfa_aug, trace_2)
         aligned_trace, _, _ = trace_alignment(mock_a_dfa_aug, trace_1)
         print(f"Aligned Trace 1: {aligned_trace}")
@@ -179,8 +188,8 @@ class TestEdgeCases:
     to see if the bug is fixed for good. Particular hard coded traces are used.
     """
 
-    @pytest.mark.skip()
     def test_seq_subseq_equality(self, model):
+        set_seed()
         trace = torch.tensor([1346, 669, 648, 198, 1315, 1334, 423, 1342, 658,
                              1773, 1380, 1175, 1089, 908, 622, 2892, 3284, 2469,
                              2797, 811, 914, 576, 2885, 2147, 2609, 1834, 2828,
@@ -203,14 +212,21 @@ class TestEdgeCases:
         # if not counterfactual_rejects:
         #     warnings.warn("Original Automata doesn't reject the counterfactual sequence")
 
-        splits = (0/50, 47/50, 3/50)
+        splits = (20/50, 28/50, 2/50)
         splitted = split_trace(trace, splits)
         splitted_counterfactual, _, splitted_alignment = trace_disalignment(dfa, splitted)
-        padded_counter = pad_zero(trim_zero(torch.tensor(splitted_counterfactual)), MAX_LENGTH).unsqueeze(0).to(torch.int64)
-        print(f"Padded counterfactual is: {padded_counter}")
+        print(f"Splitted counterfactual before padding: {torch.tensor(torch.tensor(splitted_counterfactual))}")
+
+        if len(splitted_counterfactual) < MAX_LENGTH:
+            splitted_counterfactual = pad(trim(torch.tensor(splitted_counterfactual)), MAX_LENGTH)
+
+        print(f"Splitted counterfactual: {torch.tensor(splitted_counterfactual).unsqueeze(0)}")
+
         counterfactual_label = model.full_sort_predict_from_sequence(
             torch.tensor(splitted_counterfactual).unsqueeze(0)).argmax(-1).item()
+
         print(f"Counterfactual trace's label: {counterfactual_label}")
+
         counterfactual_rejects = not run_automata(dfa, splitted_counterfactual)
         if not counterfactual_rejects:
             warnings.warn("Original Automata doesn't reject the splitted counterfactual sequence")

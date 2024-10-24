@@ -4,6 +4,7 @@ from typing import Any, Callable, Generator, List
 
 import numpy as np
 import torch
+
 from config import DEBUG
 
 
@@ -52,20 +53,12 @@ class TimedGenerator:
     def __iter__(self):
         while True:
             try:
-                # Start the timer before fetching the next dataset
                 start_time = time.time()
-
-                # Retrieve the next dataset using next()
                 dataset = next(self.generator)
-
-                # Stop the timer after getting the dataset
                 elapsed_time = time.time() - start_time
                 self.times.append(elapsed_time)
-
-                # Yield the dataset
                 yield dataset
             except StopIteration:
-                # Exit the loop when the generator is exhausted
                 break
 
     def get_times(self) -> List[float]:

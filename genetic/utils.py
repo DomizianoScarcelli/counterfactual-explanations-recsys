@@ -2,12 +2,12 @@ import random
 from enum import Enum
 
 import _pickle as cPickle
+import Levenshtein
 import numpy as np
 import torch.nn.functional as F
 from torch import Tensor
 
-from models.utils import pad_zero
-import Levenshtein
+from models.utils import pad
 
 
 class NumItems(Enum):

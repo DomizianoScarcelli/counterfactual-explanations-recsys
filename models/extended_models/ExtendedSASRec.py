@@ -23,7 +23,7 @@ class ExtendedSASRec(SASRec):
             raise ValueError(f"Unsupported input type: {type(interaction)}")
 
     def full_sort_predict_from_sequence(self, item_seq: Tensor):
-        item_seq_len = torch.count_nonzero(item_seq, dim=-1).unsqueeze(0).to(torch.int64)
+        item_seq_len = (item_seq >= 0).sum(-1).unsqueeze(0).to(torch.int64)
         item_seq = item_seq.to(torch.int64)
         seq_output = self.forward(item_seq, item_seq_len)
         test_items_emb = self.item_embedding.weight

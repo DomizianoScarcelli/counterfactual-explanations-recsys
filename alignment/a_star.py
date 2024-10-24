@@ -3,14 +3,14 @@ import warnings
 from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 from aalpy.automata.Dfa import Dfa, DfaState
-from utils import printd
 
-from alignment.actions import (Action, decode_action, encode_action, encode_action_str)
+from alignment.actions import (Action, decode_action, encode_action,
+                               encode_action_str, is_legal)
 from alignment.utils import alignment_length, prune_paths_by_length
+from exceptions import NoTargetStatesError
 from heuristics.heuristics import hops
 from type_hints import TraceSplit
-
-from exceptions import NoTargetStatesError
+from utils import printd
 
 
 def dijkstra(
@@ -39,13 +39,12 @@ def dijkstra(
 
 def get_target_states(dfa: Dfa, leftover_trace: Sequence[int]):
     accepting_states = set({state for state in dfa.states if state.is_accepting})
-    printd(f"Accepting states: {[s.state_id for s in accepting_states]}")
+    print(f"Accepting states: {[s.state_id for s in accepting_states]}")
     final_states = set()
     for state in dfa.states:
         curr_state = state
         for c in leftover_trace:
-            new_state = curr_state.transitions[f"sync_{c}"]
-            curr_state = new_state
+            curr_state = curr_state.transitions[f"sync_{c}"]
         if curr_state in accepting_states:
             final_states.add(state)
     return final_states
@@ -85,9 +84,7 @@ def faster_dijkstra(
         initial_alignment.append(encoded_char)
     initial_alignment = tuple(initial_alignment)
 
-    # TODO: Test if target states are actually computed correctly
     target_states = get_target_states(dfa, leftover_t)
-
 
     if len(target_states) == 0:
         raise NoTargetStatesError()
@@ -118,6 +115,7 @@ def faster_dijkstra(
         origin_state=dfa.current_state,
         target_states=target_states,
         remaining_trace=alignable_t,
+        leftover_trace_set=set(leftover_t),
         min_alignment_length=min_alignment_length,
         max_alignment_length=max_alignment_length,
         initial_alignment=initial_alignment,
@@ -134,6 +132,7 @@ def a_star(
     origin_state: DfaState,
     target_states: Set[DfaState],
     remaining_trace: List[int],
+    leftover_trace_set: Set[int],
     min_alignment_length: Optional[int],
     max_alignment_length: Optional[int],
     heuristic_fn: Optional[Callable] = None,
@@ -146,30 +145,22 @@ def a_star(
             return heuristic_fn(curr_state)
 
         return hops(curr_state, remaining_trace, target_states)
-
+    
     def get_constrained_neighbours(state, curr_char: Optional[int]):
         neighbours = []
         for p, target in state.transitions.items():
             encoded_p = encode_action_str(p) if isinstance(p, str) else p
             action_type, e = decode_action(encoded_p)
+            if not is_legal(encoded_p, inputs, leftover_trace_set):
+                continue
             if action_type == Action.SYNC and curr_char is not None:
-                add_e = encode_action(Action.ADD, e)
-                del_e = encode_action(Action.DEL, e)
-                already_added = p in inputs or add_e in inputs or del_e in inputs
-                if curr_char == e and not already_added:
+                if curr_char == e:
                     neighbours.append((target, 0, encoded_p))  # sync_e cost = 0
             elif action_type == Action.DEL and curr_char is not None:
-                sync_e = encode_action(Action.SYNC, e)
-                add_e = encode_action(Action.ADD, e)
-                already_added = p in inputs or sync_e in inputs or add_e in inputs
-                if curr_char == e and not already_added:
+                if curr_char == e:
                     neighbours.append((target, 1, encoded_p))  # del_e cost = 1
             elif action_type == Action.ADD:
-                sync_e = encode_action(Action.SYNC, e)
-                del_e = encode_action(Action.DEL, e)
-                already_added = p in inputs or sync_e in inputs or del_e in inputs
-                if not already_added:
-                    neighbours.append((target, 1, encoded_p))  # add_e cost = 1
+                neighbours.append((target, 1, encoded_p))  # add_e cost = 1
 
         return neighbours
 

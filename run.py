@@ -10,7 +10,7 @@ from config import DATASET, MODEL
 from genetic.dataset.generate import dataset_generator, interaction_generator
 from genetic.dataset.utils import get_sequence_from_interaction
 from models.config_utils import get_config
-from models.utils import trim_zero
+from models.utils import trim
 from type_hints import Dataset, RecDataset, RecModel
 from utils import TimedFunction
 
@@ -60,7 +60,7 @@ def main(dataset:RecDataset=DATASET,
             print(f"Generated {num_counterfactuals}, exiting...")
             break
         source_sequence = get_sequence_from_interaction(interaction).squeeze(0)
-        source_sequence = trim_zero(source_sequence)
+        source_sequence = trim(source_sequence)
         aligned, cost, _ = single_run(source_sequence.tolist(), _dataset)
         end = time.time()
         align_time = end-start

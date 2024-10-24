@@ -5,7 +5,6 @@ from typing import List, Tuple, Union
 from aalpy.automata.Dfa import Dfa, DfaState
 from torch import Tensor, instance_norm
 from tqdm import tqdm
-from utils import printd
 
 from alignment.a_star import faster_dijkstra
 from alignment.actions import Action, decode_action, print_action
@@ -14,6 +13,7 @@ from constants import MAX_LENGTH
 from exceptions import CounterfactualNotFound, DfaNotAccepting, DfaNotRejecting
 from genetic.utils import NumItems
 from type_hints import Trace, TraceSplit
+from utils import printd
 
 
 def augment_trace_automata(automata: Dfa, num_items: NumItems = NumItems.ML_1M) -> Dfa:
@@ -37,7 +37,7 @@ def augment_trace_automata(automata: Dfa, num_items: NumItems = NumItems.ML_1M) 
     with the corresponding repair propositions.
     """
     # Alphabet is the universe of all the items
-    alphabet = [i for i in range(1, num_items.value)]
+    alphabet = [i for i in range(0, num_items.value)]
 
     # Create the new repair propositions
     add_propositions = {p: f"add_{p}" for p in alphabet}
@@ -185,10 +185,9 @@ def trace_alignment(a_dfa_aug: Dfa, trace_split: Union[Trace, TraceSplit]):
 
     a_dfa_aug.reset_to_initial()
 
-    # min_length = len(safe_trace_split[0] + safe_trace_split[1])
+    min_length = len(safe_trace_split[0] + safe_trace_split[1])
     # max_length = min_length + len(safe_trace_split[2])
-    min_length = len(safe_trace_split[1])
-    max_length = MAX_LENGTH
+    max_length = MAX_LENGTH - len(safe_trace_split[2])
 
     alignment = faster_dijkstra(dfa=a_dfa_aug,
                                 trace_split=safe_trace_split,
