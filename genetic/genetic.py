@@ -95,7 +95,7 @@ class GeneticGenerationStrategy():
         population, _ = eaSimpleBatched(population, self.toolbox, cxpb=0.7,
                                         mutpb=0.5, ngen=self.generations,
                                         halloffame=halloffame, verbose=False)
-        preds = self.predictor(torch.stack([pad(torch.tensor(p), MAX_LENGTH) for p in population])).argmax(-1)
+        preds = self.predictor(pad_batch(population, MAX_LENGTH)).argmax(-1)
         new_population = [(torch.tensor(x), preds[i].item()) for (i, x) in enumerate(population)]
         label_eval, seq_eval = self.evaluate_generation(new_population)
         self.print(f"[Original] Good examples = {self.good_examples} [{len(new_population)}] ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")

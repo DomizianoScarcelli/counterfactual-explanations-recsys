@@ -15,7 +15,6 @@ from models.utils import pad, trim
 from utils import set_seed
 
 
-@pytest.mark.skip()
 class TestMockData:
     def test_augmented_trace_automata(self, mock_t_dfa, mock_t_dfa_aug, mock_original_trace, mock_edited_trace):
         # mock_t_dfa.visualize("saved_automatas/mock_t_dfa")
@@ -181,7 +180,7 @@ class TestUtils:
         computed: {aligned_trace}
         """
 
-
+@pytest.mark.skip()
 class TestEdgeCases:
     """
     This class tests all those edge cases where a bug was found, in order

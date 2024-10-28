@@ -36,7 +36,7 @@ def batch_predict(model: SequentialRecommender, seq: Tensor, argmax: bool=True) 
     Returns:
         raw logits if argmax is False, label otherwise
     """
-    preds = model.full_sort_predict_from_sequence(seq)
+    preds = model.full_sort_predict(seq)
     if argmax:
         preds = preds.argmax(dim=1)
     return preds

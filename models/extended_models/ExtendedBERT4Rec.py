@@ -24,6 +24,8 @@ class ExtendedBERT4Rec(BERT4Rec):
 
     def full_sort_predict_from_sequence(self, item_seq: Tensor):
         item_seq_len = (item_seq >= 0).sum(-1).unsqueeze(0).to(torch.int64)
+        #Replace -1 padding with 0 padding
+        item_seq = torch.where(item_seq == -1, torch.tensor(0), item_seq)
         item_seq = item_seq.to(torch.int64)
         item_seq = self.reconstruct_test_data(item_seq, item_seq_len)
         seq_output = self.forward(item_seq)

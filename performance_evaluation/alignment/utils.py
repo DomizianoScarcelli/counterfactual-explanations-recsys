@@ -3,6 +3,8 @@ from statistics import mean
 from typing import Dict, List, Optional, Tuple
 
 from type_hints import Split
+import time
+import datetime
 
 
 def save_log(log: Dict[str, List[Dict]], 
@@ -28,7 +30,8 @@ def save_log(log: Dict[str, List[Dict]],
             "times": {"time_dataset_generation": time_dataset_generation,
                       "time_automata_learning": time_automata_learning,
                       "time_alignment": time_alignment, 
-                      "total_time": total_time}
+                      "total_time": total_time},
+            "timestamp": datetime.datetime.fromtimestamp(time.time()).isoformat()
             }
 
     log[splits_key].append(info)

@@ -6,7 +6,7 @@ from aalpy.automata.Dfa import Dfa, DfaState
 from torch import Tensor, instance_norm
 from tqdm import tqdm
 
-from alignment.a_star import faster_dijkstra
+from alignment.a_star import faster_a_star
 from alignment.actions import Action, decode_action, print_action
 from automata_learning.utils import invert_automata, run_automata
 from constants import MAX_LENGTH
@@ -97,6 +97,7 @@ def augment_constraint_automata(automata: Dfa, trace_automaton: Dfa) -> Dfa:
     # alphabet = [i for i in range(1, NumItems.ML_1M.value)]
     alphabet = automata.get_input_alphabet()
     trace_alphabet = trace_automaton.get_input_alphabet()
+    print(f"Trace alphabet: ", trace_alphabet)
 
     # Create the new repair propositions
     add_propositions = {p: f"add_{p}" for p in alphabet}
@@ -189,7 +190,7 @@ def trace_alignment(a_dfa_aug: Dfa, trace_split: Union[Trace, TraceSplit]):
     # max_length = min_length + len(safe_trace_split[2])
     max_length = MAX_LENGTH - len(safe_trace_split[2])
 
-    alignment = faster_dijkstra(dfa=a_dfa_aug,
+    alignment = faster_a_star(dfa=a_dfa_aug,
                                 trace_split=safe_trace_split,
                                 min_alignment_length=min_length,
                                 max_alignment_length=max_length)

@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import fire
 import torch
@@ -21,10 +21,17 @@ from run import single_run, timed_learning_pipeline, timed_trace_disalignment
 from type_hints import Split, Trace
 from utils import TimedGenerator, set_seed
 
+def get_split(slen: int, split_type: str) -> Tuple[str, Split]:
+    _map= {f"{i}_mut": ((slen-i)/slen, i/slen, 0)  for i in range(1, slen)}
+    if split_type not in _map:
+        raise ValueError(f"Split type '{split_type}' not recognized")
+    return split_type, _map[split_type]
+
 
 def evaluate_trace_disalignment(interactions: TimedGenerator, 
                                 datasets: TimedGenerator, 
                                 oracle: SequentialRecommender,
+                                split_type: str,
                                 num_counterfactuals: int=20,
                                 force: bool=False):
     good, bad, not_found, skipped = 0, 0, 0, 0
@@ -39,18 +46,22 @@ def evaluate_trace_disalignment(interactions: TimedGenerator,
             print(f"Generated {num_counterfactuals}, exiting...")
             break
         source_sequence = get_sequence_from_interaction(interaction)
-        source_gt = oracle.full_sort_predict(source_sequence).argmax(-1).item()
+        try:
+            source_gt = oracle.full_sort_predict(source_sequence).argmax(-1).item()
+        except IndexError as e:
+            print("IndexError on sequence ", source_sequence)
+            raise e
         source_sequence = trim(source_sequence.squeeze(0)).tolist()
         print(f"Source sequence:", source_sequence)
         time_dataset_generation = datasets.get_times()[i]
-        splits: Split = (35/50, 15/50, 0/50)
-        # splits: Split = (0, 1, 0)
-        splits_key = ", ".join(f"{i}" for i in splits)
+        splits_key, splits = get_split(len(source_sequence), split_type)
 
-        if splits_key in evaluation_log and source_sequence in [run["original"] for run in evaluation_log[splits_key]] and not force:
-            raise ValueError(f"Splits {splits} already evaluated for the current trace, set force=True if you want to override them")
-
-        evaluation_log[splits_key] = []
+        if splits_key in evaluation_log and ", ".join(str(i) for i in source_sequence) in [run["original"] for run in evaluation_log[splits_key]] and not force:
+            print(f"Splits {splits} already evaluated for the current trace, set force=True if you want to override them")
+            continue
+        
+        if splits_key not in evaluation_log:
+            evaluation_log[splits_key] = []
         try:
             aligned, cost, alignment = single_run(source_sequence=source_sequence, _dataset=train, splits=splits)
         except (DfaNotAccepting, DfaNotRejecting, NoTargetStatesError, CounterfactualNotFound) as e:
@@ -88,7 +99,11 @@ def evaluate_trace_disalignment(interactions: TimedGenerator,
                                       time_alignment=timed_trace_disalignment.get_last_time())
             continue
         print(f"Alignment:", [print_action(a) for a in alignment])
-        aligned_gt = oracle.full_sort_predict(aligned).argmax(-1).item()
+        try:
+            aligned_gt = oracle.full_sort_predict(aligned).argmax(-1).item()
+        except IndexError as e:
+            print("IndexError on sequence ", source_sequence)
+            raise e
         correct = source_gt != aligned_gt
         if correct: 
             status = "good"
@@ -112,14 +127,15 @@ def evaluate_trace_disalignment(interactions: TimedGenerator,
 def main(mode: str = "evaluate", 
          use_cache: bool = True, 
          evaluation_log: Optional[str] = None,
-         stats_output: Optional[str] = None):
+         stats_output: Optional[str] = None,
+         split_type: str = "1_mut"):
     set_seed()
     if mode == "evaluate":
         config = get_config(dataset=DATASET, model=MODEL)
         oracle: SequentialRecommender = generate_model(config)
         interactions = interaction_generator(config)
         datasets = TimedGenerator(dataset_generator(config=config, use_cache=use_cache))
-        evaluate_trace_disalignment(interactions, datasets, oracle)
+        evaluate_trace_disalignment(interactions, datasets, oracle, split_type)
     elif mode == "stats":
         if not evaluation_log:
             raise ValueError("Evaluation log path needed for stats")
