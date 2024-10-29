@@ -1,5 +1,5 @@
 import pickle
-from typing import Tuple
+from typing import Tuple, Set
 
 from recbole.config import Config
 from recbole.data import create_dataset, data_preparation
@@ -97,3 +97,11 @@ def get_sequence_from_interaction(interaction: Interaction) -> Tensor:
     # Changes padding character from 0 to -1
     unpadded = sequence[:, :length].flatten()
     return pad(unpadded, sequence.size(-1)).unsqueeze(0)
+
+def get_dataset_alphabet(dataset: GoodBadDataset) -> Set[int]:
+    alphabet = set()
+    good, bad = dataset
+    for example in good + bad:
+        alphabet |= set(example[0].tolist())
+    return alphabet
+

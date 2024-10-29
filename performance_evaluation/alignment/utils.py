@@ -15,7 +15,8 @@ def save_log(log: Dict[str, List[Dict]],
              cost: int, 
              time_dataset_generation: float,
              time_automata_learning: float, 
-             time_alignment: float):
+             time_alignment: float,
+             use_cache: bool):
     """ 
     Saves the log with the evaluation information on the disk
     """
@@ -31,6 +32,7 @@ def save_log(log: Dict[str, List[Dict]],
                       "time_automata_learning": time_automata_learning,
                       "time_alignment": time_alignment, 
                       "total_time": total_time},
+            "cached": use_cache,
             "timestamp": datetime.datetime.fromtimestamp(time.time()).isoformat()
             }
 

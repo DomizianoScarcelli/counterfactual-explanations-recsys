@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Generator
 
 import fire
 import torch
@@ -18,20 +18,23 @@ from models.config_utils import generate_model, get_config
 from models.utils import pad, trim
 from performance_evaluation.alignment.utils import evaluate_stats, save_log
 from run import single_run, timed_learning_pipeline, timed_trace_disalignment
-from type_hints import Split, Trace
+from type_hints import Split
 from utils import TimedGenerator, set_seed
 
 def get_split(slen: int, split_type: str) -> Tuple[str, Split]:
-    _map= {f"{i}_mut": ((slen-i)/slen, i/slen, 0)  for i in range(1, slen)}
+    mut_map = {f"{i}_mut": ((slen-i)/slen, i/slen, 0)  for i in range(1, slen)}
+    nth_mut_map = {f"{i}th_mut": ((slen-i-1)/slen, 1/slen, i/slen)  for i in range(1, slen)}
+    _map = {**mut_map, **nth_mut_map}
     if split_type not in _map:
         raise ValueError(f"Split type '{split_type}' not recognized")
     return split_type, _map[split_type]
 
 
-def evaluate_trace_disalignment(interactions: TimedGenerator, 
+def evaluate_trace_disalignment(interactions: Generator, 
                                 datasets: TimedGenerator, 
                                 oracle: SequentialRecommender,
                                 split_type: str,
+                                use_cache: bool,
                                 num_counterfactuals: int=20,
                                 force: bool=False):
     good, bad, not_found, skipped = 0, 0, 0, 0
@@ -80,7 +83,8 @@ def evaluate_trace_disalignment(interactions: TimedGenerator,
                                       status=error_messages[type(e)], cost=0,
                                       time_dataset_generation=time_dataset_generation,
                                       time_automata_learning=0,
-                                      time_alignment=0)
+                                      time_alignment=0,
+                                      use_cache=use_cache)
             continue
 
         if len(aligned) == MAX_LENGTH:
@@ -96,7 +100,8 @@ def evaluate_trace_disalignment(interactions: TimedGenerator,
                                       cost=cost,
                                       time_dataset_generation=time_dataset_generation,
                                       time_automata_learning=timed_learning_pipeline.get_last_time(),
-                                      time_alignment=timed_trace_disalignment.get_last_time())
+                                      time_alignment=timed_trace_disalignment.get_last_time(),
+                                      use_cache=use_cache)
             continue
         print(f"Alignment:", [print_action(a) for a in alignment])
         try:
@@ -121,7 +126,8 @@ def evaluate_trace_disalignment(interactions: TimedGenerator,
                                   cost=cost,
                                   time_dataset_generation=time_dataset_generation,
                                   time_automata_learning=timed_learning_pipeline.get_last_time(),
-                                  time_alignment=timed_trace_disalignment.get_last_time())
+                                  time_alignment=timed_trace_disalignment.get_last_time(),
+                                  use_cache=use_cache)
 
 
 def main(mode: str = "evaluate", 
@@ -135,7 +141,11 @@ def main(mode: str = "evaluate",
         oracle: SequentialRecommender = generate_model(config)
         interactions = interaction_generator(config)
         datasets = TimedGenerator(dataset_generator(config=config, use_cache=use_cache))
-        evaluate_trace_disalignment(interactions, datasets, oracle, split_type)
+        evaluate_trace_disalignment(interactions=interactions,
+                                    datasets=datasets, 
+                                    oracle=oracle,
+                                    split_type=split_type, 
+                                    use_cache=use_cache)
     elif mode == "stats":
         if not evaluation_log:
             raise ValueError("Evaluation log path needed for stats")
