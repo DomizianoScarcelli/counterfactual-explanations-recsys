@@ -1,11 +1,13 @@
 import pytest
-
-from genetic.mutations import Mutations
-from genetic.dataset.generate import generate
-from automata_learning.learning import learning_pipeline, generate_single_accepting_sequence_dfa
-from alignment.alignment import augment_constraint_automata
-from automata_learning.utils import run_automata
 import torch
+
+from alignment.alignment import augment_constraint_automata
+from automata_learning.learning import (generate_single_accepting_sequence_dfa,
+                                        learning_pipeline)
+from automata_learning.utils import run_automata
+from genetic.dataset.generate import generate
+from genetic.mutations import Mutations
+
 
 @pytest.mark.heavy
 def test_accepting(model, sequences):

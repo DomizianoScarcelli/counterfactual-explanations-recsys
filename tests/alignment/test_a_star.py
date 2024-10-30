@@ -1,7 +1,10 @@
+import time
+
 import pytest
+
 from alignment.a_star import a_star, a_star_parallel
 from alignment.alignment import align
-import time
+
 
 def test_a_star(mock_a_dfa_aug):
     dfa = mock_a_dfa_aug

@@ -7,7 +7,7 @@ from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
 from torch import Tensor
 
-from config import DATASET, GENERATIONS, MODEL, POP_SIZE, HALLOFFAME_RATIO
+from config import DATASET, GENERATIONS, HALLOFFAME_RATIO, MODEL, POP_SIZE
 from genetic.dataset.utils import (get_dataloaders,
                                    get_sequence_from_interaction, load_dataset,
                                    save_dataset, train_test_split)
@@ -55,7 +55,7 @@ def generate(
     sequence = sequence.squeeze(0)
     assert len(sequence.shape) == 1, f"Sequence dim must be 1: {
         sequence.shape}"
-    allowed_mutations = [Mutations.SWAP, Mutations.REPLACE]
+    allowed_mutations = [Mutations.REPLACE, Mutations.SWAP]
     good_genetic_strategy = GeneticGenerationStrategy(
         input_seq=sequence,
         predictor=lambda x: model_predict(seq=x, model=model, prob=True),

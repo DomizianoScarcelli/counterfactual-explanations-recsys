@@ -4,6 +4,7 @@ from genetic.dataset.utils import get_sequence_from_interaction
 from genetic.utils import NumItems
 from models.config_utils import get_config
 
+
 class TestGenerators:
     def test_sequence_generator(self):
         config = get_config(model=MODEL, dataset=DATASET)

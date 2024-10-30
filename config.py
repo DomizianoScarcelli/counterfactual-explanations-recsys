@@ -1,5 +1,6 @@
-from type_hints import RecDataset, RecModel
 import toml
+
+from type_hints import RecDataset, RecModel
 
 config = toml.load("configs/config.toml")
 

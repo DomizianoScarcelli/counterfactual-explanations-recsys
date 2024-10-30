@@ -1,14 +1,16 @@
 import json
 import os
-from typing import Dict, List, Optional, Tuple, Generator
+from typing import Dict, Generator, List, Optional, Tuple
 
 import fire
+import pandas as pd
 import torch
+from pandas import DataFrame
 from recbole.model.abstract_recommender import SequentialRecommender
 from tqdm import tqdm
 
 from alignment.actions import print_action
-from config import DATASET, MODEL, HALLOFFAME_RATIO, GENERATIONS, POP_SIZE
+from config import DATASET, GENERATIONS, HALLOFFAME_RATIO, MODEL, POP_SIZE
 from constants import MAX_LENGTH
 from exceptions import (CounterfactualNotFound, DfaNotAccepting,
                         DfaNotRejecting, NoTargetStatesError)
@@ -20,8 +22,7 @@ from performance_evaluation.alignment.utils import evaluate_stats, log_run
 from run import single_run, timed_learning_pipeline, timed_trace_disalignment
 from type_hints import Split
 from utils import TimedGenerator, set_seed
-import pandas as pd
-from pandas import DataFrame
+
 
 def get_split(slen: int, split_type: str) -> Tuple[str, Split]:
     mut_map = {f"{i}_mut": ((slen-i)/slen, i/slen, 0)  for i in range(1, slen)}
@@ -61,7 +62,12 @@ def evaluate_trace_disalignment(interactions: Generator,
         time_dataset_generation = datasets.get_times()[i]
         splits_key, splits = get_split(len(source_sequence), split_type)
         
-        already_evaluated = log.shape[0] != 0 and log[(log["original_trace"].apply(lambda x: x == source_sequence)) & (log["splits_key"] == splits_key)].shape[0] > 0
+        already_evaluated = log.shape[0] != 0 and \
+        log[(log["original_trace"].apply(lambda x: x == source_sequence)) & 
+            (log["splits_key"] == splits_key) & 
+            (log["population_size"] == POP_SIZE) &
+            (log["num_generations"] == GENERATIONS) & 
+            (log["halloffame_ratio"] == HALLOFFAME_RATIO)].shape[0] > 0
         if already_evaluated:
             print(f"Splits {splits} already evaluated for the current trace, set force=True if you want to override them")
             continue

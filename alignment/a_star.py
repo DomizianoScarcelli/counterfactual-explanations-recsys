@@ -1,8 +1,8 @@
 import heapq
-import warnings
-from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
-from concurrent.futures import as_completed, ThreadPoolExecutor
 import threading
+import warnings
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 from aalpy.automata.Dfa import Dfa, DfaState
 
@@ -14,8 +14,6 @@ from heuristics.heuristics import hops
 from type_hints import TraceSplit
 from utils import printd
 
-
-thread_local = threading.local()
 
 def get_target_states(dfa: Dfa, leftover_trace: Sequence[int]):
     accepting_states = set({state for state in dfa.states if state.is_accepting})
@@ -117,7 +115,7 @@ def a_star(
             return heuristic_fn(curr_state)
 
         return hops(curr_state, remaining_trace, target_states)
-    
+
     def get_constrained_neighbours(state, curr_char: Optional[int]):
         neighbours = []
         for p, target in state.transitions.items():
@@ -234,151 +232,5 @@ def a_star(
                     new_remaining_trace_idx,
                 ),
             )
-
-    return None
-
-def a_star_parallel(
-    dfa: Dfa,
-    origin_state: DfaState,
-    target_states: Set[DfaState],
-    remaining_trace: List[int],
-    leftover_trace_set: Set[int],
-    min_alignment_length: Optional[int],
-    max_alignment_length: Optional[int],
-    heuristic_fn: Optional[Callable] = None,
-    initial_alignment: Optional[Tuple[int]] = None,
-):
-    remaining_trace_idx = len(remaining_trace)
-
-    def heuristic(curr_state, remaining_trace):
-        if heuristic_fn:
-            return heuristic_fn(curr_state)
-        return hops(curr_state, remaining_trace, target_states)
-
-    def get_constrained_neighbours(state, curr_char: Optional[int]):
-        neighbours = []
-        for p, target in state.transitions.items():
-            encoded_p = encode_action_str(p) if isinstance(p, str) else p
-            action_type, e = decode_action(encoded_p)
-            if not is_legal(encoded_p, inputs, leftover_trace_set):
-                continue
-            if action_type == Action.SYNC and curr_char is not None:
-                if curr_char == e:
-                    neighbours.append((target, 0, encoded_p))  # sync_e cost = 0
-            elif action_type == Action.DEL and curr_char is not None:
-                if curr_char == e:
-                    neighbours.append((target, 1, encoded_p))  # del_e cost = 1
-            elif action_type == Action.ADD:
-                neighbours.append((target, 1, encoded_p))  # add_e cost = 1
-
-        return neighbours
-
-    invalid_states = {s for s in target_states if s not in dfa.states}
-    if origin_state not in dfa.states or invalid_states:
-        warnings.warn("Origin or target state not in automaton. Returning None.")
-        return None
-
-    paths = []
-    heap_counter = 0
-    visited = set()
-
-    if initial_alignment:
-        heapq.heappush(
-            paths,
-            (
-                0,
-                0,
-                heap_counter,
-                origin_state,
-                (origin_state,),
-                initial_alignment,
-                remaining_trace_idx,
-            ),
-        )
-    else:
-        heapq.heappush(
-            paths,
-            (
-                0,
-                0,
-                heap_counter,
-                origin_state,
-                (origin_state,),
-                (),
-                remaining_trace_idx,
-            ),
-        )
-
-    pbar_counter = 0
-    while paths:
-        pbar_counter += 1
-        if pbar_counter % 100 == 0 :
-            paths = prune_paths_by_length(paths, max_paths=1_000_000)
-            printd(f"Steps: {pbar_counter}", level=2)
-            printd(f"Num paths: {len(paths)}", level=2)
-            printd(f"Remaining trace idx: {remaining_trace_idx}", level=2)
-            printd(f"Paths head (20) costs {[p[0] for p in paths[:20]]}", level=2)
-            printd(f"Paths tail (20) costs {[p[0] for p in paths[-20:]]}", level=2)
-
-        cost, heuristic_value, _, current_state, path, inputs, remaining_trace_idx = heapq.heappop(
-            paths
-        )
-
-        curr_alignment_length = alignment_length(inputs)
-        if current_state in target_states and remaining_trace_idx == 0:
-            if (
-                min_alignment_length is None
-                or curr_alignment_length >= min_alignment_length
-            ) and (
-                max_alignment_length is None
-                or curr_alignment_length <= max_alignment_length
-            ):
-                return tuple(inputs)
-
-        curr_char = (
-            remaining_trace[-remaining_trace_idx] if remaining_trace_idx > 0 else None
-        )
-        neighbours = get_constrained_neighbours(current_state, curr_char)
-
-        def process_neighbour(neighbour, action_cost, action):
-            if action in set(inputs):
-                return None
-
-            current_visited = (current_state.state_id, curr_char, action)
-
-            if current_visited in visited:
-                return None
-            visited.add(current_visited)
-
-            new_cost = cost + action_cost
-            new_path = path + (neighbour,)
-            new_inputs = inputs + (action,)
-            
-            action_type, _ = decode_action(action)
-            new_remaining_trace_idx = remaining_trace_idx - 1 if action_type in (Action.SYNC, Action.DEL) else remaining_trace_idx
-            return (new_cost, neighbour, new_path, new_inputs, new_remaining_trace_idx)
-
-        with ThreadPoolExecutor() as executor:
-            futures = []
-            for neighbour, action_cost, action in neighbours:
-                futures.append(executor.submit(process_neighbour, neighbour, action_cost, action))
-
-            for future in as_completed(futures):
-                result = future.result()
-                if result is not None:
-                    new_cost, neighbour, new_path, new_inputs, new_remaining_trace_idx = result
-                    heapq.heappush(
-                            paths, 
-                            (
-                                new_cost, 
-                                heuristic(current_state, new_inputs), 
-                                heap_counter, 
-                                neighbour, 
-                                new_path, 
-                                new_inputs, 
-                                new_remaining_trace_idx
-                                )
-                            )
-                    heap_counter += 1
 
     return None

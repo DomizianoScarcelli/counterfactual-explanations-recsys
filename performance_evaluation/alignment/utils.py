@@ -1,11 +1,12 @@
+import datetime
 import json
+import time
 from statistics import mean
 from typing import Dict, List, Optional, Tuple
 
-import time
-import datetime
 import pandas as pd
 from pandas import DataFrame
+
 
 def log_run(df: DataFrame,
             original: List[int], 

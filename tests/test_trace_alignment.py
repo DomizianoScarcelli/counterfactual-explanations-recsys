@@ -17,6 +17,7 @@ from models.utils import pad, trim
 from type_hints import GoodBadDataset, Trace
 from utils import set_seed
 
+
 @pytest.mark.skip()
 class TestMockData:
     def test_augmented_trace_automata(self, mock_t_dfa, mock_t_dfa_aug, mock_original_trace, mock_edited_trace):

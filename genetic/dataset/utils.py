@@ -1,5 +1,5 @@
 import pickle
-from typing import Tuple, Set
+from typing import Set, Tuple
 
 from recbole.config import Config
 from recbole.data import create_dataset, data_preparation
