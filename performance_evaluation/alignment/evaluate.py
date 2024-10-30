@@ -8,7 +8,7 @@ from recbole.model.abstract_recommender import SequentialRecommender
 from tqdm import tqdm
 
 from alignment.actions import print_action
-from config import DATASET, MODEL
+from config import DATASET, MODEL, HALLOFFAME_RATIO, GENERATIONS, POP_SIZE
 from constants import MAX_LENGTH
 from exceptions import (CounterfactualNotFound, DfaNotAccepting,
                         DfaNotRejecting, NoTargetStatesError)
@@ -16,10 +16,12 @@ from genetic.dataset.generate import dataset_generator, interaction_generator
 from genetic.dataset.utils import get_sequence_from_interaction
 from models.config_utils import generate_model, get_config
 from models.utils import pad, trim
-from performance_evaluation.alignment.utils import evaluate_stats, save_log
+from performance_evaluation.alignment.utils import evaluate_stats, log_run
 from run import single_run, timed_learning_pipeline, timed_trace_disalignment
 from type_hints import Split
 from utils import TimedGenerator, set_seed
+import pandas as pd
+from pandas import DataFrame
 
 def get_split(slen: int, split_type: str) -> Tuple[str, Split]:
     mut_map = {f"{i}_mut": ((slen-i)/slen, i/slen, 0)  for i in range(1, slen)}
@@ -38,10 +40,10 @@ def evaluate_trace_disalignment(interactions: Generator,
                                 num_counterfactuals: int=20,
                                 force: bool=False):
     good, bad, not_found, skipped = 0, 0, 0, 0
-    evaluation_log: Dict[str, List[Dict]] = {}
-    if os.path.exists("evaluation_log.json"):
-        with open("evaluation_log.json", "r") as f:
-            evaluation_log = json.load(f)
+    log: DataFrame  = DataFrame({})
+    genetic_params = (POP_SIZE, GENERATIONS, HALLOFFAME_RATIO)
+    if os.path.exists("run.csv"):
+        log = pd.read_csv("run.csv")
 
     status = "unknown"
     for i, ((train, _), interaction) in enumerate(tqdm(zip(datasets, interactions), desc="Performance evaluation...")):
@@ -58,13 +60,12 @@ def evaluate_trace_disalignment(interactions: Generator,
         print(f"Source sequence:", source_sequence)
         time_dataset_generation = datasets.get_times()[i]
         splits_key, splits = get_split(len(source_sequence), split_type)
-
-        if splits_key in evaluation_log and ", ".join(str(i) for i in source_sequence) in [run["original"] for run in evaluation_log[splits_key]] and not force:
+        
+        already_evaluated = log.shape[0] != 0 and log[(log["original_trace"].apply(lambda x: x == source_sequence)) & (log["splits_key"] == splits_key)].shape[0] > 0
+        if already_evaluated:
             print(f"Splits {splits} already evaluated for the current trace, set force=True if you want to override them")
             continue
         
-        if splits_key not in evaluation_log:
-            evaluation_log[splits_key] = []
         try:
             aligned, cost, alignment = single_run(source_sequence=source_sequence, _dataset=train, splits=splits)
         except (DfaNotAccepting, DfaNotRejecting, NoTargetStatesError, CounterfactualNotFound) as e:
@@ -76,32 +77,34 @@ def evaluate_trace_disalignment(interactions: Generator,
                     CounterfactualNotFound: "CounterfactualNotFound"
                     }
             skipped += 1
-            evaluation_log = save_log(evaluation_log, 
-                                      original=source_sequence,
-                                      splits_key=splits_key,
-                                      alignment=None,
-                                      status=error_messages[type(e)], cost=0,
-                                      time_dataset_generation=time_dataset_generation,
-                                      time_automata_learning=0,
-                                      time_alignment=0,
-                                      use_cache=use_cache)
+            log = log_run(log, 
+                           original=source_sequence,
+                           splits_key=splits_key,
+                           genetic_key=genetic_params,
+                           alignment=None,
+                           status=error_messages[type(e)], cost=0,
+                           time_dataset_generation=time_dataset_generation,
+                           time_automata_learning=0,
+                           time_alignment=0,
+                           use_cache=use_cache)
             continue
-
         if len(aligned) == MAX_LENGTH:
             aligned = torch.tensor(aligned).unsqueeze(0).to(torch.int64)
         elif len(aligned) < MAX_LENGTH:
             aligned = pad(trim(torch.tensor(aligned)), MAX_LENGTH).unsqueeze(0).to(torch.int64)
         else:
             skipped += 1
-            evaluation_log = save_log(evaluation_log, original=source_sequence,
-                                      alignment=[print_action(a) for a in alignment],
-                                      splits_key=splits_key,
-                                      status="MaximumLengthReached", 
-                                      cost=cost,
-                                      time_dataset_generation=time_dataset_generation,
-                                      time_automata_learning=timed_learning_pipeline.get_last_time(),
-                                      time_alignment=timed_trace_disalignment.get_last_time(),
-                                      use_cache=use_cache)
+            log = log_run(log, 
+                           original=source_sequence,
+                           alignment=[print_action(a) for a in alignment],
+                           splits_key=splits_key,
+                           genetic_key=genetic_params,
+                           status="MaximumLengthReached", 
+                           cost=cost,
+                           time_dataset_generation=time_dataset_generation,
+                           time_automata_learning=timed_learning_pipeline.get_last_time(),
+                           time_alignment=timed_trace_disalignment.get_last_time(),
+                           use_cache=use_cache)
             continue
         print(f"Alignment:", [print_action(a) for a in alignment])
         try:
@@ -119,15 +122,17 @@ def evaluate_trace_disalignment(interactions: Generator,
             bad += 1
             print(f"Bad counterfactual! {source_gt} == {aligned_gt}")
         print(f"[{i}] Good: {good}, Bad: {bad}, Not Found: {not_found}, Skipped: {skipped}")
-        evaluation_log = save_log(evaluation_log, original=source_sequence,
-                                  alignment=[print_action(a) for a in alignment],
-                                  splits_key=splits_key,
-                                  status=status, 
-                                  cost=cost,
-                                  time_dataset_generation=time_dataset_generation,
-                                  time_automata_learning=timed_learning_pipeline.get_last_time(),
-                                  time_alignment=timed_trace_disalignment.get_last_time(),
-                                  use_cache=use_cache)
+        log = log_run(log, 
+                       original=source_sequence,
+                       alignment=[print_action(a) for a in alignment],
+                       splits_key=splits_key,
+                       genetic_key=genetic_params,
+                       status=status, 
+                       cost=cost,
+                       time_dataset_generation=time_dataset_generation,
+                       time_automata_learning=timed_learning_pipeline.get_last_time(),
+                       time_alignment=timed_trace_disalignment.get_last_time(),
+                       use_cache=use_cache)
 
 
 def main(mode: str = "evaluate", 

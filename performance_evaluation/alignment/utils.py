@@ -2,94 +2,105 @@ import json
 from statistics import mean
 from typing import Dict, List, Optional, Tuple
 
-from type_hints import Split
 import time
 import datetime
+import pandas as pd
+from pandas import DataFrame
+
+def log_run(df: DataFrame,
+            original: List[int], 
+            alignment: Optional[List[str]], 
+            splits_key: str,
+            genetic_key: Tuple[int, int, float], 
+            status: str, 
+            cost: int, 
+            time_dataset_generation: float,
+            time_automata_learning: float, 
+            time_alignment: float,
+            use_cache: bool) -> DataFrame:
+    
+    # Create a dictionary with input parameters as columns
+    pop_size, generations, halloffame_ratio = genetic_key
+    data = {
+        "original_trace": [original],
+        "alignment": [alignment],
+        "splits_key": [splits_key],
+        "population_size": [pop_size],
+        "num_generations": [generations],
+        "halloffame_ratio": [halloffame_ratio],
+        "status": [status],
+        "cost": [cost],
+        "time_dataset_generation": [time_dataset_generation],
+        "time_automata_learning": [time_automata_learning],
+        "time_alignment": [time_alignment],
+        "use_cache": [use_cache]
+    }
+    
+    # Create a DataFrame from the dictionary
+    new_df = pd.DataFrame(data)
+    
+    # Optionally append this new row to the existing DataFrame
+    df = pd.concat([df, new_df], ignore_index=True)
+
+    df.to_csv("run.csv")
+    
+    return df
 
 
-def save_log(log: Dict[str, List[Dict]], 
-             original: List[int], 
-             alignment:Optional[List[str]], 
-             splits_key: str,
-             status: str, 
-             cost: int, 
-             time_dataset_generation: float,
-             time_automata_learning: float, 
-             time_alignment: float,
-             use_cache: bool):
-    """ 
-    Saves the log with the evaluation information on the disk
+def evaluate_stats(log_path: str, stats_output: str) -> pd.DataFrame:
     """
-    path = "evaluation_log.json"
-    original_tostr = ", ".join(str(c) for c in original)
-    alignment_tostr = ", ".join(alignment) if alignment else alignment
-    total_time =  time_dataset_generation + time_automata_learning + time_alignment
-    info = {"original": original_tostr, 
-            "alignment": alignment_tostr, 
-            "status":status, 
-            "cost": cost, 
-            "times": {"time_dataset_generation": time_dataset_generation,
-                      "time_automata_learning": time_automata_learning,
-                      "time_alignment": time_alignment, 
-                      "total_time": total_time},
-            "cached": use_cache,
-            "timestamp": datetime.datetime.fromtimestamp(time.time()).isoformat()
-            }
-
-    log[splits_key].append(info)
-    with open(path, "w") as f:
-        json.dump(log, f)
-    print("Log saved!")
-    return log
-
-def evaluate_stats(log_path: str, output_path: str):
-    """
-    Given an evaluation log path, it returns the stats of the evaluation.
+    Given a log path, it calculates and returns statistics from the evaluation log
+    as a DataFrame, with each row representing a unique combination of genetic parameters
+    (population_size, generations, halloffame_ratio) and splits_key.
 
     Args:
-        log_path: The path of the evaluation log to load.
-    """
-    with open(log_path) as f:
-        evaluation_log = json.load(f)
+        log_path: The path of the log CSV to load.
+        stats_output: The path to save the output statistics CSV.
     
-    result = {}
-    for split in evaluation_log:
-        stats = {"total_runs": 0, "good_runs": 0, "bad_runs":
-                 {"counterfactual_not_found": 0, "malformed_dfa": 0, "other": 0},
-                 "mean_time_dataset_generation": 0, "mean_time_automata_learning":
-                 0, "mean_time_alignment": 0, "mean_total_time": 0, "min_cost": 0,
-                 "max_cost": 0, "mean_cost": 0}
-        costs = []
-        for run in evaluation_log[split]:
-            stats["total_runs"] += 1
-            if run["status"] == "good":
-                stats["good_runs"] += 1
-            elif run["status"] == "bad":
-                stats["bad_runs"]["counterfactual_not_found"] += 1
-            elif run["status"] == "DfaNotRejecting" or run["status"] == "DfaNotAccepting":
-                stats["bad_runs"]["malformed_dfa"] += 1
-            elif run["status"] == "skipped":
-                stats["bad_runs"]["other"] += 1
-            
-            if run["status"] == "good":
-                stats["mean_time_dataset_generation"] += run["times"]["time_dataset_generation"]
-                stats["mean_time_automata_learning"] += run["times"]["time_automata_learning"]
-                stats["mean_time_alignment"] += run["times"]["time_alignment"]
-                stats["mean_total_time"] += run["times"]["total_time"]
+    Returns:
+        A pandas DataFrame containing evaluation statistics.
+    """
+    # Load the DataFrame from the CSV log
+    df = pd.read_csv(log_path)
 
-                costs.append(run["cost"])
-        stats["mean_time_dataset_generation"] /= stats["good_runs"]
-        stats["mean_time_automata_learning"] /= stats["good_runs"]
-        stats["mean_time_alignment"] /= stats["good_runs"]
-        stats["mean_total_time"] /= stats["good_runs"]
+    # Initialize a list to store results for DataFrame creation
+    results = []
 
-        stats["min_cost"] = min(costs)
-        stats["max_cost"] = max(costs)
-        stats["mean_cost"] = mean(costs)
+    # Group by 'splits_key', 'population_size', 'num_generations', and 'halloffame_ratio' to get stats for each group
+    for (split_key, pop_size, generations, halloffame_ratio), group in df.groupby(
+            ["splits_key", "population_size", "num_generations", "halloffame_ratio"]):
         
-        result[split] = stats
+        stats = {
+            "split_key": split_key,
+            "population_size": pop_size,
+            "num_generations": generations,
+            "halloffame_ratio": halloffame_ratio,
+            "total_runs": len(group),
+            "good_runs": len(group[group["status"] == "good"]),
+            "skipped_runs": len(group[group["status"] == "skipped"]),
+            "bad_runs_counterfactual_not_found": len(group[group["status"] == "bad"]),
+            "bad_runs_malformed_dfa": len(group[group["status"].isin(["DfaNotRejecting", "DfaNotAccepting"])]),
+            "bad_runs_other": len(group[group["status"] == "skipped"]),
+            "mean_time_dataset_generation": group.loc[group["status"] == "good", "time_dataset_generation"].mean(),
+            "mean_time_automata_learning": group.loc[group["status"] == "good", "time_automata_learning"].mean(),
+            "mean_time_alignment": group.loc[group["status"] == "good", "time_alignment"].mean(),
+            "mean_total_time": (
+                group.loc[group["status"] == "good", "time_dataset_generation"].mean() +
+                group.loc[group["status"] == "good", "time_automata_learning"].mean() +
+                group.loc[group["status"] == "good", "time_alignment"].mean()
+            ),
+            "min_cost": group.loc[group["status"] == "good", "cost"].min(),
+            "max_cost": group.loc[group["status"] == "good", "cost"].max(),
+            "mean_cost": group.loc[group["status"] == "good", "cost"].mean()
+        }
 
-    with open(output_path, "w") as f:
-        json.dump(result, f)
+        results.append(stats)
 
-    return result
+    # Create a DataFrame from the results list
+    result_df = pd.DataFrame(results)
+
+    # Save the result to a CSV file
+    result_df.to_csv(stats_output, index=False)
+
+    return result_df
+

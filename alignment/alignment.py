@@ -187,8 +187,8 @@ def trace_alignment(a_dfa_aug: Dfa, trace_split: Union[Trace, TraceSplit]):
     a_dfa_aug.reset_to_initial()
 
     min_length = len(safe_trace_split[0] + safe_trace_split[1])
-    # max_length = min_length + len(safe_trace_split[2])
-    max_length = MAX_LENGTH - len(safe_trace_split[2])
+    max_length = min_length + len(safe_trace_split[2])
+    # max_length = MAX_LENGTH - len(safe_trace_split[2])
 
     alignment = faster_a_star(dfa=a_dfa_aug,
                                 trace_split=safe_trace_split,

@@ -142,6 +142,7 @@ class TestWellFormedRealData:
         del_syms = set(int(s.split("_")[-1]) for s in automa_alphabet if "del" in str(s))
         add_syms = set(int(s.split("_")[-1]) for s in automa_alphabet if "add" in str(s))
         sync_syms = set(s for s in automa_alphabet if isinstance(s, int))
+        print(len(del_syms), len(add_syms), len(sync_syms))
         assert original_trace_symbols == del_syms
         assert add_syms == sync_syms
         assert sync_syms == dataset_alphabet
@@ -217,7 +218,6 @@ class TestUtils:
         computed: {aligned_trace}
         """
 
-@pytest.mark.skip()
 class TestEdgeCases:
     """
     This class tests all those edge cases where a bug was found, in order
@@ -269,7 +269,6 @@ class TestEdgeCases:
         assert original_label != counterfactual_label, f"Labels are equal: {original_label} == {counterfactual_label}"
         
 
-    @pytest.mark.skip()
     def test_all_syncs(self, model):
         set_seed()
         trace = torch.tensor([578, 65, 28, 1432, 2079, 199, 1043, 1713, 80,
@@ -292,7 +291,6 @@ class TestEdgeCases:
         disaligned_rejects = run_automata(a_dfa_aug, disaligned)
         assert disaligned_rejects, "Original Automata doesn't reject the counterfactual sequence"
 
-    @pytest.mark.skip()
     def test_dfa_not_rejecting(self, model):
         """
         For some traces, they are not rejected by the DFA (incorrect), and
@@ -315,7 +313,6 @@ class TestEdgeCases:
         original_accepts = run_automata(a_dfa_aug, trace)
         assert original_accepts, "Original Automata doesn't accept the original sequence"
 
-    @pytest.mark.skip()
     def test_mismatch(self, model):
         """
         For some traces, the original sequence is rejected by the dfa (correct),

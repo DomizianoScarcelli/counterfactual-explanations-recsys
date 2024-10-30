@@ -7,7 +7,7 @@ from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
 from torch import Tensor
 
-from config import DATASET, GENERATIONS, MODEL, POP_SIZE
+from config import DATASET, GENERATIONS, MODEL, POP_SIZE, HALLOFFAME_RATIO
 from genetic.dataset.utils import (get_dataloaders,
                                    get_sequence_from_interaction, load_dataset,
                                    save_dataset, train_test_split)
@@ -63,6 +63,7 @@ def generate(
         pop_size=POP_SIZE,
         good_examples=True,
         generations=GENERATIONS,
+        halloffame_ratio=HALLOFFAME_RATIO,
     )
     good_examples = good_genetic_strategy.generate()
     good_examples = good_genetic_strategy.postprocess(good_examples)
@@ -73,6 +74,7 @@ def generate(
         pop_size=POP_SIZE,
         good_examples=False,
         generations=GENERATIONS,
+        halloffame_ratio=HALLOFFAME_RATIO,
     )
     bad_examples = bad_genetic_strategy.generate()
     bad_examples = bad_genetic_strategy.postprocess(bad_examples)

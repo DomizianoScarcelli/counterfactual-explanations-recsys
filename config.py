@@ -1,10 +1,12 @@
 from type_hints import RecDataset, RecModel
+import toml
 
-#0 is no debug
-DEBUG = 1
+config = toml.load("configs/config.toml")
 
-MODEL = RecModel.BERT4Rec
-DATASET = RecDataset.ML_1M
+DEBUG = config["settings"]["debug"]
+MODEL = RecModel[config["settings"]["model"]]
+DATASET = RecDataset[config["settings"]["dataset"]]
 
-GENERATIONS = 10
-POP_SIZE = 2000
+GENERATIONS = config["evolution"]["generations"]
+POP_SIZE = config["evolution"]["pop_size"]
+HALLOFFAME_RATIO = config["evolution"]["halloffame_ratio"]

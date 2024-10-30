@@ -26,6 +26,7 @@ class GeneticGenerationStrategy():
                  pop_size: int=POP_SIZE, 
                  generations: int=GENERATIONS, 
                  good_examples: bool=True,
+                 halloffame_ratio: float=0.1,
                  verbose: bool=True):
         self.input_seq = trim(input_seq)
         self.predictor = predictor
@@ -33,7 +34,7 @@ class GeneticGenerationStrategy():
         self.gt = self.predictor(input_seq.unsqueeze(0))
         self.generations = generations
         self.good_examples = good_examples
-        self.halloffame_ratio = 0.1
+        self.halloffame_ratio = halloffame_ratio
         self.allowed_mutations = allowed_mutations
         self.verbose = verbose
         # Define the evaluation function
