@@ -38,7 +38,7 @@ def evaluate_trace_disalignment(interactions: Generator,
                                 oracle: SequentialRecommender,
                                 split_type: str,
                                 use_cache: bool,
-                                num_counterfactuals: int=20,
+                                num_counterfactuals: int=100,
                                 force: bool=False):
     good, bad, not_found, skipped = 0, 0, 0, 0
     log: DataFrame  = DataFrame({})
