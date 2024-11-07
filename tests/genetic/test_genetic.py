@@ -6,7 +6,6 @@ from automata_learning.learning import (generate_single_accepting_sequence_dfa,
                                         learning_pipeline)
 from automata_learning.utils import run_automata
 from genetic.dataset.generate import generate
-from genetic.mutations import Mutations
 
 
 @pytest.mark.heavy

@@ -1,5 +1,5 @@
 import random
-from typing import Callable, List
+from typing import Callable, List, Set, Optional
 
 import numpy as np
 import torch
@@ -9,9 +9,8 @@ from torch import Tensor
 from config import GENERATIONS, POP_SIZE
 from constants import MAX_LENGTH, MIN_LENGTH
 from genetic.extended_ea_algorithms import eaSimpleBatched
-from genetic.mutations import (ALL_MUTATIONS, Mutations, mutate_add,
-                               mutate_delete)
-from genetic.utils import (cosine_distance, cPickle_clone, edit_distance,
+from genetic.mutations import (ALL_MUTATIONS, Mutation, AddMutation, DeleteMutation, contains_mutation, remove_mutation)
+from genetic.utils import (NumItems, cosine_distance, cPickle_clone, edit_distance,
                            self_indicator)
 from models.utils import pad, pad_batch, trim
 from type_hints import Dataset
@@ -22,7 +21,8 @@ set_seed()
 class GeneticGenerationStrategy():
     def __init__(self, input_seq: Tensor, 
                  predictor: Callable,
-                 allowed_mutations: List[Mutations] = ALL_MUTATIONS, 
+                 alphabet: Set[int],
+                 allowed_mutations: List[Mutation] = ALL_MUTATIONS, 
                  pop_size: int=POP_SIZE, 
                  generations: int=GENERATIONS, 
                  good_examples: bool=True,
@@ -37,6 +37,7 @@ class GeneticGenerationStrategy():
         self.halloffame_ratio = halloffame_ratio
         self.allowed_mutations = allowed_mutations
         self.verbose = verbose
+        self.alphabet = alphabet
         # Define the evaluation function
         creator.create("fitness", base.Fitness, weights=(-1.0,))  # Minimize fitness
         creator.create("individual", list, fitness=creator.fitness)
@@ -60,12 +61,12 @@ class GeneticGenerationStrategy():
         #TODO: remove for efficiency
         assert -1 not in seq, f"Seq must not contain padding char: {seq}"
         mutations = self.allowed_mutations.copy()
-        if not len(seq) < MAX_LENGTH and mutate_add in mutations:
-            mutations.remove(mutate_add)
-        if not len(seq) > MIN_LENGTH and mutate_delete in mutations:
-            mutations.remove(mutate_delete)
+        if not len(seq) < MAX_LENGTH and contains_mutation(AddMutation, mutations):
+            mutations = remove_mutation(AddMutation, mutations)
+        if not len(seq) > MIN_LENGTH and contains_mutation(DeleteMutation, mutations):
+            mutations = remove_mutation(DeleteMutation, mutations)
         mutation = random.choice(mutations)
-        return mutation(seq)
+        return mutation(seq, self.alphabet)
 
     def evaluate_fitness_batch(self, individuals: List[List[int]]) -> List[float]:
         #TODO: add a batch_size mechanism

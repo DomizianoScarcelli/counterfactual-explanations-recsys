@@ -24,3 +24,8 @@ class TestGenerators:
         assert min(items) == -1 and max(items) == NumItems.ML_1M.value, f"Max should be in (-1, {NumItems.ML_1M.value}), but is: ({min(items)}, {max(items)})"
 
 
+class TestLimitedAlphabet:
+    # TODO: test that when dataset generation with a limited alphabet is
+    # performed, no other symbols between the symbols in the source sequence
+    # and the ones in the limited alphabet are in the dataset
+    pass

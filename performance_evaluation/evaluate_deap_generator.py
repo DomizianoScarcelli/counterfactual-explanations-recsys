@@ -10,10 +10,12 @@ from config import DATASET, GENERATIONS, MODEL, POP_SIZE
 from genetic.dataset.generate import interaction_generator
 from genetic.dataset.utils import get_sequence_from_interaction
 from genetic.genetic import GeneticGenerationStrategy
-from genetic.mutations import Mutations
+from genetic.mutations import (SwapMutation, ReplaceMutation, ReverseMutation,
+                               DeleteMutation, AddMutation, ShuffleMutation)
 from models.config_utils import generate_model, get_config
 from models.model_funcs import model_predict
 from utils import set_seed
+from genetic.utils import NumItems
 
 set_seed()
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -21,22 +23,25 @@ warnings.simplefilter(action='ignore', category=RuntimeWarning)
 
 def evaluation_step(sequence, model: SequentialRecommender):
     all_results = []
-    search_mutations = [[Mutations.SWAP, Mutations.REPLACE],
-                        [Mutations.REVERSE, Mutations.SHUFFLE],
-                        [Mutations.ADD, Mutations.DELETE],
-                        [Mutations.SWAP, Mutations.REPLACE, Mutations.ADD, Mutations.DELETE],
-                        [Mutations.SWAP, Mutations.REPLACE, Mutations.REVERSE, Mutations.SHUFFLE],
-                        [Mutations.SWAP, Mutations.REPLACE, Mutations.ADD, Mutations.DELETE, Mutations.REVERSE, Mutations.SHUFFLE]]
+    search_mutations = [
+            [SwapMutation(), ReplaceMutation()],
+            [ReverseMutation(), ShuffleMutation()],
+            [AddMutation(), DeleteMutation()],
+            [SwapMutation(), ReplaceMutation(), AddMutation(), DeleteMutation()],
+            [SwapMutation(), ReplaceMutation(), ReverseMutation(), ShuffleMutation()],
+            [SwapMutation(), ReplaceMutation(), AddMutation(), DeleteMutation(), ReverseMutation(), ShuffleMutation()]
+            ]
     for allowed_mutations in tqdm(search_mutations, desc="Evalutaion step..."):
         good_genetic_strategy = GeneticGenerationStrategy(input_seq=sequence,
                                                           allowed_mutations=allowed_mutations,
                                                           predictor=lambda x: model_predict(seq=x,
-                                                                        model=model,
-                                                                        prob=True),
+                                                                                            model=model,
+                                                                                            prob=True),
                                                           pop_size=POP_SIZE,
                                                           good_examples=True,
                                                           generations=GENERATIONS,
-                                                          verbose=False)
+                                                          verbose=False,
+                                                          alphabet = set(range(NumItems.ML_1M.value)))
         good_examples = good_genetic_strategy.generate()
         good_same_label_perc, good_avg_distance = good_genetic_strategy.evaluate_generation(good_examples)
         len_good_examples = len(good_examples)
@@ -45,14 +50,15 @@ def evaluation_step(sequence, model: SequentialRecommender):
         _, good_avg_distance_post = good_genetic_strategy.evaluate_generation(good_examples)
 
         bad_genetic_strategy = GeneticGenerationStrategy(input_seq=sequence,
-                                                        allowed_mutations=allowed_mutations,
+                                                         allowed_mutations=allowed_mutations,
                                                          predictor=lambda x: model_predict(seq=x,
-                                                                       model=model,
-                                                                       prob=True),
+                                                                                           model=model,
+                                                                                           prob=True),
                                                          pop_size=POP_SIZE,
                                                          good_examples=False,
                                                          generations=GENERATIONS,
-                                                         verbose=False)
+                                                         verbose=False,
+                                                         alphabet = set(range(NumItems.ML_1M.value)))
         bad_examples = bad_genetic_strategy.generate()
         bad_same_label_perc, bad_avg_distance = bad_genetic_strategy.evaluate_generation(bad_examples)
         len_bad_examples = len(bad_examples)
@@ -60,7 +66,7 @@ def evaluation_step(sequence, model: SequentialRecommender):
         len_bad_examples_post = len(bad_examples)
         _, bad_avg_distance_post = bad_genetic_strategy.evaluate_generation(bad_examples)
 
-        results = {"mutations_allowed": [a.__name__ for a in allowed_mutations], 
+        results = {"mutations_allowed": [a.name for a in allowed_mutations], 
                    "generations": GENERATIONS,
                    "pop_size": POP_SIZE,
                    "good_stats": {"same_label_perc_pre": good_same_label_perc*100,

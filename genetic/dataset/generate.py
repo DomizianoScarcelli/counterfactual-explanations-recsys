@@ -1,6 +1,6 @@
 import os
 import warnings
-from typing import Generator, Tuple, Union
+from typing import Generator, Tuple, Union, Set, Optional
 
 from recbole.config import Config
 from recbole.model.abstract_recommender import SequentialRecommender
@@ -12,7 +12,8 @@ from genetic.dataset.utils import (get_dataloaders,
                                    get_sequence_from_interaction, load_dataset,
                                    save_dataset, train_test_split)
 from genetic.genetic import GeneticGenerationStrategy
-from genetic.mutations import Mutations
+from genetic.mutations import ReplaceMutation, SwapMutation
+from genetic.utils import NumItems
 from models.config_utils import generate_model, get_config
 from models.model_funcs import model_predict
 from type_hints import GoodBadDataset
@@ -21,11 +22,10 @@ from utils import set_seed
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
 
-def generate(
-    interaction: Union[Interaction, Tensor], model: SequentialRecommender
-) -> Tuple[
-    Tuple[GoodBadDataset, GoodBadDataset], Tuple[GoodBadDataset, GoodBadDataset]
-]:
+def generate( interaction: Union[Interaction, Tensor], model:
+             SequentialRecommender, alphabet: Optional[Set[int]] = None) -> Tuple[
+                     Tuple[GoodBadDataset, GoodBadDataset],
+                     Tuple[GoodBadDataset, GoodBadDataset] ]:
     """
     Generates the dataset of good and bad points from a sequence in the
     Interaction, using the model as a black box oracle. The dataset can be used
@@ -38,10 +38,13 @@ def generate(
         counterfactual is needed.
         model: the black box model that is used as an oracle to get the
         probability distribution or label of the sequence.
+        alphabet: the alphabet that is used in order to perform the mutations.
+        If None, then a default alphabet is used
     Returns:
         The dataset in the form of a tuple (good_points, bad_points), where
         good_points and bad_points are lists of LabeledTensors.
     """
+    #TODO: make the alphabet injectable in the generation
     if isinstance(interaction, Interaction):
         sequence = get_sequence_from_interaction(interaction)
     elif isinstance(interaction, Tensor):
@@ -55,7 +58,9 @@ def generate(
     sequence = sequence.squeeze(0)
     assert len(sequence.shape) == 1, f"Sequence dim must be 1: {
         sequence.shape}"
-    allowed_mutations = [Mutations.REPLACE, Mutations.SWAP]
+    allowed_mutations = [ReplaceMutation(), SwapMutation()]
+    if alphabet is None:
+        alphabet = set(range(NumItems.ML_1M.value))
     good_genetic_strategy = GeneticGenerationStrategy(
         input_seq=sequence,
         predictor=lambda x: model_predict(seq=x, model=model, prob=True),
@@ -64,6 +69,7 @@ def generate(
         good_examples=True,
         generations=GENERATIONS,
         halloffame_ratio=HALLOFFAME_RATIO,
+        alphabet=alphabet
     )
     good_examples = good_genetic_strategy.generate()
     good_examples = good_genetic_strategy.postprocess(good_examples)
@@ -75,6 +81,7 @@ def generate(
         good_examples=False,
         generations=GENERATIONS,
         halloffame_ratio=HALLOFFAME_RATIO,
+        alphabet=alphabet
     )
     bad_examples = bad_genetic_strategy.generate()
     bad_examples = bad_genetic_strategy.postprocess(bad_examples)
@@ -146,4 +153,5 @@ if __name__ == "__main__":
     for dataset in datasets:
         dataset_save_path = "saved/counterfactual_dataset.pickle"
         save_dataset(dataset, save_path=dataset_save_path)
+        print(dataset)
         break
