@@ -21,7 +21,7 @@ set_seed()
 class GeneticGenerationStrategy():
     def __init__(self, input_seq: Tensor, 
                  predictor: Callable,
-                 alphabet: Set[int],
+                 alphabet: List[int],
                  allowed_mutations: List[Mutation] = ALL_MUTATIONS, 
                  pop_size: int=POP_SIZE, 
                  generations: int=GENERATIONS, 

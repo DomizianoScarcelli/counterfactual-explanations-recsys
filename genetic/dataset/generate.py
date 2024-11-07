@@ -1,6 +1,6 @@
 import os
 import warnings
-from typing import Generator, Tuple, Union, Set, Optional
+from typing import Generator, Tuple, Union, List, Optional
 
 from recbole.config import Config
 from recbole.model.abstract_recommender import SequentialRecommender
@@ -23,9 +23,7 @@ warnings.simplefilter(action="ignore", category=FutureWarning)
 
 
 def generate( interaction: Union[Interaction, Tensor], model:
-             SequentialRecommender, alphabet: Optional[Set[int]] = None) -> Tuple[
-                     Tuple[GoodBadDataset, GoodBadDataset],
-                     Tuple[GoodBadDataset, GoodBadDataset] ]:
+             SequentialRecommender, alphabet: Optional[List[int]] = None) -> Tuple[GoodBadDataset, GoodBadDataset]:
     """
     Generates the dataset of good and bad points from a sequence in the
     Interaction, using the model as a black box oracle. The dataset can be used
@@ -60,7 +58,7 @@ def generate( interaction: Union[Interaction, Tensor], model:
         sequence.shape}"
     allowed_mutations = [ReplaceMutation(), SwapMutation()]
     if alphabet is None:
-        alphabet = set(range(NumItems.ML_1M.value))
+        alphabet = list(range(NumItems.ML_1M.value))
     good_genetic_strategy = GeneticGenerationStrategy(
         input_seq=sequence,
         predictor=lambda x: model_predict(seq=x, model=model, prob=True),
@@ -88,8 +86,8 @@ def generate( interaction: Union[Interaction, Tensor], model:
 
     train_good, test_good = train_test_split(good_examples)
     train_bad, test_bad = train_test_split(bad_examples)
-    train_dataset = (train_good, train_bad)
-    test_dataset = (test_good, test_bad)
+    train_dataset: GoodBadDataset = (train_good, train_bad)
+    test_dataset: GoodBadDataset = (test_good, test_bad)
     return train_dataset, test_dataset
 
 
@@ -142,7 +140,9 @@ def dataset_generator(
             if use_cache:
                 save_dataset(train, train_cache_path)
                 save_dataset(test, test_cache_path)
-
+        
+        # TODO: since the evaluation is done in another way not, remove this
+        # splitting
         yield train, test
 
 
