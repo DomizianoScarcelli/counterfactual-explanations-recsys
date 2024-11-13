@@ -1,5 +1,5 @@
 import random
-from typing import Callable, List, Set, Optional
+from typing import Callable, List, Optional, Set
 
 import numpy as np
 import torch
@@ -9,9 +9,10 @@ from torch import Tensor
 from config import GENERATIONS, POP_SIZE
 from constants import MAX_LENGTH, MIN_LENGTH
 from genetic.extended_ea_algorithms import eaSimpleBatched
-from genetic.mutations import (ALL_MUTATIONS, Mutation, AddMutation, DeleteMutation, contains_mutation, remove_mutation)
-from genetic.utils import (NumItems, cosine_distance, cPickle_clone, edit_distance,
-                           self_indicator)
+from genetic.mutations import (ALL_MUTATIONS, AddMutation, DeleteMutation,
+                               Mutation, contains_mutation, remove_mutation)
+from genetic.utils import (NumItems, _evaluate_generation, cosine_distance,
+                           cPickle_clone, edit_distance, self_indicator)
 from models.utils import pad, pad_batch, trim
 from type_hints import Dataset
 from utils import set_seed
@@ -155,12 +156,5 @@ class GeneticGenerationStrategy():
         return clean_pop
 
     def evaluate_generation(self, examples):
-        # Evaluate label
-        label = self.gt.argmax(-1).item()
-        same_label = sum(1 for ex in examples if ex[1] == label)
-        # Evaluate example similarity
-        distances = []
-        for seq, _ in examples:
-            distances.append(edit_distance(self.input_seq, seq))
-        return (same_label / len(examples)), (sum(distances)/len(distances))
+        return _evaluate_generation(self.input_seq, examples, self.gt.argmax(-1).item())
 

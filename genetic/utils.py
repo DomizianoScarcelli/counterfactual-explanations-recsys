@@ -3,11 +3,10 @@ from enum import Enum
 
 import _pickle as cPickle
 import Levenshtein
-import numpy as np
 import torch.nn.functional as F
 from torch import Tensor
 
-from models.utils import pad
+from type_hints import Dataset
 
 
 class NumItems(Enum):
@@ -36,3 +35,12 @@ def random_points_with_offset(max_value: int, max_offset: int):
     j = random.randint(max(0, i - max_offset), min(max_value - 1, i + max_offset))
     # Sort i and j to ensure i <= j
     return tuple(sorted([i, j]))
+
+def _evaluate_generation(input_seq: Tensor, dataset: Dataset, label: int):
+    # Evaluate label
+    same_label = sum(1 for ex in dataset if ex[1] == label)
+    # Evaluate example similarity
+    distances = []
+    for seq, _ in dataset:
+        distances.append(edit_distance(input_seq, seq))
+    return (same_label / len(dataset)), (sum(distances)/len(distances))

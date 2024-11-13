@@ -1,6 +1,7 @@
 import pickle
 from typing import Set, Tuple
 
+import torch
 from recbole.config import Config
 from recbole.data import create_dataset, data_preparation
 from recbole.data.interaction import Interaction
@@ -104,4 +105,28 @@ def get_dataset_alphabet(dataset: GoodBadDataset) -> Set[int]:
     for example in good + bad:
         alphabet |= set(example[0].tolist())
     return alphabet
+
+def dataset_difference(dataset: Dataset, other: Dataset) -> Dataset:
+    """
+    Returns all the entries from one dataset that do not appear in the other
+    dataset, effectively doing an equivalent of the set difference operation.
+
+    Args:
+        dataset: The original dataset
+        other: The datset that will be substracted to the original dataset
+
+    Returns:
+        A new dataset such that (dataset INTERSECTION other) is the empty set.
+    """
+    dataset_map = {tuple(row.squeeze(0).tolist()): label for row, label in dataset}
+    other_map = {tuple(row.squeeze(0).tolist()): label for row, label in other}
+
+    dataset_keys = set(dataset_map.keys())
+    other_keys = set(other_map.keys())
+
+    difference_keys = dataset_keys - other_keys
+
+    difference_dataset = [(torch.tensor(key).unsqueeze(0), dataset_map[key]) for key in difference_keys]
+    return difference_dataset
+
 

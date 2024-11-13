@@ -10,12 +10,12 @@ from config import DATASET, GENERATIONS, MODEL, POP_SIZE
 from genetic.dataset.generate import interaction_generator
 from genetic.dataset.utils import get_sequence_from_interaction
 from genetic.genetic import GeneticGenerationStrategy
-from genetic.mutations import (SwapMutation, ReplaceMutation, ReverseMutation,
-                               DeleteMutation, AddMutation, ShuffleMutation)
+from genetic.mutations import (AddMutation, DeleteMutation, ReplaceMutation,
+                               ReverseMutation, ShuffleMutation, SwapMutation)
+from genetic.utils import NumItems
 from models.config_utils import generate_model, get_config
 from models.model_funcs import model_predict
 from utils import set_seed
-from genetic.utils import NumItems
 
 set_seed()
 warnings.simplefilter(action='ignore', category=FutureWarning)

@@ -1,6 +1,6 @@
 import random
-from typing import List, Tuple
 from abc import ABC, abstractmethod
+from typing import List, Tuple
 
 from genetic.utils import random_points_with_offset
 

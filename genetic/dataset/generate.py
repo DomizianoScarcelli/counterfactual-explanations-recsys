@@ -1,6 +1,6 @@
 import os
 import warnings
-from typing import Generator, Tuple, Union, List, Optional
+from typing import Generator, List, Optional, Tuple, Union
 
 from recbole.config import Config
 from recbole.model.abstract_recommender import SequentialRecommender
