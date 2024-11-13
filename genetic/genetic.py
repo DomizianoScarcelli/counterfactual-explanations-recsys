@@ -1,23 +1,22 @@
 import random
-from typing import Callable, List, Optional, Set
+from typing import Callable, List, Optional, Set, Any
 
 import numpy as np
 import torch
 from deap import base, creator, tools
 from torch import Tensor
+from copy import deepcopy
 
 from config import GENERATIONS, POP_SIZE
 from constants import MAX_LENGTH, MIN_LENGTH
-from genetic.extended_ea_algorithms import eaSimpleBatched
+from genetic.extended_ea_algorithms import eaSimpleBatched, indexedSelTournament, indexedCxTwoPoint
 from genetic.mutations import (ALL_MUTATIONS, AddMutation, DeleteMutation,
                                Mutation, contains_mutation, remove_mutation)
 from genetic.utils import (NumItems, _evaluate_generation, cosine_distance,
-                           cPickle_clone, edit_distance, self_indicator)
+                           clone, edit_distance, self_indicator)
 from models.utils import pad, pad_batch, trim
 from type_hints import Dataset
 from utils import set_seed
-
-set_seed()
 
 class GeneticGenerationStrategy():
     def __init__(self, input_seq: Tensor, 
@@ -29,6 +28,7 @@ class GeneticGenerationStrategy():
                  good_examples: bool=True,
                  halloffame_ratio: float=0.1,
                  verbose: bool=True):
+        set_seed()
         self.input_seq = trim(input_seq)
         self.predictor = predictor
         self.pop_size = pop_size
@@ -43,22 +43,24 @@ class GeneticGenerationStrategy():
         creator.create("fitness", base.Fitness, weights=(-1.0,))  # Minimize fitness
         creator.create("individual", list, fitness=creator.fitness)
 
-        self.toolbox = base.Toolbox()
+        self.toolbox: Any = base.Toolbox()
         self.toolbox.register("feature_values", lambda x: x.tolist(), self.input_seq)
         self.toolbox.register("individual", tools.initIterate, creator.individual, self.toolbox.feature_values)
         self.toolbox.register("population", tools.initRepeat, list, self.toolbox.individual, n=self.pop_size)
-        self.toolbox.register("clone", cPickle_clone)
+        self.toolbox.register("clone", clone)
 
         self.toolbox.register("evaluate", self.evaluate_fitness_batch)
-        self.toolbox.register("mate", tools.cxTwoPoint)  # Use two-point crossover
+        self.toolbox.register("mate", indexedCxTwoPoint)  # Use two-point crossover
         self.toolbox.register("mutate", self.mutate)
-        self.toolbox.register("select", tools.selTournament, tournsize=3)  # Tournament selection
+        self.toolbox.register("select", indexedSelTournament, tournsize=3)  # Tournament selection
     
     def print(self, s):
         if self.verbose:
             print(s)
 
-    def mutate(self, seq: List[int]):
+    def mutate(self, seq: List[int], index: int):
+        # Set seed according to the index in order to always choose a different mutation
+        set_seed(index)
         #TODO: remove for efficiency
         assert -1 not in seq, f"Seq must not contain padding char: {seq}"
         mutations = self.allowed_mutations.copy()
@@ -67,10 +69,16 @@ class GeneticGenerationStrategy():
         if not len(seq) > MIN_LENGTH and contains_mutation(DeleteMutation, mutations):
             mutations = remove_mutation(DeleteMutation, mutations)
         mutation = random.choice(mutations)
-        return mutation(seq, self.alphabet)
+        #TODO: this still doesn't ensure determinism
+        # deepcopy is needed in order to ensure determinism
+        # .copy doesn't work since seq is an Interaction object
+        result = mutation(deepcopy(seq), self.alphabet, index)
+        set_seed()
+        return result
 
     def evaluate_fitness_batch(self, individuals: List[List[int]]) -> List[float]:
         #TODO: add a batch_size mechanism
+        set_seed()
         ALPHA1= 0.5
         ALPHA2 = 1 - ALPHA1
         candidate_seqs = torch.stack([pad(torch.tensor(i), MAX_LENGTH) for i in individuals])
@@ -92,7 +100,8 @@ class GeneticGenerationStrategy():
 
 
     def generate(self) -> Dataset:
-        population = self.toolbox.population(n=self.pop_size)
+        set_seed()
+        population = self.toolbox.population()
         
         halloffame_size = int(np.round(self.pop_size * self.halloffame_ratio))
         halloffame = tools.HallOfFame(halloffame_size)
@@ -104,7 +113,6 @@ class GeneticGenerationStrategy():
                                         ngen=self.generations,
                                         halloffame=halloffame if self.halloffame_ratio != 0 else None,
                                         verbose=False)
-
         preds = self.predictor(pad_batch(population, MAX_LENGTH)).argmax(-1)
         new_population = [(torch.tensor(x), preds[i].item()) for (i, x) in enumerate(population)]
         label_eval, seq_eval = self.evaluate_generation(new_population)

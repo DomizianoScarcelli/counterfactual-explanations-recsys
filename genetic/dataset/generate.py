@@ -42,17 +42,17 @@ def generate( interaction: Union[Interaction, Tensor], model:
         The dataset in the form of a tuple (good_points, bad_points), where
         good_points and bad_points are lists of LabeledTensors.
     """
-    #TODO: make the alphabet injectable in the generation
     if isinstance(interaction, Interaction):
         sequence = get_sequence_from_interaction(interaction)
     elif isinstance(interaction, Tensor):
         sequence = interaction
+    else:
+        raise NotImplemented(f"Sequence of type {type(sequence)} is not supported. Tensor or Interaction supported")
     assert (
         sequence.size(0) == 1
     ), f"Only batch size of 1 is supported, sequence shape is: {sequence.shape}"
     # user_id = interaction.interaction["user_id"][0].item()
     
-    # Trim zeros
     sequence = sequence.squeeze(0)
     assert len(sequence.shape) == 1, f"Sequence dim must be 1: {
         sequence.shape}"

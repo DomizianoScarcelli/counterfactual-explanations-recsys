@@ -5,7 +5,7 @@ from typing import Any, Callable, Generator, List
 import numpy as np
 import torch
 
-from config import DEBUG
+from config import DEBUG, DETERMINISM
 
 
 def printd(statement, level=1):
@@ -18,6 +18,10 @@ def printd(statement, level=1):
 
 
 def set_seed(seed: int = 42):
+    MAX_SEED = 2**32 - 1
+    seed %= (MAX_SEED + 1)
+    if not DETERMINISM:
+        return
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)

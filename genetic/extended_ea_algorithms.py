@@ -1,69 +1,22 @@
-from deap.algorithms import tools, varAnd
+from deap.algorithms import tools
 from tqdm import tqdm
+import random
+from utils import set_seed
+from deap.tools import selRandom
+from operator import attrgetter
 
 
 # Taken from deap.algorithms.eaSimple
 # Solution taken from https://github.com/DEAP/deap/issues/508
 def eaSimpleBatched(population, toolbox, cxpb, mutpb, ngen, stats=None,
              halloffame=None, verbose=__debug__):
-    """This algorithm reproduce the simplest evolutionary algorithm as
-    presented in chapter 7 of [Back2000]_.
-
-    :param population: A list of individuals.
-    :param toolbox: A :class:`~deap.base.Toolbox` that contains the evolution
-                    operators.
-    :param cxpb: The probability of mating two individuals.
-    :param mutpb: The probability of mutating an individual.
-    :param ngen: The number of generation.
-    :param stats: A :class:`~deap.tools.Statistics` object that is updated
-                  inplace, optional.
-    :param halloffame: A :class:`~deap.tools.HallOfFame` object that will
-                       contain the best individuals, optional.
-    :param verbose: Whether or not to log the statistics.
-    :returns: The final population
-    :returns: A class:`~deap.tools.Logbook` with the statistics of the
-              evolution
-
-    The algorithm takes in a population and evolves it in place using the
-    :meth:`varAnd` method. It returns the optimized population and a
-    :class:`~deap.tools.Logbook` with the statistics of the evolution. The
-    logbook will contain the generation number, the number of evaluations for
-    each generation and the statistics if a :class:`~deap.tools.Statistics` is
-    given as argument. The *cxpb* and *mutpb* arguments are passed to the
-    :func:`varAnd` function. The pseudocode goes as follow ::
-
-        evaluate(population)
-        for g in range(ngen):
-            population = select(population, len(population))
-            offspring = varAnd(population, toolbox, cxpb, mutpb)
-            evaluate(offspring)
-            population = offspring
-
-    As stated in the pseudocode above, the algorithm goes as follow. First, it
-    evaluates the individuals with an invalid fitness. Second, it enters the
-    generational loop where the selection procedure is applied to entirely
-    replace the parental population. The 1:1 replacement ratio of this
-    algorithm **requires** the selection procedure to be stochastic and to
-    select multiple times the same individual, for example,
-    :func:`~deap.tools.selTournament` and :func:`~deap.tools.selRoulette`.
-    Third, it applies the :func:`varAnd` function to produce the next
-    generation population. Fourth, it evaluates the new individuals and
-    compute the statistics on this population. Finally, when *ngen*
-    generations are done, the algorithm returns a tuple with the final
-    population and a :class:`~deap.tools.Logbook` of the evolution.
-
-    .. note::
-
-        Using a non-stochastic selection method will result in no selection as
-        the operator selects *n* individuals from a pool of *n*.
-
-    This function expects the :meth:`toolbox.mate`, :meth:`toolbox.mutate`,
-    :meth:`toolbox.select` and :meth:`toolbox.evaluate` aliases to be
-    registered in the toolbox.
-
-    .. [Back2000] Back, Fogel and Michalewicz, "Evolutionary Computation 1 :
-       Basic Algorithms and Operators", 2000.
     """
+    This extends the deap.eaSimple method in order for the sequences in the
+    population to be evaluated in batch, instead of one-by-one. This is useful
+    in order to improve the speed when the evaluation involved a deep learning
+    model
+    """
+    set_seed()
     logbook = tools.Logbook()
     logbook.header = ['gen', 'nevals'] + (stats.fields if stats else [])
 
@@ -87,7 +40,7 @@ def eaSimpleBatched(population, toolbox, cxpb, mutpb, ngen, stats=None,
         offspring = toolbox.select(population, len(population))
 
         # Vary the pool of individuals
-        offspring = varAnd(offspring, toolbox, cxpb, mutpb)
+        offspring = indexedVarAnd(offspring, toolbox, cxpb, mutpb)
 
         # Evaluate the individuals with an invalid fitness
         invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
@@ -111,3 +64,58 @@ def eaSimpleBatched(population, toolbox, cxpb, mutpb, ngen, stats=None,
 
     return population, logbook
 
+def indexedVarAnd(population, toolbox, cxpb, mutpb):
+    """
+    Extends the `deap.algorithms.varAnd` method in order to also inject the
+    offspring index into the mutation and crossover functions, which will be
+    used to generate a random seed. This makes sure that for the same sequence
+    at the same index, the same mutation will always be applied, but avoids to
+    apply the same mutation to the same sequence at all indices, which will
+    result in all the sequences in the population to always be equal.
+    """
+    set_seed()
+    offspring = [toolbox.clone(ind) for ind in population]
+    # Apply crossover and mutation on the offspring
+    for i in range(1, len(offspring), 2):
+        if random.random() < cxpb:
+            offspring[i - 1], offspring[i] = toolbox.mate(offspring[i - 1],
+                                                          offspring[i], i)
+            del offspring[i - 1].fitness.values, offspring[i].fitness.values
+
+    for i in range(len(offspring)):
+        if random.random() < mutpb:
+            offspring[i], = toolbox.mutate(offspring[i], i)
+            del offspring[i].fitness.values
+
+    return offspring
+
+def indexedSelTournament(individuals, k, tournsize, fit_attr="fitness"):
+    chosen = []
+    for i in range(k):
+        set_seed(i) 
+        aspirants = [random.choice(individuals) for _ in range(tournsize)]
+        chosen.append(max(aspirants, key=attrgetter(fit_attr)))
+
+    set_seed()
+    return chosen
+
+
+def indexedCxTwoPoint(ind1, ind2, index, return_indices: bool=False):
+    # XOR the two hashes in order to ensure the seed is different for each
+    # combination of two invididuals
+    set_seed(hash(tuple(ind1)) ^ hash(tuple(ind2)) + index)
+    size = min(len(ind1), len(ind2))
+    cxpoint1 = random.randint(1, size)
+    cxpoint2 = random.randint(1, size - 1)
+    if cxpoint2 >= cxpoint1:
+        cxpoint2 += 1
+    else:  # Swap the two cx points
+        cxpoint1, cxpoint2 = cxpoint2, cxpoint1
+
+    ind1[cxpoint1:cxpoint2], ind2[cxpoint1:cxpoint2] \
+        = ind2[cxpoint1:cxpoint2], ind1[cxpoint1:cxpoint2]
+    
+    set_seed()
+    if return_indices:
+        return (ind1, ind2), (cxpoint1, cxpoint2)
+    return ind1, ind2

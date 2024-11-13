@@ -2,8 +2,9 @@
 debug = 1
 model = "BERT4Rec"
 dataset = "ML_1M"
+determinism = true
 
 [evolution]
 generations = 20
-pop_size = 1000
-halloffame_ratio = 0.5
+pop_size = 100
+halloffame_ratio = 0

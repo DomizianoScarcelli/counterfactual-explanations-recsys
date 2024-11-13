@@ -1,13 +1,20 @@
 import random
 from abc import ABC, abstractmethod
 from typing import List, Tuple
+from utils import set_seed
 
 from genetic.utils import random_points_with_offset
 
 
 class Mutation(ABC):
-    def __call__(self, seq: List[int], alphabet: List[int]) -> Tuple[List[int]]:
-        return (self._apply(seq, alphabet),)
+    def __call__(self, seq: List[int], alphabet: List[int], index: int) -> Tuple[List[int]]:
+        # Change the seed according to the index of the mutated sequence
+        set_seed(index)
+        result = (self._apply(seq, alphabet),)
+        # Resets the seed back to the original one to ensure determinism for
+        # the following operations
+        set_seed()
+        return result
 
     @abstractmethod
     def _apply(self, seq: List[int], alphabet: List[int]) -> List[int]:
@@ -83,7 +90,6 @@ class DeleteMutation(Mutation):
         i = random.sample(range(len(seq)), 1)[0]
         seq.remove(seq[i])
         return seq
-
 
 def contains_mutation(mutation_type: type, mutations_list: List[Mutation]) -> bool:
     return any(isinstance(m, mutation_type) for m in mutations_list)

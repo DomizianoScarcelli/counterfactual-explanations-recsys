@@ -129,4 +129,12 @@ def dataset_difference(dataset: Dataset, other: Dataset) -> Dataset:
     difference_dataset = [(torch.tensor(key).unsqueeze(0), dataset_map[key]) for key in difference_keys]
     return difference_dataset
 
+def are_dataset_equal(dataset: Dataset, other: Dataset) -> bool:
+    dataset_map = {tuple(row.squeeze(0).tolist()): label for row, label in dataset}
+    other_map = {tuple(row.squeeze(0).tolist()): label for row, label in other}
+
+    dataset_keys = set(dataset_map.keys())
+    other_keys = set(other_map.keys())
+    return dataset_keys == other_keys
+
 

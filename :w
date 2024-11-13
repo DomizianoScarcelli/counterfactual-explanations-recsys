@@ -1,4 +1,3 @@
-from deap.base import deepcopy
 from automata_learning.learning import learning_pipeline
 from config import DATASET, MODEL
 from genetic.dataset.generate import dataset_generator, interaction_generator, sequence_generator
@@ -33,12 +32,13 @@ def test_dataset_determinism():
     Tests if the dataset generation algorithm is deterministic, meaning the
     same source sequence should always generate the same dataset
     """
+    set_seed()
     config = get_config(model=MODEL, dataset=DATASET)
     sequences = sequence_generator(config)
     model = generate_model(config)
     for sequence in sequences:
-        train_dataset, _ = generate(deepcopy(sequence), deepcopy(model))
-        other_train_dataset, _ = generate(deepcopy(sequence), deepcopy(model))
+        train_dataset, _ = generate(sequence, model)
+        other_train_dataset, _ = generate(sequence, model)
         good, bad = train_dataset
         o_good, o_bad = other_train_dataset
         
