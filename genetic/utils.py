@@ -17,11 +17,11 @@ class NumItems(Enum):
 
 
 def clone(x):
-    return deepcopy(x)
-    # return cPickle.loads(cPickle.dumps(x))
+    # return deepcopy(x)
+    return cPickle.loads(cPickle.dumps(x))
 
-def edit_distance(str1, str2):
-    set_seed()
+def edit_distance(t1: Tensor, t2: Tensor):
+    str1, str2 = str(t1), str(t2) #Levenshtein.ratio only works with strings
     return 1 - Levenshtein.ratio(str1, str2)
 
 def cosine_distance(prob1: Tensor, prob2: Tensor) -> float:

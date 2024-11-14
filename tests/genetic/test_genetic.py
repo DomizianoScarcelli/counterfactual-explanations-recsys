@@ -213,7 +213,7 @@ class TestGeneticDeterminism:
     def test_eaSimpleBatched_determinism(self):
         self.init_vars()
         set_seed()
-        population1, _ = eaSimpleBatched(deepcopy(self.pop1), 
+        population1, _ = eaSimpleBatched(clone(self.pop1), 
                                         self.toolbox, 
                                         cxpb=0.7,
                                         mutpb=0.5, 
@@ -221,7 +221,7 @@ class TestGeneticDeterminism:
                                         halloffame=None,
                                         verbose=False)
         set_seed()
-        population2, _ = eaSimpleBatched(deepcopy(self.pop2), 
+        population2, _ = eaSimpleBatched(clone(self.pop2), 
                                         self.toolbox2, 
                                         cxpb=0.7,
                                         mutpb=0.5, 
@@ -230,6 +230,3 @@ class TestGeneticDeterminism:
                                         verbose=False)
 
         assert population1 == population2
-
-
-

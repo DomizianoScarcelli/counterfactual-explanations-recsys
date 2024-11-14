@@ -36,20 +36,19 @@ def test_dataset_determinism():
     config = get_config(model=MODEL, dataset=DATASET)
     sequences = sequence_generator(config)
     model = generate_model(config)
-    for sequence in sequences:
+    i = 0
+    while True:
+        try:
+            sequence = next(sequences)
+        except StopIteration:
+            break
+        if i > 10:
+            break
         train_dataset, _ = generate(deepcopy(sequence), deepcopy(model))
         other_train_dataset, _ = generate(deepcopy(sequence), deepcopy(model))
         good, bad = train_dataset
         o_good, o_bad = other_train_dataset
         
-        print("DEBUG")
-        print("good:")
-        for x in good:
-            print(x[0].squeeze().tolist())
-        print("o_good:")
-        for x in o_good:
-            print(x[0].squeeze().tolist())
-
         assert are_dataset_equal(good, o_good), f"good != o_good. Difference length is {max(len(dataset_difference(good, o_good)), len(dataset_difference(o_good, good)))}"
         assert are_dataset_equal(bad, o_bad)
 

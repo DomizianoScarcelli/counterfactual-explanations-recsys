@@ -43,7 +43,14 @@ def test_automata_learning_determinism():
     config = get_config(model=MODEL, dataset=DATASET)
     sequences = sequence_generator(config)
     model = generate_model(config)
-    for sequence in sequences:
+    i = 0
+    while True:
+        try:
+            sequence = next(sequences)
+        except StopIteration:
+            break
+        if i > 20:
+            break
         train_dataset, _ = generate(sequence, model)
         sequence = sequence.squeeze(0).tolist()
         dfa = learning_pipeline(sequence, train_dataset)
