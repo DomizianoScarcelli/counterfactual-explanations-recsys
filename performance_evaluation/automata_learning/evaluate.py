@@ -71,6 +71,7 @@ def evaluate_all(interactions: Generator,
         test_dataset = generate_test_dataset(interaction, oracle, dfa)
 
         print(f"[DEBUG] Test dataset length: {len(test_dataset[0]) + len(test_dataset[1])}")
+        # Remove from test the examples that come from test
         test_dataset = (dataset_difference(test_dataset[0], train_dataset[0]),
                         dataset_difference(test_dataset[1], train_dataset[1]))
         print(f"[DEBUG] Test dataset length: {len(test_dataset[0]) + len(test_dataset[1])}")

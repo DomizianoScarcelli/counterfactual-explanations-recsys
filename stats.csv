@@ -1,2 +1,0 @@
-split_key,population_size,num_generations,halloffame_ratio,total_runs,good_runs,skipped_runs,bad_runs_counterfactual_not_found,bad_runs_malformed_dfa,bad_runs_other,mean_time_dataset_generation,mean_time_automata_learning,mean_time_alignment,mean_total_time,min_cost,max_cost,mean_cost
-1_mut,1000,20,0.5,101,79,0,20,0,0,39.965622059906586,0.4451256583008585,7.386534461492224,47.79728217969967,2,2,2.0

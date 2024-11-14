@@ -7,6 +7,9 @@ from genetic.utils import random_points_with_offset
 
 
 class Mutation(ABC):
+    def __init__(self):
+        self.name: str
+
     def __call__(self, seq: List[int], alphabet: List[int], index: int) -> Tuple[List[int]]:
         # Change the seed according to the index of the mutated sequence
         set_seed(index)
@@ -96,6 +99,17 @@ def contains_mutation(mutation_type: type, mutations_list: List[Mutation]) -> bo
 
 def remove_mutation(mutation_type: type, mutations_list: List[Mutation]) -> List[Mutation]:
     return [m for m in mutations_list if not isinstance(m, mutation_type)]
+
+def parse_mutations(muts: List[str]):
+    """
+    Used to transform a list of mutations names
+    (for example take from a config file) to a 
+    list of mutation classes
+
+    Args:
+        muts: List of mutations names.
+    """
+    return [mut for mut in ALL_MUTATIONS if mut.name in muts]
 
 ALL_MUTATIONS: List[Mutation] = [SwapMutation(), ReplaceMutation(),
                                  ShuffleMutation(), ReverseMutation(),

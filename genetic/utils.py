@@ -1,4 +1,5 @@
 from enum import Enum
+import random
 
 import _pickle as cPickle
 import Levenshtein
@@ -33,13 +34,10 @@ def self_indicator(seq1, seq2):
     return float("inf") if (seq1 == seq2).all() else 0
 
 def random_points_with_offset(max_value: int, max_offset: int):
-    #TODO: reset to this, now this is just for determinism DEBUG
-    # i = random.randint(1, max_value - 1)
-    # j = random.randint(max(0, i - max_offset), min(max_value - 1, i + max_offset))
-    # Sort i and j to ensure i <= j
-    # return tuple(sorted([i, j]))
-
-    return 0, max_value
+     i = random.randint(1, max_value - 1)
+     j = random.randint(max(0, i - max_offset), min(max_value - 1, i + max_offset))
+     # Sort i and j to ensure i <= j
+     return tuple(sorted([i, j]))
 
 def _evaluate_generation(input_seq: Tensor, dataset: Dataset, label: int):
     # Evaluate label

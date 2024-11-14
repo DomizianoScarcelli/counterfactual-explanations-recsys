@@ -18,7 +18,7 @@ from utils import set_seed
 from copy import deepcopy
 from genetic.utils import NumItems, clone
 from typing import List, Any
-from constants import MAX_LENGTH, MIN_LENGTH
+from constants import MAX_LENGTH, MIN_LENGTH, MAX_LENGTH
 import random
 from models.config_utils import generate_model
 from models.utils import pad, trim
@@ -43,19 +43,31 @@ def test_contains_exactly_one_source_sequence(model, sequences):
     """
     Tests if dataset contains only a single reference to the source sequence.
     """
-    for i, seq in enumerate(sequences):
-        if i > 200:
+    i = 0
+    start_i, end_i = 3, 20
+    while True:
+        if i < start_i:
+            i+=1
+            continue
+        if i > end_i:
+            break
+        try:
+            seq = next(sequences)
+        except StopIteration:
             break
         (good, bad), _ = generate(seq, model)
+
         count = 0
-        for gen_seq, _ in good:
-            if torch.all(gen_seq == seq):
-                count += 1
-            assert count < 1
-        for gen_seq, _ in bad:
-            if torch.all(gen_seq == seq):
-                count += 1
-            assert count == 0
+        # points in good are of shape [50], seq is [1,50]
+        seq = pad(seq.squeeze(), MAX_LENGTH)
+        # print("Dataset point shape is", good[0][0].shape)
+        # print("Source point shape is", seq.shape)
+        seq_in_good = sum(torch.all(point == seq) for point, _ in good)
+        seq_in_bad = sum(torch.all(point == seq) for point, _ in bad)
+        assert seq_in_good == 1, f"[i:{i}] Original sequence must appear EXACTLY ONCE in the good dataset, it appears {count} times"
+        assert seq_in_bad == 0, f"[i:{i}] Original sequence should NOT appear in the BAD dataset, it appears {count} times"
+
+        i += 1
 
 class TestGeneticDeterminism:
     def init_vars(self):

@@ -4,7 +4,7 @@ import torch
 from torch import Tensor
 
 
-def trim(seq: Tensor | List[int]) -> Tensor | List[int]:
+def trim(seq: Tensor | List[int]) -> Tensor:
     """ Trims the final -1s of the tensor
 
     Args:
@@ -16,7 +16,7 @@ def trim(seq: Tensor | List[int]) -> Tensor | List[int]:
     if isinstance(seq, Tensor):
         return _trim_tensor(seq)
     else:
-        return _trim_list(seq)
+        return torch.tensor(_trim_list(seq))
 
 
 def _trim_tensor(seq: Tensor) -> Tensor:
@@ -96,7 +96,7 @@ def _pad_list(seq: List[int], length: int) -> List[int]:
 
 
 
-def pad(seq: Tensor | List[int], length: int) -> Tensor | List[int]:
+def pad(seq: Tensor | List[int], length: int) -> Tensor:
     """ Pads the sequence with -1 until it's length is equal to `length`
 
     Args:
@@ -109,7 +109,7 @@ def pad(seq: Tensor | List[int], length: int) -> Tensor | List[int]:
     if isinstance(seq, Tensor):
         return _pad_tensor(seq, length)
     else:
-        return _pad_list(seq, length)
+        return torch.tensor(_pad_list(seq, length))
 
 def pad_batch(seqs: List[Tensor], length: int) -> Tensor:
     return torch.stack([pad(torch.tensor(s), length) for s in seqs])

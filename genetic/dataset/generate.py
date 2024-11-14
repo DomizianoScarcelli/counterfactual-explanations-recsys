@@ -7,12 +7,12 @@ from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
 from torch import Tensor
 
-from config import DATASET, GENERATIONS, HALLOFFAME_RATIO, MODEL, POP_SIZE
+from config import ALLOWED_MUTATIONS, DATASET, GENERATIONS, HALLOFFAME_RATIO, MODEL, POP_SIZE
 from genetic.dataset.utils import (get_dataloaders,
                                    get_sequence_from_interaction, load_dataset,
                                    save_dataset, train_test_split)
 from genetic.genetic import GeneticGenerationStrategy
-from genetic.mutations import ReplaceMutation, SwapMutation
+from genetic.mutations import ReplaceMutation, SwapMutation, parse_mutations
 from genetic.utils import NumItems
 from models.config_utils import generate_model, get_config
 from models.model_funcs import model_predict
@@ -56,7 +56,7 @@ def generate( interaction: Union[Interaction, Tensor], model:
     sequence = sequence.squeeze(0)
     assert len(sequence.shape) == 1, f"Sequence dim must be 1: {
         sequence.shape}"
-    allowed_mutations = [ReplaceMutation(), SwapMutation()]
+    allowed_mutations = parse_mutations(ALLOWED_MUTATIONS)
     if alphabet is None:
         alphabet = list(range(NumItems.ML_1M.value))
     good_genetic_strategy = GeneticGenerationStrategy(
@@ -83,7 +83,9 @@ def generate( interaction: Union[Interaction, Tensor], model:
     )
     bad_examples = bad_genetic_strategy.generate()
     bad_examples = bad_genetic_strategy.postprocess(bad_examples)
-
+    
+    #TODO: the train test split should be removed since the evaluation is done
+    #using another dataset now
     train_good, test_good = train_test_split(good_examples)
     train_bad, test_bad = train_test_split(bad_examples)
     train_dataset: GoodBadDataset = (train_good, train_bad)

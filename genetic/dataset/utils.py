@@ -13,7 +13,7 @@ from models.utils import pad
 from type_hints import Dataset, GoodBadDataset
 
 
-def train_test_split(dataset: Dataset, test_split: float = 0.2):
+def train_test_split(dataset: Dataset, test_split: float = 0):
     train, test = [], []
     train_end = round(len(dataset) * (1-test_split))
     for i in range(train_end):

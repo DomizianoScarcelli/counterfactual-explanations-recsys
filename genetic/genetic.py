@@ -160,6 +160,17 @@ class GeneticGenerationStrategy():
     def postprocess(self, population: Dataset) -> Dataset:
         clean_pop = self.clean(population)
         label_eval, seq_eval = self.evaluate_generation(clean_pop)
+        source_point = (self.input_seq.unsqueeze(0), self.gt.argmax(-1).item())
+        # If source point is not in good datset, add it
+        if self.good_examples and not any(torch.all(point == source_point[0]) for point, _ in population):
+            self.print("Source point was not in good dataset, adding it")
+            clean_pop.append(source_point)
+
+        # If source point is in bad datset, remove it
+        if not self.good_examples and any(torch.all(point == source_point[0]) for point, _ in population):
+            self.print("Source point was in the bad dataset, removing it")
+            clean_pop.remove(source_point)
+
         self.print(f"[After clean] Good examples={self.good_examples} ({len(clean_pop)}) ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
         return clean_pop
 
