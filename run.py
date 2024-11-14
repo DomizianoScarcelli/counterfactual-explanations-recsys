@@ -4,13 +4,13 @@ from typing import List, Tuple
 
 import fire
 
-from alignment.alignment import trace_disalignment
+from alignment.alignment import split_trace, trace_disalignment
 from automata_learning.learning import learning_pipeline
 from config import DATASET, MODEL
 from genetic.dataset.generate import dataset_generator, interaction_generator
 from genetic.dataset.utils import get_sequence_from_interaction
 from models.config_utils import get_config
-from models.utils import trim_zero
+from models.utils import trim
 from type_hints import Dataset, RecDataset, RecModel
 from utils import TimedFunction
 
@@ -19,16 +19,19 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 timed_learning_pipeline = TimedFunction(learning_pipeline)
 timed_trace_disalignment = TimedFunction(trace_disalignment)
 
-def single_run(source_sequence: List[int], _dataset: Tuple[Dataset, Dataset]):
+def single_run(source_sequence: List[int], _dataset: Tuple[Dataset, Dataset], splits:Tuple[float, float, float]=(1/3,1/3,1/3)):
     assert isinstance(source_sequence, list), f"Source sequence is not a list, but a {type(source_sequence)}"
     assert isinstance(source_sequence[0], int), f"Elements of the source sequences are not ints, but {type(source_sequence[0])}"
 
     dfa = timed_learning_pipeline(source=source_sequence, dataset=_dataset)
-    aligned, cost, alignment = timed_trace_disalignment(dfa, source_sequence)
+
+    splitted_source_sequence = split_trace(source_sequence, splits=splits)
+
+    aligned, cost, alignment = timed_trace_disalignment(dfa, splitted_source_sequence)
     return aligned, cost, alignment
 
-def main(dataset:RecDataset=DATASET, 
-         model:RecModel=MODEL, 
+def main(dataset:RecDataset=DATASET,
+         model:RecModel=MODEL,
          num_counterfactuals: int=1,
          num_generations: int=20,
          dataset_examples: int=2000):
@@ -57,7 +60,7 @@ def main(dataset:RecDataset=DATASET,
             print(f"Generated {num_counterfactuals}, exiting...")
             break
         source_sequence = get_sequence_from_interaction(interaction).squeeze(0)
-        source_sequence = trim_zero(source_sequence)
+        source_sequence = trim(source_sequence)
         aligned, cost, _ = single_run(source_sequence.tolist(), _dataset)
         end = time.time()
         align_time = end-start

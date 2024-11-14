@@ -37,6 +37,7 @@ def test_action_memory_efficiency(actions):
     def create_string_tuples():
         return tuple(f"{action_type}_{i}" for action_type in ["add", "del", "sync"] for i in range(10000))
 
+
     mem_usage_strings = memory_usage(create_string_tuples, interval=0.1) 
     string_memory_usage = (max(mem_usage_strings) - min(mem_usage_strings))  * 1024 * 1024
 

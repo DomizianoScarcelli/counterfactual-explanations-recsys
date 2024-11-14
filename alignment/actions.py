@@ -1,3 +1,6 @@
+from typing import Sequence, Set
+
+
 # Store actions as raw bits for memory efficiency
 class Action:
     SYNC = 0b00  # 0
@@ -41,3 +44,21 @@ def act_str(action: int):
 def print_action(encoded_action: int):
     action_type, e = decode_action(encoded_action)
     return f"{act_str(action_type)}_{e}"
+
+
+def is_legal(enc_action: int, 
+             prev_actions: Sequence[int], 
+             illegal_symbols: Set[int]) -> bool:
+    _, e = decode_action(enc_action)
+
+    if e in illegal_symbols:
+        return False
+    add_e = encode_action(Action.ADD, e)
+    del_e = encode_action(Action.DEL, e)
+    sync_e = encode_action(Action.SYNC, e)
+    actions = {add_e, del_e, sync_e}
+    other_actions = actions - {enc_action}
+    for other_action in other_actions:
+        if other_action in prev_actions:
+            return False
+    return True

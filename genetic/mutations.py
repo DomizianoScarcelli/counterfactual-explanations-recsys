@@ -1,62 +1,103 @@
 import random
-from enum import Enum
-from typing import List
+from abc import ABC, abstractmethod
+from typing import List, Tuple
+from utils import set_seed
 
-from genetic.utils import NumItems, random_points_with_offset
+from genetic.utils import random_points_with_offset
 
 
-def mutate_replace(seq: List[int], max_value:NumItems=NumItems.ML_1M, num_replaces:int=1):
-    for _ in range(num_replaces):
+class Mutation(ABC):
+    def __call__(self, seq: List[int], alphabet: List[int], index: int) -> Tuple[List[int]]:
+        # Change the seed according to the index of the mutated sequence
+        set_seed(index)
+        result = (self._apply(seq, alphabet),)
+        # Resets the seed back to the original one to ensure determinism for
+        # the following operations
+        set_seed()
+        return result
+
+    @abstractmethod
+    def _apply(self, seq: List[int], alphabet: List[int]) -> List[int]:
+        pass
+
+class ReplaceMutation(Mutation):
+    def __init__(self, num_replaces: int = 1):
+        self.num_replaces = num_replaces
+        self.name = "replace"
+
+    def _apply(self, seq: List[int], alphabet: List[int]) -> List[int]:
+        for _ in range(self.num_replaces):
+            i = random.sample(range(len(seq)), 1)[0]
+            new_value = random.choice(alphabet)
+            while new_value in seq:
+                new_value = random.choice(alphabet)
+            seq[i] = new_value
+        return seq
+
+class SwapMutation(Mutation):
+    def __init__(self, offset_ratio: float = 0.8):
+        self.offset_ratio = offset_ratio
+        self.name = "swap"
+
+    def _apply(self, seq: List[int], alphabet: List[int]) -> List[int]:
+        max_offset = round(len(seq) * self.offset_ratio)
+        i, j = random_points_with_offset(len(seq) - 1, max_offset)
+        seq[i], seq[j] = seq[j], seq[i]
+        return seq
+
+class ReverseMutation(Mutation):
+    def __init__(self, offset_ratio: float = 0.8):
+        self.offset_ratio = offset_ratio
+        self.name = "reverse"
+
+    def _apply(self, seq: List[int], alphabet: List[int]) -> List[int]:
+        max_offset = round(len(seq) * self.offset_ratio)
+        i, j = random_points_with_offset(len(seq)-1, max_offset)
+        seq[i:j+1] = seq[i:j+1][::-1]
+        return seq
+
+class ShuffleMutation(Mutation):
+    def __init__(self, offset_ratio: float = 0.8):
+        self.offset_ratio = offset_ratio
+        self.name = "shuffle"
+
+    def _apply(self, seq: List[int], alphabet: List[int]) -> List[int]:
+        max_offset = round(len(seq) * self.offset_ratio)
+        i, j = random_points_with_offset(len(seq)-1, max_offset)
+        subseq = seq[i:j+1]  
+        random.shuffle(subseq) 
+        seq[i:j+1] = subseq  
+        return seq
+
+
+class AddMutation(Mutation):
+    def __init__(self):
+        self.name = "add"
+
+    def _apply(self, seq: list[int], alphabet: list[int]) -> list[int]:
+        random_item = random.choice(alphabet)
+        while random_item in seq:
+            random_item = random.choice(alphabet)
         i = random.sample(range(len(seq)), 1)[0]
-        new_value = random.randint(1, max_value.value)
-        while (new_value in seq):
-            new_value = random.randint(1, max_value.value)
-        seq[i] = new_value
-    return seq,
+        seq.insert(i, random_item)
+        return seq
 
-def mutate_swap(seq: List[int], offset_ratio: float=0.8):
-    max_offset = round(len(seq) * offset_ratio)
-    i, j = random_points_with_offset(len(seq)-1, max_offset)
-    seq[i], seq[j] = seq[j], seq[i]
-    return seq,
+class DeleteMutation(Mutation):
+    def __init__(self):
+        self.name = "delete"
 
-def mutate_reverse(seq: List[int], offset_ratio:float=0.3):
-    max_offset = round(len(seq) * offset_ratio)
-    i, j = random_points_with_offset(len(seq)-1, max_offset)
-    seq[i:j+1] = seq[i:j+1][::-1]
-    return seq,
+    def _apply(self, seq: list[int], alphabet: list[int]) -> list[int]:
+        i = random.sample(range(len(seq)), 1)[0]
+        seq.remove(seq[i])
+        return seq
 
-# Mutation: Shuffles a random subsequence
-def mutate_shuffle(seq: List[int], offset_ratio:float=0.3):
-    max_offset = round(len(seq) * offset_ratio)
-    i, j = random_points_with_offset(len(seq)-1, max_offset)
-    subseq = seq[i:j+1]  
-    random.shuffle(subseq) 
-    seq[i:j+1] = subseq  
-    return seq,
+def contains_mutation(mutation_type: type, mutations_list: List[Mutation]) -> bool:
+    return any(isinstance(m, mutation_type) for m in mutations_list)
 
-def mutate_add(seq: List[int], max_value: NumItems=NumItems.ML_1M):
-    random_item = random.randint(1, max_value.value)
-    while random_item in seq:
-        random_item = random.randint(1, max_value.value)
-    i = random.sample(range(len(seq)), 1)[0]
-    seq.insert(i, random_item)
-    return seq,
+def remove_mutation(mutation_type: type, mutations_list: List[Mutation]) -> List[Mutation]:
+    return [m for m in mutations_list if not isinstance(m, mutation_type)]
 
-def mutate_delete(seq: List[int]):
-    i = random.sample(range(len(seq)), 1)[0]
-    seq.remove(seq[i])
-    return seq,
-
-
-class Mutations(Enum):
-    SWAP = mutate_swap
-    REPLACE = mutate_replace
-    SHUFFLE = mutate_shuffle
-    REVERSE = mutate_reverse
-    ADD = mutate_add
-    DELETE = mutate_delete
-
-ALL_MUTATIONS: List[Mutations] = [Mutations.SWAP, Mutations.REPLACE,
-                                  Mutations.SHUFFLE, Mutations.REVERSE,
-                                  Mutations.ADD, Mutations.DELETE]
+ALL_MUTATIONS: List[Mutation] = [SwapMutation(), ReplaceMutation(),
+                                 ShuffleMutation(), ReverseMutation(),
+                                 AddMutation(), DeleteMutation(),
+                                 ReplaceMutation()]

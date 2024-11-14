@@ -2,14 +2,14 @@ aalpy==1.4.1
 deap==1.4.1
 fire==0.7.0
 kmeans-pytorch==0.3
+Levenshtein==0.26.0
+networkx==3.3
 numpy==2.1.1
 pandas==2.2.3
 pytest==8.3.3
-PyYAML==6.0.2
 recbole==1.2.0
 scikit-learn==1.5.2
 scipy==1.14.1
-tensorboard==2.18.0
-tensorboardX==2.6.2.2
+toml==0.10.2
 torch==2.4.1
 tqdm==4.66.5

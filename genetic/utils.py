@@ -1,12 +1,13 @@
-import random
 from enum import Enum
 
 import _pickle as cPickle
-import numpy as np
+import Levenshtein
 import torch.nn.functional as F
 from torch import Tensor
+from copy import deepcopy
 
-from models.utils import pad_zero
+from type_hints import Dataset
+from utils import set_seed
 
 
 class NumItems(Enum):
@@ -15,17 +16,13 @@ class NumItems(Enum):
     MOCK=6
 
 
-def cPickle_clone(x):
+def clone(x):
     # return deepcopy(x)
     return cPickle.loads(cPickle.dumps(x))
 
-def edit_distance(seq1, seq2):
-    if len(seq1) < len(seq2):
-        seq1 = pad_zero(seq1, len(seq2))
-    if len(seq2) < len(seq1):
-        seq2 = pad_zero(seq2, len(seq1))
-
-    return 1 - np.sum(np.array(seq1) == np.array(seq2)) / len(seq1)  # Fraction of matching elements
+def edit_distance(t1: Tensor, t2: Tensor):
+    str1, str2 = str(t1), str(t2) #Levenshtein.ratio only works with strings
+    return 1 - Levenshtein.ratio(str1, str2)
 
 def cosine_distance(prob1: Tensor, prob2: Tensor) -> float:
     return 1 - F.cosine_similarity(prob1, prob2, dim=-1).item()
@@ -36,7 +33,19 @@ def self_indicator(seq1, seq2):
     return float("inf") if (seq1 == seq2).all() else 0
 
 def random_points_with_offset(max_value: int, max_offset: int):
-    i = random.randint(1, max_value - 1)
-    j = random.randint(max(0, i - max_offset), min(max_value - 1, i + max_offset))
+    #TODO: reset to this, now this is just for determinism DEBUG
+    # i = random.randint(1, max_value - 1)
+    # j = random.randint(max(0, i - max_offset), min(max_value - 1, i + max_offset))
     # Sort i and j to ensure i <= j
-    return tuple(sorted([i, j]))
+    # return tuple(sorted([i, j]))
+
+    return 0, max_value
+
+def _evaluate_generation(input_seq: Tensor, dataset: Dataset, label: int):
+    # Evaluate label
+    same_label = sum(1 for ex in dataset if ex[1] == label)
+    # Evaluate example similarity
+    distances = []
+    for seq, _ in dataset:
+        distances.append(edit_distance(input_seq, seq))
+    return (same_label / len(dataset)), (sum(distances)/len(distances))

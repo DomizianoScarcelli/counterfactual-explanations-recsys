@@ -47,7 +47,7 @@ def invert_automata(automata: Dfa):
         state.is_accepting = not state.is_accepting
 
 
-def run_automata(automata: Dfa, input: list):
+def run_automata(automata: Dfa, input: list, final_reset: bool = True):
     automata.reset_to_initial()
     # automata.execute_sequence(origin_state=automata.current_state, seq=input)
     # return automata.current_state.is_accepting
@@ -66,4 +66,5 @@ def run_automata(automata: Dfa, input: list):
             # pass
             # equivalent to go in sink state and early return
             # return False
+    automata.reset_to_initial()
     return result

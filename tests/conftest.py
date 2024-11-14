@@ -7,6 +7,7 @@ from alignment.alignment import (augment_constraint_automata,
                                  augment_trace_automata)
 from automata_learning.learning import (generate_automata_from_dataset,
                                         generate_single_accepting_sequence_dfa)
+from genetic.dataset.generate import interaction_generator, sequence_generator
 from genetic.dataset.utils import load_dataset
 from genetic.utils import NumItems
 from models.config_utils import generate_model
@@ -116,6 +117,7 @@ def mock_a_dfa_aug(mock_dataset, mock_t_dfa):
 def dataset():
     return load_dataset(load_path="saved/counterfactual_dataset.pickle")[0]
 
+
 @pytest.fixture(scope="module")
 def automata_gt(dataset):
     good_points, _ = dataset
@@ -185,3 +187,11 @@ def config():
 def model(config) -> SequentialRecommender:
     model = generate_model(config)
     return model
+
+@pytest.fixture(scope="module")
+def interactions(config):
+    return interaction_generator(config)
+
+@pytest.fixture(scope="module")
+def sequences(config):
+    return sequence_generator(config)

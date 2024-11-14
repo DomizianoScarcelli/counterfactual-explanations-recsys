@@ -20,13 +20,12 @@ def hops(curr_state, remaining_trace, target_states):
 
         # Perform BFS from the current state to any target state
         queue = deque([(state, 0)])  # Queue of (current_state, hop_length)
-        visited = set()  # Set of visited states
+        visited = set() 
         visited.add(state.state_id)
 
         while queue:
             current_state, hop_length = queue.popleft()
 
-            # Check if the current state is one of the target states
             if current_state in target_states:
                 return hop_length
 

@@ -1,18 +1,19 @@
 import os
 import warnings
-from typing import Generator, Tuple, Union
+from typing import Generator, List, Optional, Tuple, Union
 
 from recbole.config import Config
 from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
 from torch import Tensor
 
-from config import DATASET, MODEL
+from config import DATASET, GENERATIONS, HALLOFFAME_RATIO, MODEL, POP_SIZE
 from genetic.dataset.utils import (get_dataloaders,
                                    get_sequence_from_interaction, load_dataset,
                                    save_dataset, train_test_split)
 from genetic.genetic import GeneticGenerationStrategy
-from genetic.mutations import Mutations
+from genetic.mutations import ReplaceMutation, SwapMutation
+from genetic.utils import NumItems
 from models.config_utils import generate_model, get_config
 from models.model_funcs import model_predict
 from type_hints import GoodBadDataset
@@ -21,11 +22,8 @@ from utils import set_seed
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
 
-def generate(
-    interaction: Union[Interaction, Tensor], model: SequentialRecommender
-) -> Tuple[
-    Tuple[GoodBadDataset, GoodBadDataset], Tuple[GoodBadDataset, GoodBadDataset]
-]:
+def generate( interaction: Union[Interaction, Tensor], model:
+             SequentialRecommender, alphabet: Optional[List[int]] = None) -> Tuple[GoodBadDataset, GoodBadDataset]:
     """
     Generates the dataset of good and bad points from a sequence in the
     Interaction, using the model as a black box oracle. The dataset can be used
@@ -38,6 +36,8 @@ def generate(
         counterfactual is needed.
         model: the black box model that is used as an oracle to get the
         probability distribution or label of the sequence.
+        alphabet: the alphabet that is used in order to perform the mutations.
+        If None, then a default alphabet is used
     Returns:
         The dataset in the form of a tuple (good_points, bad_points), where
         good_points and bad_points are lists of LabeledTensors.
@@ -46,23 +46,28 @@ def generate(
         sequence = get_sequence_from_interaction(interaction)
     elif isinstance(interaction, Tensor):
         sequence = interaction
+    else:
+        raise NotImplemented(f"Sequence of type {type(sequence)} is not supported. Tensor or Interaction supported")
     assert (
         sequence.size(0) == 1
     ), f"Only batch size of 1 is supported, sequence shape is: {sequence.shape}"
     # user_id = interaction.interaction["user_id"][0].item()
-
-    # Trim zeros
+    
     sequence = sequence.squeeze(0)
     assert len(sequence.shape) == 1, f"Sequence dim must be 1: {
         sequence.shape}"
-    allowed_mutations = [Mutations.SWAP, Mutations.REPLACE]
+    allowed_mutations = [ReplaceMutation(), SwapMutation()]
+    if alphabet is None:
+        alphabet = list(range(NumItems.ML_1M.value))
     good_genetic_strategy = GeneticGenerationStrategy(
         input_seq=sequence,
         predictor=lambda x: model_predict(seq=x, model=model, prob=True),
         allowed_mutations=allowed_mutations,
-        pop_size=2000,
+        pop_size=POP_SIZE,
         good_examples=True,
-        generations=10,
+        generations=GENERATIONS,
+        halloffame_ratio=HALLOFFAME_RATIO,
+        alphabet=alphabet
     )
     good_examples = good_genetic_strategy.generate()
     good_examples = good_genetic_strategy.postprocess(good_examples)
@@ -70,17 +75,19 @@ def generate(
         input_seq=sequence,
         predictor=lambda x: model_predict(seq=x, model=model, prob=True),
         allowed_mutations=allowed_mutations,
-        pop_size=2000,
+        pop_size=POP_SIZE,
         good_examples=False,
-        generations=10,
+        generations=GENERATIONS,
+        halloffame_ratio=HALLOFFAME_RATIO,
+        alphabet=alphabet
     )
     bad_examples = bad_genetic_strategy.generate()
     bad_examples = bad_genetic_strategy.postprocess(bad_examples)
 
     train_good, test_good = train_test_split(good_examples)
     train_bad, test_bad = train_test_split(bad_examples)
-    train_dataset = (train_good, train_bad)
-    test_dataset = (test_good, test_bad)
+    train_dataset: GoodBadDataset = (train_good, train_bad)
+    test_dataset: GoodBadDataset = (test_good, test_bad)
     return train_dataset, test_dataset
 
 
@@ -95,6 +102,13 @@ def interaction_generator(config: Config) -> Generator[Interaction, None, None]:
     for data in test_data:
         interaction = data[0]
         yield interaction
+
+def sequence_generator(config: Config) -> Generator[Tensor, None, None]:
+    _, _, test_data = get_dataloaders(config)
+    assert test_data is not None, "Test data is None"
+    for data in test_data:
+        interaction = data[0]
+        yield get_sequence_from_interaction(interaction)
 
 
 def dataset_generator(
@@ -126,7 +140,9 @@ def dataset_generator(
             if use_cache:
                 save_dataset(train, train_cache_path)
                 save_dataset(test, test_cache_path)
-
+        
+        # TODO: since the evaluation is done in another way not, remove this
+        # splitting
         yield train, test
 
 
@@ -137,4 +153,5 @@ if __name__ == "__main__":
     for dataset in datasets:
         dataset_save_path = "saved/counterfactual_dataset.pickle"
         save_dataset(dataset, save_path=dataset_save_path)
+        print(dataset)
         break

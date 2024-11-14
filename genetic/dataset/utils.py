@@ -1,6 +1,7 @@
 import pickle
-from typing import Tuple
+from typing import Set, Tuple
 
+import torch
 from recbole.config import Config
 from recbole.data import create_dataset, data_preparation
 from recbole.data.interaction import Interaction
@@ -8,6 +9,7 @@ from recbole.utils import init_seed
 from torch import Tensor
 from torch.utils.data import DataLoader
 
+from models.utils import pad
 from type_hints import Dataset, GoodBadDataset
 
 
@@ -86,5 +88,53 @@ def make_deterministic(dataset: Tuple[Dataset, Dataset]) -> Tuple[Dataset, Datas
 
 def get_sequence_from_interaction(interaction: Interaction) -> Tensor:
     sequence = interaction.interaction["item_id_list"]
-    # print(f"[generate_dataset.get_sequence_from_interaction] sequence is {sequence}")
-    return sequence
+    length = interaction.interaction["item_length"]
+    # print(f"""Interaction-Sequence info: 
+    #       Sequence: {sequence} 
+    #       Length: {length}
+    #       Unpadded: {sequence[:, :length]}
+    #       """)
+
+    # Changes padding character from 0 to -1
+    unpadded = sequence[:, :length].flatten()
+    return pad(unpadded, sequence.size(-1)).unsqueeze(0)
+
+def get_dataset_alphabet(dataset: GoodBadDataset) -> Set[int]:
+    alphabet = set()
+    good, bad = dataset
+    for example in good + bad:
+        alphabet |= set(example[0].tolist())
+    return alphabet
+
+def dataset_difference(dataset: Dataset, other: Dataset) -> Dataset:
+    """
+    Returns all the entries from one dataset that do not appear in the other
+    dataset, effectively doing an equivalent of the set difference operation.
+
+    Args:
+        dataset: The original dataset
+        other: The datset that will be substracted to the original dataset
+
+    Returns:
+        A new dataset such that (dataset INTERSECTION other) is the empty set.
+    """
+    dataset_map = {tuple(row.squeeze(0).tolist()): label for row, label in dataset}
+    other_map = {tuple(row.squeeze(0).tolist()): label for row, label in other}
+
+    dataset_keys = set(dataset_map.keys())
+    other_keys = set(other_map.keys())
+
+    difference_keys = dataset_keys - other_keys
+
+    difference_dataset = [(torch.tensor(key).unsqueeze(0), dataset_map[key]) for key in difference_keys]
+    return difference_dataset
+
+def are_dataset_equal(dataset: Dataset, other: Dataset) -> bool:
+    dataset_map = {tuple(row.squeeze(0).tolist()): label for row, label in dataset}
+    other_map = {tuple(row.squeeze(0).tolist()): label for row, label in other}
+
+    dataset_keys = set(dataset_map.keys())
+    other_keys = set(other_map.keys())
+    return dataset_keys == other_keys
+
+
