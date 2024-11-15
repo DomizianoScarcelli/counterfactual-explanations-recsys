@@ -111,5 +111,7 @@ def pad(seq: Tensor | List[int], length: int) -> Tensor:
     else:
         return torch.tensor(_pad_list(seq, length))
 
-def pad_batch(seqs: List[Tensor], length: int) -> Tensor:
+def pad_batch(seqs: List[list] | Tensor | List[Tensor], length: int) -> Tensor:
+    if isinstance(seqs, Tensor):
+        return torch.stack([pad(s, length) for s in seqs])
     return torch.stack([pad(torch.tensor(s), length) for s in seqs])
