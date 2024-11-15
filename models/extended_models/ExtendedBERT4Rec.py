@@ -13,6 +13,10 @@ class ExtendedBERT4Rec(BERT4Rec):
         set_seed()
         super().__init__(config=config, dataset=dataset)
         self.eval()
+
+
+    def __call__(self, x: Union[Interaction, Tensor]):
+        return self.full_sort_predict(x)
         
     def full_sort_predict(self, interaction: Union[Interaction, Tensor]):
         if isinstance(interaction, Interaction):
