@@ -164,12 +164,12 @@ class GeneticGenerationStrategy():
         # If source point is not in good datset, add it
         if self.good_examples and not any(torch.all(point == source_point[0]) for point, _ in population):
             self.print("Source point was not in good dataset, adding it")
-            clean_pop.append(source_point)
+            clean_pop.append(source_point[0])
 
         # If source point is in bad datset, remove it
         if not self.good_examples and any(torch.all(point == source_point[0]) for point, _ in population):
             self.print("Source point was in the bad dataset, removing it")
-            clean_pop.remove(source_point)
+            clean_pop = [ind for ind, _ in population if torch.all(ind != source_point[0])]
 
         self.print(f"[After clean] Good examples={self.good_examples} ({len(clean_pop)}) ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
         return clean_pop

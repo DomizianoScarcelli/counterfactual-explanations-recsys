@@ -32,6 +32,18 @@ from utils import set_seed
 
 
 def generate_test_dataset(source_sequence: Tensor, model:SequentialRecommender, dfa: Dfa) -> GoodBadDataset:
+    """
+    Generate a `GoodBadDataset` using only the items in the dfa alphabet for the mutations.
+    This will ensure that the sequences in the dataset are always recognized by the automata.
+
+    Args:
+        source_sequence: The source sequence for the dataset generation.
+        model: The black box model for the dataset generation
+        dfa: The dfa on which the alphabet will be taken.
+
+    Returns:
+        A good and bad dataset.
+    """
     alphabet = [c for c in dfa.get_input_alphabet() if isinstance(c, int)]
     return generate(source_sequence, model, alphabet)[0]
 
