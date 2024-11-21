@@ -1,6 +1,5 @@
-import json
 import os
-from typing import Dict, Generator, List, Optional, Tuple
+from typing import Generator, Optional
 
 import fire
 import pandas as pd
@@ -15,22 +14,14 @@ from constants import MAX_LENGTH
 from exceptions import (CounterfactualNotFound, DfaNotAccepting,
                         DfaNotRejecting, NoTargetStatesError)
 from genetic.dataset.generate import dataset_generator, interaction_generator
-from genetic.dataset.utils import get_sequence_from_interaction
 from models.config_utils import generate_model, get_config
 from models.utils import pad, trim
-from performance_evaluation.alignment.utils import evaluate_stats, log_run
+from performance_evaluation.alignment.utils import (evaluate_stats, log_run,
+                                                    get_split,
+                                                    is_already_evaluated,
+                                                    preprocess_interaction)
 from run import single_run, timed_learning_pipeline, timed_trace_disalignment
-from type_hints import Split
 from utils import TimedGenerator, set_seed
-
-
-def get_split(slen: int, split_type: str) -> Tuple[str, Split]:
-    mut_map = {f"{i}_mut": ((slen-i)/slen, i/slen, 0)  for i in range(1, slen)}
-    nth_mut_map = {f"{i}th_mut": ((slen-i-1)/slen, 1/slen, i/slen)  for i in range(1, slen)}
-    _map = {**mut_map, **nth_mut_map}
-    if split_type not in _map:
-        raise ValueError(f"Split type '{split_type}' not recognized")
-    return split_type, _map[split_type]
 
 
 def evaluate_trace_disalignment(interactions: Generator, 
@@ -38,50 +29,37 @@ def evaluate_trace_disalignment(interactions: Generator,
                                 oracle: SequentialRecommender,
                                 split_type: str,
                                 use_cache: bool,
-                                num_counterfactuals: int=100,
-                                force: bool=False):
+                                num_counterfactuals: int=100):
     good, bad, not_found, skipped = 0, 0, 0, 0
     log: DataFrame  = DataFrame({})
     genetic_params = (POP_SIZE, GENERATIONS, HALLOFFAME_RATIO)
     if os.path.exists("run.csv"):
         log = pd.read_csv("run.csv")
 
+    error_messages = {
+            DfaNotAccepting: "DfaNotAccepting",
+            DfaNotRejecting: "DfaNotRejecting",
+            NoTargetStatesError: "NoTargetStatesError",
+            CounterfactualNotFound: "CounterfactualNotFound"
+            }
+
     status = "unknown"
     for i, ((train, _), interaction) in enumerate(tqdm(zip(datasets, interactions), desc="Performance evaluation...")):
         if i == num_counterfactuals:
             print(f"Generated {num_counterfactuals}, exiting...")
             break
-        source_sequence = get_sequence_from_interaction(interaction)
-        try:
-            source_gt = oracle.full_sort_predict(source_sequence).argmax(-1).item()
-        except IndexError as e:
-            print("IndexError on sequence ", source_sequence)
-            raise e
-        source_sequence = trim(source_sequence.squeeze(0)).tolist()
+        source_sequence, source_gt = preprocess_interaction(interaction, oracle)
         print(f"Source sequence:", source_sequence)
         time_dataset_generation = datasets.get_times()[i]
         splits_key, splits = get_split(len(source_sequence), split_type)
         
-        already_evaluated = log.shape[0] != 0 and \
-        log[(log["original_trace"].apply(lambda x: x == source_sequence)) & 
-            (log["splits_key"] == splits_key) & 
-            (log["population_size"] == POP_SIZE) &
-            (log["num_generations"] == GENERATIONS) & 
-            (log["halloffame_ratio"] == HALLOFFAME_RATIO)].shape[0] > 0
-        if already_evaluated:
-            print(f"Splits {splits} already evaluated for the current trace, set force=True if you want to override them")
+        if is_already_evaluated(log=log, sequence=source_sequence, splits_key=split_type):
+            print(f"Splits {splits} already evaluated for the current trace, skipping...")
             continue
-        
         try:
             aligned, cost, alignment = single_run(source_sequence=source_sequence, _dataset=train, splits=splits)
         except (DfaNotAccepting, DfaNotRejecting, NoTargetStatesError, CounterfactualNotFound) as e:
             print(e)
-            error_messages = {
-                    DfaNotAccepting: "DfaNotAccepting",
-                    DfaNotRejecting: "DfaNotRejecting",
-                    NoTargetStatesError: "NoTargetStatesError",
-                    CounterfactualNotFound: "CounterfactualNotFound"
-                    }
             skipped += 1
             log = log_run(log, 
                            original=source_sequence,

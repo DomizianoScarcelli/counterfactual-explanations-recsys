@@ -1,12 +1,49 @@
-import datetime
-import json
-import time
-from statistics import mean
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
+from type_hints import SplitTuple
+from config import GENERATIONS, HALLOFFAME_RATIO, POP_SIZE
+from recbole.model.abstract_recommender import SequentialRecommender
 
 import pandas as pd
 from pandas import DataFrame
 
+from recbole.trainer import Interaction
+from models.utils import trim
+from genetic.dataset.utils import get_sequence_from_interaction
+
+def get_split(slen: int, split_type: str) -> Tuple[str, SplitTuple]:
+    mut_map = {f"{i}_mut": ((slen-i)/slen, i/slen, 0)  for i in range(1, slen)}
+    nth_mut_map = {f"{i}th_mut": ((slen-i-1)/slen, 1/slen, i/slen)  for i in range(1, slen)}
+    _map = {**mut_map, **nth_mut_map}
+    if split_type not in _map:
+        raise ValueError(f"Split type '{split_type}' not recognized")
+    return split_type, _map[split_type]
+
+def is_already_evaluated(log: DataFrame, sequence: List[int], splits_key: str) -> bool:
+    """ Returns True if the sequenece has already been evaluted with the same evaluation parameters.
+
+    Args:
+        log: The pandas.Dataframe that contains the evaluated sequences with the relative evaluation
+        sequence: The trimmed and flattened source sequence.
+
+    Returns:
+        True if the sequence is in the log with the same evaluation parameters, false oterwise.
+    """
+    return log.shape[0] != 0 and \
+        log[(log["original_trace"].apply(lambda x: x == sequence)) & 
+            (log["splits_key"] == splits_key) & 
+            (log["population_size"] == POP_SIZE) &
+            (log["num_generations"] == GENERATIONS) & 
+            (log["halloffame_ratio"] == HALLOFFAME_RATIO)].shape[0] > 0
+
+def preprocess_interaction(raw_interaction: Interaction, oracle: SequentialRecommender):
+    source_sequence = get_sequence_from_interaction(raw_interaction)
+    try:
+        source_gt = oracle.full_sort_predict(source_sequence).argmax(-1).item()
+    except IndexError as e:
+        print("IndexError on sequence ", source_sequence)
+        raise e
+    source_sequence = trim(source_sequence.squeeze(0)).tolist()
+    return source_sequence, source_gt
 
 def log_run(df: DataFrame,
             original: List[int], 
