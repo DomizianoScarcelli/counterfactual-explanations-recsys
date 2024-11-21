@@ -9,15 +9,25 @@ from config import GENERATIONS, HALLOFFAME_RATIO, POP_SIZE
 from genetic.dataset.utils import get_sequence_from_interaction
 from models.utils import trim
 from type_hints import SplitTuple
+from constants import MAX_LENGTH
+import torch
+from models.utils import pad
 
 
 def get_split(slen: int, split_type: str) -> Tuple[str, SplitTuple]:
-    mut_map = {f"{i}_mut": ((slen-i)/slen, i/slen, 0)  for i in range(1, slen)}
+    mut_map = {f"{i}_mut": ((slen-i)/slen, i/slen, 0.0)  for i in range(1, slen)}
     nth_mut_map = {f"{i}th_mut": ((slen-i-1)/slen, 1/slen, i/slen)  for i in range(1, slen)}
     _map = {**mut_map, **nth_mut_map}
     if split_type not in _map:
         raise ValueError(f"Split type '{split_type}' not recognized")
     return split_type, _map[split_type]
+
+def postprocess_alignment(aligned: List[int]):
+    if len(aligned) == MAX_LENGTH:
+        return torch.tensor(aligned).unsqueeze(0).to(torch.int64)
+    if len(aligned) < MAX_LENGTH:
+        return pad(trim(torch.tensor(aligned)), MAX_LENGTH).unsqueeze(0).to(torch.int64)
+    raise ValueError(f"Aligned length > {MAX_LENGTH}: {len(aligned)}")
 
 def is_already_evaluated(log: DataFrame, sequence: List[int], splits_key: str) -> bool:
     """ Returns True if the sequenece has already been evaluted with the same evaluation parameters.

@@ -5,7 +5,7 @@ dataset = "ML_1M"
 determinism = true
 
 [evolution]
-generations = 10
-pop_size = 500
+generations = 20
+pop_size = 1000
 halloffame_ratio = 0.2
 allowed_mutations = ["replace", "swap"] #replace, swap, add, delete, shuffle, reverse

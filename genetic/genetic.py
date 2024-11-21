@@ -81,7 +81,7 @@ class GeneticGenerationStrategy():
     def evaluate_fitness_batch(self, individuals: List[List[int]]) -> List[float]:
         #TODO: add a batch_size mechanism
         set_seed()
-        ALPHA1= 0.5
+        ALPHA1= 0.25 #0.25 instead of 0.5 if the edit_distance is not normalized
         ALPHA2 = 1 - ALPHA1
         candidate_seqs = torch.stack([pad(torch.tensor(i), MAX_LENGTH) for i in individuals])
         batch_size = candidate_seqs.size(0)
@@ -91,7 +91,7 @@ class GeneticGenerationStrategy():
         for batch_idx in range(batch_size):
             candidate_seq = candidate_seqs[batch_idx]
             candidate_prob = candidate_probs[batch_idx]
-            seq_dist = edit_distance(self.input_seq, candidate_seq) #[0,1]
+            seq_dist = edit_distance(self.input_seq, candidate_seq) #[0,MAX_LENGTH] if not normalized, [0,1] if normalized
             label_dist = cosine_distance(self.gt, candidate_prob) #[0,1]
             self_ind = self_indicator(self.input_seq, candidate_seq) #0 if different, inf if equal
             if not self.good_examples:

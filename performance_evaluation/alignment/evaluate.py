@@ -4,6 +4,7 @@ from typing import Generator, Optional
 import fire
 import pandas as pd
 import torch
+from genetic.utils import edit_distance
 from pandas import DataFrame
 from recbole.model.abstract_recommender import SequentialRecommender
 from tqdm import tqdm
@@ -15,10 +16,9 @@ from exceptions import (CounterfactualNotFound, DfaNotAccepting,
                         DfaNotRejecting, NoTargetStatesError)
 from genetic.dataset.generate import dataset_generator, interaction_generator
 from models.config_utils import generate_model, get_config
-from models.utils import pad, trim
 from performance_evaluation.alignment.utils import (evaluate_stats, get_split,
                                                     is_already_evaluated,
-                                                    log_run,
+                                                    log_run, postprocess_alignment,
                                                     preprocess_interaction)
 from run import single_run, timed_learning_pipeline, timed_trace_disalignment
 from utils import TimedGenerator, set_seed
@@ -45,7 +45,7 @@ def evaluate_trace_disalignment(interactions: Generator,
             }
 
     status = "unknown"
-    for i, ((train, _), interaction) in enumerate(tqdm(zip(datasets, interactions), desc="Performance evaluation...")):
+    for i, (dataset, interaction) in enumerate(tqdm(zip(datasets, interactions), desc="Performance evaluation...", total=num_counterfactuals)):
         if i == num_counterfactuals:
             print(f"Generated {num_counterfactuals}, exiting...")
             break
@@ -59,9 +59,9 @@ def evaluate_trace_disalignment(interactions: Generator,
             print(f"Splits {splits} already evaluated for the current trace, skipping...")
             continue
         try:
-            aligned, cost, alignment = single_run(source_sequence=source_sequence, _dataset=train, split=splits)
+            aligned, cost, alignment = single_run(source_sequence=source_sequence, _dataset=dataset, split=splits)
         except (DfaNotAccepting, DfaNotRejecting, NoTargetStatesError, CounterfactualNotFound) as e:
-            print(e)
+            print("Raised", type(e))
             skipped += 1
             log = log_run(log, 
                            original=source_sequence,
@@ -74,24 +74,7 @@ def evaluate_trace_disalignment(interactions: Generator,
                            time_alignment=0,
                            use_cache=use_cache)
             continue
-        if len(aligned) == MAX_LENGTH:
-            aligned = torch.tensor(aligned).unsqueeze(0).to(torch.int64)
-        elif len(aligned) < MAX_LENGTH:
-            aligned = pad(trim(torch.tensor(aligned)), MAX_LENGTH).unsqueeze(0).to(torch.int64)
-        else:
-            skipped += 1
-            log = log_run(log, 
-                           original=source_sequence,
-                           alignment=[print_action(a) for a in alignment],
-                           splits_key=splits_key,
-                           genetic_key=genetic_params,
-                           status="MaximumLengthReached", 
-                           cost=cost,
-                           time_dataset_generation=time_dataset_generation,
-                           time_automata_learning=timed_learning_pipeline.get_last_time(),
-                           time_alignment=timed_trace_disalignment.get_last_time(),
-                           use_cache=use_cache)
-            continue
+        aligned = postprocess_alignment(aligned)
         print(f"Alignment:", [print_action(a) for a in alignment])
         try:
             aligned_gt = oracle.full_sort_predict(aligned).argmax(-1).item()
@@ -102,7 +85,8 @@ def evaluate_trace_disalignment(interactions: Generator,
         if correct: 
             status = "good"
             good += 1
-            print(f"Good counterfactual! {source_gt} != {aligned_gt}")
+            distance = edit_distance(torch.tensor(aligned), torch.tensor(source_sequence))
+            print(f"Good counterfactual! {source_gt} != {aligned_gt}, distance from source: {distance}")
         else:
             status = "bad"
             bad += 1

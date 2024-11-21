@@ -24,7 +24,7 @@ warnings.simplefilter(action="ignore", category=FutureWarning)
 
 
 def generate( interaction: Union[Interaction, Tensor], model:
-             SequentialRecommender, alphabet: Optional[List[int]] = None) -> Tuple[GoodBadDataset, GoodBadDataset]:
+             SequentialRecommender, alphabet: Optional[List[int]] = None) -> GoodBadDataset:
     """
     Generates the dataset of good and bad points from a sequence in the
     Interaction, using the model as a black box oracle. The dataset can be used
@@ -85,13 +85,7 @@ def generate( interaction: Union[Interaction, Tensor], model:
     bad_examples = bad_genetic_strategy.generate()
     bad_examples = bad_genetic_strategy.postprocess(bad_examples)
     
-    #TODO: the train test split should be removed since the evaluation is done
-    #using another dataset now
-    train_good, test_good = train_test_split(good_examples)
-    train_bad, test_bad = train_test_split(bad_examples)
-    train_dataset: GoodBadDataset = (train_good, train_bad)
-    test_dataset: GoodBadDataset = (test_good, test_bad)
-    return train_dataset, test_dataset
+    return good_examples, bad_examples
 
 
 def interaction_generator(config: Config) -> Generator[Interaction, None, None]:
@@ -117,36 +111,24 @@ def sequence_generator(config: Config) -> Generator[Tensor, None, None]:
 def dataset_generator(
     config: Config, use_cache: bool = True
 ) -> Generator[
-    Tuple[Tuple[GoodBadDataset, GoodBadDataset],
-          Tuple[GoodBadDataset, GoodBadDataset]],
+    GoodBadDataset,
     None,
     None,
 ]:
     interactions = interaction_generator(config)
     model = generate_model(config)
     for i, interaction in enumerate(interactions):
-        train_cache_path = os.path.join(
-            f"dataset_cache/interaction_{i}_dataset_train.pickle"
+        cache_path = os.path.join(
+            f"dataset_cache/interaction_{i}_dataset.pickle"
         )
-        test_cache_path = os.path.join(
-            f"dataset_cache/interaction_{i}_dataset_test.pickle"
-        )
-        if (
-            os.path.exists(train_cache_path)
-            and os.path.exists(test_cache_path)
-            and use_cache
-        ):
-            train = load_dataset(train_cache_path)
-            test = load_dataset(test_cache_path)
+        if os.path.exists(cache_path) and use_cache:
+            dataset = load_dataset(cache_path)
         else:
-            train, test = generate(interaction, model)
+            dataset = generate(interaction, model)
             if use_cache:
-                save_dataset(train, train_cache_path)
-                save_dataset(test, test_cache_path)
+                save_dataset(dataset, cache_path)
         
-        # TODO: since the evaluation is done in another way not, remove this
-        # splitting
-        yield train, test
+        yield dataset
 
 
 if __name__ == "__main__":

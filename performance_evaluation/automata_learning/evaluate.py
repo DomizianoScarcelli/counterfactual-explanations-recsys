@@ -71,7 +71,7 @@ def evaluate_all(interactions: Generator,
                  datasets: Generator, 
                  oracle: SequentialRecommender,
                  num_counterfactuals: int=30):
-    for i, ((train_dataset, _), interaction) in enumerate(tqdm(zip(datasets, interactions), desc="Automata Learning performance evaluation...")):
+    for i, (dataset, interaction) in enumerate(tqdm(zip(datasets, interactions), desc="Automata Learning performance evaluation...")):
         if i == num_counterfactuals:
             print(f"Generated {num_counterfactuals}, exiting...")
             break
@@ -79,13 +79,13 @@ def evaluate_all(interactions: Generator,
         source_sequence_t = get_sequence_from_interaction(interaction).squeeze(0)
         source_sequence = trim(source_sequence_t).tolist()
         print(f"source_sequence is: ", source_sequence)
-        dfa = learning_pipeline(source_sequence, train_dataset)
+        dfa = learning_pipeline(source_sequence, dataset)
         test_dataset = generate_test_dataset(interaction, oracle, dfa)
 
         print(f"[DEBUG] Test dataset length: {len(test_dataset[0]) + len(test_dataset[1])}")
         # Remove from test the examples that come from test
-        test_dataset = (dataset_difference(test_dataset[0], train_dataset[0]),
-                        dataset_difference(test_dataset[1], train_dataset[1]))
+        test_dataset = (dataset_difference(test_dataset[0], dataset[0]),
+                        dataset_difference(test_dataset[1], dataset[1]))
         print(f"[DEBUG] Test dataset length: {len(test_dataset[0]) + len(test_dataset[1])}")
 
         tp, fp, tn, fn = evaluate_single(dfa, test_dataset)
@@ -97,8 +97,8 @@ def evaluate_all(interactions: Generator,
         print_confusion_matrix(tp=tp, fp=fp, tn=tn, fn=fn)
         print("----------------------------------------")
         log_run(metrics=(tp, fp, tn, fn),
-                train_dataset_len=(len(train_dataset[0]),
-                                   len(train_dataset[1])),
+                train_dataset_len=(len(dataset[0]),
+                                   len(dataset[1])),
                 test_dataset_len=(len(test_dataset[0]),
                                   len(test_dataset[1])),
                 source_sequence=source_sequence)

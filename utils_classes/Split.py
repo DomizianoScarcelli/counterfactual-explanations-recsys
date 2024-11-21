@@ -161,3 +161,6 @@ class Split:
 
     def __str__(self):
         return str(self.split)
+
+    def __hash__(self):
+        return hash(self.split)

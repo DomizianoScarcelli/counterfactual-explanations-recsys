@@ -26,10 +26,10 @@ def test_automata_accepts_source_sequence():
             source_trace = next(sequences)
         except StopIteration:
             break
-        train_dataset, _ = generate(source_trace, model)
+        dataset = generate(source_trace, model)
         trace = trim(source_trace.squeeze(0).tolist())
         assert -1 not in trace
-        dfa = learning_pipeline(trace, train_dataset)
+        dfa = learning_pipeline(trace, dataset)
         assert run_automata(dfa, trace), f"Automata do not accept sequence {i}, {trace}"
         i += 1
 
@@ -51,9 +51,9 @@ def test_automata_learning_determinism():
             break
         if i > 20:
             break
-        train_dataset, _ = generate(sequence, model)
+        dataset = generate(sequence, model)
         sequence = sequence.squeeze(0).tolist()
-        dfa = learning_pipeline(sequence, train_dataset)
-        other_dfa = learning_pipeline(sequence, train_dataset)
+        dfa = learning_pipeline(sequence, dataset)
+        other_dfa = learning_pipeline(sequence, dataset)
         assert dfa == other_dfa, f"Learning is non deterministic for sequence {sequence}"
 
