@@ -45,6 +45,20 @@ def test_split_double_inference():
     assert inf_split_middle == Split(10, 5, 5)
     assert inf_split_start in [Split(5, 11, 4), Split(4, 11, 5)]
 
+
+    split_end = Split(None, None, 0.1)
+    split_middle = Split(0.5, None, None)
+    split_start = Split(None, 0.3, None)
+
+    inf_split_end = split_end.parse_nan(seq)
+    inf_split_middle = split_middle.parse_nan(seq)
+    inf_split_start = split_start.parse_nan(seq)
+
+    assert inf_split_end == Split(0.45, 0.45, 0.1)
+    assert inf_split_middle == Split(0.5, 0.25, 0.25)
+    assert inf_split_start == Split(0.35, 0.3, 0.35)
+
+
 def test_split_single_inference():
     split_end = Split(None, 10, 1)
     split_middle = Split(10, 10, None)
@@ -59,3 +73,15 @@ def test_split_single_inference():
     assert inf_split_end == Split(9, 10, 1)
     assert inf_split_middle == Split(10, 10, 0)
     assert inf_split_start == Split(3, 11, 6)
+
+    split_end = Split(0.9, None, 0.1)
+    split_middle = Split(0.5, None, 0.0)
+    split_start = Split(None, 0.3, 0.2)
+
+    inf_split_end = split_end.parse_nan(seq)
+    inf_split_middle = split_middle.parse_nan(seq)
+    inf_split_start = split_start.parse_nan(seq)
+
+    assert inf_split_end == Split(0.9, 0.0, 0.1)
+    assert inf_split_middle == Split(0.5, 0.5, 0.0)
+    assert inf_split_start == Split(0.5, 0.3, 0.2)
