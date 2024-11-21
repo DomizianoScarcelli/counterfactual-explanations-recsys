@@ -1,14 +1,15 @@
 from typing import List, Optional, Tuple
-from type_hints import SplitTuple
-from config import GENERATIONS, HALLOFFAME_RATIO, POP_SIZE
-from recbole.model.abstract_recommender import SequentialRecommender
 
 import pandas as pd
 from pandas import DataFrame
-
+from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
-from models.utils import trim
+
+from config import GENERATIONS, HALLOFFAME_RATIO, POP_SIZE
 from genetic.dataset.utils import get_sequence_from_interaction
+from models.utils import trim
+from type_hints import SplitTuple
+
 
 def get_split(slen: int, split_type: str) -> Tuple[str, SplitTuple]:
     mut_map = {f"{i}_mut": ((slen-i)/slen, i/slen, 0)  for i in range(1, slen)}

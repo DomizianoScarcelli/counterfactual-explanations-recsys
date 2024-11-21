@@ -7,7 +7,8 @@ from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
 from torch import Tensor
 
-from config import ALLOWED_MUTATIONS, DATASET, GENERATIONS, HALLOFFAME_RATIO, MODEL, POP_SIZE
+from config import (ALLOWED_MUTATIONS, DATASET, GENERATIONS, HALLOFFAME_RATIO,
+                    MODEL, POP_SIZE)
 from genetic.dataset.utils import (get_dataloaders,
                                    get_sequence_from_interaction, load_dataset,
                                    save_dataset, train_test_split)

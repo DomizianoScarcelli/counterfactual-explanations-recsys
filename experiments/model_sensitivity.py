@@ -1,20 +1,19 @@
+import os
+from statistics import mean
 from typing import Generator
 
-from genetic.utils import NumItems
-from constants import MAX_LENGTH
-
-import os
-import pandas as pd
 import fire
+import pandas as pd
 import torch
 from recbole.model.abstract_recommender import SequentialRecommender
 from tqdm import tqdm
-from statistics import mean
-from models.utils import trim, pad, pad_batch
 
 from config import DATASET, MODEL
+from constants import MAX_LENGTH
 from genetic.dataset.generate import sequence_generator
+from genetic.utils import NumItems
 from models.config_utils import generate_model, get_config
+from models.utils import pad, pad_batch, trim
 from type_hints import RecDataset
 from utils import set_seed
 

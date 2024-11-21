@@ -4,10 +4,9 @@ from copy import deepcopy
 import pytest
 import torch
 from aalpy.automata.Dfa import Dfa
-from utils_classes.Split import Split
 
 from alignment.actions import encode_action_str, print_action
-from alignment.alignment import (align, trace_alignment, trace_disalignment)
+from alignment.alignment import align, trace_alignment, trace_disalignment
 from automata_learning.learning import learning_pipeline
 from automata_learning.utils import invert_automata, run_automata
 from constants import MAX_LENGTH
@@ -16,6 +15,7 @@ from genetic.dataset.utils import get_dataset_alphabet
 from models.utils import pad, trim
 from type_hints import GoodBadDataset, Trace
 from utils import set_seed
+from utils_classes.Split import Split
 
 
 @pytest.mark.skip()

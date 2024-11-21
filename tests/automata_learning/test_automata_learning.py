@@ -1,8 +1,8 @@
-from automata_learning.utils import run_automata
-from config import MODEL, DATASET
-from models.config_utils import generate_model, get_config
-from genetic.dataset.generate import sequence_generator, generate
 from automata_learning.learning import learning_pipeline
+from automata_learning.utils import run_automata
+from config import DATASET, MODEL
+from genetic.dataset.generate import generate, sequence_generator
+from models.config_utils import generate_model, get_config
 from models.utils import trim
 from utils import set_seed
 

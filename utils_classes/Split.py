@@ -1,6 +1,9 @@
 from __future__ import annotations
+
 from typing import List, Tuple
+
 from type_hints import TraceSplit
+
 
 class Split:
     """

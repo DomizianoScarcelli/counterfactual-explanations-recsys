@@ -1,29 +1,33 @@
+import random
+from copy import deepcopy
+from typing import Any, List
+
 import pytest
 import torch
+from deap import base, creator, tools
 from torch._prims_common import check_pin_memory
+from tqdm import tqdm
 
 from alignment.alignment import augment_constraint_automata
 from automata_learning.learning import (generate_single_accepting_sequence_dfa,
                                         learning_pipeline)
-from tqdm import tqdm
-from deap import base, creator, tools
 from automata_learning.utils import run_automata
-from config import MODEL, DATASET
+from config import DATASET, MODEL
+from constants import MAX_LENGTH, MIN_LENGTH
 from genetic.dataset.generate import generate, sequence_generator
-from genetic.extended_ea_algorithms import eaSimpleBatched, indexedCxTwoPoint, indexedSelTournament, indexedVarAnd
-from genetic.mutations import AddMutation, ReplaceMutation, ShuffleMutation, SwapMutation, ReverseMutation, DeleteMutation, remove_mutation, contains_mutation
-from models.config_utils import get_config
+from genetic.extended_ea_algorithms import (eaSimpleBatched, indexedCxTwoPoint,
+                                            indexedSelTournament,
+                                            indexedVarAnd)
+from genetic.mutations import (AddMutation, DeleteMutation, ReplaceMutation,
+                               ReverseMutation, ShuffleMutation, SwapMutation,
+                               contains_mutation, remove_mutation)
+from genetic.utils import (NumItems, clone, cosine_distance, edit_distance,
+                           self_indicator)
+from models.config_utils import generate_model, get_config
+from models.model_funcs import model_predict
+from models.utils import pad, trim
 from type_hints import Dataset
 from utils import set_seed
-from copy import deepcopy
-from genetic.utils import NumItems, clone
-from typing import List, Any
-from constants import MAX_LENGTH, MIN_LENGTH, MAX_LENGTH
-import random
-from models.config_utils import generate_model
-from models.utils import pad, trim
-from models.model_funcs import model_predict
-from genetic.utils import edit_distance, self_indicator, cosine_distance
 
 
 @pytest.mark.heavy

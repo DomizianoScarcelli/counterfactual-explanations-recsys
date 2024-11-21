@@ -5,7 +5,6 @@ import fire
 import pandas as pd
 import torch
 from pandas import DataFrame
-from utils_classes.Split import Split
 from recbole.model.abstract_recommender import SequentialRecommender
 from tqdm import tqdm
 
@@ -17,12 +16,13 @@ from exceptions import (CounterfactualNotFound, DfaNotAccepting,
 from genetic.dataset.generate import dataset_generator, interaction_generator
 from models.config_utils import generate_model, get_config
 from models.utils import pad, trim
-from performance_evaluation.alignment.utils import (evaluate_stats, log_run,
-                                                    get_split,
+from performance_evaluation.alignment.utils import (evaluate_stats, get_split,
                                                     is_already_evaluated,
+                                                    log_run,
                                                     preprocess_interaction)
 from run import single_run, timed_learning_pipeline, timed_trace_disalignment
 from utils import TimedGenerator, set_seed
+from utils_classes.Split import Split
 
 
 def evaluate_trace_disalignment(interactions: Generator, 

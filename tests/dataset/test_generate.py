@@ -1,13 +1,15 @@
 from deap.base import deepcopy
+
 from automata_learning.learning import learning_pipeline
 from config import DATASET, MODEL
-from genetic.dataset.generate import dataset_generator, interaction_generator, sequence_generator
-from genetic.dataset.utils import are_dataset_equal, dataset_difference, get_sequence_from_interaction
-from genetic.dataset.generate import generate
+from genetic.dataset.generate import (dataset_generator, generate,
+                                      interaction_generator,
+                                      sequence_generator)
+from genetic.dataset.utils import (are_dataset_equal, dataset_difference,
+                                   get_sequence_from_interaction)
 from genetic.utils import NumItems
 from models.config_utils import generate_model, get_config
 from utils import set_seed
-
 
 
 class TestGenerators:

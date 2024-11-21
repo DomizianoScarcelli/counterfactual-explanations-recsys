@@ -1,9 +1,9 @@
 import random
 from abc import ABC, abstractmethod
 from typing import List, Tuple
-from utils import set_seed
 
 from genetic.utils import random_points_with_offset
+from utils import set_seed
 
 
 class Mutation(ABC):

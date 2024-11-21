@@ -1,22 +1,24 @@
 import random
-from typing import Callable, List, Optional, Set, Any
+from copy import deepcopy
+from typing import Any, Callable, List, Optional, Set
 
 import numpy as np
 import torch
 from deap import base, creator, tools
 from torch import Tensor
-from copy import deepcopy
 
 from config import GENERATIONS, POP_SIZE
 from constants import MAX_LENGTH, MIN_LENGTH
-from genetic.extended_ea_algorithms import eaSimpleBatched, indexedSelTournament, indexedCxTwoPoint
+from genetic.extended_ea_algorithms import (eaSimpleBatched, indexedCxTwoPoint,
+                                            indexedSelTournament)
 from genetic.mutations import (ALL_MUTATIONS, AddMutation, DeleteMutation,
                                Mutation, contains_mutation, remove_mutation)
-from genetic.utils import (NumItems, _evaluate_generation, cosine_distance,
-                           clone, edit_distance, self_indicator)
+from genetic.utils import (NumItems, _evaluate_generation, clone,
+                           cosine_distance, edit_distance, self_indicator)
 from models.utils import pad, pad_batch, trim
 from type_hints import Dataset
 from utils import set_seed
+
 
 class GeneticGenerationStrategy():
     def __init__(self, input_seq: Tensor, 

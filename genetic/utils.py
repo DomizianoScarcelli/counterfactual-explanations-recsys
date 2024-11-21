@@ -1,11 +1,11 @@
-from enum import Enum
 import random
+from copy import deepcopy
+from enum import Enum
 
 import _pickle as cPickle
 import Levenshtein
 import torch.nn.functional as F
 from torch import Tensor
-from copy import deepcopy
 
 from type_hints import Dataset
 from utils import set_seed

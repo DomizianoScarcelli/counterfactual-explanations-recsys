@@ -1,5 +1,5 @@
 from utils_classes.Split import Split
-import pytest
+
 
 def test_split_creation():
     seq = [1,2,3,4,5,6,7,8,9,10]
