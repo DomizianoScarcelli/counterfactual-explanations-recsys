@@ -4,10 +4,10 @@ from copy import deepcopy
 import pytest
 import torch
 from aalpy.automata.Dfa import Dfa
+from utils_classes.Split import Split
 
 from alignment.actions import encode_action_str, print_action
-from alignment.alignment import (align, split_trace, trace_alignment,
-                                 trace_disalignment)
+from alignment.alignment import (align, trace_alignment, trace_disalignment)
 from automata_learning.learning import learning_pipeline
 from automata_learning.utils import invert_automata, run_automata
 from constants import MAX_LENGTH
@@ -249,8 +249,8 @@ class TestEdgeCases:
         # if not counterfactual_rejects:
         #     warnings.warn("Original Automata doesn't reject the counterfactual sequence")
 
-        splits = (20/50, 28/50, 2/50)
-        splitted = split_trace(trace, splits)
+        split = Split(20/50, 28/50, 2/50)
+        splitted = split.apply(trace)
         splitted_counterfactual, _, splitted_alignment = trace_disalignment(dfa, splitted)
         print(f"Splitted counterfactual before padding: {torch.tensor(torch.tensor(splitted_counterfactual))}")
 

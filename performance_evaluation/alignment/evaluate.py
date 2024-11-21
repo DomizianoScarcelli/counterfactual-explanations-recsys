@@ -5,6 +5,7 @@ import fire
 import pandas as pd
 import torch
 from pandas import DataFrame
+from utils_classes.Split import Split
 from recbole.model.abstract_recommender import SequentialRecommender
 from tqdm import tqdm
 
@@ -52,12 +53,13 @@ def evaluate_trace_disalignment(interactions: Generator,
         print(f"Source sequence:", source_sequence)
         time_dataset_generation = datasets.get_times()[i]
         splits_key, splits = get_split(len(source_sequence), split_type)
+        splits = Split(*splits)
         
         if is_already_evaluated(log=log, sequence=source_sequence, splits_key=split_type):
             print(f"Splits {splits} already evaluated for the current trace, skipping...")
             continue
         try:
-            aligned, cost, alignment = single_run(source_sequence=source_sequence, _dataset=train, splits=splits)
+            aligned, cost, alignment = single_run(source_sequence=source_sequence, _dataset=train, split=splits)
         except (DfaNotAccepting, DfaNotRejecting, NoTargetStatesError, CounterfactualNotFound) as e:
             print(e)
             skipped += 1

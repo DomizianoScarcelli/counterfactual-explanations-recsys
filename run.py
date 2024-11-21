@@ -4,7 +4,7 @@ from typing import List, Tuple
 
 import fire
 
-from alignment.alignment import split_trace, trace_disalignment
+from alignment.alignment import trace_disalignment
 from automata_learning.learning import learning_pipeline
 from config import DATASET, MODEL
 from genetic.dataset.generate import dataset_generator, interaction_generator
@@ -13,19 +13,20 @@ from models.config_utils import get_config
 from models.utils import trim
 from type_hints import Dataset, RecDataset, RecModel
 from utils import TimedFunction
+from utils_classes.Split import Split
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 timed_learning_pipeline = TimedFunction(learning_pipeline)
 timed_trace_disalignment = TimedFunction(trace_disalignment)
 
-def single_run(source_sequence: List[int], _dataset: Tuple[Dataset, Dataset], splits:Tuple[float, float, float]=(1/3,1/3,1/3)):
+def single_run(source_sequence: List[int], _dataset: Tuple[Dataset, Dataset], split:Split):
     assert isinstance(source_sequence, list), f"Source sequence is not a list, but a {type(source_sequence)}"
     assert isinstance(source_sequence[0], int), f"Elements of the source sequences are not ints, but {type(source_sequence[0])}"
 
     dfa = timed_learning_pipeline(source=source_sequence, dataset=_dataset)
 
-    splitted_source_sequence = split_trace(source_sequence, splits=splits)
+    splitted_source_sequence = split.apply(source_sequence)
 
     aligned, cost, alignment = timed_trace_disalignment(dfa, splitted_source_sequence)
     return aligned, cost, alignment

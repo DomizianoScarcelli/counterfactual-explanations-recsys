@@ -165,32 +165,6 @@ def compute_alignment_cost(alignment: Tuple[int]) -> int:
     return cost
 
 
-def split_trace(trace: List[int], splits: Tuple[float, float, float] = (1/3, 1/3, 1/3)) -> TraceSplit:
-    """
-    Splits the trace into three traces:
-        - executed: the trace that is executed before performing the alignment, in order to put the automaton in the correct state
-        - mutable: the trace on which the alignment is performed, which can be edited in order to find a valid alignment
-        - fixed: the tail of the trace which cannot be edited, and will be executed after the alignment is found
-
-    This allows to easily decide which part of the trace to edit in order to find the alignment
-
-    Args:
-        trace: The original trace
-        splits: A tuple of three floats describing the fractions of elements to put in each split. It has to sum to 1.
-
-    Returns:
-        The tuple of three elements containing the three trace splits (executed, mutable, fixed)
-    """
-    assert sum(splits) == 1, "Splits must sum to 1"
-    l1, l2, l3 = tuple(math.floor(len(trace) * s) for s in splits)
-
-    traces = trace[:l1], trace[l1: l1+l2], trace[l1+l2:]
-    assert len(traces[0]) + len(traces[1]) + len(traces[2]) == len(trace), f"{
-        len(traces[0])} + {len(traces[1])} + {len(traces[2])} != {len(trace)}"
-
-    return traces
-
-
 def trace_alignment(a_dfa_aug: Dfa, trace_split: Union[Trace, TraceSplit]):
     """
     """
