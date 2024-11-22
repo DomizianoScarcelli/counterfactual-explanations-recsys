@@ -13,7 +13,7 @@ from constants import MAX_LENGTH
 from genetic.dataset.generate import sequence_generator
 from genetic.utils import NumItems
 from models.config_utils import generate_model, get_config
-from models.utils import pad, pad_batch, trim
+from models.utils import pad_batch, trim
 from type_hints import RecDataset
 from utils import set_seed
 
@@ -59,7 +59,7 @@ def model_sensitivity(sequences: Generator, model: SequentialRecommender, positi
             i += 1
             continue
         gt = model(x).argmax(-1).item()
-        #TODO: create a big tensor with all the x_primes and then input it in batch to the model
+
         x_primes = x.repeat(len(alphabet), 1)
         assert x_primes.shape == torch.Size([len(alphabet), x.size(1)]), f"x shape uncorrect: {x_primes.shape} != {[len(alphabet), x.size(1)]}"
         alphabet = torch.tensor(alphabet)

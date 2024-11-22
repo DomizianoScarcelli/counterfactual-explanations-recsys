@@ -9,7 +9,6 @@ from exceptions import (CounterfactualNotFound, DfaNotAccepting,
                         DfaNotRejecting, NoTargetStatesError)
 from genetic.dataset.generate import dataset_generator, interaction_generator
 from models.config_utils import generate_model, get_config
-from performance_evaluation.alignment.utils import (postprocess_alignment,preprocess_interaction)
 from run import single_run
 from utils import set_seed
 
@@ -50,8 +49,7 @@ def different_splits(use_cache: bool=False, num_counterfactuals: int = 10):
             split = split.parse_nan(source_sequence)
             try:
                 aligned, _, _ = single_run(source_sequence=source_sequence, _dataset=dataset, split=split)
-                aligned = postprocess_alignment(aligned)
-                aligned_gt = oracle.full_sort_predict(aligned).argmax(-1).item()
+                aligned_gt = oracle(aligned).argmax(-1).item()
                 if aligned_gt != source_gt:
                     bad += 1
                     print(f"Alignment for split: {split_type} is BAD!")

@@ -74,7 +74,6 @@ def evaluate_trace_disalignment(interactions: Generator,
                            time_alignment=0,
                            use_cache=use_cache)
             continue
-        aligned = postprocess_alignment(aligned)
         print(f"Alignment:", [print_action(a) for a in alignment])
         try:
             aligned_gt = oracle.full_sort_predict(aligned).argmax(-1).item()

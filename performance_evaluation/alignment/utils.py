@@ -22,13 +22,6 @@ def get_split(slen: int, split_type: str) -> Tuple[str, SplitTuple]:
         raise ValueError(f"Split type '{split_type}' not recognized")
     return split_type, _map[split_type]
 
-def postprocess_alignment(aligned: List[int]):
-    if len(aligned) == MAX_LENGTH:
-        return torch.tensor(aligned).unsqueeze(0).to(torch.int64)
-    if len(aligned) < MAX_LENGTH:
-        return pad(trim(torch.tensor(aligned)), MAX_LENGTH).unsqueeze(0).to(torch.int64)
-    raise ValueError(f"Aligned length > {MAX_LENGTH}: {len(aligned)}")
-
 def is_already_evaluated(log: DataFrame, sequence: List[int], splits_key: str) -> bool:
     """ Returns True if the sequenece has already been evaluted with the same evaluation parameters.
 
@@ -46,8 +39,10 @@ def is_already_evaluated(log: DataFrame, sequence: List[int], splits_key: str) -
             (log["num_generations"] == GENERATIONS) & 
             (log["halloffame_ratio"] == HALLOFFAME_RATIO)].shape[0] > 0
 
-def preprocess_interaction(raw_interaction: Interaction, oracle: SequentialRecommender):
+def preprocess_interaction(raw_interaction: Interaction, oracle: Optional[SequentialRecommender]=None):
     source_sequence = get_sequence_from_interaction(raw_interaction)
+    if not oracle:
+        return trim(source_sequence.squeeze(0)).tolist()
     try:
         source_gt = oracle.full_sort_predict(source_sequence).argmax(-1).item()
     except IndexError as e:

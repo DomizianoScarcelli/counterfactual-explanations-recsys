@@ -2,9 +2,18 @@ import heapq
 from statistics import mean
 
 from aalpy.automata.Dfa import DfaState
-
+from constants import MAX_LENGTH
+from typing import List
+import torch
+from models.utils import trim, pad
 from alignment.actions import Action, decode_action
 
+def postprocess_alignment(aligned: List[int]):
+    if len(aligned) == MAX_LENGTH:
+        return torch.tensor(aligned).unsqueeze(0).to(torch.int64)
+    if len(aligned) < MAX_LENGTH:
+        return pad(trim(torch.tensor(aligned)), MAX_LENGTH).unsqueeze(0).to(torch.int64)
+    raise ValueError(f"Aligned length > {MAX_LENGTH}: {len(aligned)}")
 
 def alignment_length(curr_alignment):
     return sum(1 for encoded_action in curr_alignment if decode_action(encoded_action)[0] in {Action.SYNC, Action.ADD})
