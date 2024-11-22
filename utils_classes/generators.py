@@ -122,8 +122,12 @@ class DatasetGenerator(SkippableGenerator):
         self.use_cache = use_cache
         self.return_interaction = return_interaction
 
+    def skip(self):
+        super().skip()
+        self.interactions.skip()
+
     def next(self) -> GoodBadDataset | Tuple[GoodBadDataset, Interaction]:
-        assert self.interactions.index == self.index
+        assert self.interactions.index == self.index, f"{self.interactions.index} != {self.index} at the start of the method"
         interaction = self.interactions.next()
         cache_path = os.path.join(f"dataset_cache/interaction_{self.index}_dataset.pickle")
         if os.path.exists(cache_path) and self.use_cache:
@@ -133,7 +137,7 @@ class DatasetGenerator(SkippableGenerator):
             if self.use_cache:
                 save_dataset(dataset, cache_path)
         self.index += 1
-        assert self.interactions.index == self.index
+        assert self.interactions.index == self.index, f"{self.interactions.index} != {self.index} at the end of the method"
         if self.return_interaction:
             return dataset, interaction
         return dataset
