@@ -120,7 +120,6 @@ class GeneticGenerationStrategy():
         label_eval, seq_eval = self.evaluate_generation(new_population)
         self.print(f"[Original] Good examples = {self.good_examples} [{len(new_population)}] ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
         if not self.good_examples or self.halloffame_ratio == 0:
-            # new_population.append((self.input_seq, self.gt.argmax(-1).item()))
             # Augment only good examples, which are the rarest
             return new_population
         
@@ -162,16 +161,19 @@ class GeneticGenerationStrategy():
     def postprocess(self, population: Dataset) -> Dataset:
         clean_pop = self.clean(population)
         label_eval, seq_eval = self.evaluate_generation(clean_pop)
-        source_point = (self.input_seq.unsqueeze(0), self.gt.argmax(-1).item())
+
+        source_point = (self.input_seq, self.gt.argmax(-1).item())
         # If source point is not in good datset, add it
-        if self.good_examples and not any(torch.all(point == source_point[0]) for point, _ in population):
-            self.print("Source point was not in good dataset, adding it")
-            clean_pop.append(source_point[0])
+        if self.good_examples and len([ind for ind, _ in clean_pop if ind.tolist() == source_point[0].tolist()]) == 0:
+            self.print(f"Source point was not in good dataset, adding it")
+            clean_pop.append(source_point)
 
         # If source point is in bad datset, remove it
-        if not self.good_examples and any(torch.all(point == source_point[0]) for point, _ in population):
-            self.print("Source point was in the bad dataset, removing it")
-            clean_pop = [ind for ind, _ in population if torch.all(ind != source_point[0])]
+        if not self.good_examples:
+            new_pop = [(ind, label) for ind, label in clean_pop if ind.tolist() != source_point[0].tolist()]
+            if len(new_pop) < len(clean_pop):
+                self.print(f"Source point was in the bad dataset, removing it ({len(new_pop)} < {len(clean_pop)})")
+            clean_pop = new_pop
 
         self.print(f"[After clean] Good examples={self.good_examples} ({len(clean_pop)}) ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
         return clean_pop

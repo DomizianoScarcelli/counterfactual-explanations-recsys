@@ -166,8 +166,6 @@ def compute_alignment_cost(alignment: Tuple[int]) -> int:
 
 
 def trace_alignment(a_dfa_aug: Dfa, trace_split: Union[Trace, TraceSplit]):
-    """
-    """
     constraint_aut_to_planning_aut(a_dfa_aug)
 
     if not (isinstance(trace_split, tuple) and len(trace_split) == 3):

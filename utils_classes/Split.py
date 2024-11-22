@@ -99,7 +99,6 @@ class Split:
             return self._parse_double_nan(seq)
         else:
             raise ValueError(f"Cannot infer split with {len(nans)} None values")
-        assert len(nans) == 2
 
         
     def is_coherent(self, seq: List[int]) -> bool:
@@ -139,6 +138,7 @@ class Split:
         return Split(*tuple(round(i * len(seq)) for i in self.split))
 
     def apply(self, seq: List[int]) -> TraceSplit:
+        self = self.parse_nan(seq)
         assert self.is_coherent(seq)
         split = self.split
         if self.is_ratio:

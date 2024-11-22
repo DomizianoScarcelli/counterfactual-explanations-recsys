@@ -87,7 +87,7 @@ def generate( interaction: Union[Interaction, Tensor], model:
     
     return good_examples, bad_examples
 
-
+#TODO: remove it
 def interaction_generator(config: Config) -> Generator[Interaction, None, None]:
     # raw_interactions = interaction.interaction
     # user_ids = raw_interactions["user_id"]
@@ -100,6 +100,8 @@ def interaction_generator(config: Config) -> Generator[Interaction, None, None]:
         interaction = data[0]
         yield interaction
 
+
+#TODO: remove it
 def sequence_generator(config: Config) -> Generator[Tensor, None, None]:
     _, _, test_data = get_dataloaders(config)
     assert test_data is not None, "Test data is None"
