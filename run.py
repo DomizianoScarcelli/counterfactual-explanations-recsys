@@ -1,21 +1,21 @@
 import time
 import warnings
-from typing import List, Tuple, Optional
+from typing import List, Optional, Tuple
 
-from exceptions import (CounterfactualNotFound, DfaNotAccepting,
-                        DfaNotRejecting, NoTargetStatesError)
 import fire
 
 from alignment.alignment import trace_disalignment
+from alignment.utils import postprocess_alignment
 from automata_learning.learning import learning_pipeline
 from config import DATASET, MODEL
-from utils_classes.generators import DatasetGenerator, InteractionGenerator
-from models.config_utils import get_config, generate_model
+from exceptions import (CounterfactualNotFound, DfaNotAccepting,
+                        DfaNotRejecting, NoTargetStatesError)
+from models.config_utils import generate_model, get_config
 from performance_evaluation.alignment.utils import preprocess_interaction
 from type_hints import Dataset, RecDataset, RecModel, SplitTuple
 from utils import TimedFunction
+from utils_classes.generators import DatasetGenerator, InteractionGenerator
 from utils_classes.Split import Split
-from alignment.utils import postprocess_alignment
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=RuntimeWarning)

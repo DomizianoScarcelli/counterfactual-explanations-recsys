@@ -5,7 +5,6 @@ from typing import Any, List
 import pytest
 import torch
 from deap import base, creator, tools
-from torch._prims_common import check_pin_memory
 from tqdm import tqdm
 
 from alignment.alignment import augment_constraint_automata
@@ -14,7 +13,7 @@ from automata_learning.learning import (generate_single_accepting_sequence_dfa,
 from automata_learning.utils import run_automata
 from config import DATASET, MODEL
 from constants import MAX_LENGTH, MIN_LENGTH
-from genetic.dataset.generate import generate, sequence_generator
+from genetic.dataset.generate import generate
 from genetic.extended_ea_algorithms import (eaSimpleBatched, indexedCxTwoPoint,
                                             indexedSelTournament,
                                             indexedVarAnd)
@@ -28,6 +27,7 @@ from models.model_funcs import model_predict
 from models.utils import pad, trim
 from type_hints import Dataset
 from utils import set_seed
+from utils_classes.generators import SequenceGenerator
 
 
 @pytest.mark.heavy
@@ -77,7 +77,7 @@ class TestGeneticDeterminism:
     def init_vars(self):
         set_seed()
         config = get_config(dataset=DATASET, model=MODEL)
-        sequences = sequence_generator(config)
+        sequences = SequenceGenerator(config)
         self.input_seq = trim(next(sequences).squeeze(0))
         self.model = generate_model(config)
         self.gt = model_predict(self.input_seq.unsqueeze(0), self.model, prob=True)

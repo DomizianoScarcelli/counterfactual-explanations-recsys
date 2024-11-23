@@ -1,24 +1,17 @@
-import os
 import warnings
-from typing import Generator, List, Optional, Tuple, Union
+from typing import List, Optional, Union
 
-from recbole.config import Config
 from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
 from torch import Tensor
 
-from config import (ALLOWED_MUTATIONS, DATASET, GENERATIONS, HALLOFFAME_RATIO,
-                    MODEL, POP_SIZE)
-from genetic.dataset.utils import (get_dataloaders,
-                                   get_sequence_from_interaction, load_dataset,
-                                   save_dataset, train_test_split)
+from config import ALLOWED_MUTATIONS, GENERATIONS, HALLOFFAME_RATIO, POP_SIZE
+from genetic.dataset.utils import get_sequence_from_interaction
 from genetic.genetic import GeneticGenerationStrategy
-from genetic.mutations import ReplaceMutation, SwapMutation, parse_mutations
+from genetic.mutations import parse_mutations
 from genetic.utils import NumItems
-from models.config_utils import generate_model, get_config
 from models.model_funcs import model_predict
 from type_hints import GoodBadDataset
-from utils import set_seed
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
@@ -87,58 +80,12 @@ def generate( interaction: Union[Interaction, Tensor], model:
     
     return good_examples, bad_examples
 
-#TODO: remove it
-def interaction_generator(config: Config) -> Generator[Interaction, None, None]:
-    # raw_interactions = interaction.interaction
-    # user_ids = raw_interactions["user_id"]
-    # item_ids = raw_interactions["item_id"]
-    # item_matrix = raw_interactions["item_id_list"]
-    # item_length = raw_interactions["item_length"]
-    _, _, test_data = get_dataloaders(config)
-    assert test_data is not None, "Test data is None"
-    for data in test_data:
-        interaction = data[0]
-        yield interaction
-
-
-#TODO: remove it
-def sequence_generator(config: Config) -> Generator[Tensor, None, None]:
-    _, _, test_data = get_dataloaders(config)
-    assert test_data is not None, "Test data is None"
-    for data in test_data:
-        interaction = data[0]
-        yield get_sequence_from_interaction(interaction)
-
-
-def dataset_generator(
-    config: Config, use_cache: bool = True
-) -> Generator[
-    GoodBadDataset,
-    None,
-    None,
-]:
-    interactions = interaction_generator(config)
-    model = generate_model(config)
-    for i, interaction in enumerate(interactions):
-        cache_path = os.path.join(
-            f"dataset_cache/interaction_{i}_dataset.pickle"
-        )
-        if os.path.exists(cache_path) and use_cache:
-            dataset = load_dataset(cache_path)
-        else:
-            dataset = generate(interaction, model)
-            if use_cache:
-                save_dataset(dataset, cache_path)
-        
-        yield dataset
-
-
-if __name__ == "__main__":
-    set_seed()
-    config = get_config(model=MODEL, dataset=DATASET)
-    datasets = dataset_generator(config, use_cache=False)
-    for dataset in datasets:
-        dataset_save_path = "saved/counterfactual_dataset.pickle"
-        save_dataset(dataset, save_path=dataset_save_path)
-        print(dataset)
-        break
+# if __name__ == "__main__":
+#     set_seed()
+#     config = get_config(model=MODEL, dataset=DATASET)
+#     datasets = DatasetGenerator(config, use_cache=False)
+#     for dataset in datasets:
+#         dataset_save_path = "saved/counterfactual_dataset.pickle"
+#         save_dataset(dataset, save_path=dataset_save_path)
+#         print(dataset)
+#         break

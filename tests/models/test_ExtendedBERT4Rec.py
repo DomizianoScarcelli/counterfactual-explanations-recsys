@@ -6,17 +6,16 @@ from recbole.trainer import Interaction
 from torch import Tensor
 from tqdm import tqdm
 
-from genetic.dataset.generate import interaction_generator
 from genetic.dataset.utils import get_sequence_from_interaction
 from models.extended_models.ExtendedBERT4Rec import ExtendedBERT4Rec
 from models.model_funcs import model_predict
-from utils import set_seed
+from utils_classes.generators import InteractionGenerator
 
 
 @pytest.fixture()
 def interactions(config, batch_size: int=16) -> List[Interaction]:
     interactions = []
-    generator = interaction_generator(config)
+    generator = InteractionGenerator(config)
     while len(interactions) < batch_size:
         interactions.append(next(generator))
     return interactions

@@ -1,17 +1,16 @@
 from typing import List, Optional, Tuple
 
 import pandas as pd
+import torch
 from pandas import DataFrame
 from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
 
 from config import GENERATIONS, HALLOFFAME_RATIO, POP_SIZE
-from genetic.dataset.utils import get_sequence_from_interaction
-from models.utils import trim
-from type_hints import SplitTuple
 from constants import MAX_LENGTH
-import torch
-from models.utils import pad
+from genetic.dataset.utils import get_sequence_from_interaction
+from models.utils import pad, trim
+from type_hints import SplitTuple
 
 
 def get_split(slen: int, split_type: str) -> Tuple[str, SplitTuple]:

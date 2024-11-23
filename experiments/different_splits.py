@@ -1,5 +1,3 @@
-from utils_classes.Split import Split
-
 import fire
 from recbole.model.abstract_recommender import SequentialRecommender
 from tqdm import tqdm
@@ -7,10 +5,13 @@ from tqdm import tqdm
 from config import DATASET, MODEL
 from exceptions import (CounterfactualNotFound, DfaNotAccepting,
                         DfaNotRejecting, NoTargetStatesError)
-from genetic.dataset.generate import dataset_generator, interaction_generator
 from models.config_utils import generate_model, get_config
+from performance_evaluation.alignment.utils import preprocess_interaction
 from run import single_run
 from utils import set_seed
+from utils_classes.generators import DatasetGenerator
+from utils_classes.Split import Split
+
 
 def different_splits(use_cache: bool=False, num_counterfactuals: int = 10):
     """
@@ -27,8 +28,7 @@ def different_splits(use_cache: bool=False, num_counterfactuals: int = 10):
     # Create interaction and dataset genrations + oracle model
     config = get_config(dataset=DATASET, model=MODEL)
     oracle: SequentialRecommender = generate_model(config)
-    interactions = interaction_generator(config)
-    datasets = dataset_generator(config=config, use_cache=use_cache)
+    datasets = DatasetGenerator(config=config, use_cache=use_cache, return_interaction=True)
     
     #TODO: log results
 
@@ -39,7 +39,7 @@ def different_splits(use_cache: bool=False, num_counterfactuals: int = 10):
     
     # Evaluation loop
     good, bad, not_valid = 0, 0, 0
-    for i, (dataset, interaction) in enumerate(tqdm(zip(datasets, interactions), desc="Different Splits Experiment...", total=num_counterfactuals)):
+    for i, (dataset, interaction) in enumerate(tqdm(datasets, desc="Different Splits Experiment...", total=num_counterfactuals)):
         if i == num_counterfactuals:
             print(f"Generated {num_counterfactuals}, exiting...")
             break

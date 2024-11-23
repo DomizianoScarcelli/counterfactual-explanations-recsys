@@ -19,8 +19,7 @@ from tqdm import tqdm
 from automata_learning.learning import learning_pipeline
 from automata_learning.utils import run_automata
 from config import DATASET, GENERATIONS, HALLOFFAME_RATIO, MODEL, POP_SIZE
-from genetic.dataset.generate import (dataset_generator, generate,
-                                      interaction_generator)
+from genetic.dataset.generate import generate
 from genetic.dataset.utils import (dataset_difference,
                                    get_sequence_from_interaction)
 from models.config_utils import generate_model, get_config
@@ -29,6 +28,7 @@ from performance_evaluation.evaluation_utils import (compute_metrics,
                                                      print_confusion_matrix)
 from type_hints import GoodBadDataset
 from utils import set_seed
+from utils_classes.generators import DatasetGenerator
 
 
 def generate_test_dataset(source_sequence: Tensor, model:SequentialRecommender, dfa: Dfa) -> GoodBadDataset:
@@ -67,11 +67,10 @@ def evaluate_single(dfa: Dfa, test_dataset: GoodBadDataset):
             fp += 1
     return tp, fp, tn, fn
 
-def evaluate_all(interactions: Generator, 
-                 datasets: Generator, 
+def evaluate_all(datasets: Generator, 
                  oracle: SequentialRecommender,
                  num_counterfactuals: int=30):
-    for i, (dataset, interaction) in enumerate(tqdm(zip(datasets, interactions), desc="Automata Learning performance evaluation...")):
+    for i, (dataset, interaction) in enumerate(tqdm(datasets, desc="Automata Learning performance evaluation...")):
         if i == num_counterfactuals:
             print(f"Generated {num_counterfactuals}, exiting...")
             break
@@ -143,10 +142,8 @@ def main(use_cache: bool = False):
     set_seed()
     config = get_config(dataset=DATASET, model=MODEL)
     oracle: SequentialRecommender = generate_model(config)
-    interactions = interaction_generator(config)
-    datasets = dataset_generator(config=config, use_cache=use_cache)
-    evaluate_all(interactions=interactions,
-                 datasets=datasets, 
+    datasets = DatasetGenerator(config=config, use_cache=use_cache, return_interaction=True)
+    evaluate_all(datasets=datasets, 
                  oracle=oracle)
 
 

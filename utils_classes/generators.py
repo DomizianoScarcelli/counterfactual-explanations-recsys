@@ -1,15 +1,18 @@
 from __future__ import annotations
+
+import os
 from abc import ABC, abstractmethod
-from genetic.dataset.utils import get_dataloaders, get_sequence_from_interaction, save_dataset
+from typing import Any, Tuple
 
 from recbole.config import Config
 from recbole.trainer import Interaction
-from typing import Any, Tuple
 from torch import Tensor
-import os
-from models.config_utils import generate_model
-from genetic.dataset.utils import load_dataset, save_dataset
+
 from genetic.dataset.generate import generate
+from genetic.dataset.utils import (get_dataloaders,
+                                   get_sequence_from_interaction, load_dataset,
+                                   save_dataset)
+from models.config_utils import generate_model
 from type_hints import GoodBadDataset
 
 
@@ -149,3 +152,50 @@ class DatasetGenerator(SkippableGenerator):
     def reset(self):
         self.interactions.reset()
         self.index = 0
+
+
+class TimedGenerator:
+    """
+    A wrapper class for a generator that measures and stores the time taken 
+    to yield each item from the generator.
+
+    Attributes:
+        generator (Generator): The original generator to be wrapped.
+        times (List[float]): A list storing the time taken to yield each item.
+
+    Methods:
+        __iter__(): Yields the same items as the original generator, while 
+                    measuring the time taken for each yield.
+        get_times(): Returns the list of times taken for each yield operation.
+    """
+
+    def __init__(self, generator: Generator | SkippableGenerator):
+        """
+        Initializes the TimedGenerator with the original generator.
+
+        Args:
+            generator (Generator): The generator to be wrapped and timed.
+        """
+        self.generator = generator
+        self.times: List[float] = []
+
+    def __iter__(self):
+        while True:
+            try:
+                start_time = time.time()
+                dataset = next(self.generator)
+                elapsed_time = time.time() - start_time
+                self.times.append(elapsed_time)
+                yield dataset
+            except StopIteration:
+                break
+
+    def get_times(self) -> List[float]:
+        """
+        Returns the list of times taken for each yield operation.
+
+        Returns:
+            List[float]: A list of elapsed times for each yield in seconds.
+        """
+        return self.times
+

@@ -1,16 +1,13 @@
-from copy import deepcopy
-
 import pytest
-import torch
 from recbole.config import Config
 from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
 from torch import Tensor
 
-from genetic.dataset.generate import interaction_generator
 from genetic.dataset.utils import get_sequence_from_interaction
 from models.config_utils import generate_model
-from models.model_funcs import model_batch_predict, model_predict
+from models.model_funcs import model_predict
+from utils_classes.generators import InteractionGenerator
 
 
 @pytest.fixture()
@@ -28,7 +25,7 @@ def model(config) -> SequentialRecommender:
 
 @pytest.fixture()
 def interaction(config) -> Interaction:
-    interaction = next(interaction_generator(config)) 
+    interaction = next(InteractionGenerator(config)) 
     # print(interaction.interaction)
     return interaction
 
@@ -36,11 +33,11 @@ def interaction(config) -> Interaction:
 def sequence(interaction) -> Tensor:
     return get_sequence_from_interaction(interaction).squeeze(0)
 
-def test_model_predict(model, interaction, sequence):
+def test_model_predict(model, sequence):
     print(f"""Executing predict on:
           sequence: {sequence}
           """)
-    preds = model_predict(sequence, interaction, model, prob=True)
+    preds = model_predict(sequence, model, prob=True)
     assert isinstance(preds, Tensor), "Preds are not torch.Tensor"
     print(f"Preds are: {preds} with shape {preds.shape}")
 

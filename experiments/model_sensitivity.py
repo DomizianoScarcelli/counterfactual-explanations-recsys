@@ -10,15 +10,15 @@ from tqdm import tqdm
 
 from config import DATASET, MODEL
 from constants import MAX_LENGTH
-from genetic.dataset.generate import sequence_generator
 from genetic.utils import NumItems
 from models.config_utils import generate_model, get_config
 from models.utils import pad_batch, trim
 from type_hints import RecDataset
 from utils import set_seed
+from utils_classes.generators import SequenceGenerator, SkippableGenerator
 
 
-def model_sensitivity(sequences: Generator, model: SequentialRecommender, position: int):
+def model_sensitivity(sequences: SkippableGenerator, model: SequentialRecommender, position: int):
     """
     The experiments consists in taking a source sequence `x` with a label `y`, result of `model(x)`.
     Then replace the element at position `position` of the sequence with each element of the alphabet (given by the `dataset`), 
@@ -93,7 +93,7 @@ def log_run(position: int, avg: float, save_path: str="model_sensitivity.csv"):
 
 def main():
     config = get_config(dataset=DATASET, model=MODEL)
-    sequences = sequence_generator(config)
+    sequences = SequenceGenerator(config)
     model = generate_model(config)
     # both ends included
     start_i, end_i = 47, 0

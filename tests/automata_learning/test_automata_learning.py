@@ -1,10 +1,11 @@
 from automata_learning.learning import learning_pipeline
 from automata_learning.utils import run_automata
 from config import DATASET, MODEL
-from genetic.dataset.generate import generate, sequence_generator
+from genetic.dataset.generate import generate
 from models.config_utils import generate_model, get_config
 from models.utils import trim
 from utils import set_seed
+from utils_classes.generators import SequenceGenerator
 
 
 def test_automata_accepts_source_sequence():
@@ -14,7 +15,7 @@ def test_automata_accepts_source_sequence():
     set_seed()
     config = get_config(model=MODEL, dataset=DATASET)
     model = generate_model(config)
-    sequences = sequence_generator(config)
+    sequences = SequenceGenerator(config)
     i = 0
     while True:
         # While instead of for loop in order to be able to skip some indices
@@ -41,7 +42,7 @@ def test_automata_learning_determinism():
     """
     set_seed()
     config = get_config(model=MODEL, dataset=DATASET)
-    sequences = sequence_generator(config)
+    sequences = SequenceGenerator(config)
     model = generate_model(config)
     i = 0
     while True:

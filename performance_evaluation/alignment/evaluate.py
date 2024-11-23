@@ -4,7 +4,6 @@ from typing import Generator, Optional
 import fire
 import pandas as pd
 import torch
-from genetic.utils import edit_distance
 from pandas import DataFrame
 from recbole.model.abstract_recommender import SequentialRecommender
 from tqdm import tqdm
@@ -14,19 +13,19 @@ from config import DATASET, GENERATIONS, HALLOFFAME_RATIO, MODEL, POP_SIZE
 from constants import MAX_LENGTH
 from exceptions import (CounterfactualNotFound, DfaNotAccepting,
                         DfaNotRejecting, NoTargetStatesError)
-from genetic.dataset.generate import dataset_generator, interaction_generator
+from genetic.utils import edit_distance
 from models.config_utils import generate_model, get_config
 from performance_evaluation.alignment.utils import (evaluate_stats, get_split,
                                                     is_already_evaluated,
-                                                    log_run, postprocess_alignment,
+                                                    log_run,
+                                                    postprocess_alignment,
                                                     preprocess_interaction)
 from run import single_run, timed_learning_pipeline, timed_trace_disalignment
-from utils import TimedGenerator, set_seed
+from utils_classes.generators import DatasetGenerator, TimedGenerator
 from utils_classes.Split import Split
 
 
-def evaluate_trace_disalignment(interactions: Generator, 
-                                datasets: TimedGenerator, 
+def evaluate_trace_disalignment(datasets: TimedGenerator, 
                                 oracle: SequentialRecommender,
                                 split_type: str,
                                 use_cache: bool,
@@ -45,7 +44,7 @@ def evaluate_trace_disalignment(interactions: Generator,
             }
 
     status = "unknown"
-    for i, (dataset, interaction) in enumerate(tqdm(zip(datasets, interactions), desc="Performance evaluation...", total=num_counterfactuals)):
+    for i, (dataset, interaction) in enumerate(tqdm(datasets, desc="Performance evaluation...", total=num_counterfactuals)):
         if i == num_counterfactuals:
             print(f"Generated {num_counterfactuals}, exiting...")
             break
@@ -113,10 +112,8 @@ def main(mode: str = "evaluate",
     if mode == "evaluate":
         config = get_config(dataset=DATASET, model=MODEL)
         oracle: SequentialRecommender = generate_model(config)
-        interactions = interaction_generator(config)
-        datasets = TimedGenerator(dataset_generator(config=config, use_cache=use_cache))
-        evaluate_trace_disalignment(interactions=interactions,
-                                    datasets=datasets, 
+        datasets = TimedGenerator(DatasetGenerator(config=config, use_cache=use_cache, return_interaction=True))
+        evaluate_trace_disalignment(datasets=datasets, 
                                     oracle=oracle,
                                     split_type=split_type, 
                                     use_cache=use_cache)

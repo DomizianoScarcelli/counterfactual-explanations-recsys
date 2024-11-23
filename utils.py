@@ -1,6 +1,6 @@
 import random
 import time
-from typing import Any, Callable, Generator, List
+from typing import Any, Callable
 
 import numpy as np
 import torch
@@ -27,52 +27,6 @@ def set_seed(seed: int = 42):
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
-
-
-class TimedGenerator:
-    """
-    A wrapper class for a generator that measures and stores the time taken 
-    to yield each item from the generator.
-
-    Attributes:
-        generator (Generator): The original generator to be wrapped.
-        times (List[float]): A list storing the time taken to yield each item.
-
-    Methods:
-        __iter__(): Yields the same items as the original generator, while 
-                    measuring the time taken for each yield.
-        get_times(): Returns the list of times taken for each yield operation.
-    """
-
-    def __init__(self, generator: Generator):
-        """
-        Initializes the TimedGenerator with the original generator.
-
-        Args:
-            generator (Generator): The generator to be wrapped and timed.
-        """
-        self.generator = generator
-        self.times: List[float] = []
-
-    def __iter__(self):
-        while True:
-            try:
-                start_time = time.time()
-                dataset = next(self.generator)
-                elapsed_time = time.time() - start_time
-                self.times.append(elapsed_time)
-                yield dataset
-            except StopIteration:
-                break
-
-    def get_times(self) -> List[float]:
-        """
-        Returns the list of times taken for each yield operation.
-
-        Returns:
-            List[float]: A list of elapsed times for each yield in seconds.
-        """
-        return self.times
 
 
 class TimedFunction:

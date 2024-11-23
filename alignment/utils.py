@@ -1,12 +1,14 @@
 import heapq
 from statistics import mean
-
-from aalpy.automata.Dfa import DfaState
-from constants import MAX_LENGTH
 from typing import List
+
 import torch
-from models.utils import trim, pad
+from aalpy.automata.Dfa import DfaState
+
 from alignment.actions import Action, decode_action
+from constants import MAX_LENGTH
+from models.utils import pad, trim
+
 
 def postprocess_alignment(aligned: List[int]):
     if len(aligned) == MAX_LENGTH:
