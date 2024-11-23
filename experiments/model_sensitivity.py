@@ -1,7 +1,5 @@
 import os
 from statistics import mean
-from typing import Generator
-
 import fire
 import pandas as pd
 import torch

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from typing import List, Optional
 from abc import ABC, abstractmethod
 from typing import Any, Tuple
 
@@ -14,6 +15,7 @@ from genetic.dataset.utils import (get_dataloaders,
                                    save_dataset)
 from models.config_utils import generate_model
 from type_hints import GoodBadDataset
+import time
 
 
 class SkippableGenerator(ABC):
@@ -169,33 +171,46 @@ class TimedGenerator:
         get_times(): Returns the list of times taken for each yield operation.
     """
 
-    def __init__(self, generator: Generator | SkippableGenerator):
+
+    def __init__(self, generator: SkippableGenerator):
         """
         Initializes the TimedGenerator with the original generator.
 
         Args:
             generator (Generator): The generator to be wrapped and timed.
         """
+        assert isinstance(generator, SkippableGenerator), f"Generator of type {type(generator)} not supported"
         self.generator = generator
-        self.times: List[float] = []
+        self.times: List[Optional[float]] = []
+
+    def __next__(self):
+        start_time = time.time()
+        try:
+            item = next(self.generator)
+        except StopIteration:
+            raise
+        elapsed_time = time.time() - start_time
+        self.times.append(elapsed_time)
+        return item
+
+    def skip(self):
+        self.times.append(None)
+        return self.generator.skip()
+
+    @property
+    def index(self):
+        return self.generator.index
 
     def __iter__(self):
-        while True:
-            try:
-                start_time = time.time()
-                dataset = next(self.generator)
-                elapsed_time = time.time() - start_time
-                self.times.append(elapsed_time)
-                yield dataset
-            except StopIteration:
-                break
+        return self
 
-    def get_times(self) -> List[float]:
+    def get_times(self) -> List[Optional[float]]:
         """
         Returns the list of times taken for each yield operation.
 
         Returns:
-            List[float]: A list of elapsed times for each yield in seconds.
+            A list of elapsed times for each yield in seconds. If a generation
+            is skipped, the time will be None.
         """
         return self.times
 
