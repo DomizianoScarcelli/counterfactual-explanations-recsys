@@ -11,6 +11,7 @@ from automata_learning.learning import learning_pipeline
 from config import DATASET, MODEL
 from exceptions import (CounterfactualNotFound, DfaNotAccepting,
                         DfaNotRejecting, NoTargetStatesError)
+from alignment.actions import print_action
 from models.config_utils import generate_model, get_config
 from performance_evaluation.alignment.utils import preprocess_interaction
 from type_hints import Dataset, RecDataset, RecModel, SplitTuple
@@ -144,7 +145,7 @@ CONFIG
                 aligned, cost, alignment = single_run(source_sequence, dataset, split)
 
                 run_log["aligned"] = ",".join([str(c) for c in aligned.squeeze(0).tolist()])
-                run_log["alignment"] = ",".join(alignment)
+                run_log["alignment"] = ",".join([print_action(a) for a in alignment])
                 run_log["cost"] = cost
                 print(f"[{i}] Alignment cost: {cost}")
 
