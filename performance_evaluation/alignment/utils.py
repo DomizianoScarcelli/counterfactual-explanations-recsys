@@ -49,7 +49,8 @@ def preprocess_interaction(raw_interaction: Interaction, oracle: Optional[Sequen
     return source_sequence, source_gt
 
 def log_run(prev_df: DataFrame,
-            log: Dict) -> DataFrame:
+            log: Dict,
+            save_path: str) -> DataFrame:
     
     # Create a dictionary with input parameters as columns
     data = {key: [value] for key, value in log.items()}
@@ -70,7 +71,7 @@ def log_run(prev_df: DataFrame,
     # Optionally append this new row to the existing DataFrame
     prev_df = pd.concat([prev_df, new_df], ignore_index=True)
 
-    prev_df.to_csv("run.csv", index=False)
+    prev_df.to_csv(save_path, index=False)
     
     return prev_df
 
