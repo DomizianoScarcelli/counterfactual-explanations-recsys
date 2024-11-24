@@ -6,7 +6,7 @@ usable characters to the automa's alphabet, and compute the evaluation metrics
 by computing true/false positive/negatives on the good and bad points.
 """
 
-from typing import Generator, List, Tuple
+from typing import List, Tuple
 
 import fire
 import pandas as pd
@@ -15,21 +15,24 @@ from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import os
 from torch import Tensor
 from tqdm import tqdm
+from performance_evaluation.alignment.utils import preprocess_interaction
 
 from automata_learning.learning import learning_pipeline
 from automata_learning.utils import run_automata
 from config import DATASET, GENERATIONS, HALLOFFAME_RATIO, MODEL, POP_SIZE
 from genetic.dataset.generate import generate
-from genetic.dataset.utils import (dataset_difference,
-                                   get_sequence_from_interaction)
+from genetic.dataset.utils import dataset_difference
 from models.config_utils import generate_model, get_config
 from models.utils import trim
 from performance_evaluation.evaluation_utils import (compute_metrics,
                                                      print_confusion_matrix)
 from type_hints import GoodBadDataset
 from utils import set_seed
-from utils_classes.generators import DatasetGenerator
+from utils_classes.generators import DatasetGenerator, SkippableGenerator
+import warnings
 
+warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.simplefilter(action='ignore', category=RuntimeWarning)
 
 def generate_test_dataset(source_sequence: Tensor, model:SequentialRecommender, dfa: Dfa) -> GoodBadDataset:
     """
@@ -42,10 +45,10 @@ def generate_test_dataset(source_sequence: Tensor, model:SequentialRecommender, 
         dfa: The dfa on which the alphabet will be taken.
 
     Returns:
-        A good and bad dataset.
+        A GoodBadDataset tuple.
     """
     alphabet = [c for c in dfa.get_input_alphabet() if isinstance(c, int)]
-    return generate(source_sequence, model, alphabet)[0]
+    return generate(source_sequence, model, alphabet)
 
 
 def evaluate_single(dfa: Dfa, test_dataset: GoodBadDataset):
@@ -67,7 +70,7 @@ def evaluate_single(dfa: Dfa, test_dataset: GoodBadDataset):
             fp += 1
     return tp, fp, tn, fn
 
-def evaluate_all(datasets: Generator, 
+def evaluate_all(datasets: SkippableGenerator, 
                  oracle: SequentialRecommender,
                  num_counterfactuals: int=30):
     for i, (dataset, interaction) in enumerate(tqdm(datasets, desc="Automata Learning performance evaluation...")):
@@ -75,8 +78,8 @@ def evaluate_all(datasets: Generator,
             print(f"Generated {num_counterfactuals}, exiting...")
             break
         
-        source_sequence_t = get_sequence_from_interaction(interaction).squeeze(0)
-        source_sequence = trim(source_sequence_t).tolist()
+        source_sequence = preprocess_interaction(interaction)
+        assert isinstance(source_sequence, list) and (all(isinstance(x, Tensor) for x in source_sequence) or all(isinstance(x, int) for x in source_sequence))
         print(f"source_sequence is: ", source_sequence)
         dfa = learning_pipeline(source_sequence, dataset)
         test_dataset = generate_test_dataset(interaction, oracle, dfa)

@@ -97,7 +97,7 @@ def generate_single_accepting_sequence_dfa(sequence):
     return dfa
 
 
-def learning_pipeline(source: List[Tensor | int], dataset: GoodBadDataset) -> Dfa:
+def learning_pipeline(source: List[Tensor] | List[int], dataset: GoodBadDataset) -> Dfa:
     if isinstance(source[0], Tensor):
         source = [a.item() for a in source] #type: ignore
 

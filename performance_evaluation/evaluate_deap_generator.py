@@ -22,6 +22,15 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=RuntimeWarning)
 
 def evaluation_step(sequence, model: SequentialRecommender):
+    """
+    Evaluates the genetic dataset generation based on different combinations of
+    mutations. The evaluation metrics are the percentage of the items with the
+    correct label in the dataset (same label in good, different label in bad),
+    and the edit distance from the source sequence. The lower the distance, the
+    better. The higher the percentage of same label in good dataset, the
+    better. The lower the percentage of different label in bad dataset, the
+    better.
+    """
     all_results = []
     search_mutations = [
             [SwapMutation(), ReplaceMutation()],

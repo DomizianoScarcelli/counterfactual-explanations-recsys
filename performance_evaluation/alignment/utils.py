@@ -4,6 +4,7 @@ import pandas as pd
 from pandas import DataFrame
 from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
+from torch import Tensor
 
 from config import GENERATIONS, HALLOFFAME_RATIO, POP_SIZE, DETERMINISM, MODEL, DATASET, ALLOWED_MUTATIONS
 from genetic.dataset.utils import get_sequence_from_interaction
@@ -36,7 +37,7 @@ def is_already_evaluated(log: DataFrame, sequence: List[int], splits_key: str) -
             (log["num_generations"] == GENERATIONS) & 
             (log["halloffame_ratio"] == HALLOFFAME_RATIO)].shape[0] > 0
 
-def preprocess_interaction(raw_interaction: Interaction, oracle: Optional[SequentialRecommender]=None):
+def preprocess_interaction(raw_interaction: Interaction, oracle: Optional[SequentialRecommender]=None) -> List[Tensor] | Tuple[List[Tensor], int]:
     source_sequence = get_sequence_from_interaction(raw_interaction)
     if not oracle:
         return trim(source_sequence.squeeze(0)).tolist()

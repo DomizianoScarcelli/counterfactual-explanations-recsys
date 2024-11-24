@@ -11,7 +11,7 @@ from utils import set_seed
 # Taken from deap.algorithms.eaSimple
 # Solution taken from https://github.com/DEAP/deap/issues/508
 def eaSimpleBatched(population, toolbox, cxpb, mutpb, ngen, stats=None,
-             halloffame=None, verbose=__debug__):
+                    halloffame=None, verbose=__debug__, pbar=True):
     """
     This extends the deap.eaSimple method in order for the sequences in the
     population to be evaluated in batch, instead of one-by-one. This is useful
@@ -37,7 +37,7 @@ def eaSimpleBatched(population, toolbox, cxpb, mutpb, ngen, stats=None,
         print(logbook.stream)
 
     # Begin the generational process
-    for gen in tqdm(range(1, ngen + 1), "Running genetic algorithm..."):
+    for gen in tqdm(range(1, ngen + 1), "Running genetic algorithm...", disable=not pbar, leave=False):
         # Select the next generation individuals
         offspring = toolbox.select(population, len(population))
 

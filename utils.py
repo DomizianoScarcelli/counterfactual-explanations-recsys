@@ -18,6 +18,7 @@ def printd(statement, level=1):
 
 
 def set_seed(seed: int = 42):
+    print(f"[DEBUG] Setting seed: {seed}")
     MAX_SEED = 2**32 - 1
     seed %= (MAX_SEED + 1)
     if not DETERMINISM:

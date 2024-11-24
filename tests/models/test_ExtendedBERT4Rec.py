@@ -32,18 +32,19 @@ def sequences(interactions) -> Tensor:
     return sequences
 
 class TestPredictFromSequence:
-    @pytest.mark.skip()
-    def test_full_sort_predict_from_sequence(self, model: ExtendedBERT4Rec, sequences):
-        for single_seq in sequences:
-            single_seq = single_seq.unsqueeze(0)
-            assert single_seq.size(0) == 1, f"single seq must have shape [1, length], {single_seq.shape}"
-            pred = model.full_sort_predict(single_seq)
-            print(f"[test_full_sort_predict_from_sequence] pred is: {pred} with shape {pred.shape}")
+    def test_batched_full_sort_predict(self, model: ExtendedBERT4Rec, sequences: Tensor):
+        """
+        Tests if the predictions on the batch sequences gives the same result
+        as getting one prediction at the time.
+        """
+        batch_preds = model(sequences)
 
-    @pytest.mark.skip() 
-    def test_batched_full_sort_predict(self, model: ExtendedBERT4Rec, sequences):
-        pred = model.full_sort_predict(sequences)
-        print(f"[test_full_sort_predict_from_sequence] pred is: {pred} with shape {pred.shape}")
+        for i, seq in enumerate(tqdm(sequences, "Batched full sort predict test...")):
+            pred = model(seq.unsqueeze(0)).squeeze()
+            label = pred.argmax(-1).item()
+            batch_label = batch_preds[i].argmax(-1).item()
+            assert label == batch_label, f"Labels are different! {label} != {batch_label}"
+            # assert torch.all(pred == batch_preds[i])
 
 class TestModelDeterminism:
     def test_model_determinism(self, model: ExtendedBERT4Rec, sequences):
@@ -57,7 +58,15 @@ class TestModelDeterminism:
             assert seq.size(0) == 1, f"single seq must have shape [1, length], {seq.shape}"
             first_pred = model_predict(seq, model, prob=True)
             second_pred = model_predict(seq, model, prob=True)
-            assert torch.all(first_pred ==second_pred)
+
+            assert isinstance(first_pred, Tensor)
+            assert isinstance(second_pred, Tensor)
+
+            first_label = first_pred.argmax(-1).item()
+            second_label = second_pred.argmax(-1).item()
+            assert first_label == second_label
+            assert torch.all(first_pred == second_pred)
+
 
     def test_model_batch_determinism(self, model: ExtendedBERT4Rec, sequences):
         """
@@ -67,11 +76,10 @@ class TestModelDeterminism:
         """
         seqs = torch.empty((50, 50))
         for i, seq in tqdm(enumerate(sequences)):
-            if i > 50:
+            if i >= 50:
                 break
             seqs[i] = seq.squeeze(0)
         seqs = seqs.to(torch.int64)
         pred1 = model_predict(seqs, model, prob=True)
         pred2 = model_predict(seqs, model, prob=True)
-        pred2 = model_predict(seqs, model, prob=True)
-        assert torch.all(pred1 == pred2 == pred3)
+        assert torch.all(pred1 == pred2)
