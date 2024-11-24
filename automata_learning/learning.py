@@ -4,6 +4,7 @@ from typing import List, Tuple, Union
 from aalpy.automata.Dfa import Dfa, DfaState
 from aalpy.learning_algs import run_RPNI
 from aalpy.utils.HelperFunctions import make_input_complete
+from torch import Tensor
 
 from alignment.alignment import augment_constraint_automata
 from automata_learning.utils import load_automata, save_automata
@@ -11,7 +12,19 @@ from genetic.dataset.utils import load_dataset
 from type_hints import GoodBadDataset
 
 
-def generate_automata(dataset, load_if_exists: bool = True, save_path: str = "automata.pickle") -> Union[None, Dfa]:
+def _generate_automata(dataset: GoodBadDataset, load_if_exists: bool = True, save_path: str = "automata.pickle") -> Union[None, Dfa]:
+    """ 
+    Util function that runs the RPNI algorithm over the input dataset, which is
+    loaded from cache if specified, and if the file exists.
+
+    Args:
+        dataset: the dataset of good and bad points the dataset is learned on.
+        load_if_exists: tell the function to load the dataset from cache if it exists.
+        save_path: the dataset cache path.
+
+    Returns:
+        The learned DFA which accepts good points and rejects bad points.
+    """
     if os.path.exists(os.path.join("saved_automatas", save_path)) and load_if_exists:
         print("Loaded existing automata")
         dfa = load_automata(save_path)
@@ -25,7 +38,7 @@ def generate_automata(dataset, load_if_exists: bool = True, save_path: str = "au
     return dfa
 
 
-def generate_automata_from_dataset(dataset, load_if_exists: bool = True, save_path: str = "automata.pickle") -> Dfa:
+def generate_automata_from_dataset(dataset: GoodBadDataset, load_if_exists: bool = True, save_path: str = "automata.pickle") -> Dfa:
     """
     Given a dataset with the following syntax:
         ([(torch.tensor([...]), good_label), ...],
@@ -34,7 +47,7 @@ def generate_automata_from_dataset(dataset, load_if_exists: bool = True, save_pa
     """
     good_points, bad_points = dataset
     data = [(seq[0].tolist(), True) for seq in good_points] + [(seq[0].tolist(), False) for seq in bad_points]
-    dfa = generate_automata(data, load_if_exists, save_path)
+    dfa = _generate_automata(data, load_if_exists, save_path)
     if dfa is None:
         raise RuntimeError("DFA is None, aborting")
     dfa = make_input_complete(dfa)
@@ -84,10 +97,13 @@ def generate_single_accepting_sequence_dfa(sequence):
     return dfa
 
 
-def learning_pipeline(source: List[int], dataset: GoodBadDataset) -> Dfa:
-    t_dfa = generate_single_accepting_sequence_dfa(source)
+def learning_pipeline(source: List[Tensor | int], dataset: GoodBadDataset) -> Dfa:
+    if isinstance(source[0], Tensor):
+        source = [a.item() for a in source] #type: ignore
+
+    assert isinstance(source[0], int)
     a_dfa = generate_automata_from_dataset(dataset, load_if_exists=False)
-    a_dfa_aug = augment_constraint_automata(a_dfa, t_dfa)
+    a_dfa_aug = augment_constraint_automata(a_dfa, source)
     return a_dfa_aug
 
 

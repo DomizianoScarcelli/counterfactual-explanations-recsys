@@ -73,7 +73,7 @@ def ingoing_states(dfa: Dfa, curr_state: DfaState):
     return ingoing
 
 
-def augment_constraint_automata(automata: Dfa, trace_automaton: Dfa) -> Dfa:
+def augment_constraint_automata(automata: Dfa, source_sequence: List[int]) -> Dfa:
     """
     Given an DFA `A` which only accepts good sequences, defined as those
     sequences which label is the same as the ground truth sequence it augments
@@ -96,7 +96,7 @@ def augment_constraint_automata(automata: Dfa, trace_automaton: Dfa) -> Dfa:
     # Alphabet is the universe of all the items
     # alphabet = [i for i in range(1, NumItems.ML_1M.value)]
     alphabet = automata.get_input_alphabet()
-    trace_alphabet = trace_automaton.get_input_alphabet()
+    trace_alphabet = set(source_sequence)
     print(f"Trace alphabet: ", trace_alphabet)
 
     # Create the new repair propositions

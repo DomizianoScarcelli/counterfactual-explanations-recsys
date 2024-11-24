@@ -21,7 +21,9 @@ def test_automata_accepts_source_sequence():
         # While instead of for loop in order to be able to skip some indices
         # without generating the dataset
         if i < 12:
+        # if i < 0:
             i += 1
+            sequences.skip()
             continue
         try:
             source_trace = next(sequences)
@@ -33,6 +35,7 @@ def test_automata_accepts_source_sequence():
         dfa = learning_pipeline(trace, dataset)
         assert run_automata(dfa, trace), f"Automata do not accept sequence {i}, {trace}"
         i += 1
+        print(f"{i} [PASSED], automata accepts the source trace")
 
 def test_automata_learning_determinism():
     """

@@ -1,6 +1,6 @@
 import random
 from copy import deepcopy
-from typing import Any, Callable, List, Optional, Set
+from typing import Any, Callable, List, Optional
 
 import numpy as np
 import torch
@@ -163,18 +163,19 @@ class GeneticGenerationStrategy():
         label_eval, seq_eval = self.evaluate_generation(clean_pop)
 
         source_point = (self.input_seq, self.gt.argmax(-1).item())
-        # If source point is not in good datset, add it
+
+        # Remove any copy of the source point from the good or bad dataset.
+        new_pop = [(ind, label) for ind, label in clean_pop if ind.tolist() != source_point[0].tolist()]
+        if len(new_pop) < len(clean_pop):
+            self.print(f"Source point was in the dataset {len(clean_pop) - len(new_pop)} times!, removing it")
+        clean_pop = new_pop
+
+        # If source point is not in good datset, add just one instance back
         if self.good_examples and len([ind for ind, _ in clean_pop if ind.tolist() == source_point[0].tolist()]) == 0:
             self.print(f"Source point was not in good dataset, adding it")
             clean_pop.append(source_point)
 
-        # If source point is in bad datset, remove it
-        if not self.good_examples:
-            new_pop = [(ind, label) for ind, label in clean_pop if ind.tolist() != source_point[0].tolist()]
-            if len(new_pop) < len(clean_pop):
-                self.print(f"Source point was in the bad dataset, removing it ({len(new_pop)} < {len(clean_pop)})")
-            clean_pop = new_pop
-
+        label_eval, seq_eval = self.evaluate_generation(clean_pop)
         self.print(f"[After clean] Good examples={self.good_examples} ({len(clean_pop)}) ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
         return clean_pop
 
