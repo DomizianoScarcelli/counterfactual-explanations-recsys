@@ -97,7 +97,7 @@ def augment_constraint_automata(automata: Dfa, source_sequence: List[int]) -> Df
     # alphabet = [i for i in range(1, NumItems.ML_1M.value)]
     alphabet = automata.get_input_alphabet()
     trace_alphabet = set(source_sequence)
-    print(f"Trace alphabet: ", trace_alphabet)
+    # print(f"Trace alphabet: ", trace_alphabet)
 
     # Create the new repair propositions
     add_propositions = {p: f"add_{p}" for p in alphabet}

@@ -33,7 +33,7 @@ def main(mode: str = "evaluate",
          evaluation_log: Optional[str] = None,
          stats_output: Optional[str] = None,
          splits: Optional[List[int]] = None,
-         save_path: str = "run.csv"):
+         save_path: str = "results/evaluate.csv"):
     set_seed()
     if mode == "evaluate":
         evaluate_trace_disalignment(

@@ -12,7 +12,7 @@ class Mutation(ABC):
 
     def __call__(self, seq: List[int], alphabet: List[int], index: int) -> Tuple[List[int]]:
         # Change the seed according to the index of the mutated sequence
-        set_seed(index)
+        set_seed(hash(tuple(seq)) ^ hash(tuple(alphabet)) + index)
         result = (self._apply(seq, alphabet),)
         # Resets the seed back to the original one to ensure determinism for
         # the following operations

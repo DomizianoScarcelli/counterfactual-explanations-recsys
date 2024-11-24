@@ -6,8 +6,6 @@ usable characters to the automa's alphabet, and compute the evaluation metrics
 by computing true/false positive/negatives on the good and bad points.
 """
 
-from typing import List, Tuple
-
 import fire
 import pandas as pd
 from aalpy.automata.Dfa import Dfa
@@ -15,11 +13,11 @@ from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import os
 from torch import Tensor
 from tqdm import tqdm
-from performance_evaluation.alignment.utils import preprocess_interaction
+from performance_evaluation.alignment.utils import preprocess_interaction, log_run
 
 from automata_learning.learning import learning_pipeline
 from automata_learning.utils import run_automata
-from config import DATASET, GENERATIONS, HALLOFFAME_RATIO, MODEL, POP_SIZE
+from config import DATASET, MODEL
 from genetic.dataset.generate import generate
 from genetic.dataset.utils import dataset_difference
 from models.config_utils import generate_model, get_config
@@ -51,7 +49,11 @@ def generate_test_dataset(source_sequence: Tensor, model:SequentialRecommender, 
     return generate(source_sequence, model, alphabet)
 
 
-def evaluate_single(dfa: Dfa, test_dataset: GoodBadDataset):
+def evaluate(dfa: Dfa, test_dataset: GoodBadDataset):
+    """
+    Evaluates the DFA over the test_dataset, returning the tp, fp, tn and fn
+    metrics.
+    """
     good, bad = test_dataset  
     tp, fp, tn, fn = 0,0,0,0
     for (sequence, _) in good:
@@ -72,10 +74,15 @@ def evaluate_single(dfa: Dfa, test_dataset: GoodBadDataset):
 
 def evaluate_all(datasets: SkippableGenerator, 
                  oracle: SequentialRecommender,
-                 num_counterfactuals: int=30):
+                 end_i: int=30):
+    prev_df = pd.DataFrame({})
+    save_path = os.path.join("results", "automata_learning_eval.csv")
+    if os.path.exists(save_path):
+        prev_df = pd.read_csv(save_path)
+
     for i, (dataset, interaction) in enumerate(tqdm(datasets, desc="Automata Learning performance evaluation...")):
-        if i == num_counterfactuals:
-            print(f"Generated {num_counterfactuals}, exiting...")
+        if i == end_i:
+            print(f"Evaluated {end_i}, exiting...")
             break
         
         source_sequence = preprocess_interaction(interaction)
@@ -90,7 +97,7 @@ def evaluate_all(datasets: SkippableGenerator,
                         dataset_difference(test_dataset[1], dataset[1]))
         print(f"[DEBUG] Test dataset length: {len(test_dataset[0]) + len(test_dataset[1])}")
 
-        tp, fp, tn, fn = evaluate_single(dfa, test_dataset)
+        tp, fp, tn, fn = evaluate(dfa, test_dataset)
         precision, accuracy, recall = compute_metrics(tp=tp, fp=fp, tn=tn, fn=fn)
         print("----------------------------------------")
         print(f"[{i}] Precision: {precision}")
@@ -98,57 +105,30 @@ def evaluate_all(datasets: SkippableGenerator,
         print(f"[{i}] Recall: {recall}")
         print_confusion_matrix(tp=tp, fp=fp, tn=tn, fn=fn)
         print("----------------------------------------")
-        log_run(metrics=(tp, fp, tn, fn),
-                train_dataset_len=(len(dataset[0]),
-                                   len(dataset[1])),
-                test_dataset_len=(len(test_dataset[0]),
-                                  len(test_dataset[1])),
-                source_sequence=source_sequence)
+        train_dataset_len=len(dataset[0]), len(dataset[1])
+        test_dataset_len=len(test_dataset[0]), len(test_dataset[1])
+        
+        log = {"tp": tp,
+            "fp": fp,
+            "tn": tn,
+            "fn": fn,
+            "precision": precision*100,
+            "accuracy": accuracy*100,
+            "recall": recall*199,
+            "train_dataset_len": train_dataset_len,
+            "test_dataset_len": test_dataset_len,
+            "source_sequence_len": len(source_sequence),
+            "source_sequence": ",".join([str(c) for c in source_sequence])}
 
-def log_run(metrics: Tuple[int, int, int, int],
-            train_dataset_len: Tuple[int, int],
-            test_dataset_len: Tuple[int, int],
-            source_sequence: List[int],
-            save_path: str = "automata_learning_eval.csv"):
-    old_log = pd.DataFrame({})
-    if os.path.exists(save_path):
-        old_log = pd.read_csv(save_path)
 
-    tp, fp, tn, fn = metrics
-    precision, accuracy, recall = compute_metrics(tp=tp, fp=fp, tn=tn, fn=fn)
-    data = {"tp": [tp],
-            "fp": [fp],
-            "tn": [tn],
-            "fn": [fn],
-            "precision": [precision * 100],
-            "accuracy": [accuracy * 100],
-            "recall": [recall * 100],
-            "train_dataset_len": [train_dataset_len],
-            "test_dataset_len": [test_dataset_len],
-            "source_sequence_len": [len(source_sequence)],
-            "num_generations": [GENERATIONS],
-            "population_size": [POP_SIZE],
-            "halloffame_ratio": [HALLOFFAME_RATIO],
-            "dataset": [DATASET.value],
-            "model": [MODEL.value],
-            "source_sequence": [source_sequence]}
-
-    new_df = pd.DataFrame(data)
-    df = pd.concat([old_log, new_df], ignore_index=True)
-    df.to_csv(save_path, index=False)
-    return df
-
-def evaluate_stats():
-    pass
+        log_run(log=log, prev_df=prev_df, save_path=save_path)
 
 def main(use_cache: bool = False):
     set_seed()
     config = get_config(dataset=DATASET, model=MODEL)
     oracle: SequentialRecommender = generate_model(config)
     datasets = DatasetGenerator(config=config, use_cache=use_cache, return_interaction=True)
-    evaluate_all(datasets=datasets, 
-                 oracle=oracle)
-
+    evaluate_all(datasets=datasets, oracle=oracle)
 
 
 if __name__ == "__main__":

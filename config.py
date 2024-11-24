@@ -1,4 +1,5 @@
 import toml
+import time
 
 from type_hints import RecDataset, RecModel
 
@@ -14,3 +15,4 @@ POP_SIZE = config["evolution"]["pop_size"]
 HALLOFFAME_RATIO = config["evolution"]["halloffame_ratio"]
 ALLOWED_MUTATIONS = config["evolution"]["allowed_mutations"]
 
+TIMESTAMP = time.strftime("%a, %d %b %Y %H:%M:%S")

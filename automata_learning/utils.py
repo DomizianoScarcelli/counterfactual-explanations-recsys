@@ -10,6 +10,7 @@ from torch import Tensor
 def save_automata(automata, save_path):
     with open(os.path.join("saved_automatas", save_path), "wb") as f:
         pickle.dump(automata, f)
+        print(f"Automata saved at {save_path}")
 
 def load_automata(load_path):
     with open(os.path.join("saved_automatas", load_path), "rb") as f:

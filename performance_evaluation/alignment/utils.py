@@ -5,8 +5,9 @@ from pandas import DataFrame
 from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
 from torch import Tensor
+import time
 
-from config import GENERATIONS, HALLOFFAME_RATIO, POP_SIZE, DETERMINISM, MODEL, DATASET, ALLOWED_MUTATIONS
+from config import GENERATIONS, HALLOFFAME_RATIO, POP_SIZE, DETERMINISM, MODEL, DATASET, ALLOWED_MUTATIONS, TIMESTAMP
 from genetic.dataset.utils import get_sequence_from_interaction
 from models.utils import trim
 from type_hints import SplitTuple
@@ -51,7 +52,27 @@ def preprocess_interaction(raw_interaction: Interaction, oracle: Optional[Sequen
 
 def log_run(prev_df: DataFrame,
             log: Dict,
-            save_path: str) -> DataFrame:
+            save_path: str,
+            primary_key: List[str] = [],
+            add_config: bool = True,
+            ) -> DataFrame:
+    """
+    Log the values in the log dict, concatenating them to a previous log,
+    adding the configuration parameters, and saving the log to the disk as a
+    pandas DataFrame.
+
+    Args:
+        prev_df: a pandas.Dataframe containing the previous logs, on which to concatenate the current log.
+        log: the dictionary of the type: {"value": key} that contains the values to log.
+        add_config: True if the configs found in the config.toml file have to be added to the log. Defaults to True
+        primary_key: the set of fields that are unique for each record. If a
+            record with the same primary key values exists in `prev_df`, the new
+            record in log won't be added.
+        save_path: the path where to save the log.
+
+    Returns:
+        The updated pandas.Dataframe
+    """
     
     # Create a dictionary with input parameters as columns
     data = {key: [value] for key, value in log.items()}
@@ -62,11 +83,30 @@ def log_run(prev_df: DataFrame,
             "datset": [DATASET],
             "generations": [GENERATIONS],
             "halloffame_ratio": [HALLOFFAME_RATIO],
-            "allowed_mutations": [ALLOWED_MUTATIONS]}
+            "pallowed_mutations": [tuple(ALLOWED_MUTATIONS)],
+            "timestamp": [TIMESTAMP]}
 
-    data = {**data, **configs}
+    # timestamp = {"timestamp": [time.strftime("%a, %d %b %Y %H:%M:%S")]}
+    # data = {**timestamp, **data}
+    if add_config:
+        data = {**data, **configs}
+    
+    new_df = pd.DataFrame(data)
+    # Check for duplicates based on primary_key
+    if not prev_df.empty:
+        # find records in `new_df` that are not already in `prev_df` based on primary_key
+        combined = pd.merge(new_df, prev_df, on=primary_key, how='left', indicator=True)
+        new_records = combined[combined['_merge'] == 'left_only']
+        print(f"new_records:", new_records)
+        if not new_records.empty:
+            new_df = new_records[[col for col in combined.columns if not col.endswith("_y")]].copy()
+            # Rename columns to remove `_x` suffix
+            new_df.columns = [col[:-2] if col.endswith("_x") else col for col in new_df.columns]
+            new_df = new_df.drop(columns=["_merge"])
+        else:
+            return prev_df
 
-    new_df = pd.DataFrame(data)                               
+
     prev_df = pd.concat([prev_df, new_df], ignore_index=True).drop_duplicates()
 
     prev_df.to_csv(save_path, index=False)

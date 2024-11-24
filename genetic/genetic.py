@@ -7,7 +7,7 @@ import torch
 from deap import base, creator, tools
 from torch import Tensor
 
-from config import DETERMINISM, GENERATIONS, POP_SIZE
+from config import GENERATIONS, POP_SIZE
 from constants import MAX_LENGTH, MIN_LENGTH
 from genetic.extended_ea_algorithms import (eaSimpleBatched, indexedCxTwoPoint,
                                             indexedSelTournament)
@@ -16,7 +16,7 @@ from genetic.mutations import (ALL_MUTATIONS, AddMutation, DeleteMutation,
 from genetic.utils import (_evaluate_generation, clone, cosine_distance,
                            edit_distance, label_indicator, self_indicator,
                            kl_divergence)
-from models.utils import pad, pad_batch, trim
+from models.utils import pad_batch, trim
 from type_hints import Dataset
 from utils import set_seed
 
@@ -63,7 +63,7 @@ class GeneticGenerationStrategy():
 
     def mutate(self, seq: List[int], index: int):
         # Set seed according to the index in order to always choose a different mutation
-        set_seed(index)
+        set_seed(hash(tuple(seq)) + index)
         #TODO: remove for efficiency
         assert -1 not in seq, f"Seq must not contain padding char: {seq}"
         mutations = self.allowed_mutations.copy()
@@ -77,59 +77,65 @@ class GeneticGenerationStrategy():
         return result
 
     def evaluate_fitness_batch(self, individuals: List[List[int]]) -> List[float]:
-        #TODO: add a batch_size mechanism
+        """
+        Evaluates the fitness for each individual, feeding the individuals into the predictor in batches.
+        """
         set_seed()
+        batch_size = 512
+        assert len(individuals) % batch_size == 0, f"Invididual length must be divisible by the batch size: {len(individuals)} % {batch_size} != 0"
+        num_batches = len(individuals) // batch_size
+        fitnesses = []
         ALPHA1= 0.5 
         ALPHA2 = 1 - ALPHA1
-        candidate_seqs = pad_batch(individuals, MAX_LENGTH)
-        batch_size = candidate_seqs.size(0)
-        # Function to assign label based on the recommender system
-        candidate_probs = self.predictor(candidate_seqs)  
-        assert candidate_probs.size(0) == batch_size, f"Mismatch in probs shape and batch size: {candidate_probs.shape} != {batch_size}"
-        fitnesses = []
-
-        test_mapping = {}
-        for batch_idx in range(batch_size):
-            set_seed()
-            candidate_seq = trim(candidate_seqs[batch_idx])
-            candidate_prob = candidate_probs[batch_idx]
+        for batch_i in range(num_batches): 
+            batch_individuals = individuals[batch_i * batch_size: (batch_i+1)*batch_size]
+            candidate_seqs = pad_batch(batch_individuals, MAX_LENGTH)
+            candidate_probs = self.predictor(candidate_seqs)  
+            assert candidate_probs.size(0) == batch_size, f"mismatch in probs shape and batch size: {candidate_probs.shape} != {batch_size}"
             
-            ##NOTE: this is a test
-            #if DETERMINISM:
-            #    gt = candidate_prob.argmax(-1).item()
-            #    if tuple(candidate_seq.tolist()) in test_mapping:
-            #        cached = test_mapping[tuple(candidate_seq.tolist())]
-            #        assert gt == cached, f"Label are different: {gt} != {cached}"
-            #    else:
-            #        test_mapping[tuple(candidate_seq.tolist())] = gt
+            # TODO: you can use this to remove the for loop. This still doesn't work
+            # edit distance is not easily vectorizable
+            # seq_dists = list(map(lambda seq: edit_distance(self.input_seq, trim(seq)), candidate_seqs))
+            # if self.good_examples:
+            #     label_dists = cosine_distance(self.gt, candidate_probs)
+            # else:
+            #     label_dists = 1 - cosine_distance(self.gt, candidate_probs)
+            # # also self inds can be vectorized
+            # self_inds = list(map(lambda seq: self_indicator(self.input_seq, trim(seq)), candidate_seqs))
+            # costs = [ALPHA1 * seq_dist + ALPHA2 * label_dist + self_ind for (seq_dist, label_dist, self_ind) in zip(seq_dists, label_dists, self_inds)]
+            # fitnesses.extend(costs)
 
-            assert self.gt.shape == candidate_prob.shape
-            seq_dist = edit_distance(self.input_seq, candidate_seq) #[0,MAX_LENGTH] if not normalized, [0,1] if normalized
-            label_dist = label_indicator(candidate_prob, self.gt)
-            self_ind = self_indicator(self.input_seq, candidate_seq) #0 if different, inf if equal
-            # if self.gt.argmax(-1).item() != candidate_prob.argmax(-1).item():
-            #     print(f""" 
-            #           [DEBUG]
-            #           seq_dist: {seq_dist}
-            #           label_dist: {label_dist}
-            #           self_ind: {self_ind}
-            #           ---
-            #           input_seq: {self.input_seq}
-            #           candidate_seq: {candidate_seq}
-            #           ---
-            #           gt shape: {self.gt.shape}
-            #           candidate_prob shape: {candidate_prob.shape}
-            #           gt: {self.gt}
-            #           candidate_prob : {candidate_prob}
-            #           ---
-            #           gt.item(): {self.gt.argmax(-1).item()}
-            #           candidate_prob.item(): {candidate_prob.argmax(-1).item()}
-            #           """)
-            if not self.good_examples:
-                # label_dist = 0 if label_dist == float("inf") else float("inf")
-                label_dist = 1 - label_dist
-            cost = ALPHA1 * seq_dist + ALPHA2 * label_dist + self_ind,
-            fitnesses.append(cost)
+            for i in range(batch_size):
+                candidate_seq = trim(candidate_seqs[i])
+                candidate_prob = candidate_probs[i]
+
+                assert self.gt.shape == candidate_prob.shape
+                seq_dist = edit_distance(self.input_seq, candidate_seq) #[0,MAX_LENGTH] if not normalized, [0,1] if normalized
+                label_dist = cosine_distance(candidate_prob, self.gt)
+                self_ind = self_indicator(self.input_seq, candidate_seq) #0 if different, inf if equal
+                # if self.gt.argmax(-1).item() != candidate_prob.argmax(-1).item():
+                #     print(f""" 
+                #           [DEBUG]
+                #           seq_dist: {seq_dist}
+                #           label_dist: {label_dist}
+                #           self_ind: {self_ind}
+                #           ---
+                #           input_seq: {self.input_seq}
+                #           candidate_seq: {candidate_seq}
+                #           ---
+                #           gt shape: {self.gt.shape}
+                #           candidate_prob shape: {candidate_prob.shape}
+                #           gt: {self.gt}
+                #           candidate_prob : {candidate_prob}
+                #           ---
+                #           gt.item(): {self.gt.argmax(-1).item()}
+                #           candidate_prob.item(): {candidate_prob.argmax(-1).item()}
+                #           """)
+                if not self.good_examples:
+                    # label_dist = 0 if label_dist == float("inf") else float("inf")
+                    label_dist = 1 - label_dist
+                cost = ALPHA1 * seq_dist + ALPHA2 * label_dist + self_ind,
+                fitnesses.append(cost)
 
         # print(f"[DEBUG] Fitnesses: {list(sorted(fitnesses))}")
         return fitnesses
@@ -190,8 +196,12 @@ class GeneticGenerationStrategy():
     def clean(self, examples: Dataset) -> Dataset:
         label = self.gt.argmax(-1).item()
         if self.good_examples:
-            return [ex for ex in examples if ex[1] == label]
-        return [ex for ex in examples if ex[1] != label]
+            clean = [ex for ex in examples if ex[1] == label]
+            self.print(f"Removed {len(examples) - len(clean)} individuals from good (label was not equal to gt)")
+            return clean
+        clean = [ex for ex in examples if ex[1] != label]
+        self.print(f"Removed {len(examples) - len(clean)} individuals from bad (label was equal to gt)")
+        return clean
 
     def postprocess(self, population: Dataset) -> Dataset:
         clean_pop = self.clean(population)

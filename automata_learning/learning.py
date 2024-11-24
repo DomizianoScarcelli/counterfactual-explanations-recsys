@@ -26,15 +26,14 @@ def _generate_automata(dataset: GoodBadDataset, load_if_exists: bool = True, sav
         The learned DFA which accepts good points and rejects bad points.
     """
     if os.path.exists(os.path.join("saved_automatas", save_path)) and load_if_exists:
-        print("Loaded existing automata")
+        print("[INFO] Loaded existing automata")
         dfa = load_automata(save_path)
         return dfa
-    print("Existing automata not found, generating a new one based on the provided dataset")
-    dfa = run_RPNI(data=dataset, automaton_type="dfa")
+    print("[INFO] Existing automata not found, generating a new one based on the provided dataset")
+    dfa = run_RPNI(data=dataset, automaton_type="dfa", print_info=False, input_completeness="self_loop")
     if dfa is None:
         return
-    save_automata(dfa, save_path)
-    print(f"Automata saved at {save_path}")
+    # save_automata(dfa, save_path)
     return dfa
 
 
@@ -50,7 +49,6 @@ def generate_automata_from_dataset(dataset: GoodBadDataset, load_if_exists: bool
     dfa = _generate_automata(data, load_if_exists, save_path)
     if dfa is None:
         raise RuntimeError("DFA is None, aborting")
-    dfa = make_input_complete(dfa)
     assert dfa.is_input_complete(), "Dfa is not input complete"
     return dfa
 
