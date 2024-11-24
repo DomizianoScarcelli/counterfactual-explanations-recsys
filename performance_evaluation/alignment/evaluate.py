@@ -14,9 +14,9 @@ def evaluate_trace_disalignment(range_i: Tuple[int, Optional[int]],
                                 use_cache: bool,
                                 save_path: str):
                                 
-    prev_df: DataFrame  = DataFrame({})
+    log: DataFrame  = DataFrame({})
     if os.path.exists(save_path):
-        prev_df = pd.read_csv(save_path)
+        log = pd.read_csv(save_path)
 
     run_logs = run(start_i=range_i[0], 
                    end_i=range_i[1],
@@ -24,8 +24,8 @@ def evaluate_trace_disalignment(range_i: Tuple[int, Optional[int]],
                    use_cache=use_cache)
 
     for run_log in run_logs:
-        #TODO: insert logic to skip already evaluated stuff
-        log_run(prev_df=prev_df, log=run_log, save_path=save_path)  
+        # TODO: you can make Run a SkippableGenerator, which skips when the source sequence, split and config combination already exists in the log
+        log = log_run(prev_df=log, log=run_log, save_path=save_path)  
 
 def main(mode: str = "evaluate", 
          use_cache: bool = True, 

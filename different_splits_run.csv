@@ -1,2 +1,0 @@
-i,split,status,source,aligned,alignment,cost,gt,aligned_gt,dataset_time,align_time,automata_learning_time,use_cache,determinism,model,datset,generations,halloffame_ratio,allowed_mutations
-0,"(0, 10, None)",NoTargetStatesError,"2720,365,1634,1229,140,351,1664,160,1534,1233,618,267,2490,213,2483,89,273,665,352,222,2265,2612,429,2492,2827,532,1002,202,821,1615,1284,830,176,1116,2626,23,415,1988,694,133,1536,510,290,152,204,1034,1273,289,462,165",,,,521,,69.15290403366089,,,False,True,RecModel.BERT4Rec,RecDataset.ML_1M,20,0.2,"['replace', 'swap']"

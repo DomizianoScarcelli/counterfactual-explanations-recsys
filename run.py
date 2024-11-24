@@ -122,7 +122,7 @@ CONFIG
             print(f"Generated {end_i}, exiting...")
             break
         
-        assert datasets.index == i
+        assert datasets.index == i, f"{datasets.index} != {i}"
         assert len(datasets.get_times()) == i, f"{len(datasets.get_times())} != {i}"
 
         dataset, interaction = next(datasets)
@@ -132,47 +132,43 @@ CONFIG
         run_log["dataset_time"] = datasets.get_times()[i]
         run_log["i"] = i
 
-        try:
-            source_sequence, source_gt = preprocess_interaction(interaction, model)
-
-            run_log["source"] = ",".join([str(c) for c in source_sequence])
-            run_log["gt"] = source_gt
-            for split in splits:
-                run_log["split"] = str(split)
-                split = split.parse_nan(source_sequence)
-                print(f"----RUN DEBUG-----")
-                print(f"Current Split: {split}")
+        source_sequence, source_gt = preprocess_interaction(interaction, model)
+        run_log["source"] = ",".join([str(c) for c in source_sequence])
+        run_log["gt"] = source_gt
+        for split in splits:
+            run_log["split"] = str(split)
+            split = split.parse_nan(source_sequence)
+            print(f"----RUN DEBUG-----")
+            print(f"Current Split: {split}")
+            try:
                 aligned, cost, alignment = single_run(source_sequence, dataset, split)
-
-                run_log["aligned"] = ",".join([str(c) for c in aligned.squeeze(0).tolist()])
-                run_log["alignment"] = ",".join([print_action(a) for a in alignment])
-                run_log["cost"] = cost
-                print(f"[{i}] Alignment cost: {cost}")
-
-                run_log["align_time"] = timed_trace_disalignment.get_last_time()
-                run_log["automata_learning_time"] = timed_learning_pipeline.get_last_time()
-
-                aligned_gt = model(aligned).argmax(-1).item()
-                run_log["aligned_gt"] = aligned_gt
-
-                if source_gt == aligned_gt:
-                    run_log["status"] = "bad"
-                    print(f"[{i}] Bad counterfactual! {source_gt} == {aligned_gt}")
-                else:
-                    run_log["status"] = "good"
-                    print(f"[{i}] Good counterfactual! {source_gt} != {aligned_gt}")
-                print("--------------------")
-                
-                print(json.dumps(run_log, indent=2))
+            except (DfaNotAccepting, DfaNotRejecting, NoTargetStatesError, CounterfactualNotFound) as e:
+                print(f"Raised {type(e)}")
+                run_log["status"] = error_messages[type(e)]
                 yield run_log
+                continue
 
-        except (DfaNotAccepting, DfaNotRejecting, NoTargetStatesError, CounterfactualNotFound) as e:
-            print(f"Raised {type(e)}")
+            run_log["aligned"] = ",".join([str(c) for c in aligned.squeeze(0).tolist()])
+            run_log["alignment"] = ",".join([print_action(a) for a in alignment])
+            run_log["cost"] = cost
+            print(f"[{i}] Alignment cost: {cost}")
 
-            run_log["status"] = error_messages[type(e)]
-            i += 1
+            run_log["align_time"] = timed_trace_disalignment.get_last_time()
+            run_log["automata_learning_time"] = timed_learning_pipeline.get_last_time()
+
+            aligned_gt = model(aligned).argmax(-1).item()
+            run_log["aligned_gt"] = aligned_gt
+
+            if source_gt == aligned_gt:
+                run_log["status"] = "bad"
+                print(f"[{i}] Bad counterfactual! {source_gt} == {aligned_gt}")
+            else:
+                run_log["status"] = "good"
+                print(f"[{i}] Good counterfactual! {source_gt} != {aligned_gt}")
+            print("--------------------")
+            
+            print(json.dumps(run_log, indent=2))
             yield run_log
-            continue
         
        
         i += 1

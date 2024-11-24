@@ -64,12 +64,9 @@ def log_run(prev_df: DataFrame,
             "allowed_mutations": [ALLOWED_MUTATIONS]}
 
     data = {**data, **configs}
-     
-    # Create a DataFrame from the dictionary
-    new_df = pd.DataFrame(data)
-    
-    # Optionally append this new row to the existing DataFrame
-    prev_df = pd.concat([prev_df, new_df], ignore_index=True)
+
+    new_df = pd.DataFrame(data)                               
+    prev_df = pd.concat([prev_df, new_df], ignore_index=True).drop_duplicates()
 
     prev_df.to_csv(save_path, index=False)
     

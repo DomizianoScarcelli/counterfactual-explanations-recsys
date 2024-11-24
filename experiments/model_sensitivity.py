@@ -16,7 +16,7 @@ from utils import set_seed
 from utils_classes.generators import SequenceGenerator, SkippableGenerator
 
 
-def model_sensitivity(sequences: SkippableGenerator, model: SequentialRecommender, position: int):
+def model_sensitivity(sequences: SkippableGenerator, model: SequentialRecommender, position: int, log_path: str = "model_sensitivity.csv"):
     """
     The experiments consists in taking a source sequence `x` with a label `y`, result of `model(x)`.
     Then replace the element at position `position` of the sequence with each element of the alphabet (given by the `dataset`), 
@@ -30,71 +30,73 @@ def model_sensitivity(sequences: SkippableGenerator, model: SequentialRecommende
         model: the sequential recommender model we want to test the sensitivity on 
         dataset: the dataset used to train the sequential recommender, which will be used to take the alphabet.
     """
-    set_seed()
+    seen_idx = set()
+    if os.path.exists(log_path):
+        log = pd.read_csv(log_path)
+        seen_idx = set(log["position"].tolist())
+
+    print(f"[DEBUG] seen_idx: {seen_idx}")
+
+    if position in seen_idx:
+        print(f"[DEBUG] skipping position {position}")
+        return
+
     if DATASET == RecDataset.ML_1M:
-        alphabet = list(range(NumItems.ML_1M.value))
+        alphabet = torch.tensor(list(range(NumItems.ML_1M.value)))
     else:
         raise NotImplementedError(f"Dataset {DATASET} not supported yet!")
     i = 0
-    start_i, end_i = 0, 50
-    pbar = tqdm(total=end_i - start_i, desc=f"Testing model sensitivity on position {position}", leave=False)
+    start_i, end_i = 0, 1000
     avg = set()
-    while True:
-        #TODO: this trick can maybe be avoided since the sequence generator isn't so expensive as the dataset generator
+    for i, sequence in enumerate(tqdm(sequences, desc=f"Testing model sensitivity on position {position}", total=end_i-start_i)):
         if i < start_i:
-            pbar.update(1)
-            i += 1
             continue
-        if i > end_i:
+        if i >= end_i:
             break
-        try:
-            x = trim(next(sequences).squeeze(0)).unsqueeze(0)
-        except StopIteration:
-            break
-        
+        x = trim(sequence.squeeze(0)).unsqueeze(0)
+
         equal, changed = 0, 0
         if x.size(1) <= position:
-            i += 1
             continue
         gt = model(x).argmax(-1).item()
 
         x_primes = x.repeat(len(alphabet), 1)
         assert x_primes.shape == torch.Size([len(alphabet), x.size(1)]), f"x shape uncorrect: {x_primes.shape} != {[len(alphabet), x.size(1)]}"
-        alphabet = torch.tensor(alphabet)
         positions = torch.tensor([position] * len(alphabet))
         
         x_primes[torch.arange(len(alphabet)), positions] = alphabet
         x_primes = pad_batch(x_primes, MAX_LENGTH)
-        
+
         ys = model(x_primes).argmax(-1)
         result = ys == gt
         equal = result.sum().item()
         changed = (len(result) - equal)
         # print(f"[i: {i}] Position: {position}, Equal: {equal}, changed: {changed}")
         avg.add(equal / (equal + changed))
-        i+=1
-        pbar.update(1)
-    print(f"Avg for position {position} is: {mean(avg) * 100}, run logged!")
-    log_run(position=position, avg=mean(avg))
+    print(f"Avg sequences which have the same label after changing an item at position {position} are: {(mean(avg) * 100):3f}%")
+    log_run(position=position, avg=mean(avg), num_seqs=end_i-start_i, save_path=log_path)
 
-def log_run(position: int, avg: float, save_path: str="model_sensitivity.csv"):
+def log_run(position: int, avg: float, num_seqs: int, save_path: str):
     df = pd.DataFrame({})
     if os.path.exists(save_path):
         with open(save_path, "r") as f:
             df = pd.read_csv(f)
 
     data = {"position": [position],
+            "num_seqs": [num_seqs],
             "avg": [avg * 100]}
+
     new_df = pd.DataFrame(data)
     df = pd.concat([df, new_df], ignore_index=True)
     df.to_csv(save_path, index=False)
 
 def main():
+    set_seed()
     config = get_config(dataset=DATASET, model=MODEL)
     sequences = SequenceGenerator(config)
     model = generate_model(config)
     # both ends included
-    start_i, end_i = 47, 0
+    start_i, end_i = 49, 0
     for i in tqdm(range(start_i, end_i-1, -1), "Testing model sensitivity on all positions"):
         model_sensitivity(model=model, sequences=sequences, position=i)
 
