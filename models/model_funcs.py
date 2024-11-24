@@ -5,6 +5,7 @@ import torch
 from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
 from torch import Tensor
+
 from utils import set_seed
 
 

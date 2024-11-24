@@ -1,13 +1,12 @@
 import json
 import warnings
 from statistics import mean
-from typing import Dict, Generator, List, Optional, Tuple, Union
+from typing import Dict, Optional
 
 from recbole.model.abstract_recommender import SequentialRecommender
 from tqdm import tqdm
 
 from config import DATASET, GENERATIONS, MODEL, POP_SIZE
-from genetic.dataset.generate import interaction_generator
 from genetic.dataset.utils import get_sequence_from_interaction
 from genetic.genetic import GeneticGenerationStrategy
 from genetic.mutations import (AddMutation, DeleteMutation, ReplaceMutation,
@@ -16,6 +15,7 @@ from genetic.utils import NumItems
 from models.config_utils import generate_model, get_config
 from models.model_funcs import model_predict
 from utils import set_seed
+from utils_classes.generators import InteractionGenerator
 
 set_seed()
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -117,7 +117,7 @@ def get_stats(results: Dict):
 
 def evaluate_deap(start_from: Optional[str] = None, num_iterations: Optional[int] = 100):
     config = get_config(model=MODEL, dataset=DATASET)
-    interactions = interaction_generator(config)
+    interactions = InteractionGenerator(config)
     model = generate_model(config)
     results = {}
     if start_from:

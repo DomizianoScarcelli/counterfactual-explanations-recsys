@@ -1,54 +1,80 @@
-import datetime
-import json
-import time
-from statistics import mean
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict
 
 import pandas as pd
 from pandas import DataFrame
+from recbole.model.abstract_recommender import SequentialRecommender
+from recbole.trainer import Interaction
+
+from config import GENERATIONS, HALLOFFAME_RATIO, POP_SIZE, DETERMINISM, MODEL, DATASET, ALLOWED_MUTATIONS
+from genetic.dataset.utils import get_sequence_from_interaction
+from models.utils import trim
+from type_hints import SplitTuple
 
 
-def log_run(df: DataFrame,
-            original: List[int], 
-            alignment: Optional[List[str]], 
-            splits_key: str,
-            genetic_key: Tuple[int, int, float], 
-            status: str, 
-            cost: int, 
-            time_dataset_generation: float,
-            time_automata_learning: float, 
-            time_alignment: float,
-            use_cache: bool) -> DataFrame:
+def get_split(slen: int, split_type: str) -> Tuple[str, SplitTuple]:
+    mut_map = {f"{i}_mut": ((slen-i)/slen, i/slen, 0.0)  for i in range(1, slen)}
+    nth_mut_map = {f"{i}th_mut": ((slen-i-1)/slen, 1/slen, i/slen)  for i in range(1, slen)}
+    _map = {**mut_map, **nth_mut_map}
+    if split_type not in _map:
+        raise ValueError(f"Split type '{split_type}' not recognized")
+    return split_type, _map[split_type]
+
+def is_already_evaluated(log: DataFrame, sequence: List[int], splits_key: str) -> bool:
+    """ Returns True if the sequenece has already been evaluted with the same evaluation parameters.
+
+    Args:
+        log: The pandas.Dataframe that contains the evaluated sequences with the relative evaluation
+        sequence: The trimmed and flattened source sequence.
+
+    Returns:
+        True if the sequence is in the log with the same evaluation parameters, false oterwise.
+    """
+    return log.shape[0] != 0 and \
+        log[(log["original_trace"].apply(lambda x: x == sequence)) & 
+            (log["splits_key"] == splits_key) & 
+            (log["population_size"] == POP_SIZE) &
+            (log["num_generations"] == GENERATIONS) & 
+            (log["halloffame_ratio"] == HALLOFFAME_RATIO)].shape[0] > 0
+
+def preprocess_interaction(raw_interaction: Interaction, oracle: Optional[SequentialRecommender]=None):
+    source_sequence = get_sequence_from_interaction(raw_interaction)
+    if not oracle:
+        return trim(source_sequence.squeeze(0)).tolist()
+    try:
+        source_gt = oracle.full_sort_predict(source_sequence).argmax(-1).item()
+    except IndexError as e:
+        print("IndexError on sequence ", source_sequence)
+        raise e
+    source_sequence = trim(source_sequence.squeeze(0)).tolist()
+    return source_sequence, source_gt
+
+def log_run(prev_df: DataFrame,
+            log: Dict,
+            save_path: str) -> DataFrame:
     
     # Create a dictionary with input parameters as columns
-    pop_size, generations, halloffame_ratio = genetic_key
-    data = {
-        "original_trace": [original],
-        "alignment": [alignment],
-        "splits_key": [splits_key],
-        "population_size": [pop_size],
-        "num_generations": [generations],
-        "halloffame_ratio": [halloffame_ratio],
-        "status": [status],
-        "cost": [cost],
-        "time_dataset_generation": [time_dataset_generation],
-        "time_automata_learning": [time_automata_learning],
-        "time_alignment": [time_alignment],
-        "use_cache": [use_cache]
-    }
+    data = {key: [value] for key, value in log.items()}
     
-    # Create a DataFrame from the dictionary
-    new_df = pd.DataFrame(data)
-    
-    # Optionally append this new row to the existing DataFrame
-    df = pd.concat([df, new_df], ignore_index=True)
+    configs = {
+            "determinism": [DETERMINISM],
+            "model": [MODEL],
+            "datset": [DATASET],
+            "generations": [GENERATIONS],
+            "halloffame_ratio": [HALLOFFAME_RATIO],
+            "allowed_mutations": [ALLOWED_MUTATIONS]}
 
-    df.to_csv("run.csv")
+    data = {**data, **configs}
+
+    new_df = pd.DataFrame(data)                               
+    prev_df = pd.concat([prev_df, new_df], ignore_index=True).drop_duplicates()
+
+    prev_df.to_csv(save_path, index=False)
     
-    return df
+    return prev_df
 
 
 def evaluate_stats(log_path: str, stats_output: str) -> pd.DataFrame:
+    #TODO: modify it to work on the new log
     """
     Given a log path, it calculates and returns statistics from the evaluation log
     as a DataFrame, with each row representing a unique combination of genetic parameters

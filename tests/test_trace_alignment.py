@@ -6,8 +6,7 @@ import torch
 from aalpy.automata.Dfa import Dfa
 
 from alignment.actions import encode_action_str, print_action
-from alignment.alignment import (align, split_trace, trace_alignment,
-                                 trace_disalignment)
+from alignment.alignment import align, trace_alignment, trace_disalignment
 from automata_learning.learning import learning_pipeline
 from automata_learning.utils import invert_automata, run_automata
 from constants import MAX_LENGTH
@@ -16,6 +15,7 @@ from genetic.dataset.utils import get_dataset_alphabet
 from models.utils import pad, trim
 from type_hints import GoodBadDataset, Trace
 from utils import set_seed
+from utils_classes.Split import Split
 
 
 @pytest.mark.skip()
@@ -234,12 +234,12 @@ class TestEdgeCases:
                              2115, 1608, 936, 1057, 1109, 2883, 1826, 2607, 1153, 
                               1138, 1204, 2544, 2137, 2055]).unsqueeze(0)
 
-        train, _ = generate(trace, model)
+        dataset = generate(trace, model)
         original_label = model.full_sort_predict_from_sequence(
             trace).argmax(-1).item()
         print(f"Original trace's label: {original_label}")
         trace = trace.squeeze(0).tolist()
-        dfa = learning_pipeline(trace, train)
+        dfa = learning_pipeline(trace, dataset)
         # original_accepts = run_automata(dfa, trace)
         # if not original_accepts:
         #     warnings.warn("Original Automata doesn't accept the original sequence")
@@ -249,8 +249,8 @@ class TestEdgeCases:
         # if not counterfactual_rejects:
         #     warnings.warn("Original Automata doesn't reject the counterfactual sequence")
 
-        splits = (20/50, 28/50, 2/50)
-        splitted = split_trace(trace, splits)
+        split = Split(20/50, 28/50, 2/50)
+        splitted = split.apply(trace)
         splitted_counterfactual, _, splitted_alignment = trace_disalignment(dfa, splitted)
         print(f"Splitted counterfactual before padding: {torch.tensor(torch.tensor(splitted_counterfactual))}")
 
@@ -276,15 +276,15 @@ class TestEdgeCases:
                               63, 265, 44, 152, 157, 1059, 133, 93, 49, 631,
                               433, 190, 134, 844, 79, 118, 105, 639, 1396, 51,
                               117, 90, 21, 402, 89, 336]).unsqueeze(0)
-        train, _ = generate(trace, model)
-        g, b = train
+        dataset = generate(trace, model)
+        g, b = dataset
         print(f"Good points: {len(g)}")
         print(f"Bad points: {len(b)}")
         original_label = model.full_sort_predict_from_sequence(
             trace).argmax(-1).item()
         print(f"Original trace's label: {original_label}")
         trace = trace.squeeze(0).tolist()
-        a_dfa_aug = learning_pipeline(trace, train)
+        a_dfa_aug = learning_pipeline(trace, dataset)
         original_accepts = run_automata(a_dfa_aug, trace)
         assert original_accepts, "Original Automata doesn't accept the original sequence"
         disaligned, _, alignment = trace_disalignment(a_dfa_aug, trace)
@@ -307,10 +307,10 @@ class TestEdgeCases:
                               90, 21, 402, 89, 336]).unsqueeze(0)
         original_label = model.full_sort_predict_from_sequence(
             trace).argmax(-1).item()
-        train, _ = generate(trace, model)
+        dataset = generate(trace, model)
 
         trace = trace.squeeze(0).tolist()
-        a_dfa_aug = learning_pipeline(trace, train)
+        a_dfa_aug = learning_pipeline(trace, dataset)
         original_accepts = run_automata(a_dfa_aug, trace)
         assert original_accepts, "Original Automata doesn't accept the original sequence"
 
@@ -329,10 +329,10 @@ class TestEdgeCases:
                               1138, 1204, 2544, 2137, 2055]).unsqueeze(0)
         original_label = model.full_sort_predict_from_sequence(
             trace).argmax(-1).item()
-        train, _ = generate(trace, model)
+        dataset = generate(trace, model)
 
         trace = trace.squeeze(0).tolist()
-        a_dfa_aug = learning_pipeline(trace, train)
+        a_dfa_aug = learning_pipeline(trace, dataset)
         original_accepts = run_automata(a_dfa_aug, trace)
         assert original_accepts, "Original Automata doesn't accept the original sequence"
 

@@ -1,10 +1,11 @@
-from automata_learning.utils import run_automata
-from config import MODEL, DATASET
-from models.config_utils import generate_model, get_config
-from genetic.dataset.generate import sequence_generator, generate
 from automata_learning.learning import learning_pipeline
+from automata_learning.utils import run_automata
+from config import DATASET, MODEL
+from genetic.dataset.generate import generate
+from models.config_utils import generate_model, get_config
 from models.utils import trim
 from utils import set_seed
+from utils_classes.generators import SequenceGenerator
 
 
 def test_automata_accepts_source_sequence():
@@ -14,7 +15,7 @@ def test_automata_accepts_source_sequence():
     set_seed()
     config = get_config(model=MODEL, dataset=DATASET)
     model = generate_model(config)
-    sequences = sequence_generator(config)
+    sequences = SequenceGenerator(config)
     i = 0
     while True:
         # While instead of for loop in order to be able to skip some indices
@@ -26,10 +27,10 @@ def test_automata_accepts_source_sequence():
             source_trace = next(sequences)
         except StopIteration:
             break
-        train_dataset, _ = generate(source_trace, model)
+        dataset = generate(source_trace, model)
         trace = trim(source_trace.squeeze(0).tolist())
         assert -1 not in trace
-        dfa = learning_pipeline(trace, train_dataset)
+        dfa = learning_pipeline(trace, dataset)
         assert run_automata(dfa, trace), f"Automata do not accept sequence {i}, {trace}"
         i += 1
 
@@ -41,7 +42,7 @@ def test_automata_learning_determinism():
     """
     set_seed()
     config = get_config(model=MODEL, dataset=DATASET)
-    sequences = sequence_generator(config)
+    sequences = SequenceGenerator(config)
     model = generate_model(config)
     i = 0
     while True:
@@ -51,9 +52,9 @@ def test_automata_learning_determinism():
             break
         if i > 20:
             break
-        train_dataset, _ = generate(sequence, model)
+        dataset = generate(sequence, model)
         sequence = sequence.squeeze(0).tolist()
-        dfa = learning_pipeline(sequence, train_dataset)
-        other_dfa = learning_pipeline(sequence, train_dataset)
+        dfa = learning_pipeline(sequence, dataset)
+        other_dfa = learning_pipeline(sequence, dataset)
         assert dfa == other_dfa, f"Learning is non deterministic for sequence {sequence}"
 

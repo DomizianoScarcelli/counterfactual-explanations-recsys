@@ -7,10 +7,10 @@ from alignment.alignment import (augment_constraint_automata,
                                  augment_trace_automata)
 from automata_learning.learning import (generate_automata_from_dataset,
                                         generate_single_accepting_sequence_dfa)
-from genetic.dataset.generate import interaction_generator, sequence_generator
 from genetic.dataset.utils import load_dataset
 from genetic.utils import NumItems
 from models.config_utils import generate_model
+from utils_classes.generators import InteractionGenerator, SequenceGenerator
 
 
 # By marking a class with @pytest.mark.incremental, if a test fails, all the other ones in the class are skipped
@@ -190,8 +190,8 @@ def model(config) -> SequentialRecommender:
 
 @pytest.fixture(scope="module")
 def interactions(config):
-    return interaction_generator(config)
+    return InteractionGenerator(config)
 
 @pytest.fixture(scope="module")
 def sequences(config):
-    return sequence_generator(config)
+    return SequenceGenerator(config)

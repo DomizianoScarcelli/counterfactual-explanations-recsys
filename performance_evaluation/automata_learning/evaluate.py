@@ -19,8 +19,7 @@ from tqdm import tqdm
 from automata_learning.learning import learning_pipeline
 from automata_learning.utils import run_automata
 from config import DATASET, GENERATIONS, HALLOFFAME_RATIO, MODEL, POP_SIZE
-from genetic.dataset.generate import (dataset_generator, generate,
-                                      interaction_generator)
+from genetic.dataset.generate import generate
 from genetic.dataset.utils import (dataset_difference,
                                    get_sequence_from_interaction)
 from models.config_utils import generate_model, get_config
@@ -29,9 +28,22 @@ from performance_evaluation.evaluation_utils import (compute_metrics,
                                                      print_confusion_matrix)
 from type_hints import GoodBadDataset
 from utils import set_seed
+from utils_classes.generators import DatasetGenerator
 
 
 def generate_test_dataset(source_sequence: Tensor, model:SequentialRecommender, dfa: Dfa) -> GoodBadDataset:
+    """
+    Generate a `GoodBadDataset` using only the items in the dfa alphabet for the mutations.
+    This will ensure that the sequences in the dataset are always recognized by the automata.
+
+    Args:
+        source_sequence: The source sequence for the dataset generation.
+        model: The black box model for the dataset generation
+        dfa: The dfa on which the alphabet will be taken.
+
+    Returns:
+        A good and bad dataset.
+    """
     alphabet = [c for c in dfa.get_input_alphabet() if isinstance(c, int)]
     return generate(source_sequence, model, alphabet)[0]
 
@@ -55,11 +67,10 @@ def evaluate_single(dfa: Dfa, test_dataset: GoodBadDataset):
             fp += 1
     return tp, fp, tn, fn
 
-def evaluate_all(interactions: Generator, 
-                 datasets: Generator, 
+def evaluate_all(datasets: Generator, 
                  oracle: SequentialRecommender,
                  num_counterfactuals: int=30):
-    for i, ((train_dataset, _), interaction) in enumerate(tqdm(zip(datasets, interactions), desc="Automata Learning performance evaluation...")):
+    for i, (dataset, interaction) in enumerate(tqdm(datasets, desc="Automata Learning performance evaluation...")):
         if i == num_counterfactuals:
             print(f"Generated {num_counterfactuals}, exiting...")
             break
@@ -67,12 +78,13 @@ def evaluate_all(interactions: Generator,
         source_sequence_t = get_sequence_from_interaction(interaction).squeeze(0)
         source_sequence = trim(source_sequence_t).tolist()
         print(f"source_sequence is: ", source_sequence)
-        dfa = learning_pipeline(source_sequence, train_dataset)
+        dfa = learning_pipeline(source_sequence, dataset)
         test_dataset = generate_test_dataset(interaction, oracle, dfa)
 
         print(f"[DEBUG] Test dataset length: {len(test_dataset[0]) + len(test_dataset[1])}")
-        test_dataset = (dataset_difference(test_dataset[0], train_dataset[0]),
-                        dataset_difference(test_dataset[1], train_dataset[1]))
+        # Remove from test the examples that come from test
+        test_dataset = (dataset_difference(test_dataset[0], dataset[0]),
+                        dataset_difference(test_dataset[1], dataset[1]))
         print(f"[DEBUG] Test dataset length: {len(test_dataset[0]) + len(test_dataset[1])}")
 
         tp, fp, tn, fn = evaluate_single(dfa, test_dataset)
@@ -84,8 +96,8 @@ def evaluate_all(interactions: Generator,
         print_confusion_matrix(tp=tp, fp=fp, tn=tn, fn=fn)
         print("----------------------------------------")
         log_run(metrics=(tp, fp, tn, fn),
-                train_dataset_len=(len(train_dataset[0]),
-                                   len(train_dataset[1])),
+                train_dataset_len=(len(dataset[0]),
+                                   len(dataset[1])),
                 test_dataset_len=(len(test_dataset[0]),
                                   len(test_dataset[1])),
                 source_sequence=source_sequence)
@@ -130,10 +142,8 @@ def main(use_cache: bool = False):
     set_seed()
     config = get_config(dataset=DATASET, model=MODEL)
     oracle: SequentialRecommender = generate_model(config)
-    interactions = interaction_generator(config)
-    datasets = dataset_generator(config=config, use_cache=use_cache)
-    evaluate_all(interactions=interactions,
-                 datasets=datasets, 
+    datasets = DatasetGenerator(config=config, use_cache=use_cache, return_interaction=True)
+    evaluate_all(datasets=datasets, 
                  oracle=oracle)
 
 

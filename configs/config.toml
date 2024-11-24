@@ -7,4 +7,5 @@ determinism = true
 [evolution]
 generations = 20
 pop_size = 1000
-halloffame_ratio = 0.1
+halloffame_ratio = 0.2
+allowed_mutations = ["replace", "swap"] #replace, swap, add, delete, shuffle, reverse

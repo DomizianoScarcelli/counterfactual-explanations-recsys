@@ -1,26 +1,25 @@
 from deap.base import deepcopy
-from automata_learning.learning import learning_pipeline
+
 from config import DATASET, MODEL
-from genetic.dataset.generate import dataset_generator, interaction_generator, sequence_generator
-from genetic.dataset.utils import are_dataset_equal, dataset_difference, get_sequence_from_interaction
 from genetic.dataset.generate import generate
+from genetic.dataset.utils import (are_dataset_equal, dataset_difference,
+                                   get_sequence_from_interaction)
 from genetic.utils import NumItems
 from models.config_utils import generate_model, get_config
-from utils import set_seed
-
+from utils_classes.generators import InteractionGenerator, SequenceGenerator
 
 
 class TestGenerators:
     def test_sequence_generator(self):
         config = get_config(model=MODEL, dataset=DATASET)
-        sequences = sequence_generator(config)
+        sequences = SequenceGenerator(config)
         for seq in sequences:
             if 0 in seq:
                 assert seq.squeeze().tolist().count(0) == 1, f"Sequence unpadded incorrectly"
 
     def test_interaction_generator(self):
         config = get_config(model=MODEL, dataset=DATASET)
-        interactions = interaction_generator(config)
+        interactions = InteractionGenerator(config)
         items = set()
         for interaction in interactions:
             seq = get_sequence_from_interaction(interaction).squeeze(0).tolist()
@@ -34,7 +33,7 @@ def test_dataset_determinism():
     same source sequence should always generate the same dataset
     """
     config = get_config(model=MODEL, dataset=DATASET)
-    sequences = sequence_generator(config)
+    sequences = SequenceGenerator(config)
     model = generate_model(config)
     i = 0
     while True:
@@ -44,10 +43,10 @@ def test_dataset_determinism():
             break
         if i > 10:
             break
-        train_dataset, _ = generate(deepcopy(sequence), deepcopy(model))
-        other_train_dataset, _ = generate(deepcopy(sequence), deepcopy(model))
-        good, bad = train_dataset
-        o_good, o_bad = other_train_dataset
+        dataset = generate(deepcopy(sequence), deepcopy(model))
+        other_dataset = generate(deepcopy(sequence), deepcopy(model))
+        good, bad = dataset
+        o_good, o_bad = other_dataset
         
         assert are_dataset_equal(good, o_good), f"good != o_good. Difference length is {max(len(dataset_difference(good, o_good)), len(dataset_difference(o_good, good)))}"
         assert are_dataset_equal(bad, o_bad)

@@ -1,9 +1,11 @@
-from deap.algorithms import tools
-from tqdm import tqdm
 import random
-from utils import set_seed
-from deap.tools import selRandom
 from operator import attrgetter
+
+from deap.algorithms import tools
+from deap.tools import selRandom
+from tqdm import tqdm
+
+from utils import set_seed
 
 
 # Taken from deap.algorithms.eaSimple

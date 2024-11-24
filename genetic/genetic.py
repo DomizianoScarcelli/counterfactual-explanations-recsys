@@ -1,22 +1,24 @@
 import random
-from typing import Callable, List, Optional, Set, Any
+from copy import deepcopy
+from typing import Any, Callable, List, Optional, Set
 
 import numpy as np
 import torch
 from deap import base, creator, tools
 from torch import Tensor
-from copy import deepcopy
 
 from config import GENERATIONS, POP_SIZE
 from constants import MAX_LENGTH, MIN_LENGTH
-from genetic.extended_ea_algorithms import eaSimpleBatched, indexedSelTournament, indexedCxTwoPoint
+from genetic.extended_ea_algorithms import (eaSimpleBatched, indexedCxTwoPoint,
+                                            indexedSelTournament)
 from genetic.mutations import (ALL_MUTATIONS, AddMutation, DeleteMutation,
                                Mutation, contains_mutation, remove_mutation)
-from genetic.utils import (NumItems, _evaluate_generation, cosine_distance,
-                           clone, edit_distance, self_indicator)
+from genetic.utils import (NumItems, _evaluate_generation, clone,
+                           cosine_distance, edit_distance, self_indicator)
 from models.utils import pad, pad_batch, trim
 from type_hints import Dataset
 from utils import set_seed
+
 
 class GeneticGenerationStrategy():
     def __init__(self, input_seq: Tensor, 
@@ -79,7 +81,7 @@ class GeneticGenerationStrategy():
     def evaluate_fitness_batch(self, individuals: List[List[int]]) -> List[float]:
         #TODO: add a batch_size mechanism
         set_seed()
-        ALPHA1= 0.5
+        ALPHA1= 0.25 #0.25 instead of 0.5 if the edit_distance is not normalized
         ALPHA2 = 1 - ALPHA1
         candidate_seqs = torch.stack([pad(torch.tensor(i), MAX_LENGTH) for i in individuals])
         batch_size = candidate_seqs.size(0)
@@ -89,7 +91,7 @@ class GeneticGenerationStrategy():
         for batch_idx in range(batch_size):
             candidate_seq = candidate_seqs[batch_idx]
             candidate_prob = candidate_probs[batch_idx]
-            seq_dist = edit_distance(self.input_seq, candidate_seq) #[0,1]
+            seq_dist = edit_distance(self.input_seq, candidate_seq) #[0,MAX_LENGTH] if not normalized, [0,1] if normalized
             label_dist = cosine_distance(self.gt, candidate_prob) #[0,1]
             self_ind = self_indicator(self.input_seq, candidate_seq) #0 if different, inf if equal
             if not self.good_examples:
@@ -118,7 +120,6 @@ class GeneticGenerationStrategy():
         label_eval, seq_eval = self.evaluate_generation(new_population)
         self.print(f"[Original] Good examples = {self.good_examples} [{len(new_population)}] ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
         if not self.good_examples or self.halloffame_ratio == 0:
-            # new_population.append((self.input_seq, self.gt.argmax(-1).item()))
             # Augment only good examples, which are the rarest
             return new_population
         
@@ -160,6 +161,20 @@ class GeneticGenerationStrategy():
     def postprocess(self, population: Dataset) -> Dataset:
         clean_pop = self.clean(population)
         label_eval, seq_eval = self.evaluate_generation(clean_pop)
+
+        source_point = (self.input_seq, self.gt.argmax(-1).item())
+        # If source point is not in good datset, add it
+        if self.good_examples and len([ind for ind, _ in clean_pop if ind.tolist() == source_point[0].tolist()]) == 0:
+            self.print(f"Source point was not in good dataset, adding it")
+            clean_pop.append(source_point)
+
+        # If source point is in bad datset, remove it
+        if not self.good_examples:
+            new_pop = [(ind, label) for ind, label in clean_pop if ind.tolist() != source_point[0].tolist()]
+            if len(new_pop) < len(clean_pop):
+                self.print(f"Source point was in the bad dataset, removing it ({len(new_pop)} < {len(clean_pop)})")
+            clean_pop = new_pop
+
         self.print(f"[After clean] Good examples={self.good_examples} ({len(clean_pop)}) ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
         return clean_pop
 

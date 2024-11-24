@@ -13,7 +13,7 @@ from models.utils import pad
 from type_hints import Dataset, GoodBadDataset
 
 
-def train_test_split(dataset: Dataset, test_split: float = 0.2):
+def train_test_split(dataset: Dataset, test_split: float = 0):
     train, test = [], []
     train_end = round(len(dataset) * (1-test_split))
     for i in range(train_end):
@@ -23,7 +23,7 @@ def train_test_split(dataset: Dataset, test_split: float = 0.2):
     return train, test
 
 
-def save_dataset(dataset: Tuple[GoodBadDataset, GoodBadDataset], save_path: str):
+def save_dataset(dataset: GoodBadDataset, save_path: str):
     """
     Saves the dataset as a .pickle file
 
@@ -36,7 +36,7 @@ def save_dataset(dataset: Tuple[GoodBadDataset, GoodBadDataset], save_path: str)
         pickle.dump(dataset, f)
 
 
-def load_dataset(load_path: str) -> Tuple[GoodBadDataset, GoodBadDataset]:
+def load_dataset(load_path: str) -> GoodBadDataset:
     """
     Loads the dataset from disk.
 
@@ -130,8 +130,8 @@ def dataset_difference(dataset: Dataset, other: Dataset) -> Dataset:
     return difference_dataset
 
 def are_dataset_equal(dataset: Dataset, other: Dataset) -> bool:
-    dataset_map = {tuple(row.squeeze(0).tolist()): label for row, label in dataset}
-    other_map = {tuple(row.squeeze(0).tolist()): label for row, label in other}
+    dataset_map = {tuple(row.squeeze(0).tolist()): label for (row, label) in dataset}
+    other_map = {tuple(row.squeeze(0).tolist()): label for (row, label) in other}
 
     dataset_keys = set(dataset_map.keys())
     other_keys = set(other_map.keys())
