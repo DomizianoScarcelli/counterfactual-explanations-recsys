@@ -32,19 +32,32 @@ def sequences(interactions) -> Tensor:
     return sequences
 
 class TestPredictFromSequence:
-    def test_batched_full_sort_predict(self, model: ExtendedBERT4Rec, sequences: Tensor):
+    def test_BatchPred_IsEqualToStackedSinglePreds(self, model: ExtendedBERT4Rec, sequences: Tensor):
         """
         Tests if the predictions on the batch sequences gives the same result
         as getting one prediction at the time.
         """
         batch_preds = model(sequences)
-
         for i, seq in enumerate(tqdm(sequences, "Batched full sort predict test...")):
             pred = model(seq.unsqueeze(0)).squeeze()
             label = pred.argmax(-1).item()
             batch_label = batch_preds[i].argmax(-1).item()
             assert label == batch_label, f"Labels are different! {label} != {batch_label}"
-            # assert torch.all(pred == batch_preds[i])
+            assert torch.all(pred == batch_preds[i])
+
+    def test_BatchPred_AreAllEqual_WhenSequenceIsTheSame(self, model: ExtendedBERT4Rec, sequences: Tensor):
+        """
+        Test if the batch prediction produces a tensor with the same label when
+        the input tensor to the model consists of the same tensor repeated N
+        times.
+        """
+        seq = sequences[0]
+        batch_size = sequences.size(0)
+        print("Batch size:", batch_size)
+        batch = seq.unsqueeze(0).repeat(batch_size, 1)
+        preds = model(batch)
+        label_set = {x.argmax(-1).item() for x in preds}
+        assert len(label_set) == 1, f"Label for the same sequence are not equal! Uniques labels are: {label_set}"
 
 class TestModelDeterminism:
     def test_model_determinism(self, model: ExtendedBERT4Rec, sequences):
