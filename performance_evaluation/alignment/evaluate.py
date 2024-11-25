@@ -25,7 +25,7 @@ def evaluate_trace_disalignment(range_i: Tuple[int, Optional[int]],
 
     for run_log in run_logs:
         # TODO: you can make Run a SkippableGenerator, which skips when the source sequence, split and config combination already exists in the log
-        log = log_run(prev_df=log, log=run_log, save_path=save_path)  
+        log = log_run(prev_df=log, log=run_log, save_path=save_path, primary_key=["source", "split"])  
 
 def main(mode: str = "evaluate", 
          use_cache: bool = True, 

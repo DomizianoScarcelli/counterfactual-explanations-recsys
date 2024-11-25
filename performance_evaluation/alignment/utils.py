@@ -80,24 +80,24 @@ def log_run(prev_df: DataFrame,
     configs = {
             "determinism": [DETERMINISM],
             "model": [MODEL],
-            "datset": [DATASET],
+            "dataset": [DATASET],
             "generations": [GENERATIONS],
             "halloffame_ratio": [HALLOFFAME_RATIO],
-            "pallowed_mutations": [tuple(ALLOWED_MUTATIONS)],
+            "allowed_mutations": [tuple(ALLOWED_MUTATIONS)],
             "timestamp": [TIMESTAMP]}
 
     # timestamp = {"timestamp": [time.strftime("%a, %d %b %Y %H:%M:%S")]}
     # data = {**timestamp, **data}
     if add_config:
         data = {**data, **configs}
-    
+        primary_key += list(configs.keys())
+     
     new_df = pd.DataFrame(data)
     # Check for duplicates based on primary_key
     if not prev_df.empty:
         # find records in `new_df` that are not already in `prev_df` based on primary_key
         combined = pd.merge(new_df, prev_df, on=primary_key, how='left', indicator=True)
         new_records = combined[combined['_merge'] == 'left_only']
-        print(f"new_records:", new_records)
         if not new_records.empty:
             new_df = new_records[[col for col in combined.columns if not col.endswith("_y")]].copy()
             # Rename columns to remove `_x` suffix
