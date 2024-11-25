@@ -50,6 +50,29 @@ def preprocess_interaction(raw_interaction: Interaction, oracle: Optional[Sequen
     source_sequence = trim(source_sequence.squeeze(0)).tolist()
     return source_sequence, source_gt
 
+
+def pk_exists(df: pd.DataFrame, primary_key: List[str], consider_config: bool = True) -> bool:
+    """
+    Returns True if a record with the same primary key exists in the dataframe.
+
+    Args:
+        df: the pandas DataFrame on which to look for the record.
+        primary_key: the list of strings that are the primary key.
+        consider_config: True if the config keys have to be included in the primary key.
+
+    Returns:
+        True if a record with the same primary key exists, otherwise False.
+    """
+    if df.empty:
+        return False
+
+    if consider_config:
+        config_keys = ["determinism", "model", "dataset", "generations",
+                       "pop_size", "halloffame_ratio", "allowed_mutations"]
+        primary_key = primary_key + config_keys
+    
+    return df.duplicated(subset=primary_key).any()
+
 def log_run(prev_df: DataFrame,
             log: Dict,
             save_path: str,
@@ -82,6 +105,7 @@ def log_run(prev_df: DataFrame,
             "model": [MODEL],
             "dataset": [DATASET],
             "generations": [GENERATIONS],
+            "pop_size": [POP_SIZE],
             "halloffame_ratio": [HALLOFFAME_RATIO],
             "allowed_mutations": [tuple(ALLOWED_MUTATIONS)],
             "timestamp": [TIMESTAMP]}
@@ -91,6 +115,7 @@ def log_run(prev_df: DataFrame,
     if add_config:
         data = {**data, **configs}
         primary_key += list(configs.keys())
+        primary_key.remove("timestamp")
      
     new_df = pd.DataFrame(data)
     # Check for duplicates based on primary_key
@@ -108,9 +133,7 @@ def log_run(prev_df: DataFrame,
 
 
     prev_df = pd.concat([prev_df, new_df], ignore_index=True).drop_duplicates()
-
     prev_df.to_csv(save_path, index=False)
-    
     return prev_df
 
 

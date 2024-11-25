@@ -36,6 +36,14 @@ class SkippableGenerator(ABC):
         self.index += 1
         pass
 
+    def peek(self) -> Any:
+        """
+        Returns the next generation without incrementing the index
+        """
+        result = next(self)
+        self.index -= 1
+        return result
+
     @abstractmethod
     def next(self) -> Any:
         """

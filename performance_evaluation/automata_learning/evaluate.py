@@ -13,7 +13,7 @@ from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import os
 from torch import Tensor
 from tqdm import tqdm
-from performance_evaluation.alignment.utils import preprocess_interaction, log_run
+from performance_evaluation.alignment.utils import preprocess_interaction, log_run, pk_exists
 
 from automata_learning.learning import learning_pipeline
 from automata_learning.utils import run_automata
@@ -26,7 +26,7 @@ from performance_evaluation.evaluation_utils import (compute_metrics,
                                                      print_confusion_matrix)
 from type_hints import GoodBadDataset
 from utils import set_seed
-from utils_classes.generators import DatasetGenerator, SkippableGenerator
+from utils_classes.generators import DatasetGenerator
 import warnings
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -72,56 +72,66 @@ def evaluate(dfa: Dfa, test_dataset: GoodBadDataset):
             fp += 1
     return tp, fp, tn, fn
 
-def evaluate_all(datasets: SkippableGenerator, 
+def evaluate_all(datasets: DatasetGenerator, 
                  oracle: SequentialRecommender,
                  end_i: int=30):
     prev_df = pd.DataFrame({})
     save_path = os.path.join("results", "automata_learning_eval.csv")
+
+    primary_key = ["source_sequence"]
     if os.path.exists(save_path):
         prev_df = pd.read_csv(save_path)
+    
+    pbar = tqdm(desc="Automata Learning performance evaluation...", leave=False, total=end_i)
+    i=0
+    while i < end_i:
+        pbar.update(1)
+        next_sequence = preprocess_interaction(datasets.interactions.peek())
+        new_row = pd.DataFrame({"source_sequence": [",".join([str(c) for c in next_sequence])]})
+        temp_df = pd.concat([prev_df, new_row], ignore_index=True)
+        if pk_exists(df=temp_df, primary_key=primary_key, consider_config=True):
+            print(f"[{i}] Skipping source sequence {next_sequence} since it still exists in the log with the same config")
+            i += 1
+            datasets.skip()
+            continue
+        else:
+            dataset, interaction = next(datasets)
+            source_sequence = preprocess_interaction(interaction)
+            pbar.set_postfix_str(f"On sequence: {",".join([str(c) for c in next_sequence])}")
+            assert isinstance(source_sequence, list) and (all(isinstance(x, Tensor) for x in source_sequence) or all(isinstance(x, int) for x in source_sequence))
+            dfa = learning_pipeline(source_sequence, dataset)
+            test_dataset = generate_test_dataset(interaction, oracle, dfa)
 
-    for i, (dataset, interaction) in enumerate(tqdm(datasets, desc="Automata Learning performance evaluation...")):
-        if i == end_i:
-            print(f"Evaluated {end_i}, exiting...")
-            break
-        
-        source_sequence = preprocess_interaction(interaction)
-        assert isinstance(source_sequence, list) and (all(isinstance(x, Tensor) for x in source_sequence) or all(isinstance(x, int) for x in source_sequence))
-        print(f"source_sequence is: ", source_sequence)
-        dfa = learning_pipeline(source_sequence, dataset)
-        test_dataset = generate_test_dataset(interaction, oracle, dfa)
+            # Remove from test the examples that come from test
+            test_dataset = (dataset_difference(test_dataset[0], dataset[0]),
+                            dataset_difference(test_dataset[1], dataset[1]))
 
-        print(f"[DEBUG] Test dataset length: {len(test_dataset[0]) + len(test_dataset[1])}")
-        # Remove from test the examples that come from test
-        test_dataset = (dataset_difference(test_dataset[0], dataset[0]),
-                        dataset_difference(test_dataset[1], dataset[1]))
-        print(f"[DEBUG] Test dataset length: {len(test_dataset[0]) + len(test_dataset[1])}")
-
-        tp, fp, tn, fn = evaluate(dfa, test_dataset)
-        precision, accuracy, recall = compute_metrics(tp=tp, fp=fp, tn=tn, fn=fn)
-        print("----------------------------------------")
-        print(f"[{i}] Precision: {precision}")
-        print(f"[{i}] Accuracy: {accuracy}")
-        print(f"[{i}] Recall: {recall}")
-        print_confusion_matrix(tp=tp, fp=fp, tn=tn, fn=fn)
-        print("----------------------------------------")
-        train_dataset_len=len(dataset[0]), len(dataset[1])
-        test_dataset_len=len(test_dataset[0]), len(test_dataset[1])
-        
-        log = {"tp": tp,
-            "fp": fp,
-            "tn": tn,
-            "fn": fn,
-            "precision": precision*100,
-            "accuracy": accuracy*100,
-            "recall": recall*199,
-            "train_dataset_len": train_dataset_len,
-            "test_dataset_len": test_dataset_len,
-            "source_sequence_len": len(source_sequence),
-            "source_sequence": ",".join([str(c) for c in source_sequence])}
+            tp, fp, tn, fn = evaluate(dfa, test_dataset)
+            precision, accuracy, recall = compute_metrics(tp=tp, fp=fp, tn=tn, fn=fn)
+            print("----------------------------------------")
+            print(f"[{i}] Precision: {precision}")
+            print(f"[{i}] Accuracy: {accuracy}")
+            print(f"[{i}] Recall: {recall}")
+            print_confusion_matrix(tp=tp, fp=fp, tn=tn, fn=fn)
+            print("----------------------------------------")
+            train_dataset_len=len(dataset[0]), len(dataset[1])
+            test_dataset_len=len(test_dataset[0]), len(test_dataset[1])
+            
+            log = {
+                    "tp": tp,
+                    "fp": fp,
+                    "tn": tn,
+                    "fn": fn,
+                    "precision": round(precision * 100, 2),
+                    "accuracy": round(accuracy * 100, 2),
+                    "recall": round(recall * 100, 2),
+                    "train_dataset_len": train_dataset_len,
+                    "test_dataset_len": test_dataset_len,
+                    "source_sequence_len": len(source_sequence),
+                    "source_sequence": ",".join([str(c) for c in source_sequence])}
 
 
-        log_run(log=log, prev_df=prev_df, save_path=save_path)
+            log_run(log=log, prev_df=prev_df, save_path=save_path, primary_key=["source_sequence"])
 
 def main(use_cache: bool = False):
     set_seed()

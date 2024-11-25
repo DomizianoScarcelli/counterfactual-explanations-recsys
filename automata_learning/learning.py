@@ -3,11 +3,10 @@ from typing import List, Tuple, Union
 
 from aalpy.automata.Dfa import Dfa, DfaState
 from aalpy.learning_algs import run_RPNI
-from aalpy.utils.HelperFunctions import make_input_complete
 from torch import Tensor
 
 from alignment.alignment import augment_constraint_automata
-from automata_learning.utils import load_automata, save_automata
+from automata_learning.utils import load_automata
 from genetic.dataset.utils import load_dataset
 from type_hints import GoodBadDataset
 
@@ -97,11 +96,12 @@ def generate_single_accepting_sequence_dfa(sequence):
 
 def learning_pipeline(source: List[Tensor] | List[int], dataset: GoodBadDataset) -> Dfa:
     if isinstance(source[0], Tensor):
-        source = [a.item() for a in source] #type: ignore
+        source = [c.item() for c in source] #type: ignore
+    
 
     assert isinstance(source[0], int)
     a_dfa = generate_automata_from_dataset(dataset, load_if_exists=False)
-    a_dfa_aug = augment_constraint_automata(a_dfa, source)
+    a_dfa_aug = augment_constraint_automata(a_dfa, source) #type: ignore
     return a_dfa_aug
 
 
