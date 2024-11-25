@@ -121,15 +121,38 @@ def metric_mean(df: pd.DataFrame, metric_name: str) -> Union[float, Dict[str, in
 def get_log_stats(log_path: str, 
                   group_by: List[str], 
                   metrics: List[str], 
+                  filter: Optional[Dict[str, Any]] = None,
                   save_path: Optional[str]=None) -> List[Dict[str, Any]]:
-    
+    """
+    Given a path where a log (pandas Datframe) is generated, returns a list of
+    dictionaries containing the statistics. For each group (defined by the 
+    fields in group by) a dictionary of the metrics (defined in the `metrics` 
+    list of fields) is computed. If `save_path` is not None, the stats are
+    saved to the disk as json.
+
+    Args:
+        log_path: [TODO:description]
+        group_by: [TODO:description]
+        metrics: [TODO:description]
+        filter: A dictionary that maps strings (fields names) to values. The
+        stat will be taken only for the groups which field is equal to the
+        defined value. Note that the value has to be compatible with the one of
+        the field. Only one value can be inserted into the filter. Example:
+        {"determinsim": "true"} or {"split": "(None, 1, None)"}
+        save_path: [TODO:description]
+
+    Returns:
+        [TODO:description]
+    """
     df = pd.read_csv(log_path)
     results = []
     for fields, group in df.groupby(group_by):
         result = {field_name: str(fields[i]) for i, field_name in enumerate(group_by)} #type: ignore
+        if filter and not all(result[filter_key] == filter_value for filter_key, filter_value in filter.items()):
+            continue
         averages = {"rows": group.shape[0]} 
         for metric in metrics:
-            averages[metric] = metric_mean(df, metric)
+            averages[metric] = metric_mean(group, metric)
         results.append({**result, **averages})
 
     if save_path:

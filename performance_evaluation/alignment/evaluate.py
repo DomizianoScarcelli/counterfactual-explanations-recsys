@@ -1,6 +1,6 @@
 import json
 import os
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Any, Dict
 
 import fire
 import pandas as pd
@@ -43,6 +43,7 @@ def main(
         log_path: Optional[str] = None,
         stats_save_path: Optional[str] = None,
         splits: Optional[List[int]] = None,
+        stat_filter: Optional[Dict[str, Any]]=None,
         eval_save_path: str = "results/evaluate.csv"):
     set_seed()
 
@@ -62,9 +63,9 @@ def main(
             raise FileNotFoundError(f"File {log_path} does not exists")
 
         stats_metrics = ["status", "dataset_time", "align_time", "automata_learning_time"]
-        group_by = list(ConfigParams.configs_dict().keys())
+        group_by = list(ConfigParams.configs_dict().keys()) + ["split"]
         group_by.remove("timestamp")
-        stats = get_log_stats(log_path=log_path, save_path=stats_save_path, group_by=group_by, metrics=stats_metrics)
+        stats = get_log_stats(log_path=log_path, save_path=stats_save_path, group_by=group_by, metrics=stats_metrics, filter=stat_filter)
         print(json.dumps(stats, indent=2))
 
     else:
