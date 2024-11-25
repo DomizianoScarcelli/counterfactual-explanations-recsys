@@ -1,6 +1,8 @@
-import toml
 import time
 from typing import Optional
+
+import toml
+
 from type_hints import RecDataset, RecModel
 
 default_config_path = "configs/config.toml"

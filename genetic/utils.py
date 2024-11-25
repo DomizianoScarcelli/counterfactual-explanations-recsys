@@ -1,9 +1,9 @@
 import random
 from enum import Enum
-import torch
 
 import _pickle as cPickle
 import Levenshtein
+import torch
 import torch.nn.functional as F
 from torch import Tensor
 

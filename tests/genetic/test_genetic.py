@@ -24,7 +24,7 @@ from genetic.utils import (NumItems, clone, cosine_distance, edit_distance,
                            self_indicator)
 from models.config_utils import generate_model, get_config
 from models.model_funcs import model_predict
-from models.utils import pad, trim, pad_batch
+from models.utils import pad, pad_batch, trim
 from type_hints import Dataset
 from utils import set_seed
 from utils_classes.generators import SequenceGenerator

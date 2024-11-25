@@ -1,5 +1,7 @@
 import os
 from statistics import mean
+from typing import Optional
+
 import fire
 import pandas as pd
 import torch
@@ -90,7 +92,11 @@ def log_run(position: int, avg: float, num_seqs: int, save_path: str):
     df = pd.concat([df, new_df], ignore_index=True)
     df.to_csv(save_path, index=False)
 
-def main():
+def main(config_path: Optional[str]=None, log_path: str="results/model_sensitivity.csv"):
+    if config_path:
+        ConfigParams.reload(config_path)
+        ConfigParams.fix()
+    print(ConfigParams.configs_dict())
     set_seed()
     config = get_config(dataset=ConfigParams.DATASET, model=ConfigParams.MODEL)
     sequences = SequenceGenerator(config)
@@ -98,7 +104,7 @@ def main():
     # both ends included
     start_i, end_i = 49, 0
     for i in tqdm(range(start_i, end_i-1, -1), "Testing model sensitivity on all positions"):
-        model_sensitivity(model=model, sequences=sequences, position=i)
+        model_sensitivity(model=model, sequences=sequences, position=i, log_path=log_path)
 
 if __name__ == "__main__":
     fire.Fire(main)

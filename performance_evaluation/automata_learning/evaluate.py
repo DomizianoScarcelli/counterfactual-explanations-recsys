@@ -6,31 +6,33 @@ usable characters to the automa's alphabet, and compute the evaluation metrics
 by computing true/false positive/negatives on the good and bad points.
 """
 
-import fire
 import json
-import toml
-import pandas as pd
-from config import ConfigParams
+import warnings
 from typing import Optional
+
+import fire
+import pandas as pd
+import toml
 from aalpy.automata.Dfa import Dfa
 from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import os
 from torch import Tensor
 from tqdm import tqdm
-from performance_evaluation.alignment.utils import preprocess_interaction, log_run, pk_exists
 
 from automata_learning.learning import learning_pipeline
 from automata_learning.utils import run_automata
+from config import ConfigParams
 from genetic.dataset.generate import generate
 from genetic.dataset.utils import dataset_difference
 from models.config_utils import generate_model, get_config
 from models.utils import trim
+from performance_evaluation.alignment.utils import (log_run, pk_exists,
+                                                    preprocess_interaction)
 from performance_evaluation.evaluation_utils import (compute_metrics,
                                                      print_confusion_matrix)
 from type_hints import GoodBadDataset
 from utils import set_seed
 from utils_classes.generators import DatasetGenerator
-import warnings
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=RuntimeWarning)

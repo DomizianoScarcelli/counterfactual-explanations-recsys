@@ -1,17 +1,17 @@
-import warnings
-from typing import List, Optional, Tuple, Generator
 import json
-import toml
+import warnings
+from typing import Generator, List, Optional, Tuple
 
 import fire
+import toml
 
+from alignment.actions import print_action
 from alignment.alignment import trace_disalignment
 from alignment.utils import postprocess_alignment
 from automata_learning.learning import learning_pipeline
 from config import ConfigParams
 from exceptions import (CounterfactualNotFound, DfaNotAccepting,
                         DfaNotRejecting, NoTargetStatesError)
-from alignment.actions import print_action
 from models.config_utils import generate_model, get_config
 from performance_evaluation.alignment.utils import preprocess_interaction
 from type_hints import Dataset, RecDataset, RecModel, SplitTuple

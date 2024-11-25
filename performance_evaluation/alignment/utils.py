@@ -1,5 +1,6 @@
-from typing import List, Optional, Tuple, Dict, Any, Union
 import json
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import pandas as pd
 from pandas import DataFrame
 from recbole.model.abstract_recommender import SequentialRecommender

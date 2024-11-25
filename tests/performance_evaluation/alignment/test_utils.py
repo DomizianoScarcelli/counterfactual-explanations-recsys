@@ -1,8 +1,10 @@
-import pandas as pd
 from tempfile import NamedTemporaryFile
-from performance_evaluation.alignment.utils import log_run, pk_exists, metric_mean
+
+import pandas as pd
 
 from config import ConfigParams
+from performance_evaluation.alignment.utils import (log_run, metric_mean,
+                                                    pk_exists)
 
 configs = ConfigParams.configs_dict()
 

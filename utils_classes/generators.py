@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import os
-from typing import List, Optional
+import time
 from abc import ABC, abstractmethod
-from typing import Any, Tuple
+from typing import Any, List, Optional, Tuple
 
 from recbole.config import Config
 from recbole.trainer import Interaction
@@ -15,7 +15,6 @@ from genetic.dataset.utils import (get_dataloaders,
                                    save_dataset)
 from models.config_utils import generate_model
 from type_hints import GoodBadDataset
-import time
 
 
 class SkippableGenerator(ABC):

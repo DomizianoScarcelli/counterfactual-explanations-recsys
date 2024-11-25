@@ -1,11 +1,13 @@
-import os
-from typing import Optional, List, Tuple
 import json
+import os
+from typing import List, Optional, Tuple
+
 import fire
 import pandas as pd
 from pandas import DataFrame
+
 from config import ConfigParams
-from performance_evaluation.alignment.utils import log_run, get_log_stats
+from performance_evaluation.alignment.utils import get_log_stats, log_run
 from run import run
 from utils import set_seed
 
