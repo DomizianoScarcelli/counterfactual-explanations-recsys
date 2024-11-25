@@ -137,7 +137,8 @@ def evaluate_all(datasets: DatasetGenerator,
 
 def main(use_cache: bool = False, config_path: Optional[str]=None):
     set_seed()
-    ConfigParams(config_path)
+    ConfigParams.reload(config_path)
+    ConfigParams.fix()
     config = get_config(dataset=ConfigParams().DATASET, model=ConfigParams().MODEL)
     oracle: SequentialRecommender = generate_model(config)
     datasets = DatasetGenerator(config=config, use_cache=use_cache, return_interaction=True)

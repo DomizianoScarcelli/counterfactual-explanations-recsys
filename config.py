@@ -9,6 +9,7 @@ class ConfigParams:
     _instance = None  # Singleton instance
     _config_loaded = False  # Flag to ensure config is loaded only once
     _config_path = default_config_path  # Default path
+    _reloadable = True  # Flag to track whether the path can be reloaded
 
     def __new__(cls, config_path: Optional[str] = None):
         """Ensure only one instance of ConfigParams is created."""
@@ -17,13 +18,13 @@ class ConfigParams:
             if config_path:
                 cls._config_path = config_path  # Update path if provided
             cls._parse_config()
+            print(f"Default config loaded from {cls._config_path}")
         return cls._instance
 
     @classmethod
     def _parse_config(cls):
         """Load configuration and set class attributes."""
         if not cls._config_loaded:
-            print(f"Config generated from {cls._config_path}")
             config = toml.load(cls._config_path)
 
             # Set parameters directly as class attributes
@@ -50,12 +51,26 @@ class ConfigParams:
             raise AttributeError(f"'{cls.__name__}' object has no attribute '{name}'")
 
     @classmethod
-    def reload(cls, path: str):
+    def reload(cls, path: Optional[str]):
         """Allow setting a custom config file path."""
-        cls._config_path = path
+        if not cls._reloadable:
+            raise ValueError("Config path is no longer reloadable because .fix() has been called.")
+        
+        cls._config_path = path if path else default_config_path
         cls._config_loaded = False  # Reset loaded flag to reload the config
         cls._parse_config()
+        print(f"Config reloaded from {cls._config_path}")
+
+    @classmethod
+    def fix(cls):
+        """Make the config path non-reloadable."""
+        cls._reloadable = False
+
+    @classmethod
+    @property
+    def reloadable(cls):
+        """Check if the config path is reloadable."""
+        return cls._reloadable
 
 # Load default configs
 ConfigParams()
-

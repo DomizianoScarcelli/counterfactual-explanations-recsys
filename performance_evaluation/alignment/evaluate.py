@@ -4,6 +4,7 @@ from typing import Optional, List, Tuple
 import fire
 import pandas as pd
 from pandas import DataFrame
+from config import ConfigParams
 from performance_evaluation.alignment.utils import log_run, evaluate_stats
 from run import run
 from utils import set_seed
@@ -32,14 +33,20 @@ def evaluate_trace_disalignment(range_i: Tuple[int, Optional[int]],
                       save_path=save_path,
                       primary_key=["source", "split"])  
 
-def main(mode: str = "evaluate", 
-         use_cache: bool = True, 
-         range_i: Tuple[int, Optional[int]] = (0, None),
-         evaluation_log: Optional[str] = None,
-         stats_output: Optional[str] = None,
-         splits: Optional[List[int]] = None,
-         save_path: str = "results/evaluate.csv"):
+def main(
+        config_path: Optional[str]=None,
+        mode: str = "evaluate", 
+        use_cache: bool = True, 
+        range_i: Tuple[int, Optional[int]] = (0, None),
+        evaluation_log: Optional[str] = None,
+        stats_output: Optional[str] = None,
+        splits: Optional[List[int]] = None,
+        save_path: str = "results/evaluate.csv"):
     set_seed()
+
+    ConfigParams.reload(config_path)
+    ConfigParams.fix()
+
     if mode == "evaluate":
         evaluate_trace_disalignment(
                 range_i=range_i,

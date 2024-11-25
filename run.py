@@ -71,7 +71,7 @@ CONFIG
 ---Inputs---
 {json.dumps(params, indent=2)}
 ---Config.toml---
-{json.dumps(toml.load("configs/config.toml"), indent=2)}
+{json.dumps(toml.load(ConfigParams._config_path), indent=2)}
 -----------------------
 """)
     
@@ -169,6 +169,21 @@ CONFIG
         
        
         i += 1
+
+
+def main(
+        config_path: Optional[str]=None,
+        dataset_type:RecDataset=ConfigParams.DATASET,
+        model_type:RecModel=ConfigParams.MODEL,
+        start_i: int = 0,
+        end_i: Optional[int]=None,
+        splits: Optional[List[int]] = None, #type: ignore
+        use_cache: bool=True):
+    
+    ConfigParams.reload(config_path) 
+    ConfigParams.fix()
+    for _ in run(dataset_type, model_type, start_i, end_i, splits, use_cache):
+        pass
         
 if __name__ == '__main__':
-  fire.Fire(run)
+  fire.Fire(main)
