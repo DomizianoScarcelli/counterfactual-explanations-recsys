@@ -1,11 +1,11 @@
 import os
 from typing import Optional, List, Tuple
-
+import json
 import fire
 import pandas as pd
 from pandas import DataFrame
 from config import ConfigParams
-from performance_evaluation.alignment.utils import log_run, evaluate_stats
+from performance_evaluation.alignment.utils import log_run, get_log_stats
 from run import run
 from utils import set_seed
 
@@ -38,10 +38,10 @@ def main(
         mode: str = "evaluate", 
         use_cache: bool = True, 
         range_i: Tuple[int, Optional[int]] = (0, None),
-        evaluation_log: Optional[str] = None,
-        stats_output: Optional[str] = None,
+        log_path: Optional[str] = None,
+        stats_save_path: Optional[str] = None,
         splits: Optional[List[int]] = None,
-        save_path: str = "results/evaluate.csv"):
+        eval_save_path: str = "results/evaluate.csv"):
     set_seed()
 
     ConfigParams.reload(config_path)
@@ -52,15 +52,18 @@ def main(
                 range_i=range_i,
                 splits=splits, 
                 use_cache=use_cache,
-                save_path=save_path)
+                save_path=eval_save_path)
     elif mode == "stats":
-        if not evaluation_log:
-            raise ValueError("Evaluation log path needed for stats")
-        if not os.path.exists(evaluation_log):
-            raise FileNotFoundError(f"File {evaluation_log} does not exists")
-        if not stats_output:
-            raise ValueError("Evaluation stats output needed")
-        evaluate_stats(evaluation_log, stats_output)
+        if not log_path:
+            raise ValueError(f"Log path needed for stats")
+        if not os.path.exists(log_path):
+            raise FileNotFoundError(f"File {log_path} does not exists")
+
+        stats_metrics = ["status", "dataset_time", "align_time", "automata_learning_time"]
+        group_by = list(ConfigParams.configs_dict().keys())
+        group_by.remove("timestamp")
+        stats = get_log_stats(log_path=log_path, save_path=stats_save_path, group_by=group_by, metrics=stats_metrics)
+        print(json.dumps(stats, indent=2))
 
     else:
         raise ValueError(f"Mode {mode} not supported, choose between [evaluate, stats]")

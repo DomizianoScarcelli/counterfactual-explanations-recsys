@@ -1,17 +1,10 @@
 import pandas as pd
 from tempfile import NamedTemporaryFile
-from performance_evaluation.alignment.utils import log_run, pk_exists
+from performance_evaluation.alignment.utils import log_run, pk_exists, metric_mean
 
 from config import ConfigParams
 
-configs = {
-        "determinism": [ConfigParams.DETERMINISM],
-        "model": [ConfigParams.MODEL],
-        "dataset": [ConfigParams.DATASET],
-        "generations": [ConfigParams.GENERATIONS],
-        "halloffame_ratio": [ConfigParams.HALLOFFAME_RATIO],
-        "allowed_mutations": [tuple(ConfigParams.ALLOWED_MUTATIONS)],
-        "timestamp": [ConfigParams.TIMESTAMP]}
+configs = ConfigParams.configs_dict()
 
 class TestLogRun:
     def test_LogRun_DoesNotAddRecord_WhenPrimaryKeyAlreadyExists(self):
@@ -250,4 +243,17 @@ class TestPkExists:
         assert not pk_exists(prev_df, primary_key.copy(), consider_config=False), "pk_exists should return False without considering config when the composite key does not exist."
         assert not pk_exists(prev_df_with_config, primary_key, consider_config=True), "pk_exists should return False considering config when the composite key does not exist."
         print("Test passed: pk_exists returns False when the composite key does not exist, for both consider_config=True and False.")
+
+class TestGetLogStats:
+    def test_MetricMean_ReturnsCorrectResult_WhenDataFrameIsMock(self):
+        df = pd.DataFrame({
+            'metric_numeric': [1.2, 2.3, 3.1],
+            'metric_string': ['a', 'b', 'a'],
+        })
+        numeric_mean = round(metric_mean(df, 'metric_numeric'), 1)
+        string_counts = metric_mean(df, 'metric_string') 
+
+        assert numeric_mean == 2.2
+        assert string_counts == {'a': 2, 'b': 1}
+
 

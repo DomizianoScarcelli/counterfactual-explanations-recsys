@@ -93,6 +93,7 @@ def evaluation_step(sequence, model: SequentialRecommender):
 
     return all_results
 
+
 def get_stats(results: Dict):
     """
     """

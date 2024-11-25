@@ -56,7 +56,10 @@ class ConfigParams:
         if not cls._reloadable:
             raise ValueError("Config path is no longer reloadable because .fix() has been called.")
         
-        cls._config_path = path if path else default_config_path
+        new_path = path if path else default_config_path
+        if new_path == cls._config_path:
+            return
+        cls._config_path = new_path
         cls._config_loaded = False  # Reset loaded flag to reload the config
         cls._parse_config()
         print(f"Config reloaded from {cls._config_path}")
@@ -67,10 +70,16 @@ class ConfigParams:
         cls._reloadable = False
 
     @classmethod
-    @property
-    def reloadable(cls):
-        """Check if the config path is reloadable."""
-        return cls._reloadable
+    def configs_dict(cls):
+        return {
+                "determinism": [ConfigParams.DETERMINISM],
+                "model": [ConfigParams.MODEL.value],
+                "dataset": [ConfigParams.DATASET.value],
+                "pop_size": [ConfigParams.POP_SIZE],
+                "generations": [ConfigParams.GENERATIONS],
+                "halloffame_ratio": [ConfigParams.HALLOFFAME_RATIO],
+                "allowed_mutations": [tuple(ConfigParams.ALLOWED_MUTATIONS)],
+                "timestamp": [ConfigParams.TIMESTAMP]}
 
 # Load default configs
 ConfigParams()

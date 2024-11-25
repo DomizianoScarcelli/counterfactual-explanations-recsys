@@ -1,5 +1,5 @@
-from typing import List, Optional, Tuple, Dict
-
+from typing import List, Optional, Tuple, Dict, Any, Union
+import json
 import pandas as pd
 from pandas import DataFrame
 from recbole.model.abstract_recommender import SequentialRecommender
@@ -9,33 +9,7 @@ from torch import Tensor
 from config import ConfigParams
 from genetic.dataset.utils import get_sequence_from_interaction
 from models.utils import trim
-from type_hints import SplitTuple
 
-
-def get_split(slen: int, split_type: str) -> Tuple[str, SplitTuple]:
-    mut_map = {f"{i}_mut": ((slen-i)/slen, i/slen, 0.0)  for i in range(1, slen)}
-    nth_mut_map = {f"{i}th_mut": ((slen-i-1)/slen, 1/slen, i/slen)  for i in range(1, slen)}
-    _map = {**mut_map, **nth_mut_map}
-    if split_type not in _map:
-        raise ValueError(f"Split type '{split_type}' not recognized")
-    return split_type, _map[split_type]
-
-def is_already_evaluated(log: DataFrame, sequence: List[int], splits_key: str) -> bool:
-    """ Returns True if the sequenece has already been evaluted with the same evaluation parameters.
-
-    Args:
-        log: The pandas.Dataframe that contains the evaluated sequences with the relative evaluation
-        sequence: The trimmed and flattened source sequence.
-
-    Returns:
-        True if the sequence is in the log with the same evaluation parameters, false oterwise.
-    """
-    return log.shape[0] != 0 and \
-        log[(log["original_trace"].apply(lambda x: x == sequence)) & 
-            (log["splits_key"] == splits_key) & 
-            (log["population_size"] == ConfigParams.POP_SIZE) &
-            (log["num_generations"] == ConfigParams.GENERATIONS) & 
-            (log["halloffame_ratio"] == ConfigParams.HALLOFFAME_RATIO)].shape[0] > 0
 
 def preprocess_interaction(raw_interaction: Interaction, oracle: Optional[SequentialRecommender]=None) -> List[Tensor] | Tuple[List[Tensor], int]:
     source_sequence = get_sequence_from_interaction(raw_interaction)
@@ -66,11 +40,11 @@ def pk_exists(df: pd.DataFrame, primary_key: List[str], consider_config: bool = 
         return False
 
     if consider_config:
-        config_keys = ["determinism", "model", "dataset", "generations",
-                       "pop_size", "halloffame_ratio", "allowed_mutations"]
+        config_keys = list(ConfigParams.configs_dict().keys())
+        config_keys.remove("timestamp")
         primary_key = primary_key + config_keys
     
-    return df.duplicated(subset=primary_key).any()
+    return df[primary_key].duplicated().any()
 
 def log_run(prev_df: DataFrame,
             log: Dict,
@@ -99,17 +73,8 @@ def log_run(prev_df: DataFrame,
     # Create a dictionary with input parameters as columns
     data = {key: [value] for key, value in log.items()}
     
-    configs = {
-            "determinism": [ConfigParams.DETERMINISM],
-            "model": [ConfigParams.MODEL],
-            "dataset": [ConfigParams.DATASET],
-            "generations": [ConfigParams.GENERATIONS],
-            "halloffame_ratio": [ConfigParams.HALLOFFAME_RATIO],
-            "allowed_mutations": [tuple(ConfigParams.ALLOWED_MUTATIONS)],
-            "timestamp": [ConfigParams.TIMESTAMP]}
+    configs = ConfigParams.configs_dict()
 
-    # timestamp = {"timestamp": [time.strftime("%a, %d %b %Y %H:%M:%S")]}
-    # data = {**timestamp, **data}
     if add_config:
         data = {**data, **configs}
         primary_key += list(configs.keys())
@@ -134,62 +99,42 @@ def log_run(prev_df: DataFrame,
     prev_df.to_csv(save_path, index=False)
     return prev_df
 
+def metric_mean(df: pd.DataFrame, metric_name: str) -> Union[float, Dict[str, int]]:
+    # Check if the column exists
+    if metric_name not in df.columns:
+        raise ValueError(f"Column '{metric_name}' not found in the DataFrame.")
+    column = df[metric_name]
 
-def evaluate_stats(log_path: str, stats_output: str) -> pd.DataFrame:
-    #TODO: modify it to work on the new log
-    """
-    Given a log path, it calculates and returns statistics from the evaluation log
-    as a DataFrame, with each row representing a unique combination of genetic parameters
-    (population_size, generations, halloffame_ratio) and splits_key.
-
-    Args:
-        log_path: The path of the log CSV to load.
-        stats_output: The path to save the output statistics CSV.
+    # If dtype is numeric, calculate the mean
+    if pd.api.types.is_numeric_dtype(column):
+        return float(column.mean())
     
-    Returns:
-        A pandas DataFrame containing evaluation statistics.
-    """
-    # Load the DataFrame from the CSV log
+    # If dtype is string, calculate the count of each unique value
+    elif pd.api.types.is_string_dtype(column):
+        return column.value_counts().to_dict()
+
+    else:
+        raise TypeError(f"Unsupported dtype for column '{metric_name}': {column.dtype}")
+
+
+def get_log_stats(log_path: str, 
+                  group_by: List[str], 
+                  metrics: List[str], 
+                  save_path: Optional[str]=None) -> List[Dict[str, Any]]:
+    
     df = pd.read_csv(log_path)
-
-    # Initialize a list to store results for DataFrame creation
     results = []
+    for fields, group in df.groupby(group_by):
+        result = {field_name: str(fields[i]) for i, field_name in enumerate(group_by)} #type: ignore
+        averages = {"rows": group.shape[0]} 
+        for metric in metrics:
+            averages[metric] = metric_mean(df, metric)
+        results.append({**result, **averages})
 
-    # Group by 'splits_key', 'population_size', 'num_generations', and 'halloffame_ratio' to get stats for each group
-    for (split_key, pop_size, generations, halloffame_ratio), group in df.groupby(
-            ["splits_key", "population_size", "num_generations", "halloffame_ratio"]):
-        
-        stats = {
-            "split_key": split_key,
-            "population_size": pop_size,
-            "num_generations": generations,
-            "halloffame_ratio": halloffame_ratio,
-            "total_runs": len(group),
-            "good_runs": len(group[group["status"] == "good"]),
-            "skipped_runs": len(group[group["status"] == "skipped"]),
-            "bad_runs_counterfactual_not_found": len(group[group["status"] == "bad"]),
-            "bad_runs_malformed_dfa": len(group[group["status"].isin(["DfaNotRejecting", "DfaNotAccepting"])]),
-            "bad_runs_other": len(group[group["status"] == "skipped"]),
-            "mean_time_dataset_generation": group.loc[group["status"] == "good", "time_dataset_generation"].mean(),
-            "mean_time_automata_learning": group.loc[group["status"] == "good", "time_automata_learning"].mean(),
-            "mean_time_alignment": group.loc[group["status"] == "good", "time_alignment"].mean(),
-            "mean_total_time": (
-                group.loc[group["status"] == "good", "time_dataset_generation"].mean() +
-                group.loc[group["status"] == "good", "time_automata_learning"].mean() +
-                group.loc[group["status"] == "good", "time_alignment"].mean()
-            ),
-            "min_cost": group.loc[group["status"] == "good", "cost"].min(),
-            "max_cost": group.loc[group["status"] == "good", "cost"].max(),
-            "mean_cost": group.loc[group["status"] == "good", "cost"].mean()
-        }
+    if save_path:
+        with open(save_path, "w") as f:
+            json.dump(results, f, indent=2)
+    return results
 
-        results.append(stats)
-
-    # Create a DataFrame from the results list
-    result_df = pd.DataFrame(results)
-
-    # Save the result to a CSV file
-    result_df.to_csv(stats_output, index=False)
-
-    return result_df
-
+if __name__ == "__main__":
+    print(get_log_stats("results/different_splits_run.csv", ["pop_size", "generations"], ["status", "dataset_time", "align_time"], "test"))

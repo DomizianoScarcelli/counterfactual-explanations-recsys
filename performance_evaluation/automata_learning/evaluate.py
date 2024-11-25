@@ -7,6 +7,8 @@ by computing true/false positive/negatives on the good and bad points.
 """
 
 import fire
+import json
+import toml
 import pandas as pd
 from config import ConfigParams
 from typing import Optional
@@ -75,22 +77,27 @@ def evaluate(dfa: Dfa, test_dataset: GoodBadDataset):
 
 def evaluate_all(datasets: DatasetGenerator, 
                  oracle: SequentialRecommender,
-                 end_i: int=30):
+                 end_i: int):
+
     prev_df = pd.DataFrame({})
     save_path = os.path.join("results", "automata_learning_eval.csv")
 
     primary_key = ["source_sequence"]
     if os.path.exists(save_path):
         prev_df = pd.read_csv(save_path)
+
+    assert not prev_df.duplicated().any()
     
     pbar = tqdm(desc="Automata Learning performance evaluation...", leave=False, total=end_i)
     i=0
     while i < end_i:
         pbar.update(1)
         next_sequence = preprocess_interaction(datasets.interactions.peek())
-        new_row = pd.DataFrame({"source_sequence": [",".join([str(c) for c in next_sequence])]})
+        next_sequence_str = ",".join([str(c) for c in next_sequence])
+        config_dict = ConfigParams.configs_dict()
+        new_row = pd.DataFrame({"source_sequence": [next_sequence_str], **config_dict})
         temp_df = pd.concat([prev_df, new_row], ignore_index=True)
-        if not prev_df.empty and pk_exists(df=temp_df, primary_key=primary_key, consider_config=True):
+        if pk_exists(df=temp_df, primary_key=primary_key.copy(), consider_config=True):
             #TODO: this doesn't  work
             print(f"[{i}] Skipping source sequence {next_sequence} since it still exists in the log with the same config")
             i += 1
@@ -134,15 +141,34 @@ def evaluate_all(datasets: DatasetGenerator,
 
 
             prev_df = log_run(log=log, prev_df=prev_df, save_path=save_path, primary_key=["source_sequence"])
+            i+=1
 
-def main(use_cache: bool = False, config_path: Optional[str]=None):
+def main(use_cache: bool = False, config_path: Optional[str]=None, end_i: int=30):
     set_seed()
     ConfigParams.reload(config_path)
     ConfigParams.fix()
     config = get_config(dataset=ConfigParams().DATASET, model=ConfigParams().MODEL)
     oracle: SequentialRecommender = generate_model(config)
     datasets = DatasetGenerator(config=config, use_cache=use_cache, return_interaction=True)
-    evaluate_all(datasets=datasets, oracle=oracle)
+
+    params = {
+            "parameters":
+            {
+                "use_cache": use_cache,
+                "end_i": end_i,
+                }}
+    print(f"""
+          -----------------------
+          CONFIG
+          -----------------------
+          ---Inputs---
+          {json.dumps(params, indent=2)}
+          ---Config.toml---
+          {json.dumps(toml.load(ConfigParams._config_path), indent=2)}
+          -----------------------
+          """)
+
+    evaluate_all(datasets=datasets, oracle=oracle, end_i=end_i)
 
 
 if __name__ == "__main__":
