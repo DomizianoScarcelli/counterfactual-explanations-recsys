@@ -1,0 +1,2 @@
+tp,fp,tn,fn,precision,accuracy,recall,train_dataset_len,test_dataset_len,source_sequence_len,source_sequence,determinism,model,dataset,generations,pop_size,halloffame_ratio,allowed_mutations,timestamp
+1672,468,619,33,78.13,82.06,98.06,"(1921, 1701)","(1705, 1087)",19,"154,799,1341,65,172,214,184,536,1463,598,274,1510,1034,207,540,412,2475,1616,244",True,RecModel.BERT4Rec,RecDataset.ML_1M,20,2048,0.2,"('replace', 'swap', 'add', 'shuffle', 'reverse', 'delete')","Mon, 25 Nov 2024 08:36:06"

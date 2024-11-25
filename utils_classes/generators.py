@@ -163,6 +163,9 @@ class DatasetGenerator(SkippableGenerator):
         self.interactions.reset()
         self.index = 0
 
+    def stats(self) -> Optional[Tuple[float, float]]:
+        pass
+
 
 class TimedGenerator:
     """

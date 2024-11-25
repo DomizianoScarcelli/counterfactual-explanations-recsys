@@ -89,7 +89,7 @@ def evaluate_all(datasets: DatasetGenerator,
         next_sequence = preprocess_interaction(datasets.interactions.peek())
         new_row = pd.DataFrame({"source_sequence": [",".join([str(c) for c in next_sequence])]})
         temp_df = pd.concat([prev_df, new_row], ignore_index=True)
-        if pk_exists(df=temp_df, primary_key=primary_key, consider_config=True):
+        if not prev_df.empty and pk_exists(df=temp_df, primary_key=primary_key, consider_config=True):
             print(f"[{i}] Skipping source sequence {next_sequence} since it still exists in the log with the same config")
             i += 1
             datasets.skip()
@@ -131,7 +131,7 @@ def evaluate_all(datasets: DatasetGenerator,
                     "source_sequence": ",".join([str(c) for c in source_sequence])}
 
 
-            log_run(log=log, prev_df=prev_df, save_path=save_path, primary_key=["source_sequence"])
+            prev_df = log_run(log=log, prev_df=prev_df, save_path=save_path, primary_key=["source_sequence"])
 
 def main(use_cache: bool = False):
     set_seed()

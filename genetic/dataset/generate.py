@@ -16,8 +16,9 @@ from type_hints import GoodBadDataset
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
 
-def generate( interaction: Union[Interaction, Tensor], model:
-             SequentialRecommender, alphabet: Optional[List[int]] = None) -> GoodBadDataset:
+def generate(interaction: Union[Interaction, Tensor], 
+             model: SequentialRecommender, 
+             alphabet: Optional[List[int]] = None) -> GoodBadDataset:
     """
     Generates the dataset of good and bad points from a sequence in the
     Interaction, using the model as a black box oracle. The dataset can be used

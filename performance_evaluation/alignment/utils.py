@@ -5,7 +5,6 @@ from pandas import DataFrame
 from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
 from torch import Tensor
-import time
 
 from config import GENERATIONS, HALLOFFAME_RATIO, POP_SIZE, DETERMINISM, MODEL, DATASET, ALLOWED_MUTATIONS, TIMESTAMP
 from genetic.dataset.utils import get_sequence_from_interaction

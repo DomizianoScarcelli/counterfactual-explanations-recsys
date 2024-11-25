@@ -48,11 +48,11 @@ def single_run(source_sequence: List[int],
     return aligned, cost, alignment
 
 def run(dataset_type:RecDataset=DATASET,
-         model_type:RecModel=MODEL,
-         start_i: int = 0,
-         end_i: Optional[int]=None,
-         splits: Optional[List[int]] = None, #type: ignore
-         use_cache: bool=True) -> Generator:
+        model_type:RecModel=MODEL,
+        start_i: int = 0,
+        end_i: Optional[int]=None,
+        splits: Optional[List[int]] = None, #type: ignore
+        use_cache: bool=True) -> Generator:
 
     params = {
             "parameters":
@@ -111,16 +111,13 @@ CONFIG
                "automata_learning_time": None, 
                "use_cache": use_cache}
     i=0
-    while True:
+    while i < end_i:
         # Execute only the loops where start_i <= i < end_i
         if i < start_i:
             print(f"Skipping i = {i}")
             datasets.skip()
             i += 1
             continue
-        if i >= end_i:
-            print(f"Generated {end_i}, exiting...")
-            break
         
         assert datasets.index == i, f"{datasets.index} != {i}"
         assert len(datasets.get_times()) == i, f"{len(datasets.get_times())} != {i}"
