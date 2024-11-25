@@ -2,16 +2,16 @@ import pandas as pd
 from tempfile import NamedTemporaryFile
 from performance_evaluation.alignment.utils import log_run, pk_exists
 
-from config import GENERATIONS, HALLOFFAME_RATIO, POP_SIZE, DETERMINISM, MODEL, DATASET, ALLOWED_MUTATIONS, TIMESTAMP
+from config import ConfigParams
 
 configs = {
-        "determinism": [DETERMINISM],
-        "model": [MODEL],
-        "dataset": [DATASET],
-        "generations": [GENERATIONS],
-        "halloffame_ratio": [HALLOFFAME_RATIO],
-        "allowed_mutations": [tuple(ALLOWED_MUTATIONS)],
-        "timestamp": [TIMESTAMP]}
+        "determinism": [ConfigParams.DETERMINISM],
+        "model": [ConfigParams.MODEL],
+        "dataset": [ConfigParams.DATASET],
+        "generations": [ConfigParams.GENERATIONS],
+        "halloffame_ratio": [ConfigParams.HALLOFFAME_RATIO],
+        "allowed_mutations": [tuple(ConfigParams.ALLOWED_MUTATIONS)],
+        "timestamp": [ConfigParams.TIMESTAMP]}
 
 class TestLogRun:
     def test_LogRun_DoesNotAddRecord_WhenPrimaryKeyAlreadyExists(self):

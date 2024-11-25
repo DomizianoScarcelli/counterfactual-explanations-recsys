@@ -6,7 +6,7 @@ import torch
 from recbole.model.abstract_recommender import SequentialRecommender
 from tqdm import tqdm
 
-from config import DATASET, MODEL
+from config import ConfigParams
 from constants import MAX_LENGTH
 from genetic.utils import NumItems
 from models.config_utils import generate_model, get_config
@@ -41,10 +41,10 @@ def model_sensitivity(sequences: SkippableGenerator, model: SequentialRecommende
         print(f"[DEBUG] skipping position {position}")
         return
 
-    if DATASET == RecDataset.ML_1M:
+    if ConfigParams.DATASET == RecDataset.ML_1M:
         alphabet = torch.tensor(list(range(NumItems.ML_1M.value)))
     else:
-        raise NotImplementedError(f"Dataset {DATASET} not supported yet!")
+        raise NotImplementedError(f"Dataset {ConfigParams.DATASET} not supported yet!")
     i = 0
     start_i, end_i = 0, 1000
     avg = set()
@@ -92,7 +92,7 @@ def log_run(position: int, avg: float, num_seqs: int, save_path: str):
 
 def main():
     set_seed()
-    config = get_config(dataset=DATASET, model=MODEL)
+    config = get_config(dataset=ConfigParams.DATASET, model=ConfigParams.MODEL)
     sequences = SequenceGenerator(config)
     model = generate_model(config)
     # both ends included

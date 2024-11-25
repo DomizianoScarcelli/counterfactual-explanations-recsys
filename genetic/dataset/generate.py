@@ -5,7 +5,7 @@ from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
 from torch import Tensor
 
-from config import ALLOWED_MUTATIONS, GENERATIONS, HALLOFFAME_RATIO, POP_SIZE
+from config import ConfigParams
 from genetic.dataset.utils import get_sequence_from_interaction
 from genetic.genetic import GeneticGenerationStrategy
 from genetic.mutations import parse_mutations
@@ -51,17 +51,17 @@ def generate(interaction: Union[Interaction, Tensor],
     sequence = sequence.squeeze(0)
     assert len(sequence.shape) == 1, f"Sequence dim must be 1: {
         sequence.shape}"
-    allowed_mutations = parse_mutations(ALLOWED_MUTATIONS)
+    allowed_mutations = parse_mutations(ConfigParams.ALLOWED_MUTATIONS)
     if alphabet is None:
         alphabet = list(range(NumItems.ML_1M.value))
     good_genetic_strategy = GeneticGenerationStrategy(
         input_seq=sequence,
         predictor=lambda x: model_predict(seq=x, model=model, prob=True),
         allowed_mutations=allowed_mutations,
-        pop_size=POP_SIZE,
+        pop_size=ConfigParams.POP_SIZE,
         good_examples=True,
-        generations=GENERATIONS,
-        halloffame_ratio=HALLOFFAME_RATIO,
+        generations=ConfigParams.GENERATIONS,
+        halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
         alphabet=alphabet
     )
     good_examples = good_genetic_strategy.generate()
@@ -70,10 +70,10 @@ def generate(interaction: Union[Interaction, Tensor],
         input_seq=sequence,
         predictor=lambda x: model_predict(seq=x, model=model, prob=True),
         allowed_mutations=allowed_mutations,
-        pop_size=POP_SIZE,
+        pop_size=ConfigParams.POP_SIZE,
         good_examples=False,
-        generations=GENERATIONS,
-        halloffame_ratio=HALLOFFAME_RATIO,
+        generations=ConfigParams.GENERATIONS,
+        halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
         alphabet=alphabet
     )
     bad_examples = bad_genetic_strategy.generate()

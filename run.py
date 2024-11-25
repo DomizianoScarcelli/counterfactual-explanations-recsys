@@ -8,7 +8,7 @@ import fire
 from alignment.alignment import trace_disalignment
 from alignment.utils import postprocess_alignment
 from automata_learning.learning import learning_pipeline
-from config import DATASET, MODEL
+from config import ConfigParams
 from exceptions import (CounterfactualNotFound, DfaNotAccepting,
                         DfaNotRejecting, NoTargetStatesError)
 from alignment.actions import print_action
@@ -47,8 +47,8 @@ def single_run(source_sequence: List[int],
     aligned = postprocess_alignment(aligned)
     return aligned, cost, alignment
 
-def run(dataset_type:RecDataset=DATASET,
-        model_type:RecModel=MODEL,
+def run(dataset_type:RecDataset=ConfigParams.DATASET,
+        model_type:RecModel=ConfigParams.MODEL,
         start_i: int = 0,
         end_i: Optional[int]=None,
         splits: Optional[List[int]] = None, #type: ignore

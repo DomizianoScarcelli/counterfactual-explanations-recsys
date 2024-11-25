@@ -6,7 +6,7 @@ from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
 from torch import Tensor
 
-from config import GENERATIONS, HALLOFFAME_RATIO, POP_SIZE, DETERMINISM, MODEL, DATASET, ALLOWED_MUTATIONS, TIMESTAMP
+from config import ConfigParams
 from genetic.dataset.utils import get_sequence_from_interaction
 from models.utils import trim
 from type_hints import SplitTuple
@@ -33,9 +33,9 @@ def is_already_evaluated(log: DataFrame, sequence: List[int], splits_key: str) -
     return log.shape[0] != 0 and \
         log[(log["original_trace"].apply(lambda x: x == sequence)) & 
             (log["splits_key"] == splits_key) & 
-            (log["population_size"] == POP_SIZE) &
-            (log["num_generations"] == GENERATIONS) & 
-            (log["halloffame_ratio"] == HALLOFFAME_RATIO)].shape[0] > 0
+            (log["population_size"] == ConfigParams.POP_SIZE) &
+            (log["num_generations"] == ConfigParams.GENERATIONS) & 
+            (log["halloffame_ratio"] == ConfigParams.HALLOFFAME_RATIO)].shape[0] > 0
 
 def preprocess_interaction(raw_interaction: Interaction, oracle: Optional[SequentialRecommender]=None) -> List[Tensor] | Tuple[List[Tensor], int]:
     source_sequence = get_sequence_from_interaction(raw_interaction)
@@ -100,14 +100,13 @@ def log_run(prev_df: DataFrame,
     data = {key: [value] for key, value in log.items()}
     
     configs = {
-            "determinism": [DETERMINISM],
-            "model": [MODEL],
-            "dataset": [DATASET],
-            "generations": [GENERATIONS],
-            "pop_size": [POP_SIZE],
-            "halloffame_ratio": [HALLOFFAME_RATIO],
-            "allowed_mutations": [tuple(ALLOWED_MUTATIONS)],
-            "timestamp": [TIMESTAMP]}
+            "determinism": [ConfigParams.DETERMINISM],
+            "model": [ConfigParams.MODEL],
+            "dataset": [ConfigParams.DATASET],
+            "generations": [ConfigParams.GENERATIONS],
+            "halloffame_ratio": [ConfigParams.HALLOFFAME_RATIO],
+            "allowed_mutations": [tuple(ConfigParams.ALLOWED_MUTATIONS)],
+            "timestamp": [ConfigParams.TIMESTAMP]}
 
     # timestamp = {"timestamp": [time.strftime("%a, %d %b %Y %H:%M:%S")]}
     # data = {**timestamp, **data}

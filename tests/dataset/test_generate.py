@@ -1,6 +1,6 @@
 from deap.base import deepcopy
 
-from config import DATASET, MODEL
+from config import ConfigParams
 from genetic.dataset.generate import generate
 from genetic.dataset.utils import (are_dataset_equal, dataset_difference,
                                    get_sequence_from_interaction)
@@ -11,14 +11,14 @@ from utils_classes.generators import InteractionGenerator, SequenceGenerator
 
 class TestGenerators:
     def test_sequence_generator(self):
-        config = get_config(model=MODEL, dataset=DATASET)
+        config = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
         sequences = SequenceGenerator(config)
         for seq in sequences:
             if 0 in seq:
                 assert seq.squeeze().tolist().count(0) == 1, f"Sequence unpadded incorrectly"
 
     def test_interaction_generator(self):
-        config = get_config(model=MODEL, dataset=DATASET)
+        config = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
         interactions = InteractionGenerator(config)
         items = set()
         for interaction in interactions:
@@ -32,7 +32,7 @@ def test_dataset_determinism():
     Tests if the dataset generation algorithm is deterministic, meaning the
     same source sequence should always generate the same dataset
     """
-    config = get_config(model=MODEL, dataset=DATASET)
+    config = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
     sequences = SequenceGenerator(config)
     model = generate_model(config)
     i = 0

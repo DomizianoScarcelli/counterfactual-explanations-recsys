@@ -7,7 +7,7 @@ import torch
 from deap import base, creator, tools
 from torch import Tensor
 
-from config import GENERATIONS, POP_SIZE
+from config import ConfigParams
 from constants import MAX_LENGTH, MIN_LENGTH
 from genetic.extended_ea_algorithms import (eaSimpleBatched, indexedCxTwoPoint,
                                             indexedSelTournament)
@@ -26,8 +26,8 @@ class GeneticGenerationStrategy():
                  predictor: Callable,
                  alphabet: List[int],
                  allowed_mutations: List[Mutation] = ALL_MUTATIONS, 
-                 pop_size: int=POP_SIZE, 
-                 generations: int=GENERATIONS, 
+                 pop_size: int=ConfigParams.POP_SIZE, 
+                 generations: int=ConfigParams.GENERATIONS, 
                  good_examples: bool=True,
                  halloffame_ratio: float=0.1,
                  verbose: bool=True):

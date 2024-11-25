@@ -6,7 +6,7 @@ from typing import Dict, Optional
 from recbole.model.abstract_recommender import SequentialRecommender
 from tqdm import tqdm
 
-from config import DATASET, GENERATIONS, MODEL, POP_SIZE
+from config import ConfigParams
 from genetic.dataset.utils import get_sequence_from_interaction
 from genetic.genetic import GeneticGenerationStrategy
 from genetic.mutations import (AddMutation, DeleteMutation, ReplaceMutation,
@@ -46,9 +46,9 @@ def evaluation_step(sequence, model: SequentialRecommender):
                                                           predictor=lambda x: model_predict(seq=x,
                                                                                             model=model,
                                                                                             prob=True),
-                                                          pop_size=POP_SIZE,
+                                                          pop_size=ConfigParams.POP_SIZE,
                                                           good_examples=True,
-                                                          generations=GENERATIONS,
+                                                          generations=ConfigParams.GENERATIONS,
                                                           verbose=False,
                                                           alphabet = set(range(NumItems.ML_1M.value)))
         good_examples = good_genetic_strategy.generate()
@@ -63,9 +63,9 @@ def evaluation_step(sequence, model: SequentialRecommender):
                                                          predictor=lambda x: model_predict(seq=x,
                                                                                            model=model,
                                                                                            prob=True),
-                                                         pop_size=POP_SIZE,
+                                                         pop_size=ConfigParams.POP_SIZE,
                                                          good_examples=False,
-                                                         generations=GENERATIONS,
+                                                         generations=ConfigParams.GENERATIONS,
                                                          verbose=False,
                                                          alphabet = set(range(NumItems.ML_1M.value)))
         bad_examples = bad_genetic_strategy.generate()
@@ -76,8 +76,8 @@ def evaluation_step(sequence, model: SequentialRecommender):
         _, bad_avg_distance_post = bad_genetic_strategy.evaluate_generation(bad_examples)
 
         results = {"mutations_allowed": [a.name for a in allowed_mutations], 
-                   "generations": GENERATIONS,
-                   "pop_size": POP_SIZE,
+                   "generations": ConfigParams.GENERATIONS,
+                   "pop_size": ConfigParams.POP_SIZE,
                    "good_stats": {"same_label_perc_pre": good_same_label_perc*100,
                                   "avg_distance_pre": good_avg_distance,
                                   "avg_distance_post": good_avg_distance_post,
@@ -125,7 +125,7 @@ def get_stats(results: Dict):
 
 
 def evaluate_deap(start_from: Optional[str] = None, num_iterations: Optional[int] = 100):
-    config = get_config(model=MODEL, dataset=DATASET)
+    config = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
     interactions = InteractionGenerator(config)
     model = generate_model(config)
     results = {}

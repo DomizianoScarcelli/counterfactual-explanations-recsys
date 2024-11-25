@@ -1,6 +1,6 @@
 from automata_learning.learning import learning_pipeline
 from automata_learning.utils import run_automata
-from config import DATASET, MODEL
+from config import ConfigParams
 from genetic.dataset.generate import generate
 from models.config_utils import generate_model, get_config
 from models.utils import trim
@@ -13,7 +13,7 @@ def test_automata_accepts_source_sequence():
     Test if automata accepts the source sequence
     """
     set_seed()
-    config = get_config(model=MODEL, dataset=DATASET)
+    config = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
     model = generate_model(config)
     sequences = SequenceGenerator(config)
     i = 0
@@ -44,7 +44,7 @@ def test_automata_learning_determinism():
     generate the same DFA.
     """
     set_seed()
-    config = get_config(model=MODEL, dataset=DATASET)
+    config = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
     sequences = SequenceGenerator(config)
     model = generate_model(config)
     i = 0

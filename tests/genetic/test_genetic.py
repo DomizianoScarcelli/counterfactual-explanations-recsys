@@ -11,7 +11,7 @@ from alignment.alignment import augment_constraint_automata
 from automata_learning.learning import (generate_single_accepting_sequence_dfa,
                                         learning_pipeline)
 from automata_learning.utils import run_automata
-from config import DATASET, MODEL
+from config import ConfigParams
 from constants import MAX_LENGTH, MIN_LENGTH
 from genetic.dataset.generate import generate
 from genetic.extended_ea_algorithms import (eaSimpleBatched, indexedCxTwoPoint,
@@ -77,7 +77,7 @@ class TestGeneticDeterminism:
     #TODO: while this passes each time, when asserting determinism with the `test_mapping` dictionary in the real funciton, it doesn't passes.
     def init_vars(self):
         set_seed()
-        config = get_config(dataset=DATASET, model=MODEL)
+        config = get_config(dataset=ConfigParams.DATASET, model=ConfigParams.MODEL)
         sequences = SequenceGenerator(config)
         self.input_seq = trim(next(sequences).squeeze(0))
         self.model = generate_model(config)

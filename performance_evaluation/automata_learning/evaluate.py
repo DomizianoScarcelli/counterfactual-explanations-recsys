@@ -8,6 +8,8 @@ by computing true/false positive/negatives on the good and bad points.
 
 import fire
 import pandas as pd
+from config import ConfigParams
+from typing import Optional
 from aalpy.automata.Dfa import Dfa
 from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import os
@@ -17,7 +19,6 @@ from performance_evaluation.alignment.utils import preprocess_interaction, log_r
 
 from automata_learning.learning import learning_pipeline
 from automata_learning.utils import run_automata
-from config import DATASET, MODEL
 from genetic.dataset.generate import generate
 from genetic.dataset.utils import dataset_difference
 from models.config_utils import generate_model, get_config
@@ -90,6 +91,7 @@ def evaluate_all(datasets: DatasetGenerator,
         new_row = pd.DataFrame({"source_sequence": [",".join([str(c) for c in next_sequence])]})
         temp_df = pd.concat([prev_df, new_row], ignore_index=True)
         if not prev_df.empty and pk_exists(df=temp_df, primary_key=primary_key, consider_config=True):
+            #TODO: this doesn't  work
             print(f"[{i}] Skipping source sequence {next_sequence} since it still exists in the log with the same config")
             i += 1
             datasets.skip()
@@ -133,9 +135,10 @@ def evaluate_all(datasets: DatasetGenerator,
 
             prev_df = log_run(log=log, prev_df=prev_df, save_path=save_path, primary_key=["source_sequence"])
 
-def main(use_cache: bool = False):
+def main(use_cache: bool = False, config_path: Optional[str]=None):
     set_seed()
-    config = get_config(dataset=DATASET, model=MODEL)
+    ConfigParams(config_path)
+    config = get_config(dataset=ConfigParams().DATASET, model=ConfigParams().MODEL)
     oracle: SequentialRecommender = generate_model(config)
     datasets = DatasetGenerator(config=config, use_cache=use_cache, return_interaction=True)
     evaluate_all(datasets=datasets, oracle=oracle)
