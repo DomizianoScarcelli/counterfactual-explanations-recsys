@@ -1,7 +1,7 @@
 import random
 from abc import ABC, abstractmethod
 from typing import List, Tuple
-
+from constants import PADDING_CHAR
 from genetic.utils import random_points_with_offset
 from utils import set_seed
 
@@ -12,6 +12,7 @@ class Mutation(ABC):
 
     def __call__(self, seq: List[int], alphabet: List[int], index: int) -> Tuple[List[int]]:
         # Change the seed according to the index of the mutated sequence
+        assert PADDING_CHAR not in seq, f"Padding char {PADDING_CHAR} is in seq: {seq}"
         set_seed(hash(tuple(seq)) ^ hash(tuple(alphabet)) + index)
         result = (self._apply(seq, alphabet),)
         # Resets the seed back to the original one to ensure determinism for
@@ -30,7 +31,7 @@ class ReplaceMutation(Mutation):
 
     def _apply(self, seq: List[int], alphabet: List[int]) -> List[int]:
         for _ in range(self.num_replaces):
-            i = random.sample(range(len(seq)), 1)[0]
+            i = random.sample(range(1, len(seq)), 1)[0]
             new_value = random.choice(alphabet)
             while new_value in seq:
                 new_value = random.choice(alphabet)
@@ -81,7 +82,7 @@ class AddMutation(Mutation):
         random_item = random.choice(alphabet)
         while random_item in seq:
             random_item = random.choice(alphabet)
-        i = random.sample(range(len(seq)), 1)[0]
+        i = random.sample(range(1, len(seq)), 1)[0]
         seq.insert(i, random_item)
         return seq
 

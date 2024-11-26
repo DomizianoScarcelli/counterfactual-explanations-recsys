@@ -2,12 +2,45 @@ from deap.base import deepcopy
 
 from config import ConfigParams
 from genetic.dataset.generate import generate
-from genetic.dataset.utils import (are_dataset_equal, dataset_difference,
-                                   get_sequence_from_interaction)
+from genetic.dataset.utils import (are_dataset_equal, dataset_difference, interaction_to_tensor)
 from genetic.utils import NumItems
 from models.config_utils import generate_model, get_config
+from performance_evaluation.alignment.utils import preprocess_interaction
+from type_hints import RecDataset
 from utils_classes.generators import InteractionGenerator, SequenceGenerator
 
+def test_RangeOfItemsIsCorrect_WhenGeneratedWithInteractionGenerator():
+    config = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
+    train_interactions = InteractionGenerator(config, split="train")
+    test_interactions = InteractionGenerator(config, split="test")
+    eval_interactions = InteractionGenerator(config, split="eval")
+    items = set()
+
+    correct_set = {}
+    if ConfigParams.DATASET == RecDataset.ML_1M:
+        correct_set = set(range(1, NumItems.ML_1M.value))
+    else:
+        raise NotImplementedError(f"Test not implemented for dataset {ConfigParams.DATASET}")
+
+    for interaction in train_interactions:
+        seq = interaction_to_tensor(interaction)
+        items |= set(seq.flatten())
+        if items == correct_set:
+            return
+
+    for interaction in test_interactions:
+        seq = interaction_to_tensor(interaction)
+        items |= set(seq.flatten())
+        if items == correct_set:
+            return
+
+    for interaction in eval_interactions:
+        seq = interaction_to_tensor(interaction)
+        items |= set(seq.flatten())
+        if items == correct_set:
+            return
+    
+    assert items == correct_set, f"Range of items is not correct. Lengths are: {len(items)} and {len(correct_set)}, difference: {(correct_set - items) if len(correct_set) > len(items) else items - correct_set}"
 
 class TestGenerators:
     def test_sequence_generator(self):
@@ -17,15 +50,6 @@ class TestGenerators:
             if 0 in seq:
                 assert seq.squeeze().tolist().count(0) == 1, f"Sequence unpadded incorrectly"
 
-    def test_interaction_generator(self):
-        config = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
-        interactions = InteractionGenerator(config)
-        items = set()
-        for interaction in interactions:
-            seq = get_sequence_from_interaction(interaction).squeeze(0).tolist()
-            for i in seq:
-                items.add(i)
-        assert min(items) == -1 and max(items) == NumItems.ML_1M.value, f"Max should be in (-1, {NumItems.ML_1M.value}), but is: ({min(items)}, {max(items)})"
 
 def test_dataset_determinism():
     """

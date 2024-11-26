@@ -6,7 +6,7 @@ from recbole.trainer import Interaction
 from torch import Tensor
 
 from config import ConfigParams
-from genetic.dataset.utils import get_sequence_from_interaction
+from genetic.dataset.utils import interaction_to_tensor
 from genetic.genetic import GeneticGenerationStrategy
 from genetic.mutations import parse_mutations
 from genetic.utils import NumItems
@@ -38,7 +38,7 @@ def generate(interaction: Union[Interaction, Tensor],
         good_points and bad_points are lists of LabeledTensors.
     """
     if isinstance(interaction, Interaction):
-        sequence = get_sequence_from_interaction(interaction)
+        sequence = interaction_to_tensor(interaction)
     elif isinstance(interaction, Tensor):
         sequence = interaction
     else:

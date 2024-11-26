@@ -1,7 +1,8 @@
 import pytest
 import torch
-from recbole.config import Config
 from recbole.model.abstract_recommender import SequentialRecommender
+from config import ConfigParams
+from models.config_utils import get_config
 
 from alignment.alignment import (augment_constraint_automata,
                                  augment_trace_automata)
@@ -173,15 +174,9 @@ def a_dfa_aug(dataset, t_dfa):
     a_dfa = generate_automata_from_dataset(dataset, load_if_exists=False)
     return augment_constraint_automata(a_dfa, t_dfa)
 
-
 @pytest.fixture(scope="module")
 def config():
-    parameter_dict_ml1m = {
-        'load_col': {"inter": ['user_id', 'item_id', 'rating', 'timestamp']},
-        'train_neg_sample_args': None,
-        "eval_batch_size": 1
-    }
-    return Config(model='BERT4Rec', dataset='ml-1m', config_dict=parameter_dict_ml1m)
+    return get_config(dataset=ConfigParams.DATASET, model=ConfigParams.MODEL)
 
 @pytest.fixture(scope="module")
 def model(config) -> SequentialRecommender:

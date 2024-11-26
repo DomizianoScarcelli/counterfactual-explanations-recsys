@@ -79,14 +79,14 @@ def evaluate(dfa: Dfa, test_dataset: GoodBadDataset):
 
 def evaluate_all(datasets: DatasetGenerator, 
                  oracle: SequentialRecommender,
-                 end_i: int):
+                 end_i: int,
+                 log_path: str="results/automata_learning_eval.csv"):
 
     prev_df = pd.DataFrame({})
-    save_path = os.path.join("results", "automata_learning_eval.csv")
 
     primary_key = ["source_sequence"]
-    if os.path.exists(save_path):
-        prev_df = pd.read_csv(save_path)
+    if os.path.exists(log_path):
+        prev_df = pd.read_csv(log_path)
 
     assert not prev_df.duplicated().any()
     
@@ -142,10 +142,13 @@ def evaluate_all(datasets: DatasetGenerator,
                     "source_sequence": ",".join([str(c) for c in source_sequence])}
 
 
-            prev_df = log_run(log=log, prev_df=prev_df, save_path=save_path, primary_key=["source_sequence"])
+            prev_df = log_run(log=log, prev_df=prev_df, save_path=log_path, primary_key=["source_sequence"])
             i+=1
 
-def main(use_cache: bool = False, config_path: Optional[str]=None, end_i: int=30):
+def main(use_cache: bool = False, 
+         config_path: Optional[str]=None, 
+         end_i: int=30, 
+         log_path: str="results/automata_learning_eval.csv"):
     set_seed()
     ConfigParams.reload(config_path)
     ConfigParams.fix()
@@ -170,7 +173,10 @@ def main(use_cache: bool = False, config_path: Optional[str]=None, end_i: int=30
           -----------------------
           """)
 
-    evaluate_all(datasets=datasets, oracle=oracle, end_i=end_i)
+    evaluate_all(datasets=datasets, 
+                 oracle=oracle, 
+                 end_i=end_i,
+                 log_path=log_path)
 
 
 if __name__ == "__main__":

@@ -1,33 +1,53 @@
 import torch
 
-from genetic.dataset.utils import are_dataset_equal, dataset_difference, get_sequence_from_interaction
+from genetic.dataset.utils import are_dataset_equal, dataset_difference, interaction_to_tensor
 from type_hints import Dataset
-from utils_classes.generators import InteractionGenerator, SequenceGenerator
+from utils_classes.generators import InteractionGenerator
 from models.utils import pad, replace_padding
+from config import ConfigParams
 
+class TestGetSequenceFromInteraction:
+    def test_GetSequenceFromInteraction_IsCorrect(self, interactions: InteractionGenerator):
+        for i, interaction in enumerate(interactions):
+            if i < len(interactions.data)-1:
+                seqs = interaction_to_tensor(interaction)
+                assert seqs.size(0) == ConfigParams.TEST_BATCH_SIZE
 
-def test_GetSequenceFromInteraction_PadSequenceCorrectly(interactions: InteractionGenerator):
-    for interaction in interactions:
-        sequence = interaction.interaction["item_id_list"].squeeze()
-        length = interaction.interaction["item_length"]
-        sequence_from_int = get_sequence_from_interaction(interaction)
+class TestReplacePadding:
+    def test_replacePadding_replaceCorrectly_whenSequenceNotBatched(self):
+        sequences = torch.tensor([
+            [1, 2, 3, -1, -1],  
+            [4, 5, 6, 7, -1],  
+            [8, 9, 10, 11, 12], 
+            [13, -1, -1, -1, -1] 
+        ])
 
-        prefix = sequence[:length]
-        assert torch.all(sequence_from_int.squeeze(0) == pad(prefix, len(sequence)))
+        expected_sequences = torch.tensor([
+            [1, 2, 3, 0, 0],  
+            [4, 5, 6, 7, 0],  
+            [8, 9, 10, 11, 12], 
+            [13, 0, 0, 0, 0 ] 
+        ])
 
-def test_ReplacePadding_ReplaceCorrectly(sequences: SequenceGenerator):
-    for padded_seq in sequences:
-        length = (padded_seq >= 0).sum(-1).unsqueeze(0).to(torch.int64)
-        prefix = padded_seq[:length]
-        postfix = padded_seq[length:]
+        for i, padded_seq in enumerate(sequences):
+            assert torch.all(replace_padding(padded_seq, -1, 0) == expected_sequences[i])
 
-        padded_0 = replace_padding(padded_seq, -1, 0)
-        prefix_0 = padded_seq[:length]
-        postfix_0 = padded_0[length:]
-        
-        assert torch.all(prefix_0 == prefix)
-        assert torch.all(postfix_0 == 0)
-        assert torch.all(postfix == -1)
+    def test_replacePadding_replaceCorrectly_whenSequenceBatched(self):
+        sequences = torch.tensor([
+            [1, 2, 3, -1, -1],  
+            [4, 5, 6, 7, -1],  
+            [8, 9, 10, 11, 12], 
+            [13, -1, -1, -1, -1] 
+        ])
+
+        expected_sequences = torch.tensor([
+            [1, 2, 3, 0, 0],  
+            [4, 5, 6, 7, 0],  
+            [8, 9, 10, 11, 12], 
+            [13, 0, 0, 0, 0 ] 
+        ])
+        result = replace_padding(sequences, -1, 0)
+        assert torch.all(result == expected_sequences)
 
 def test_DatasetDifference_IsCorrect():
     mock_dataset: Dataset = [(torch.tensor([1,3,2]),True),

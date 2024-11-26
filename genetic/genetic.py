@@ -8,7 +8,7 @@ from deap import base, creator, tools
 from torch import Tensor
 
 from config import ConfigParams
-from constants import MAX_LENGTH, MIN_LENGTH
+from constants import MAX_LENGTH, MIN_LENGTH, PADDING_CHAR
 from genetic.extended_ea_algorithms import (eaSimpleBatched, indexedCxTwoPoint,
                                             indexedSelTournament)
 from genetic.mutations import (ALL_MUTATIONS, AddMutation, DeleteMutation,
@@ -65,7 +65,7 @@ class GeneticGenerationStrategy():
         # Set seed according to the index in order to always choose a different mutation
         set_seed(hash(tuple(seq)) + index)
         #TODO: remove for efficiency
-        assert -1 not in seq, f"Seq must not contain padding char: {seq}"
+        assert PADDING_CHAR not in seq, f"Seq must not contain padding char {PADDING_CHAR}: {seq}"
         mutations = self.allowed_mutations.copy()
         if not len(seq) < MAX_LENGTH and contains_mutation(AddMutation, mutations):
             mutations = remove_mutation(AddMutation, mutations)

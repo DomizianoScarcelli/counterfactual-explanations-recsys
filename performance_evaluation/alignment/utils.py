@@ -8,16 +8,16 @@ from recbole.trainer import Interaction
 from torch import Tensor
 
 from config import ConfigParams
-from genetic.dataset.utils import get_sequence_from_interaction
+from genetic.dataset.utils import interaction_to_tensor
 from models.utils import trim
 
 
 def preprocess_interaction(raw_interaction: Interaction, oracle: Optional[SequentialRecommender]=None) -> List[Tensor] | Tuple[List[Tensor], int]:
-    source_sequence = get_sequence_from_interaction(raw_interaction)
+    source_sequence = interaction_to_tensor(raw_interaction)
     if not oracle:
         return trim(source_sequence.squeeze(0)).tolist()
     try:
-        source_gt = oracle.full_sort_predict(source_sequence).argmax(-1).item()
+        source_gt = oracle(source_sequence).argmax(-1).item()
     except IndexError as e:
         print("IndexError on sequence ", source_sequence)
         raise e

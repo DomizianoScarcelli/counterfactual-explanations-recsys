@@ -2,9 +2,9 @@ import pytest
 import torch
 from torch import Tensor
 from tqdm import tqdm
-from genetic.dataset.utils import get_sequence_from_interaction
+from genetic.dataset.utils import interaction_to_tensor
 
-from genetic.dataset.utils import get_sequence_from_interaction
+from genetic.dataset.utils import interaction_to_tensor
 from models.extended_models.ExtendedBERT4Rec import ExtendedBERT4Rec
 from models.model_funcs import model_predict
 from utils_classes.generators import InteractionGenerator
@@ -13,7 +13,7 @@ from utils_classes.generators import InteractionGenerator
 def batched_sequences(interactions) -> Tensor:
     sequences = torch.tensor([])
     for i in interactions:
-        seq = get_sequence_from_interaction(i)
+        seq = interaction_to_tensor(i)
         sequences = torch.cat((sequences, seq), dim=0)
     return sequences
 
@@ -46,7 +46,7 @@ class TestPredictFromSequence:
 
     def test_PredictFromInteraction_IsEqualToPredictFromSequence(self, model: ExtendedBERT4Rec, interactions: InteractionGenerator):
         for interaction in interactions:
-            sequence = get_sequence_from_interaction(interaction)
+            sequence = interaction_to_tensor(interaction)
             model_int = model(interaction)
             model_seq = model(sequence)
             label_int = model_int.argmax(-1).item()

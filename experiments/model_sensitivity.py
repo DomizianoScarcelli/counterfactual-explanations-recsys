@@ -6,6 +6,7 @@ import fire
 import pandas as pd
 import torch
 from recbole.model.abstract_recommender import SequentialRecommender
+from performance_evaluation.alignment.utils import log_run
 from tqdm import tqdm
 
 from config import ConfigParams
@@ -33,9 +34,10 @@ def model_sensitivity(sequences: SkippableGenerator, model: SequentialRecommende
         dataset: the dataset used to train the sequential recommender, which will be used to take the alphabet.
     """
     seen_idx = set()
+    prev_df = pd.DataFrame({})
     if os.path.exists(log_path):
-        log = pd.read_csv(log_path)
-        seen_idx = set(log["position"].tolist())
+        prev_df = pd.read_csv(log_path)
+        seen_idx = set(prev_df["position"].tolist())
 
     print(f"[DEBUG] seen_idx: {seen_idx}")
 
@@ -75,22 +77,13 @@ def model_sensitivity(sequences: SkippableGenerator, model: SequentialRecommende
         changed = (len(result) - equal)
         # print(f"[i: {i}] Position: {position}, Equal: {equal}, changed: {changed}")
         avg.add(equal / (equal + changed))
+
     print(f"Avg sequences which have the same label after changing an item at position {position} are: {(mean(avg) * 100):3f}%")
-    log_run(position=position, avg=mean(avg), num_seqs=end_i-start_i, save_path=log_path)
-
-def log_run(position: int, avg: float, num_seqs: int, save_path: str):
-    df = pd.DataFrame({})
-    if os.path.exists(save_path):
-        with open(save_path, "r") as f:
-            df = pd.read_csv(f)
-
     data = {"position": [position],
-            "num_seqs": [num_seqs],
-            "avg": [avg * 100]}
+            "num_seqs": [end_i-start_i],
+            "avg": [mean(avg) * 100]}
+    prev_df = log_run(prev_df=prev_df, log=data,  save_path=log_path)
 
-    new_df = pd.DataFrame(data)
-    df = pd.concat([df, new_df], ignore_index=True)
-    df.to_csv(save_path, index=False)
 
 def main(config_path: Optional[str]=None, log_path: str="results/model_sensitivity.csv"):
     if config_path:

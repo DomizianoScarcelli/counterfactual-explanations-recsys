@@ -1,6 +1,7 @@
 import pickle
 from typing import Set, Tuple
 
+from numpy._core.multiarray import MAXDIMS
 import torch
 from recbole.config import Config
 from recbole.data import create_dataset, data_preparation
@@ -9,7 +10,8 @@ from recbole.utils import init_seed
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from models.utils import pad
+from constants import MAX_LENGTH, PADDING_CHAR
+from models.utils import pad, pad_batch, replace_padding
 from type_hints import Dataset, GoodBadDataset
 
 
@@ -76,12 +78,20 @@ def make_deterministic(dataset: Tuple[Dataset, Dataset]) -> Tuple[Dataset, Datas
     return dataset
 
 
-def get_sequence_from_interaction(interaction: Interaction) -> Tensor:
+def interaction_to_tensor(interaction: Interaction) -> Tensor:
+    """
+    Given an interaction object, it returns the (batched) sequences padded with
+    the ConfigParams.PADDIN_CHAR.
+    """
     sequence = interaction.interaction["item_id_list"]
-    length = interaction.interaction["item_length"]
+    # length = interaction.interaction["item_length"]
+    if sequence.dim() == 1 and sequence.size(0) == MAX_LENGTH:
+        sequence = sequence.unsqueeze(0)
+    batch_size = sequence.size(0)
+    
+    assert sequence.shape == (batch_size, MAX_LENGTH), f"Seq has incorrect shape: {sequence.shape} != {(batch_size, MAX_LENGTH)}"
 
-    unpadded = sequence[:, :length].flatten()
-    return pad(unpadded, sequence.size(-1)).unsqueeze(0)
+    return replace_padding(sequence, 0, PADDING_CHAR)
 
 def get_dataset_alphabet(dataset: GoodBadDataset) -> Set[int]:
     alphabet = set()

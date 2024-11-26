@@ -118,5 +118,17 @@ def pad_batch(seqs: List[list] | Tensor | List[Tensor], length: int) -> Tensor:
 
 
 def replace_padding(seq: Tensor, pad_char: int, new_pad_char: int) -> Tensor:
-    assert new_pad_char not in seq, f"Pad {pad_char} is in seq: {seq}"
+    """
+    Replaces the padding of a Tensor from the pad_char to the new_pad_char.
+
+    Args:
+        seq: A tensor of shape [B, N] if batched or [N] if not batched.
+        pad_char: an integer representing the old padding char.
+        new_pad_char: an interger representing the new padding char.
+
+    Returns:
+        A new tensor with the same shape of `seq`, where the pad_char has been
+        replaced with new_pad_char
+    """
+    assert new_pad_char not in seq, f"Pad {new_pad_char} is in seq: {seq}"
     return torch.where(seq == pad_char, torch.tensor(new_pad_char), seq)

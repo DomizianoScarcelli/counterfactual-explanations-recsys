@@ -7,7 +7,7 @@ from recbole.model.abstract_recommender import SequentialRecommender
 from tqdm import tqdm
 
 from config import ConfigParams
-from genetic.dataset.utils import get_sequence_from_interaction
+from genetic.dataset.utils import interaction_to_tensor
 from genetic.genetic import GeneticGenerationStrategy
 from genetic.mutations import (AddMutation, DeleteMutation, ReplaceMutation,
                                ReverseMutation, ShuffleMutation, SwapMutation)
@@ -144,7 +144,7 @@ def evaluate_deap(start_from: Optional[str] = None, num_iterations: Optional[int
             print(f"Interaction {idx} already in results, skipping...")
             continue
 
-        sequence = get_sequence_from_interaction(interaction).squeeze(0)
+        sequence = interaction_to_tensor(interaction).squeeze(0)
         curr_results = evaluation_step(sequence, model)
         results[idx].extend(curr_results)
         with open("deap_generator_log.json", "w") as f:

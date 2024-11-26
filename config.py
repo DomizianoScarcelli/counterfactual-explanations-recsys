@@ -34,6 +34,8 @@ class ConfigParams:
             cls.DETERMINISM = config["settings"]["determinism"]
             cls.MODEL = RecModel[config["settings"]["model"]]
             cls.DATASET = RecDataset[config["settings"]["dataset"]]
+            cls.TRAIN_BATCH_SIZE = config["settings"]["train_batch_size"]
+            cls.TEST_BATCH_SIZE = config["settings"]["test_batch_size"]
 
             cls.GENERATIONS = config["evolution"]["generations"]
             cls.POP_SIZE = config["evolution"]["pop_size"]

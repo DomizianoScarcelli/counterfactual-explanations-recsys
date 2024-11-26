@@ -5,7 +5,8 @@ from recbole.model.sequential_recommender import BERT4Rec
 from recbole.trainer import Interaction
 from torch import Tensor
 
-from genetic.dataset.utils import get_sequence_from_interaction
+from constants import PADDING_CHAR
+from genetic.dataset.utils import interaction_to_tensor
 from models.utils import replace_padding
 from utils import set_seed
 
@@ -52,8 +53,8 @@ class ExtendedBERT4Rec(BERT4Rec):
 
     def full_sort_predict_from_sequence(self, item_seq: Tensor):
         with torch.no_grad():
-            item_seq_len = (item_seq >= 0).sum(-1).to(torch.int64)
-            item_seq = replace_padding(item_seq, -1, 0).to(torch.int64)
+            item_seq_len = (item_seq != PADDING_CHAR).sum(-1).to(torch.int64)
+            item_seq = replace_padding(item_seq, PADDING_CHAR, 0).to(torch.int64)
 
             # print(f"DEBUG: item_seq: {item_seq}, \n item_seq_len: {item_seq_len} with shapes: {item_seq.shape}, {item_seq_len.shape}")
 
