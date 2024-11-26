@@ -44,11 +44,11 @@ def model_sensitivity(sequences: SkippableGenerator, model: SequentialRecommende
         return
 
     if ConfigParams.DATASET == RecDataset.ML_1M:
-        alphabet = torch.tensor(list(range(NumItems.ML_1M.value)))
+        alphabet = torch.tensor(list(range(1, NumItems.ML_1M.value)))
     else:
         raise NotImplementedError(f"Dataset {ConfigParams.DATASET} not supported yet!")
     i = 0
-    start_i, end_i = 0, 1000
+    start_i, end_i = 0, 400
     avg = set()
     for i, sequence in enumerate(tqdm(sequences, desc=f"Testing model sensitivity on position {position}", total=end_i-start_i)):
         if i < start_i:
