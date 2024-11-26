@@ -1,10 +1,35 @@
 import torch
 
-from genetic.dataset.utils import are_dataset_equal, dataset_difference
+from genetic.dataset.utils import are_dataset_equal, dataset_difference, get_sequence_from_interaction
 from type_hints import Dataset
+from utils_classes.generators import InteractionGenerator, SequenceGenerator
+from models.utils import pad, replace_padding
 
 
-def test_dataset_difference():
+def test_GetSequenceFromInteraction_PadSequenceCorrectly(interactions: InteractionGenerator):
+    for interaction in interactions:
+        sequence = interaction.interaction["item_id_list"].squeeze()
+        length = interaction.interaction["item_length"]
+        sequence_from_int = get_sequence_from_interaction(interaction)
+
+        prefix = sequence[:length]
+        assert torch.all(sequence_from_int.squeeze(0) == pad(prefix, len(sequence)))
+
+def test_ReplacePadding_ReplaceCorrectly(sequences: SequenceGenerator):
+    for padded_seq in sequences:
+        length = (padded_seq >= 0).sum(-1).unsqueeze(0).to(torch.int64)
+        prefix = padded_seq[:length]
+        postfix = padded_seq[length:]
+
+        padded_0 = replace_padding(padded_seq, -1, 0)
+        prefix_0 = padded_seq[:length]
+        postfix_0 = padded_0[length:]
+        
+        assert torch.all(prefix_0 == prefix)
+        assert torch.all(postfix_0 == 0)
+        assert torch.all(postfix == -1)
+
+def test_DatasetDifference_IsCorrect():
     mock_dataset: Dataset = [(torch.tensor([1,3,2]),True),
          (torch.tensor([1,2,3]),True),
          (torch.tensor([2,3,1,5]),True),
@@ -32,7 +57,7 @@ def test_dataset_difference():
     assert expected32 == difference32_tolist, f"Result is wrong"
     assert [] == difference31, f"Result is wrong"
 
-def test_are_dataset_equal():
+def test_AreDatasetEqual_isCorrect():
     mock_dataset: Dataset = [(torch.tensor([1,3,2]),True),
                              (torch.tensor([1,2,3]),521),
                              (torch.tensor([2,3,1,5]),423),

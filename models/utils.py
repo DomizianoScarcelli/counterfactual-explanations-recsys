@@ -115,3 +115,8 @@ def pad_batch(seqs: List[list] | Tensor | List[Tensor], length: int) -> Tensor:
     if isinstance(seqs, Tensor):
         return torch.stack([pad(s, length) for s in seqs])
     return torch.stack([pad(torch.tensor(s), length) for s in seqs])
+
+
+def replace_padding(seq: Tensor, pad_char: int, new_pad_char: int) -> Tensor:
+    assert new_pad_char not in seq
+    return torch.where(seq == pad_char, torch.tensor(new_pad_char), seq)

@@ -1,63 +1,58 @@
-from typing import List
-
 import pytest
 import torch
-from recbole.trainer import Interaction
 from torch import Tensor
 from tqdm import tqdm
+from genetic.dataset.utils import get_sequence_from_interaction
 
 from genetic.dataset.utils import get_sequence_from_interaction
 from models.extended_models.ExtendedBERT4Rec import ExtendedBERT4Rec
 from models.model_funcs import model_predict
 from utils_classes.generators import InteractionGenerator
 
-
 @pytest.fixture()
-def interactions(config, batch_size: int=16) -> List[Interaction]:
-    interactions = []
-    generator = InteractionGenerator(config)
-    while len(interactions) < batch_size:
-        interactions.append(next(generator))
-    return interactions
-
-
-@pytest.fixture()
-def sequences(interactions) -> Tensor:
+def batched_sequences(interactions) -> Tensor:
     sequences = torch.tensor([])
     for i in interactions:
         seq = get_sequence_from_interaction(i)
         sequences = torch.cat((sequences, seq), dim=0)
-    batch_size = len(interactions)
-    assert sequences.size(0) == batch_size, f"Sequences shape {sequences.shape} not matching batch size {batch_size}"
     return sequences
 
 class TestPredictFromSequence:
-    def test_BatchPred_IsEqualToStackedSinglePreds(self, model: ExtendedBERT4Rec, sequences: Tensor):
+    def test_BatchPred_IsEqualToStackedSinglePreds(self, model: ExtendedBERT4Rec, batched_sequences: Tensor):
         """
         Tests if the predictions on the batch sequences gives the same result
         as getting one prediction at the time.
         """
-        batch_preds = model(sequences)
-        for i, seq in enumerate(tqdm(sequences, "Batched full sort predict test...")):
+        batch_preds = model(batched_sequences)
+        for i, seq in enumerate(tqdm(batched_sequences, "Batched full sort predict test...")):
             pred = model(seq.unsqueeze(0)).squeeze()
             label = pred.argmax(-1).item()
             batch_label = batch_preds[i].argmax(-1).item()
             assert label == batch_label, f"Labels are different! {label} != {batch_label}"
-            assert torch.all(pred == batch_preds[i])
+            assert torch.allclose(pred, batch_preds[i])
 
-    def test_BatchPred_AreAllEqual_WhenSequenceIsTheSame(self, model: ExtendedBERT4Rec, sequences: Tensor):
+    def test_BatchPred_AreAllEqual_WhenSequenceIsTheSame(self, model: ExtendedBERT4Rec, batched_sequences: Tensor):
         """
         Test if the batch prediction produces a tensor with the same label when
         the input tensor to the model consists of the same tensor repeated N
         times.
         """
-        seq = sequences[0]
-        batch_size = sequences.size(0)
-        print("Batch size:", batch_size)
-        batch = seq.unsqueeze(0).repeat(batch_size, 1)
-        preds = model(batch)
-        label_set = {x.argmax(-1).item() for x in preds}
-        assert len(label_set) == 1, f"Label for the same sequence are not equal! Uniques labels are: {label_set}"
+        for seq in tqdm(batched_sequences, leave=False):
+            batch_size = 128
+            batch = seq.unsqueeze(0).repeat(batch_size, 1)
+            preds = model(batch)
+            label_set = {x.argmax(-1).item() for x in preds}
+            assert len(label_set) == 1, f"Label for the same sequence are not equal! Uniques labels are: {label_set}"
+
+    def test_PredictFromInteraction_IsEqualToPredictFromSequence(self, model: ExtendedBERT4Rec, interactions: InteractionGenerator):
+        for interaction in interactions:
+            sequence = get_sequence_from_interaction(interaction)
+            model_int = model(interaction)
+            model_seq = model(sequence)
+            label_int = model_int.argmax(-1).item()
+            label_seq = model_seq.argmax(-1).item()
+            assert label_int == label_seq, f"Label are different {label_int} != {label_seq}"
+            assert torch.allclose(model_int, model_seq), f"Logits are different"
 
 class TestModelDeterminism:
     def test_model_determinism(self, model: ExtendedBERT4Rec, sequences):
