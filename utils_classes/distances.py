@@ -2,6 +2,7 @@ import Levenshtein
 import torch
 import torch.nn.functional as F
 from torch import Tensor
+from torch import nn
 
 
 def edit_distance(t1: Tensor, t2: Tensor):
@@ -13,10 +14,16 @@ def cosine_distance(prob1: Tensor, prob2: Tensor) -> float:
     return 1 - F.cosine_similarity(prob1, prob2, dim=-1).item()
 
 def kl_divergence(approx: Tensor, target: Tensor) -> float:
-    #TODO: don't know if this is correct
     approx = F.log_softmax(approx)
     target = F.softmax(target)
     return F.kl_div(approx.unsqueeze(0), target.unsqueeze(0), log_target=False).item()
+
+def jensen_shannon_divergence(p_log: Tensor, q_log: Tensor) -> float:
+    #source: https://discuss.pytorch.org/t/jensen-shannon-divergence/2626/4
+    kl = nn.KLDivLoss(reduction='batchmean', log_target=True)
+    p_log, q_log = p_log.view(-1, p_log.size(-1)).log_softmax(-1), q_log.view(-1, q_log.size(-1)).log_softmax(-1)
+    m = (0.5 * (p_log + q_log))
+    return 0.5 * (kl(m, p_log) + kl(m, q_log)).item()
 
 def label_indicator(prob1: Tensor, prob2: Tensor) -> float:
     label1 = prob1.argmax(-1).item()
@@ -33,6 +40,7 @@ def self_indicator(seq1: Tensor, seq2: Tensor):
     if len(seq1) != len(seq2):
         return 0
     return float("inf") if torch.all(seq1 == seq2).all() else 0
+
 def jaccard_sim(a: Tensor, b: Tensor) -> float:
     """
     Computes the Jaccard similarity between two sets of indices.
