@@ -1,8 +1,8 @@
 import pickle
 from typing import Set, Tuple
 
-from numpy._core.multiarray import MAXDIMS
 import torch
+from numpy._core.multiarray import MAXDIMS
 from recbole.config import Config
 from recbole.data import create_dataset, data_preparation
 from recbole.data.interaction import Interaction

@@ -11,7 +11,7 @@ from genetic.dataset.utils import interaction_to_tensor
 from genetic.genetic import GeneticGenerationStrategy
 from genetic.mutations import (AddMutation, DeleteMutation, ReplaceMutation,
                                ReverseMutation, ShuffleMutation, SwapMutation)
-from genetic.utils import NumItems
+from genetic.utils import Items, get_items
 from models.config_utils import generate_model, get_config
 from models.model_funcs import model_predict
 from utils import set_seed
@@ -50,7 +50,7 @@ def evaluation_step(sequence, model: SequentialRecommender):
                                                           good_examples=True,
                                                           generations=ConfigParams.GENERATIONS,
                                                           verbose=False,
-                                                          alphabet = set(range(NumItems.ML_1M.value)))
+                                                          alphabet = list(get_items(Items.ML_1M))
         good_examples = good_genetic_strategy.generate()
         good_same_label_perc, good_avg_distance = good_genetic_strategy.evaluate_generation(good_examples)
         len_good_examples = len(good_examples)
@@ -67,7 +67,7 @@ def evaluation_step(sequence, model: SequentialRecommender):
                                                          good_examples=False,
                                                          generations=ConfigParams.GENERATIONS,
                                                          verbose=False,
-                                                         alphabet = set(range(NumItems.ML_1M.value)))
+                                                         alphabet = list(get_items(Items.ML_1M))
         bad_examples = bad_genetic_strategy.generate()
         bad_same_label_perc, bad_avg_distance = bad_genetic_strategy.evaluate_generation(bad_examples)
         len_bad_examples = len(bad_examples)

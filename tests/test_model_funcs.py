@@ -11,7 +11,6 @@ from models.model_funcs import model_predict
 from utils_classes.generators import InteractionGenerator
 
 
-
 @pytest.fixture()
 def model(config) -> SequentialRecommender:
     return generate_model(config)

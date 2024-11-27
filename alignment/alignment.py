@@ -1,22 +1,19 @@
-import math
 from copy import deepcopy
 from typing import List, Tuple, Union
 
 from aalpy.automata.Dfa import Dfa, DfaState
-from torch import Tensor, instance_norm
-from tqdm import tqdm
+from torch import Tensor
 
 from alignment.a_star import faster_a_star
 from alignment.actions import Action, decode_action, print_action
 from automata_learning.utils import invert_automata, run_automata
-from constants import MAX_LENGTH
-from exceptions import CounterfactualNotFound, DfaNotAccepting, DfaNotRejecting
-from genetic.utils import NumItems
+from exceptions import CounterfactualNotFound
+from genetic.utils import Items, get_items
 from type_hints import Trace, TraceSplit
 from utils import printd
 
 
-def augment_trace_automata(automata: Dfa, num_items: NumItems = NumItems.ML_1M) -> Dfa:
+def augment_trace_automata(automata: Dfa, items: Items = Items.ML_1M) -> Dfa:
     """
     Given an DFA `T` which only accepts a certain sequence `s`, it augments it
     according to the rules explained in the paper "On the Disruptive
@@ -37,7 +34,7 @@ def augment_trace_automata(automata: Dfa, num_items: NumItems = NumItems.ML_1M) 
     with the corresponding repair propositions.
     """
     # Alphabet is the universe of all the items
-    alphabet = [i for i in range(0, num_items.value)]
+    alphabet = get_items(items)
 
     # Create the new repair propositions
     add_propositions = {p: f"add_{p}" for p in alphabet}

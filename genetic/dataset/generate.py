@@ -9,7 +9,7 @@ from config import ConfigParams
 from genetic.dataset.utils import interaction_to_tensor
 from genetic.genetic import GeneticGenerationStrategy
 from genetic.mutations import parse_mutations
-from genetic.utils import NumItems
+from genetic.utils import Items, get_items
 from models.model_funcs import model_predict
 from type_hints import GoodBadDataset
 
@@ -53,7 +53,7 @@ def generate(interaction: Union[Interaction, Tensor],
         sequence.shape}"
     allowed_mutations = parse_mutations(ConfigParams.ALLOWED_MUTATIONS)
     if alphabet is None:
-        alphabet = list(range(NumItems.ML_1M.value))
+        alphabet = list(get_items(Items.ML_1M))
     good_genetic_strategy = GeneticGenerationStrategy(
         input_seq=sequence,
         predictor=lambda x: model_predict(seq=x, model=model, prob=True),

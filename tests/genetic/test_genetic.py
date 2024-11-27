@@ -20,12 +20,13 @@ from genetic.extended_ea_algorithms import (eaSimpleBatched, indexedCxTwoPoint,
 from genetic.mutations import (AddMutation, DeleteMutation, ReplaceMutation,
                                ReverseMutation, ShuffleMutation, SwapMutation,
                                contains_mutation, remove_mutation)
-from genetic.utils import NumItems, clone
-from utils_classes.distances import edit_distance, self_indicator, cosine_distance
+from genetic.utils import Items, clone, get_items
 from models.config_utils import generate_model, get_config
 from models.model_funcs import model_predict
 from models.utils import pad, pad_batch, trim
 from utils import set_seed
+from utils_classes.distances import (cosine_distance, edit_distance,
+                                     self_indicator)
 from utils_classes.generators import SequenceGenerator
 
 
@@ -112,7 +113,7 @@ class TestGeneticDeterminism:
                                    ShuffleMutation(),
                                    AddMutation(),
                                    DeleteMutation()]
-        self.alphabet = list(range(0, NumItems.ML_1M.value))
+        self.alphabet = list(get_items(Items.ML_1M))
 
         self.pop1 = self.toolbox.population()
         self.pop2 = self.toolbox2.population()

@@ -1,10 +1,12 @@
 import torch
 
-from genetic.dataset.utils import are_dataset_equal, dataset_difference, interaction_to_tensor
+from config import ConfigParams
+from genetic.dataset.utils import (are_dataset_equal, dataset_difference,
+                                   interaction_to_tensor)
+from models.utils import pad, replace_padding
 from type_hints import Dataset
 from utils_classes.generators import InteractionGenerator
-from models.utils import pad, replace_padding
-from config import ConfigParams
+
 
 class TestGetSequenceFromInteraction:
     def test_GetSequenceFromInteraction_IsCorrect(self, interactions: InteractionGenerator):

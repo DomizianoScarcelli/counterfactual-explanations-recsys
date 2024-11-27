@@ -1,16 +1,15 @@
 import pytest
 import torch
 from recbole.model.abstract_recommender import SequentialRecommender
-from config import ConfigParams
-from models.config_utils import get_config
 
 from alignment.alignment import (augment_constraint_automata,
                                  augment_trace_automata)
 from automata_learning.learning import (generate_automata_from_dataset,
                                         generate_single_accepting_sequence_dfa)
+from config import ConfigParams
 from genetic.dataset.utils import load_dataset
-from genetic.utils import NumItems
-from models.config_utils import generate_model
+from genetic.utils import Items
+from models.config_utils import generate_model, get_config
 from utils_classes.generators import InteractionGenerator, SequenceGenerator
 
 
@@ -106,7 +105,7 @@ def mock_a_dfa(mock_dataset):
 def mock_t_dfa_aug(mock_original_trace):
     # Generate another t_dfa since it's augmented on place
     t_dfa = generate_single_accepting_sequence_dfa(mock_original_trace)
-    return augment_trace_automata(t_dfa, num_items=NumItems.MOCK)
+    return augment_trace_automata(t_dfa, items=Items.MOCK)
 
 @pytest.fixture(scope="module")
 def mock_a_dfa_aug(mock_dataset, mock_t_dfa):

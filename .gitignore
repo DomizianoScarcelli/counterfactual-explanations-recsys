@@ -1,6 +1,5 @@
 !.gitkeep
 **/__pycache__/**
-**/data/**
 **/.DS_store/**
 /dataset/**
 **/dataset_cache/**

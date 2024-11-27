@@ -1,6 +1,7 @@
 import random
 from abc import ABC, abstractmethod
 from typing import List, Tuple
+
 from constants import PADDING_CHAR
 from genetic.utils import random_points_with_offset
 from utils import set_seed

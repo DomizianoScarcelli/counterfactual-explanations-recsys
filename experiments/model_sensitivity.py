@@ -6,13 +6,13 @@ import fire
 import pandas as pd
 import torch
 from recbole.model.abstract_recommender import SequentialRecommender
-from performance_evaluation.alignment.utils import log_run
 from tqdm import tqdm
 
 from config import ConfigParams
-from genetic.utils import NumItems
+from genetic.utils import Items, get_items
 from models.config_utils import generate_model, get_config
-from models.utils import trim, topk
+from models.utils import topk, trim
+from performance_evaluation.alignment.utils import log_run
 from type_hints import RecDataset
 from utils import set_seed
 from utils_classes.distances import jaccard_sim, ndcg_at, precision_at
@@ -50,11 +50,11 @@ def model_sensitivity(sequences: SkippableGenerator,
         return
 
     if ConfigParams.DATASET == RecDataset.ML_1M:
-        alphabet = torch.tensor(list(range(1, NumItems.ML_1M.value)))
+        alphabet = torch.tensor(list(get_items(Items.ML_1M)))
     else:
         raise NotImplementedError(f"Dataset {ConfigParams.DATASET} not supported yet!")
     i = 0
-    start_i, end_i = 0, 200
+    start_i, end_i = 0, 100
     precisions, ndcgs, jaccards = set(), set(), set()
     pbar = tqdm(total=end_i-start_i, desc=f"Testing model sensitivity on position {position}")
     for i, sequence in enumerate(sequences):
@@ -69,6 +69,8 @@ def model_sensitivity(sequences: SkippableGenerator,
             continue
         out = model(x)
         out_k = topk(out, k, dim=-1, indices=True).squeeze() #[K]
+        if k == 1:
+            out_k = out_k.unsqueeze(-1)
 
         x_primes = x.repeat(len(alphabet), 1)
         assert x_primes.shape == torch.Size([len(alphabet), x.size(1)]), f"x shape uncorrect: {x_primes.shape} != {[len(alphabet), x.size(1)]}"
@@ -78,21 +80,22 @@ def model_sensitivity(sequences: SkippableGenerator,
 
         out_primes = model(x_primes)
         out_primes_k = topk(out_primes, k, dim=-1, indices=True) #[len(alphabet), K]
-        jaccards.add(mean(jaccard_sim(a=out_k, b=out_prime_k.squeeze()) for out_prime_k in out_primes_k))
-        precisions.add(mean(precision_at(k=k, a=out_k, b=out_prime_k.squeeze()) for out_prime_k in out_primes_k))
-        ndcgs.add(mean(ndcg_at(k=k, a=out_k, b=out_prime_k.squeeze()) for out_prime_k in out_primes_k))
-        pbar.set_postfix_str(f"jacc: {mean(jaccards)*100:.2f}, prec: {mean(precisions)*100:.2f}, ndcg: {mean(ndcgs)*100:.2f}")
-        # print(f"[i: {i}] Position: {position}, Equal: {equal}, changed: {changed}")
 
-    data = {"position": [position],
-            "num_seqs": [end_i-start_i],
-            "mean_precision": [mean(precisions) * 100],
-            "mean_ndgs": [mean(ndcgs)* 100], 
-            "mean_jaccard": [mean(jaccards) * 100], 
-            "k": [k],
-            "model": [ConfigParams.MODEL.value],
-            "dataset": [ConfigParams.DATASET.value]}
-    prev_df = log_run(prev_df=prev_df, log=data,  save_path=log_path)
+        jaccards.add(mean(jaccard_sim(a=out_k, b=(out_prime_k.squeeze() if k != 1 else out_prime_k)) for out_prime_k in out_primes_k))
+        precisions.add(mean(precision_at(k=k, a=out_k, b=(out_prime_k.squeeze() if k != 1 else out_prime_k)) for out_prime_k in out_primes_k))
+        ndcgs.add(mean(ndcg_at(k=k, a=out_k, b=(out_prime_k.squeeze() if k != 1 else out_prime_k)) for out_prime_k in out_primes_k))
+        pbar.set_postfix_str(f"jacc: {mean(jaccards)*100:.2f}, prec: {mean(precisions)*100:.2f}, ndcg: {mean(ndcgs)*100:.2f}")
+
+    data = {"position": position,
+            "num_seqs": end_i-start_i,
+            "mean_precision": mean(precisions) * 100,
+            "mean_ndgs": mean(ndcgs)* 100, 
+            "mean_jaccard": mean(jaccards) * 100, 
+            "k": k,
+            "model": ConfigParams.MODEL.value,
+            "dataset": ConfigParams.DATASET.value}
+
+    prev_df = log_run(prev_df=prev_df, log=data,  save_path=log_path, add_config=True)
 
 
 def main(config_path: Optional[str]=None, log_path: str="results/model_sensitivity.csv", k: int=1):

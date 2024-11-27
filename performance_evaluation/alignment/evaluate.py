@@ -1,6 +1,6 @@
 import json
 import os
-from typing import List, Optional, Tuple, Any, Dict
+from typing import Any, Dict, List, Optional, Tuple
 
 import fire
 import pandas as pd
@@ -15,10 +15,10 @@ from utils import set_seed
 def evaluate_trace_disalignment(range_i: Tuple[int, Optional[int]],
                                 splits: Optional[List[int]],
                                 use_cache: bool,
-                                save_path: str):
-                                
+                                save_path: Optional[str]=None):
+                                 
     log: DataFrame  = DataFrame({})
-    if os.path.exists(save_path):
+    if save_path and os.path.exists(save_path):
         log = pd.read_csv(save_path)
 
     run_logs = run(start_i=range_i[0], 
@@ -30,10 +30,11 @@ def evaluate_trace_disalignment(range_i: Tuple[int, Optional[int]],
         # TODO: you can make Run a SkippableGenerator, which skips when the
         # source sequence, split and config combination already exists in the
         # log
-        log = log_run(prev_df=log, 
-                      log=run_log, 
-                      save_path=save_path,
-                      primary_key=["source", "split"])  
+        if save_path:
+            log = log_run(prev_df=log, 
+                          log=run_log, 
+                          save_path=save_path,
+                          primary_key=["source", "split"])  
 
 def main(
         config_path: Optional[str]=None,
@@ -43,8 +44,7 @@ def main(
         log_path: Optional[str] = None,
         stats_save_path: Optional[str] = None,
         splits: Optional[List[int]] = None,
-        stat_filter: Optional[Dict[str, Any]]=None,
-        eval_save_path: str = "results/evaluate.csv"):
+        stat_filter: Optional[Dict[str, Any]]=None):
     set_seed()
 
     ConfigParams.reload(config_path)
@@ -55,7 +55,7 @@ def main(
                 range_i=range_i,
                 splits=splits, 
                 use_cache=use_cache,
-                save_path=eval_save_path)
+                save_path=log_path)
     elif mode == "stats":
         if not log_path:
             raise ValueError(f"Log path needed for stats")

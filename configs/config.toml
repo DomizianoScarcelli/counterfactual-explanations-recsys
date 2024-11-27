@@ -7,7 +7,7 @@ train_batch_size = 1
 test_batch_size = 1
 
 [evolution]
-generations = 20
-pop_size = 2048
+generations = 10
+pop_size = 1024
 halloffame_ratio = 0.2
 allowed_mutations = ["replace", "swap", "add", "delete"] #replace, swap, add, delete, shuffle, reverse

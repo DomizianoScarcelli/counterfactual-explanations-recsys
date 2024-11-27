@@ -1,7 +1,8 @@
-from torch import Tensor
+import Levenshtein
 import torch
 import torch.nn.functional as F
-import Levenshtein
+from torch import Tensor
+
 
 def edit_distance(t1: Tensor, t2: Tensor):
     # str1, str2 = str(t1), str(t2) #Levenshtein.ratio only works with strings

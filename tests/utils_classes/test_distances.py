@@ -1,6 +1,8 @@
 import torch
 from torch import tensor
-from utils_classes.distances import jaccard_sim, precision_at, ndcg_at
+
+from utils_classes.distances import jaccard_sim, ndcg_at, precision_at
+
 
 def test_JaccardSim_ReturnsCorrectValue_WhenSetsPartiallyOverlap():
     a = tensor([1, 2, 3])

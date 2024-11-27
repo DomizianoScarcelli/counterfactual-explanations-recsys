@@ -10,9 +10,8 @@ from recbole.trainer import Interaction
 from torch import Tensor
 
 from genetic.dataset.generate import generate
-from genetic.dataset.utils import (get_dataloaders,
-                                   interaction_to_tensor, load_dataset,
-                                   save_dataset)
+from genetic.dataset.utils import (get_dataloaders, interaction_to_tensor,
+                                   load_dataset, save_dataset)
 from models.config_utils import generate_model
 from type_hints import GoodBadDataset
 

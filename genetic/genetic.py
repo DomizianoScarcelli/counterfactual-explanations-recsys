@@ -5,7 +5,7 @@ from typing import Any, Callable, List
 import numpy as np
 import torch
 from deap import base, creator, tools
-from torch import Tensor
+from torch import Tensor, kl_div
 
 from config import ConfigParams
 from constants import MAX_LENGTH, MIN_LENGTH, PADDING_CHAR
@@ -14,10 +14,11 @@ from genetic.extended_ea_algorithms import (eaSimpleBatched, indexedCxTwoPoint,
 from genetic.mutations import (ALL_MUTATIONS, AddMutation, DeleteMutation,
                                Mutation, contains_mutation, remove_mutation)
 from genetic.utils import _evaluate_generation, clone
-from utils_classes.distances import edit_distance, self_indicator, cosine_distance
 from models.utils import pad_batch, trim
 from type_hints import Dataset
 from utils import set_seed
+from utils_classes.distances import (cosine_distance, edit_distance, kl_divergence,
+                                     self_indicator)
 
 
 class GeneticGenerationStrategy():
@@ -110,26 +111,26 @@ class GeneticGenerationStrategy():
 
                 assert self.gt.shape == candidate_prob.shape
                 seq_dist = edit_distance(self.input_seq, candidate_seq) #[0,MAX_LENGTH] if not normalized, [0,1] if normalized
-                label_dist = cosine_distance(candidate_prob, self.gt)
+                label_dist = kl_divergence(candidate_prob, self.gt)
                 self_ind = self_indicator(self.input_seq, candidate_seq) #0 if different, inf if equal
-                # if self.gt.argmax(-1).item() != candidate_prob.argmax(-1).item():
-                #     print(f""" 
-                #           [DEBUG]
-                #           seq_dist: {seq_dist}
-                #           label_dist: {label_dist}
-                #           self_ind: {self_ind}
-                #           ---
-                #           input_seq: {self.input_seq}
-                #           candidate_seq: {candidate_seq}
-                #           ---
-                #           gt shape: {self.gt.shape}
-                #           candidate_prob shape: {candidate_prob.shape}
-                #           gt: {self.gt}
-                #           candidate_prob : {candidate_prob}
-                #           ---
-                #           gt.item(): {self.gt.argmax(-1).item()}
-                #           candidate_prob.item(): {candidate_prob.argmax(-1).item()}
-                #           """)
+                if self.gt.argmax(-1).item() != candidate_prob.argmax(-1).item():
+                    print(f""" 
+                          [DEBUG]
+                          seq_dist: {seq_dist}
+                          label_dist: {label_dist}
+                          self_ind: {self_ind}
+                          ---
+                          input_seq: {self.input_seq}
+                          candidate_seq: {candidate_seq}
+                          ---
+                          gt shape: {self.gt.shape}
+                          candidate_prob shape: {candidate_prob.shape}
+                          gt: {self.gt}
+                          candidate_prob : {candidate_prob}
+                          ---
+                          gt.item(): {self.gt.argmax(-1).item()}
+                          candidate_prob.item(): {candidate_prob.argmax(-1).item()}
+                          """)
                 if not self.good_examples:
                     # label_dist = 0 if label_dist == float("inf") else float("inf")
                     label_dist = 1 - label_dist
