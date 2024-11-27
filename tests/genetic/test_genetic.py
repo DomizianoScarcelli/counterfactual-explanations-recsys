@@ -20,12 +20,11 @@ from genetic.extended_ea_algorithms import (eaSimpleBatched, indexedCxTwoPoint,
 from genetic.mutations import (AddMutation, DeleteMutation, ReplaceMutation,
                                ReverseMutation, ShuffleMutation, SwapMutation,
                                contains_mutation, remove_mutation)
-from genetic.utils import (NumItems, clone, cosine_distance, edit_distance,
-                           self_indicator)
+from genetic.utils import NumItems, clone
+from utils_classes.distances import edit_distance, self_indicator, cosine_distance
 from models.config_utils import generate_model, get_config
 from models.model_funcs import model_predict
 from models.utils import pad, pad_batch, trim
-from type_hints import Dataset
 from utils import set_seed
 from utils_classes.generators import SequenceGenerator
 

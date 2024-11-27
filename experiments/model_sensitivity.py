@@ -10,16 +10,20 @@ from performance_evaluation.alignment.utils import log_run
 from tqdm import tqdm
 
 from config import ConfigParams
-from constants import MAX_LENGTH
 from genetic.utils import NumItems
 from models.config_utils import generate_model, get_config
-from models.utils import pad_batch, trim
+from models.utils import trim, topk
 from type_hints import RecDataset
 from utils import set_seed
+from utils_classes.distances import jaccard_sim, ndcg_at, precision_at
 from utils_classes.generators import SequenceGenerator, SkippableGenerator
 
 
-def model_sensitivity(sequences: SkippableGenerator, model: SequentialRecommender, position: int, log_path: str = "model_sensitivity.csv"):
+def model_sensitivity(sequences: SkippableGenerator, 
+                      model: SequentialRecommender, 
+                      position: int,
+                      k: int = 1,
+                      log_path: str = "model_sensitivity.csv"):
     """
     The experiments consists in taking a source sequence `x` with a label `y`, result of `model(x)`.
     Then replace the element at position `position` of the sequence with each element of the alphabet (given by the `dataset`), 
@@ -50,42 +54,48 @@ def model_sensitivity(sequences: SkippableGenerator, model: SequentialRecommende
     else:
         raise NotImplementedError(f"Dataset {ConfigParams.DATASET} not supported yet!")
     i = 0
-    start_i, end_i = 0, 400
-    avg = set()
-    for i, sequence in enumerate(tqdm(sequences, desc=f"Testing model sensitivity on position {position}", total=end_i-start_i)):
+    start_i, end_i = 0, 200
+    precisions, ndcgs, jaccards = set(), set(), set()
+    pbar = tqdm(total=end_i-start_i, desc=f"Testing model sensitivity on position {position}")
+    for i, sequence in enumerate(sequences):
         if i < start_i:
             continue
         if i >= end_i:
             break
+        pbar.update(1)
         x = trim(sequence.squeeze(0)).unsqueeze(0)
 
-        equal, changed = 0, 0
         if x.size(1) <= position:
             continue
-        gt = model(x).argmax(-1).item()
+        out = model(x)
+        out_k = topk(out, k, dim=-1, indices=True).squeeze() #[K]
 
         x_primes = x.repeat(len(alphabet), 1)
         assert x_primes.shape == torch.Size([len(alphabet), x.size(1)]), f"x shape uncorrect: {x_primes.shape} != {[len(alphabet), x.size(1)]}"
         positions = torch.tensor([position] * len(alphabet))
         
         x_primes[torch.arange(len(alphabet)), positions] = alphabet
-        x_primes = pad_batch(x_primes, MAX_LENGTH)
 
-        ys = model(x_primes).argmax(-1)
-        result = ys == gt
-        equal = result.sum().item()
-        changed = (len(result) - equal)
+        out_primes = model(x_primes)
+        out_primes_k = topk(out_primes, k, dim=-1, indices=True) #[len(alphabet), K]
+        jaccards.add(mean(jaccard_sim(a=out_k, b=out_prime_k.squeeze()) for out_prime_k in out_primes_k))
+        precisions.add(mean(precision_at(k=k, a=out_k, b=out_prime_k.squeeze()) for out_prime_k in out_primes_k))
+        ndcgs.add(mean(ndcg_at(k=k, a=out_k, b=out_prime_k.squeeze()) for out_prime_k in out_primes_k))
+        pbar.set_postfix_str(f"jacc: {mean(jaccards)*100:.2f}, prec: {mean(precisions)*100:.2f}, ndcg: {mean(ndcgs)*100:.2f}")
         # print(f"[i: {i}] Position: {position}, Equal: {equal}, changed: {changed}")
-        avg.add(equal / (equal + changed))
 
-    print(f"Avg sequences which have the same label after changing an item at position {position} are: {(mean(avg) * 100):3f}%")
     data = {"position": [position],
             "num_seqs": [end_i-start_i],
-            "avg": [mean(avg) * 100]}
+            "mean_precision": [mean(precisions) * 100],
+            "mean_ndgs": [mean(ndcgs)* 100], 
+            "mean_jaccard": [mean(jaccards) * 100], 
+            "k": [k],
+            "model": [ConfigParams.MODEL.value],
+            "dataset": [ConfigParams.DATASET.value]}
     prev_df = log_run(prev_df=prev_df, log=data,  save_path=log_path)
 
 
-def main(config_path: Optional[str]=None, log_path: str="results/model_sensitivity.csv"):
+def main(config_path: Optional[str]=None, log_path: str="results/model_sensitivity.csv", k: int=1):
     if config_path:
         ConfigParams.reload(config_path)
         ConfigParams.fix()
@@ -97,7 +107,7 @@ def main(config_path: Optional[str]=None, log_path: str="results/model_sensitivi
     # both ends included
     start_i, end_i = 49, 0
     for i in tqdm(range(start_i, end_i-1, -1), "Testing model sensitivity on all positions"):
-        model_sensitivity(model=model, sequences=sequences, position=i, log_path=log_path)
+        model_sensitivity(model=model, sequences=sequences, position=i, log_path=log_path, k=k)
 
 if __name__ == "__main__":
     fire.Fire(main)

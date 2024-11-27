@@ -1,0 +1,89 @@
+from torch import Tensor
+import torch
+import torch.nn.functional as F
+import Levenshtein
+
+def edit_distance(t1: Tensor, t2: Tensor):
+    # str1, str2 = str(t1), str(t2) #Levenshtein.ratio only works with strings
+    # return 1 - Levenshtein.ratio(str1, str2)
+    return Levenshtein.distance(t1.tolist(), t2.tolist())
+
+def cosine_distance(prob1: Tensor, prob2: Tensor) -> float:
+    return 1 - F.cosine_similarity(prob1, prob2, dim=-1).item()
+
+def kl_divergence(approx: Tensor, target: Tensor) -> float:
+    #TODO: don't know if this is correct
+    approx = F.log_softmax(approx)
+    target = F.softmax(target)
+    return F.kl_div(approx.unsqueeze(0), target.unsqueeze(0), log_target=False).item()
+
+def label_indicator(prob1: Tensor, prob2: Tensor) -> float:
+    label1 = prob1.argmax(-1).item()
+    label2 = prob2.argmax(-1).item()
+    if label1 == label2:
+        return 1
+    else:
+        return 0
+     
+def self_indicator(seq1: Tensor, seq2: Tensor):
+    assert isinstance(seq1, Tensor) and isinstance(seq2, Tensor)
+    assert len(seq1.shape) == 1, f"Tensor should have a single dimension, shape is: {seq1.shape}"
+    assert len(seq2.shape) == 1, f"Tensor should have a single dimension, shape is: {seq2.shape}"
+    if len(seq1) != len(seq2):
+        return 0
+    return float("inf") if torch.all(seq1 == seq2).all() else 0
+def jaccard_sim(a: Tensor, b: Tensor) -> float:
+    """
+    Computes the Jaccard similarity between two sets of indices.
+
+    Args:
+        a: Tensor containing the first set of indices.
+        b: Tensor containing the second set of indices.
+
+    Returns:
+        float: Jaccard similarity score.
+    """
+    a_set = set(a.tolist())
+    b_set = set(b.tolist())
+    intersection = len(a_set & b_set)
+    union = len(a_set | b_set)
+    return intersection / union if union > 0 else 0.0
+
+def precision_at(k: int, a: Tensor, b: Tensor) -> float:
+    """
+    Computes the Precision@k between two ranked lists of indices.
+
+    Args:
+        k: Number of top items to consider.
+        a: Tensor containing the first ranked list of indices.
+        b: Tensor containing the second ranked list of indices.
+
+    Returns:
+        float: Precision@k score.
+    """
+    a_top_k = set(a[:k].tolist())
+    b_set = set(b.tolist())
+    intersection = len(a_top_k & b_set)
+    return intersection / k if k > 0 else 0.0
+
+def ndcg_at(k: int, a: Tensor, b: Tensor) -> float:
+    """
+    Computes the Normalized Discounted Cumulative Gain (NDCG) at k.
+
+    Args:
+        k: Number of top items to consider.
+        a: Tensor containing the ranked list of indices.
+        b: Tensor containing the ground truth set of relevant indices.
+
+    Returns:
+        float: NDCG@k score.
+    """
+    b_set = set(b.tolist())
+    gains = torch.tensor([1.0 if a[i].item() in b_set else 0.0 for i in range(min(k, len(a)))])
+    discounts = 1 / torch.log2(torch.arange(2, k + 2).float())
+    dcg = (gains[:k] * discounts).sum().item()
+    
+    ideal_gains = torch.tensor([1.0 for _ in range(min(k, len(b_set)))])
+    ideal_dcg = (ideal_gains[:k] * discounts).sum().item()
+    
+    return dcg / ideal_dcg if ideal_dcg > 0 else 0.0

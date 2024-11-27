@@ -13,9 +13,8 @@ from genetic.extended_ea_algorithms import (eaSimpleBatched, indexedCxTwoPoint,
                                             indexedSelTournament)
 from genetic.mutations import (ALL_MUTATIONS, AddMutation, DeleteMutation,
                                Mutation, contains_mutation, remove_mutation)
-from genetic.utils import (_evaluate_generation, clone, cosine_distance,
-                           edit_distance, kl_divergence, label_indicator,
-                           self_indicator)
+from genetic.utils import _evaluate_generation, clone
+from utils_classes.distances import edit_distance, self_indicator, cosine_distance
 from models.utils import pad_batch, trim
 from type_hints import Dataset
 from utils import set_seed
