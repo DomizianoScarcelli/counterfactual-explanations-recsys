@@ -1,13 +1,10 @@
 import heapq
-import threading
 import warnings
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
+from typing import Callable, List, Optional, Sequence, Set, Tuple
 
 from aalpy.automata.Dfa import Dfa, DfaState
 
-from alignment.actions import (Action, decode_action, encode_action,
-                               encode_action_str, is_legal)
+from alignment.actions import (Action, decode_action, encode_action_str, is_legal)
 from alignment.utils import alignment_length, prune_paths_by_length
 from exceptions import NoTargetStatesError
 from heuristics.heuristics import hops
@@ -16,6 +13,26 @@ from utils import printd
 
 
 def get_target_states(dfa: Dfa, leftover_trace: Sequence[int]):
+    """
+    Identify the set of initial states in a DFA that, after processing the given leftover trace, lead to an accepting state.
+
+    Args:
+        dfa: The deterministic finite automaton (DFA) to analyze.  It should
+            have states, each with transitions defined as a dictionary of actions
+            (e.g., "sync_c").
+        leftover_trace: A sequence of integers representing the input trace to
+            process. Each integer corresponds to a transition symbol.
+
+    Returns:
+        Set[DfaState]: A set of DFA states that can reach an accepting state
+            after processing the given `leftover_trace`.
+
+    Example:
+        >>> dfa = Dfa(...)  # Initialize a DFA
+        >>> leftover_trace = [1, 2, 3]
+        >>> target_states = get_target_states(dfa, leftover_trace)
+        >>> print([state.state_id for state in target_states])
+    """
     accepting_states = set({state for state in dfa.states if state.is_accepting})
     final_states = set()
     for state in dfa.states:
@@ -24,6 +41,7 @@ def get_target_states(dfa: Dfa, leftover_trace: Sequence[int]):
             curr_state = curr_state.transitions[f"sync_{c}"]
         if curr_state in accepting_states:
             final_states.add(state)
+        # print(f"[DEBUG] state {state.state_id} reached {curr_state.state_id} after trace {leftover_trace}")
     return final_states
 
 
@@ -33,6 +51,40 @@ def faster_a_star(
     min_alignment_length: Optional[int],
     max_alignment_length: Optional[int],
 ):
+    """
+    Compute an alignment for a given trace using an optimized A* search algorithm, targeting accepting states in the DFA.
+
+    Args:
+        dfa (Dfa): The deterministic finite automaton (DFA) used for trace alignment.
+                   The DFA should have a defined set of states, each with transitions based on actions.
+        trace_split (TraceSplit): A tuple containing three sequences:
+            - executed_t: The prefix of the trace already executed in the DFA.
+            - alignable_t: The segment of the trace that can be modified during alignment.
+            - leftover_t: The suffix of the trace that must remain fixed.
+        min_alignment_length (Optional[int]): The minimum allowable length for the alignment.
+                                              If `None`, no minimum constraint is enforced.
+        max_alignment_length (Optional[int]): The maximum allowable length for the alignment.
+                                              If `None`, no maximum constraint is enforced.
+
+    Returns:
+        Optional[Tuple[str]]: A tuple of encoded alignment actions if alignment is successful.
+                              Returns `None` if no valid alignment is found.
+
+    Raises:
+        NoTargetStatesError: If no target (accepting) states are reachable with the given `leftover_t` trace.
+
+    Debug Output:
+        If debugging is enabled, prints information about the original trace, the DFA states, and alignment constraints.
+
+    Example:
+        >>> dfa = Dfa(...)  # Initialize a DFA
+        >>> trace_split = ([1, 2], [3, 4], [5, 6])  # executed, alignable, leftover traces
+        >>> alignment = faster_a_star(dfa, trace_split, 2, 10)
+        >>> if alignment:
+        ...     print("Alignment found:", alignment)
+        ... else:
+        ...     print("No valid alignment.")
+    """
     printd("-----FAST-A*------")
 
     accepting_states = set(s for s in dfa.states if s.is_accepting)
@@ -108,6 +160,63 @@ def a_star(
     heuristic_fn: Optional[Callable] = None,
     initial_alignment: Optional[Tuple[int]] = None,
 ):
+    """
+    Performs an A* search to find the optimal alignment of a sequence trace within a deterministic finite automaton (DFA).
+
+    Args:
+        dfa (Dfa): The deterministic finite automaton defining the states and transitions.
+        origin_state (DfaState): The starting state for the search.
+        target_states (Set[DfaState]): The set of accepting (target) states to be reached.
+        remaining_trace (List[int]): The part of the trace to be processed during alignment.
+        leftover_trace_set (Set[int]): A set of remaining trace elements to be considered for constraints.
+        min_alignment_length (Optional[int]): The minimum allowable alignment length. If `None`, no minimum constraint is applied.
+        max_alignment_length (Optional[int]): The maximum allowable alignment length. If `None`, no maximum constraint is applied.
+        heuristic_fn (Optional[Callable]): A heuristic function for A*. Defaults to the number of hops to the nearest target state if `None`.
+        initial_alignment (Optional[Tuple[int]]): Pre-existing alignment actions to be included at the start. Defaults to `None`.
+
+    Returns:
+        Optional[Tuple[int]]: The sequence of alignment actions (encoded as integers) that aligns the trace to a target state.
+                              Returns `None` if no valid alignment is found.
+
+    Raises:
+        None
+
+    Warnings:
+        Issues a warning if the `origin_state` or any `target_state` is not present in the DFA.
+
+    Example:
+        >>> dfa = Dfa(...)  # Initialize DFA
+        >>> origin = dfa.initial_state
+        >>> targets = {state for state in dfa.states if state.is_accepting}
+        >>> remaining_trace = [1, 2, 3]
+        >>> leftover_set = {4, 5}
+        >>> alignment = a_star(dfa, origin, targets, remaining_trace, leftover_set, 2, 10)
+        >>> if alignment:
+        ...     print("Alignment found:", alignment)
+        ... else:
+        ...     print("No valid alignment.")
+
+    Debugging:
+        - Periodically prunes paths if the number of stored paths exceeds a threshold (e.g., 1,000,000).
+        - Prints debug information every 1,000 iterations, including steps, number of paths, trace indices, and path costs.
+
+    Details:
+        1. **Heuristic Function:** 
+           The heuristic estimates the cost to reach the nearest target state. Defaults to the number of hops if no `heuristic_fn` is provided.
+        2. **Neighbours Generation:** 
+           Neighbours are filtered based on constraints, legality of actions, and their cost (e.g., `sync` has zero cost).
+        3. **Path Management:** 
+           Uses a priority queue (heap) to explore paths with the lowest cost plus heuristic first.
+        4. **Visited States:** 
+           Tracks visited states to avoid redundant exploration of the same state-action combinations.
+        5. **Pruning:** 
+           Periodically prunes paths to limit memory usage and improve efficiency.
+
+    Implementation Notes:
+        - Actions (`sync`, `del`, `add`) are encoded for alignment and decoded as needed.
+        - Only valid neighbours satisfying constraints are explored.
+        - Paths that reach a target state and satisfy length constraints are returned immediately.
+    """
     remaining_trace_idx = len(remaining_trace)
 
     def heuristic(curr_state, remaining_trace):

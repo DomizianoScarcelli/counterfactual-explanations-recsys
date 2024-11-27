@@ -67,5 +67,6 @@ def run_automata(automata: Dfa, input: list, final_reset: bool = True):
             # pass
             # equivalent to go in sink state and early return
             # return False
-    automata.reset_to_initial()
+    if final_reset:
+        automata.reset_to_initial()
     return result

@@ -16,7 +16,19 @@ def evaluate_trace_disalignment(range_i: Tuple[int, Optional[int]],
                                 splits: Optional[List[int]],
                                 use_cache: bool,
                                 save_path: Optional[str]=None):
-                                 
+    """
+    Evaluates the disalignment of traces for a given range and set of splits.
+    Optionally saves the results to a CSV file.
+
+    Args:
+        range_i: The range of indices to evaluate (start, end).
+        splits: List of split indices to evaluate. If None, evaluates all splits.
+        use_cache: Whether to use cached results.
+        save_path: Path to save the results to a CSV file. If None, results are not saved.
+
+    Returns:
+        None
+    """
     log: DataFrame  = DataFrame({})
     if save_path and os.path.exists(save_path):
         log = pd.read_csv(save_path)
@@ -45,6 +57,22 @@ def main(
         stats_save_path: Optional[str] = None,
         splits: Optional[List[int]] = None,
         stat_filter: Optional[Dict[str, Any]]=None):
+    """
+    Main entry point to run either the trace disalignment evaluation or log statistics generation.
+
+    Args:
+        config_path: Path to the configuration file. If None, defaults will be used.
+        mode: Mode of operation. Can be "evaluate" (to evaluate traces) or "stats" (to generate statistics).
+        use_cache: Whether to use cached results when evaluating traces.
+        range_i: Tuple of indices (start, end) defining the range of evaluation.
+        log_path: Path to the log file for statistics. Required if mode is "stats".
+        stats_save_path: Path to save the generated statistics in JSON format. If None, not saved.
+        splits: List of splits to evaluate. If None, evaluates all splits.
+        stat_filter: Filter for statistics generation.
+
+    Returns:
+        None
+    """
     set_seed()
 
     ConfigParams.reload(config_path)
