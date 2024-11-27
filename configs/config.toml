@@ -10,4 +10,4 @@ test_batch_size = 1
 generations = 10
 pop_size = 1024
 halloffame_ratio = 0.2
-allowed_mutations = ["replace", "swap", "add", "delete"] #replace, swap, add, delete, shuffle, reverse
+allowed_mutations = ["replace", "swap", "add", "delete", "shuffle", "reverse"] #replace, swap, add, delete, shuffle, reverse

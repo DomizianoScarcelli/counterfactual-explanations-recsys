@@ -85,7 +85,7 @@ class GeneticGenerationStrategy():
         assert len(individuals) % batch_size == 0, f"Invididual length must be divisible by the batch size: {len(individuals)} % {batch_size} != 0"
         num_batches = len(individuals) // batch_size
         fitnesses = []
-        ALPHA1= 0.5 
+        ALPHA1= 0.25
         ALPHA2 = 1 - ALPHA1
         for batch_i in range(num_batches): 
             batch_individuals = individuals[batch_i * batch_size: (batch_i+1)*batch_size]
@@ -110,7 +110,7 @@ class GeneticGenerationStrategy():
                 candidate_prob = candidate_probs[i]
 
                 assert self.gt.shape == candidate_prob.shape
-                seq_dist = edit_distance(self.input_seq, candidate_seq) #[0,MAX_LENGTH] if not normalized, [0,1] if normalized
+                seq_dist = edit_distance(self.input_seq, candidate_seq, normalized=True) #[0,MAX_LENGTH] if not normalized, [0,1] if normalized
                 label_dist = jensen_shannon_divergence(candidate_prob, self.gt)
                 self_ind = self_indicator(self.input_seq, candidate_seq) #0 if different, inf if equal
                 # if self.gt.argmax(-1).item() != candidate_prob.argmax(-1).item():

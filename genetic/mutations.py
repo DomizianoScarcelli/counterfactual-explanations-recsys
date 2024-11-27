@@ -40,7 +40,7 @@ class ReplaceMutation(Mutation):
         return seq
 
 class SwapMutation(Mutation):
-    def __init__(self, offset_ratio: float = 0.8):
+    def __init__(self, offset_ratio: float = 0.5):
         self.offset_ratio = offset_ratio
         self.name = "swap"
 
@@ -51,7 +51,7 @@ class SwapMutation(Mutation):
         return seq
 
 class ReverseMutation(Mutation):
-    def __init__(self, offset_ratio: float = 0.8):
+    def __init__(self, offset_ratio: float = 0.5):
         self.offset_ratio = offset_ratio
         self.name = "reverse"
 
@@ -62,7 +62,7 @@ class ReverseMutation(Mutation):
         return seq
 
 class ShuffleMutation(Mutation):
-    def __init__(self, offset_ratio: float = 0.8):
+    def __init__(self, offset_ratio: float = 0.5):
         self.offset_ratio = offset_ratio
         self.name = "shuffle"
 

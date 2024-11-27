@@ -5,10 +5,12 @@ from torch import Tensor
 from torch import nn
 
 
-def edit_distance(t1: Tensor, t2: Tensor):
-    # str1, str2 = str(t1), str(t2) #Levenshtein.ratio only works with strings
-    # return 1 - Levenshtein.ratio(str1, str2)
-    return Levenshtein.distance(t1.tolist(), t2.tolist())
+def edit_distance(t1: Tensor, t2: Tensor, normalized: bool):
+    if normalized:
+        str1, str2 = str(t1), str(t2) #Levenshtein.ratio only works with strings
+        return 1 - Levenshtein.ratio(str1, str2)
+    else:
+        return Levenshtein.distance(t1.tolist(), t2.tolist())
 
 def cosine_distance(prob1: Tensor, prob2: Tensor) -> float:
     return 1 - F.cosine_similarity(prob1, prob2, dim=-1).item()
