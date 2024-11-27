@@ -5,7 +5,7 @@ from torch import Tensor
 from torch import nn
 
 
-def edit_distance(t1: Tensor, t2: Tensor, normalized: bool):
+def edit_distance(t1: Tensor, t2: Tensor, normalized: bool=True):
     if normalized:
         str1, str2 = str(t1), str(t2) #Levenshtein.ratio only works with strings
         return 1 - Levenshtein.ratio(str1, str2)
