@@ -76,6 +76,7 @@ def _pad_tensor(seq: Tensor, length: int) -> Tensor:
     if len(seq) == length: return seq
     if (seq >= 0).sum() != len(seq):
         seq = trim(seq)
+    assert length >= len(seq), f"Seq must not be longer than {length}, seq is: {seq} with shape: {seq.shape}"
     return torch.cat((seq, torch.full(fill_value=-1, size=(length - len(seq),))))
 
 def _pad_list(seq: List[int], length: int) -> List[int]:

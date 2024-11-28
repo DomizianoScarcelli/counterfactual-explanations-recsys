@@ -11,7 +11,7 @@ from alignment.utils import postprocess_alignment
 from automata_learning.learning import learning_pipeline
 from config import ConfigParams
 from exceptions import (CounterfactualNotFound, DfaNotAccepting,
-                        DfaNotRejecting, NoTargetStatesError)
+                        DfaNotRejecting, NoTargetStatesError, SplitNotCoherent)
 from models.config_utils import generate_model, get_config
 from performance_evaluation.alignment.utils import preprocess_interaction
 from type_hints import Dataset, RecDataset, RecModel, SplitTuple
@@ -29,7 +29,8 @@ error_messages = {
         DfaNotAccepting: "DfaNotAccepting",
         DfaNotRejecting: "DfaNotRejecting",
         NoTargetStatesError: "NoTargetStatesError",
-        CounterfactualNotFound: "CounterfactualNotFound"
+        CounterfactualNotFound: "CounterfactualNotFound",
+        SplitNotCoherent: "SplitNotCoherent"
         }
 
 def single_run(source_sequence: List[int], 
@@ -139,7 +140,7 @@ CONFIG
             print(f"Current Split: {split}")
             try:
                 aligned, cost, alignment = single_run(source_sequence, dataset, split)
-            except (DfaNotAccepting, DfaNotRejecting, NoTargetStatesError, CounterfactualNotFound) as e:
+            except (DfaNotAccepting, DfaNotRejecting, NoTargetStatesError, CounterfactualNotFound, SplitNotCoherent) as e:
                 print(f"Raised {type(e)}")
                 run_log["status"] = error_messages[type(e)]
                 yield run_log

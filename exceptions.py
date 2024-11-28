@@ -9,3 +9,6 @@ class CounterfactualNotFound(Exception):
 
 class NoTargetStatesError(Exception):
     pass
+
+class SplitNotCoherent(Exception):
+    pass

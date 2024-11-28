@@ -11,6 +11,10 @@ from heuristics.heuristics import hops
 from type_hints import TraceSplit
 from utils import printd
 
+def get_accepting_states(dfa: Dfa, include_sink: bool=True) -> Set[DfaState]:
+    if include_sink:
+        return {s for s in dfa.states if s.is_accepting}
+    return {s for s in dfa.states if s.is_accepting and s.state_id != "sink"}
 
 def get_target_states(dfa: Dfa, leftover_trace: Sequence[int]):
     """
@@ -33,7 +37,7 @@ def get_target_states(dfa: Dfa, leftover_trace: Sequence[int]):
         >>> target_states = get_target_states(dfa, leftover_trace)
         >>> print([state.state_id for state in target_states])
     """
-    accepting_states = set({state for state in dfa.states if state.is_accepting})
+    accepting_states = get_accepting_states(dfa, include_sink=True)
     final_states = set()
     for state in dfa.states:
         curr_state = state
@@ -87,22 +91,16 @@ def faster_a_star(
     """
     printd("-----FAST-A*------")
 
-    accepting_states = set(s for s in dfa.states if s.is_accepting)
+    accepting_states = get_accepting_states(dfa, include_sink=True) 
     executed_t, alignable_t, leftover_t = trace_split
 
     # Checks
     if len(executed_t) > 0:
-        assert isinstance(
-            executed_t[0], int
-        ), f"Executed trace isn't a sequence of int, but {isinstance(executed_t[0], int)}"
+        assert isinstance(executed_t[0], int), f"Executed trace isn't a sequence of int, but {isinstance(executed_t[0], int)}"
     if len(alignable_t) > 0:
-        assert isinstance(
-            alignable_t[0], int
-        ), f"Alignable trace isn't a sequence of int, but {isinstance(alignable_t[0], int)}"
+        assert isinstance(alignable_t[0], int), f"Alignable trace isn't a sequence of int, but {isinstance(alignable_t[0], int)}"
     if len(leftover_t) > 0:
-        assert isinstance(
-            leftover_t[0], int
-        ), f"Leftover trace isn't a sequence of int, but {isinstance(leftover_t[0], int)}"
+        assert isinstance(leftover_t[0], int), f"Leftover trace isn't a sequence of int, but {isinstance(leftover_t[0], int)}"
 
     # Execute the "executed_t" trace
     initial_alignment = []
@@ -237,9 +235,17 @@ def a_star(
                     neighbours.append((target, 0, encoded_p))  # sync_e cost = 0
             elif action_type == Action.DEL and curr_char is not None:
                 if curr_char == e:
-                    neighbours.append((target, 1, encoded_p))  # del_e cost = 1
+                    cost = 1
+                    # if the previous action is an ADD, we have a DEL-ADD combo, which is a REPLACE with cost 1
+                    if decode_action(inputs[-1])[0] == Action.ADD:
+                        cost = 0
+                    neighbours.append((target, cost, encoded_p))  # del_e cost = 1
             elif action_type == Action.ADD:
-                neighbours.append((target, 1, encoded_p))  # add_e cost = 1
+                cost = 1
+                # if the previous action is a DEL, we have a ADD-DEL combo, which is a REPLACE with cost 1
+                if decode_action(inputs[-1])[0] == Action.DEL:
+                    cost = 0
+                neighbours.append((target, cost, encoded_p))  # add_e cost = 1
 
         return neighbours
 
@@ -289,11 +295,12 @@ def a_star(
             printd(f"Remaining trace idx: {remaining_trace_idx}", level=2)
             printd(f"Paths head (20) costs {[p[0] for p in paths[:20]]}", level=2)
             printd(f"Paths tail (20) costs {[p[0] for p in paths[-20:]]}", level=2)
-
-        cost, heuristic_value, _, current_state, path, inputs, remaining_trace_idx = heapq.heappop(
+        
+        popped : Tuple[int, int, int, DfaState, Tuple, Tuple, int] = heapq.heappop(
             paths
         )
 
+        cost, heuristic_value, _, current_state, path, inputs, remaining_trace_idx = popped
         curr_alignment_length = alignment_length(inputs)
         if current_state in target_states and remaining_trace_idx == 0:
             if (

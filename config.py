@@ -42,6 +42,10 @@ class ConfigParams:
             cls.HALLOFFAME_RATIO = config["evolution"]["halloffame_ratio"]
             cls.ALLOWED_MUTATIONS = config["evolution"]["allowed_mutations"]
 
+            cls.NUM_REPLACES = config["evolution"]["mutations"]["num_replaces"]
+            cls.NUM_ADDITIONS = config["evolution"]["mutations"]["num_additions"]
+            cls.NUM_DELETIONS = config["evolution"]["mutations"]["num_deletions"]
+
             cls.TIMESTAMP = time.strftime("%a, %d %b %Y %H:%M:%S")
 
             cls._config_loaded = True  # Flag that config is loaded

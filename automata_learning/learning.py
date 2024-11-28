@@ -1,5 +1,5 @@
 import os
-from typing import List, Tuple, Union
+from typing import List, Union
 
 from aalpy.automata.Dfa import Dfa, DfaState
 from aalpy.learning_algs import run_RPNI
@@ -29,10 +29,9 @@ def _generate_automata(dataset: GoodBadDataset, load_if_exists: bool = True, sav
         dfa = load_automata(save_path)
         return dfa
     print("[INFO] Existing automata not found, generating a new one based on the provided dataset")
-    dfa = run_RPNI(data=dataset, automaton_type="dfa", print_info=False, input_completeness="self_loop")
+    dfa = run_RPNI(data=dataset, automaton_type="dfa", print_info=True, input_completeness="sink_state")
     if dfa is None:
         return
-    # save_automata(dfa, save_path)
     return dfa
 
 
@@ -56,48 +55,11 @@ def generate_single_accepting_sequence_dfa(sequence):
     """
     Generates a DFA that only accepts the input sequence.
     """
-    # Create the initial state
-    initial_state = DfaState('q0')
-
-    # Create the states for each step in the sequence
-    current_state = initial_state
-    states = [initial_state]
-
-    # For each character in the sequence, create a state and add transitions
-    for i, symbol in enumerate(sequence):
-        next_state = DfaState(f'q{i + 1}')
-        current_state.transitions[symbol] = next_state
-        states.append(next_state)
-        current_state = next_state
-
-    # Final state is the accepting state
-    accepting_state = current_state
-    accepting_state.is_accepting = True
-
-    # Create a reject state for invalid transitions
-    reject_state = DfaState('reject')
-    states.append(reject_state)
-
-    # Set up transitions to the reject state for all incorrect inputs
-
-    # assuming sequence contains all possible symbols, since symbols not in the
-    # sequence will be ignored and will lead to a rejecting state
-    all_symbols = set(sequence)
-    for state in states:
-        for symbol in all_symbols:
-            if symbol not in state.transitions:
-                state.transitions[symbol] = reject_state
-        reject_state.transitions = {symbol: reject_state for symbol in all_symbols}
-
-    # Return the DFA
-    dfa = Dfa(initial_state, states)
-    return dfa
-
+    raise NotImplementedError("Deprecated, remove")
 
 def learning_pipeline(source: List[Tensor] | List[int], dataset: GoodBadDataset) -> Dfa:
     if isinstance(source[0], Tensor):
         source = [c.item() for c in source] #type: ignore
-    
 
     assert isinstance(source[0], int)
     a_dfa = generate_automata_from_dataset(dataset, load_if_exists=False)

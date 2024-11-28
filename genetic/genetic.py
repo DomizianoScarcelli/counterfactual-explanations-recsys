@@ -1,11 +1,12 @@
 import random
-from copy import deepcopy
+import math
 from typing import Any, Callable, List
 
 import numpy as np
+from recbole.config import Config
 import torch
 from deap import base, creator, tools
-from torch import Tensor, kl_div
+from torch import Tensor
 
 from config import ConfigParams
 from constants import MAX_LENGTH, MIN_LENGTH, PADDING_CHAR
@@ -17,7 +18,7 @@ from genetic.utils import _evaluate_generation, clone
 from models.utils import pad_batch, trim
 from type_hints import Dataset
 from utils import set_seed
-from utils_classes.distances import (cosine_distance, edit_distance, jensen_shannon_divergence, kl_divergence,
+from utils_classes.distances import (edit_distance, jensen_shannon_divergence,
                                      self_indicator)
 
 
@@ -63,16 +64,17 @@ class GeneticGenerationStrategy():
 
     def mutate(self, seq: List[int], index: int):
         # Set seed according to the index in order to always choose a different mutation
-        set_seed(hash(tuple(seq)) + index)
+        if ConfigParams.DETERMINISM:
+            set_seed(hash(tuple(seq)) + index)
         #TODO: remove for efficiency
         assert PADDING_CHAR not in seq, f"Seq must not contain padding char {PADDING_CHAR}: {seq}"
         mutations = self.allowed_mutations.copy()
-        if not len(seq) < MAX_LENGTH and contains_mutation(AddMutation, mutations):
+        if not len(seq) <= MAX_LENGTH - ConfigParams.NUM_ADDITIONS and contains_mutation(AddMutation, mutations):
             mutations = remove_mutation(AddMutation, mutations)
-        if not len(seq) > MIN_LENGTH and contains_mutation(DeleteMutation, mutations):
+        if not len(seq) >= MIN_LENGTH - ConfigParams.NUM_DELETIONS and contains_mutation(DeleteMutation, mutations):
             mutations = remove_mutation(DeleteMutation, mutations)
         mutation = random.choice(mutations)
-        result = mutation(deepcopy(seq), self.alphabet, index)
+        result = mutation(seq, self.alphabet, index)
         set_seed()
         return result
 
@@ -82,16 +84,14 @@ class GeneticGenerationStrategy():
         """
         set_seed()
         batch_size = 512
-        assert len(individuals) % batch_size == 0, f"Invididual length must be divisible by the batch size: {len(individuals)} % {batch_size} != 0"
-        num_batches = len(individuals) // batch_size
+        num_batches = math.ceil(len(individuals) / batch_size)
         fitnesses = []
-        ALPHA1= 0.25
+        ALPHA1= 0.0
         ALPHA2 = 1 - ALPHA1
         for batch_i in range(num_batches): 
             batch_individuals = individuals[batch_i * batch_size: (batch_i+1)*batch_size]
             candidate_seqs = pad_batch(batch_individuals, MAX_LENGTH)
             candidate_probs = self.predictor(candidate_seqs)  
-            assert candidate_probs.size(0) == batch_size, f"mismatch in probs shape and batch size: {candidate_probs.shape} != {batch_size}"
             
             # TODO: you can use this to remove the for loop. This still doesn't work
             # edit distance is not easily vectorizable
@@ -105,13 +105,13 @@ class GeneticGenerationStrategy():
             # costs = [ALPHA1 * seq_dist + ALPHA2 * label_dist + self_ind for (seq_dist, label_dist, self_ind) in zip(seq_dists, label_dists, self_inds)]
             # fitnesses.extend(costs)
 
-            for i in range(batch_size):
+            for i in range(candidate_seqs.size(0)):
                 candidate_seq = trim(candidate_seqs[i])
                 candidate_prob = candidate_probs[i]
 
                 assert self.gt.shape == candidate_prob.shape
                 seq_dist = edit_distance(self.input_seq, candidate_seq, normalized=True) #[0,MAX_LENGTH] if not normalized, [0,1] if normalized
-                label_dist = jensen_shannon_divergence(candidate_prob, self.gt)
+                label_dist = jensen_shannon_divergence(candidate_prob, self.gt) #[0,1]
                 self_ind = self_indicator(self.input_seq, candidate_seq) #0 if different, inf if equal
                 # if self.gt.argmax(-1).item() != candidate_prob.argmax(-1).item():
                 #     print(f""" 

@@ -1,1 +1,1 @@
-python -m performance_evaluation.alignment.evaluate --mode evaluate --splits="[(0, None, 5), (None, None, 5), (None, 5, 0)]" --use-cache=False --range_i="(0, 100)" --log_path="results/different_splits_run_5_items.csv"
+python -m performance_evaluation.alignment.evaluate --mode evaluate --splits="[(None, 5, 3), (None, 5, 0)]" --use-cache=False --range_i="(11, 100)" --log_path="results/different_splits_run_5_items_sink.csv"
