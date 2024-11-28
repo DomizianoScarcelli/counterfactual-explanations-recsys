@@ -2,6 +2,8 @@ import random
 from abc import ABC, abstractmethod
 from typing import List, Tuple
 
+from config import ConfigParams
+from constants import PADDING_CHAR
 from genetic.utils import random_points_with_offset
 from utils import set_seed
 
@@ -12,7 +14,9 @@ class Mutation(ABC):
 
     def __call__(self, seq: List[int], alphabet: List[int], index: int) -> Tuple[List[int]]:
         # Change the seed according to the index of the mutated sequence
-        set_seed(index)
+        assert PADDING_CHAR not in seq, f"Padding char {PADDING_CHAR} is in seq: {seq}"
+        if ConfigParams.DETERMINISM:
+            set_seed(hash(tuple(seq)) ^ hash(tuple(alphabet)) + index)
         result = (self._apply(seq, alphabet),)
         # Resets the seed back to the original one to ensure determinism for
         # the following operations
@@ -30,7 +34,7 @@ class ReplaceMutation(Mutation):
 
     def _apply(self, seq: List[int], alphabet: List[int]) -> List[int]:
         for _ in range(self.num_replaces):
-            i = random.sample(range(len(seq)), 1)[0]
+            i = random.sample(range(1, len(seq)), 1)[0]
             new_value = random.choice(alphabet)
             while new_value in seq:
                 new_value = random.choice(alphabet)
@@ -38,7 +42,7 @@ class ReplaceMutation(Mutation):
         return seq
 
 class SwapMutation(Mutation):
-    def __init__(self, offset_ratio: float = 0.8):
+    def __init__(self, offset_ratio: float = 0.5):
         self.offset_ratio = offset_ratio
         self.name = "swap"
 
@@ -49,7 +53,7 @@ class SwapMutation(Mutation):
         return seq
 
 class ReverseMutation(Mutation):
-    def __init__(self, offset_ratio: float = 0.8):
+    def __init__(self, offset_ratio: float = 0.5):
         self.offset_ratio = offset_ratio
         self.name = "reverse"
 
@@ -60,7 +64,7 @@ class ReverseMutation(Mutation):
         return seq
 
 class ShuffleMutation(Mutation):
-    def __init__(self, offset_ratio: float = 0.8):
+    def __init__(self, offset_ratio: float = 0.5):
         self.offset_ratio = offset_ratio
         self.name = "shuffle"
 
@@ -74,24 +78,28 @@ class ShuffleMutation(Mutation):
 
 
 class AddMutation(Mutation):
-    def __init__(self):
+    def __init__(self, num_additions: int = 1):
         self.name = "add"
+        self.num_additions = num_additions
 
     def _apply(self, seq: list[int], alphabet: list[int]) -> list[int]:
-        random_item = random.choice(alphabet)
-        while random_item in seq:
+        for _ in range(self.num_additions):
             random_item = random.choice(alphabet)
-        i = random.sample(range(len(seq)), 1)[0]
-        seq.insert(i, random_item)
+            while random_item in seq:
+                random_item = random.choice(alphabet)
+            i = random.sample(range(1, len(seq)), 1)[0]
+            seq.insert(i, random_item)
         return seq
 
 class DeleteMutation(Mutation):
-    def __init__(self):
+    def __init__(self, num_deletions: int= 1):
         self.name = "delete"
+        self.num_deletions = num_deletions
 
     def _apply(self, seq: list[int], alphabet: list[int]) -> list[int]:
-        i = random.sample(range(len(seq)), 1)[0]
-        seq.remove(seq[i])
+        for _ in range(self.num_deletions):
+            i = random.sample(range(len(seq)), 1)[0]
+            seq.remove(seq[i])
         return seq
 
 def contains_mutation(mutation_type: type, mutations_list: List[Mutation]) -> bool:
@@ -111,7 +119,10 @@ def parse_mutations(muts: List[str]):
     """
     return [mut for mut in ALL_MUTATIONS if mut.name in muts]
 
-ALL_MUTATIONS: List[Mutation] = [SwapMutation(), ReplaceMutation(),
-                                 ShuffleMutation(), ReverseMutation(),
-                                 AddMutation(), DeleteMutation(),
+ALL_MUTATIONS: List[Mutation] = [SwapMutation(),
+                                 ReplaceMutation(num_replaces=ConfigParams.NUM_REPLACES),
+                                 ShuffleMutation(), 
+                                 ReverseMutation(),
+                                 AddMutation(num_additions=ConfigParams.NUM_ADDITIONS),
+                                 DeleteMutation(num_deletions=ConfigParams.NUM_DELETIONS),
                                  ReplaceMutation()]

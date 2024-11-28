@@ -4,20 +4,12 @@ from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
 from torch import Tensor
 
-from genetic.dataset.utils import get_sequence_from_interaction
-from models.config_utils import generate_model
+from config import ConfigParams
+from genetic.dataset.utils import interaction_to_tensor
+from models.config_utils import generate_model, get_config
 from models.model_funcs import model_predict
 from utils_classes.generators import InteractionGenerator
 
-
-@pytest.fixture()
-def config():
-    parameter_dict_ml1m = {
-        'load_col': {"inter": ['user_id', 'item_id', 'rating', 'timestamp']},
-        'train_neg_sample_args': None,
-        "eval_batch_size": 1
-    }
-    return Config(model='BERT4Rec', dataset='ml-1m', config_dict=parameter_dict_ml1m)
 
 @pytest.fixture()
 def model(config) -> SequentialRecommender:
@@ -31,7 +23,7 @@ def interaction(config) -> Interaction:
 
 @pytest.fixture()
 def sequence(interaction) -> Tensor:
-    return get_sequence_from_interaction(interaction).squeeze(0)
+    return interaction_to_tensor(interaction).squeeze(0)
 
 def test_model_predict(model, sequence):
     print(f"""Executing predict on:

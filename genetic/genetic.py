@@ -1,23 +1,25 @@
 import random
-from copy import deepcopy
-from typing import Any, Callable, List, Optional, Set
+import math
+from typing import Any, Callable, List
 
 import numpy as np
+from recbole.config import Config
 import torch
 from deap import base, creator, tools
 from torch import Tensor
 
-from config import GENERATIONS, POP_SIZE
-from constants import MAX_LENGTH, MIN_LENGTH
+from config import ConfigParams
+from constants import MAX_LENGTH, MIN_LENGTH, PADDING_CHAR
 from genetic.extended_ea_algorithms import (eaSimpleBatched, indexedCxTwoPoint,
                                             indexedSelTournament)
 from genetic.mutations import (ALL_MUTATIONS, AddMutation, DeleteMutation,
                                Mutation, contains_mutation, remove_mutation)
-from genetic.utils import (NumItems, _evaluate_generation, clone,
-                           cosine_distance, edit_distance, self_indicator)
-from models.utils import pad, pad_batch, trim
+from genetic.utils import _evaluate_generation, clone
+from models.utils import pad_batch, trim
 from type_hints import Dataset
 from utils import set_seed
+from utils_classes.distances import (edit_distance, jensen_shannon_divergence,
+                                     self_indicator)
 
 
 class GeneticGenerationStrategy():
@@ -25,8 +27,8 @@ class GeneticGenerationStrategy():
                  predictor: Callable,
                  alphabet: List[int],
                  allowed_mutations: List[Mutation] = ALL_MUTATIONS, 
-                 pop_size: int=POP_SIZE, 
-                 generations: int=GENERATIONS, 
+                 pop_size: int=ConfigParams.POP_SIZE, 
+                 generations: int=ConfigParams.GENERATIONS, 
                  good_examples: bool=True,
                  halloffame_ratio: float=0.1,
                  verbose: bool=True):
@@ -34,7 +36,7 @@ class GeneticGenerationStrategy():
         self.input_seq = trim(input_seq)
         self.predictor = predictor
         self.pop_size = pop_size
-        self.gt = self.predictor(input_seq.unsqueeze(0))
+        self.gt = self.predictor(input_seq.unsqueeze(0)).squeeze()
         self.generations = generations
         self.good_examples = good_examples
         self.halloffame_ratio = halloffame_ratio
@@ -62,42 +64,80 @@ class GeneticGenerationStrategy():
 
     def mutate(self, seq: List[int], index: int):
         # Set seed according to the index in order to always choose a different mutation
-        set_seed(index)
+        if ConfigParams.DETERMINISM:
+            set_seed(hash(tuple(seq)) + index)
         #TODO: remove for efficiency
-        assert -1 not in seq, f"Seq must not contain padding char: {seq}"
+        assert PADDING_CHAR not in seq, f"Seq must not contain padding char {PADDING_CHAR}: {seq}"
         mutations = self.allowed_mutations.copy()
-        if not len(seq) < MAX_LENGTH and contains_mutation(AddMutation, mutations):
+        if not len(seq) <= MAX_LENGTH - ConfigParams.NUM_ADDITIONS and contains_mutation(AddMutation, mutations):
             mutations = remove_mutation(AddMutation, mutations)
-        if not len(seq) > MIN_LENGTH and contains_mutation(DeleteMutation, mutations):
+        if not len(seq) >= MIN_LENGTH - ConfigParams.NUM_DELETIONS and contains_mutation(DeleteMutation, mutations):
             mutations = remove_mutation(DeleteMutation, mutations)
         mutation = random.choice(mutations)
-        #TODO: this still doesn't ensure determinism
-        # deepcopy is needed in order to ensure determinism
-        # .copy doesn't work since seq is an Interaction object
-        result = mutation(deepcopy(seq), self.alphabet, index)
+        result = mutation(seq, self.alphabet, index)
         set_seed()
         return result
 
     def evaluate_fitness_batch(self, individuals: List[List[int]]) -> List[float]:
-        #TODO: add a batch_size mechanism
+        """
+        Evaluates the fitness for each individual, feeding the individuals into the predictor in batches.
+        """
         set_seed()
-        ALPHA1= 0.25 #0.25 instead of 0.5 if the edit_distance is not normalized
-        ALPHA2 = 1 - ALPHA1
-        candidate_seqs = torch.stack([pad(torch.tensor(i), MAX_LENGTH) for i in individuals])
-        batch_size = candidate_seqs.size(0)
-        candidate_probs = self.predictor(candidate_seqs)  # Function to assign label based on the recommender system
-        assert candidate_probs.size(0) == batch_size, f"Mismatch in probs shape and batch size: {candidate_probs.shape} != {batch_size}"
+        batch_size = 512
+        num_batches = math.ceil(len(individuals) / batch_size)
         fitnesses = []
-        for batch_idx in range(batch_size):
-            candidate_seq = candidate_seqs[batch_idx]
-            candidate_prob = candidate_probs[batch_idx]
-            seq_dist = edit_distance(self.input_seq, candidate_seq) #[0,MAX_LENGTH] if not normalized, [0,1] if normalized
-            label_dist = cosine_distance(self.gt, candidate_prob) #[0,1]
-            self_ind = self_indicator(self.input_seq, candidate_seq) #0 if different, inf if equal
-            if not self.good_examples:
-                label_dist = 1 - label_dist
-            cost = ALPHA1 * seq_dist + ALPHA2 * label_dist + self_ind,
-            fitnesses.append(cost)
+        ALPHA1= 0.0
+        ALPHA2 = 1 - ALPHA1
+        for batch_i in range(num_batches): 
+            batch_individuals = individuals[batch_i * batch_size: (batch_i+1)*batch_size]
+            candidate_seqs = pad_batch(batch_individuals, MAX_LENGTH)
+            candidate_probs = self.predictor(candidate_seqs)  
+            
+            # TODO: you can use this to remove the for loop. This still doesn't work
+            # edit distance is not easily vectorizable
+            # seq_dists = list(map(lambda seq: edit_distance(self.input_seq, trim(seq)), candidate_seqs))
+            # if self.good_examples:
+            #     label_dists = cosine_distance(self.gt, candidate_probs)
+            # else:
+            #     label_dists = 1 - cosine_distance(self.gt, candidate_probs)
+            # # also self inds can be vectorized
+            # self_inds = list(map(lambda seq: self_indicator(self.input_seq, trim(seq)), candidate_seqs))
+            # costs = [ALPHA1 * seq_dist + ALPHA2 * label_dist + self_ind for (seq_dist, label_dist, self_ind) in zip(seq_dists, label_dists, self_inds)]
+            # fitnesses.extend(costs)
+
+            for i in range(candidate_seqs.size(0)):
+                candidate_seq = trim(candidate_seqs[i])
+                candidate_prob = candidate_probs[i]
+
+                assert self.gt.shape == candidate_prob.shape
+                seq_dist = edit_distance(self.input_seq, candidate_seq, normalized=True) #[0,MAX_LENGTH] if not normalized, [0,1] if normalized
+                label_dist = jensen_shannon_divergence(candidate_prob, self.gt) #[0,1]
+                self_ind = self_indicator(self.input_seq, candidate_seq) #0 if different, inf if equal
+                # if self.gt.argmax(-1).item() != candidate_prob.argmax(-1).item():
+                #     print(f""" 
+                #           [DEBUG]
+                #           seq_dist: {seq_dist}
+                #           label_dist: {label_dist}
+                #           self_ind: {self_ind}
+                #           ---
+                #           input_seq: {self.input_seq}
+                #           candidate_seq: {candidate_seq}
+                #           ---
+                #           gt shape: {self.gt.shape}
+                #           candidate_prob shape: {candidate_prob.shape}
+                #           gt: {self.gt}
+                #           candidate_prob : {candidate_prob}
+                #           ---
+                #           gt.item(): {self.gt.argmax(-1).item()}
+                #           candidate_prob.item(): {candidate_prob.argmax(-1).item()}
+                #           """)
+                if not self.good_examples:
+                    # label_dist = 0 if label_dist == float("inf") else float("inf")
+                    label_dist = 1 - label_dist
+                cost = ALPHA1 * seq_dist + ALPHA2 * label_dist + self_ind,
+                fitnesses.append(cost)
+
+        # print(f"[DEBUG] Fitnesses: {list(sorted(fitnesses))}")
         return fitnesses
 
 
@@ -114,7 +154,8 @@ class GeneticGenerationStrategy():
                                         mutpb=0.5, 
                                         ngen=self.generations,
                                         halloffame=halloffame if self.halloffame_ratio != 0 else None,
-                                        verbose=False)
+                                        verbose=False,
+                                        pbar=self.verbose)
         preds = self.predictor(pad_batch(population, MAX_LENGTH)).argmax(-1)
         new_population = [(torch.tensor(x), preds[i].item()) for (i, x) in enumerate(population)]
         label_eval, seq_eval = self.evaluate_generation(new_population)
@@ -155,26 +196,30 @@ class GeneticGenerationStrategy():
     def clean(self, examples: Dataset) -> Dataset:
         label = self.gt.argmax(-1).item()
         if self.good_examples:
-            return [ex for ex in examples if ex[1] == label]
-        return [ex for ex in examples if ex[1] != label]
+            clean = [ex for ex in examples if ex[1] == label]
+            self.print(f"Removed {len(examples) - len(clean)} individuals from good (label was not equal to gt)")
+            return clean
+        clean = [ex for ex in examples if ex[1] != label]
+        self.print(f"Removed {len(examples) - len(clean)} individuals from bad (label was equal to gt)")
+        return clean
 
     def postprocess(self, population: Dataset) -> Dataset:
         clean_pop = self.clean(population)
         label_eval, seq_eval = self.evaluate_generation(clean_pop)
 
         source_point = (self.input_seq, self.gt.argmax(-1).item())
-        # If source point is not in good datset, add it
+
+        # Remove any copy of the source point from the good or bad dataset.
+        new_pop = [(ind, label) for ind, label in clean_pop if ind.tolist() != source_point[0].tolist()]
+        if len(new_pop) < len(clean_pop):
+            self.print(f"Source point was in the dataset {len(clean_pop) - len(new_pop)} times!, removing it")
+        clean_pop = new_pop
+
+        # If source point is not in good datset, add just one instance back
         if self.good_examples and len([ind for ind, _ in clean_pop if ind.tolist() == source_point[0].tolist()]) == 0:
-            self.print(f"Source point was not in good dataset, adding it")
             clean_pop.append(source_point)
 
-        # If source point is in bad datset, remove it
-        if not self.good_examples:
-            new_pop = [(ind, label) for ind, label in clean_pop if ind.tolist() != source_point[0].tolist()]
-            if len(new_pop) < len(clean_pop):
-                self.print(f"Source point was in the bad dataset, removing it ({len(new_pop)} < {len(clean_pop)})")
-            clean_pop = new_pop
-
+        label_eval, seq_eval = self.evaluate_generation(clean_pop)
         self.print(f"[After clean] Good examples={self.good_examples} ({len(clean_pop)}) ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}")
         return clean_pop
 

@@ -45,7 +45,7 @@ def batch_predict(model: SequentialRecommender, seq: Tensor, argmax: bool=True) 
 
 def model_predict(seq:torch.Tensor, 
                   model: SequentialRecommender,
-                  prob: bool=True):
+                  prob: bool=True) -> Tensor | float:
     set_seed()
     preds = batch_predict(model=model, seq=seq, argmax=not prob)
     if not prob:

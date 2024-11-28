@@ -5,19 +5,20 @@ from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
 from torch import Tensor
 
-from config import ALLOWED_MUTATIONS, GENERATIONS, HALLOFFAME_RATIO, POP_SIZE
-from genetic.dataset.utils import get_sequence_from_interaction
+from config import ConfigParams
+from genetic.dataset.utils import interaction_to_tensor
 from genetic.genetic import GeneticGenerationStrategy
 from genetic.mutations import parse_mutations
-from genetic.utils import NumItems
+from genetic.utils import Items, get_items
 from models.model_funcs import model_predict
 from type_hints import GoodBadDataset
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
 
-def generate( interaction: Union[Interaction, Tensor], model:
-             SequentialRecommender, alphabet: Optional[List[int]] = None) -> GoodBadDataset:
+def generate(interaction: Union[Interaction, Tensor], 
+             model: SequentialRecommender, 
+             alphabet: Optional[List[int]] = None) -> GoodBadDataset:
     """
     Generates the dataset of good and bad points from a sequence in the
     Interaction, using the model as a black box oracle. The dataset can be used
@@ -37,7 +38,7 @@ def generate( interaction: Union[Interaction, Tensor], model:
         good_points and bad_points are lists of LabeledTensors.
     """
     if isinstance(interaction, Interaction):
-        sequence = get_sequence_from_interaction(interaction)
+        sequence = interaction_to_tensor(interaction)
     elif isinstance(interaction, Tensor):
         sequence = interaction
     else:
@@ -50,17 +51,17 @@ def generate( interaction: Union[Interaction, Tensor], model:
     sequence = sequence.squeeze(0)
     assert len(sequence.shape) == 1, f"Sequence dim must be 1: {
         sequence.shape}"
-    allowed_mutations = parse_mutations(ALLOWED_MUTATIONS)
+    allowed_mutations = parse_mutations(ConfigParams.ALLOWED_MUTATIONS)
     if alphabet is None:
-        alphabet = list(range(NumItems.ML_1M.value))
+        alphabet = list(get_items(Items.ML_1M))
     good_genetic_strategy = GeneticGenerationStrategy(
         input_seq=sequence,
         predictor=lambda x: model_predict(seq=x, model=model, prob=True),
         allowed_mutations=allowed_mutations,
-        pop_size=POP_SIZE,
+        pop_size=ConfigParams.POP_SIZE,
         good_examples=True,
-        generations=GENERATIONS,
-        halloffame_ratio=HALLOFFAME_RATIO,
+        generations=ConfigParams.GENERATIONS,
+        halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
         alphabet=alphabet
     )
     good_examples = good_genetic_strategy.generate()
@@ -69,10 +70,10 @@ def generate( interaction: Union[Interaction, Tensor], model:
         input_seq=sequence,
         predictor=lambda x: model_predict(seq=x, model=model, prob=True),
         allowed_mutations=allowed_mutations,
-        pop_size=POP_SIZE,
+        pop_size=ConfigParams.POP_SIZE,
         good_examples=False,
-        generations=GENERATIONS,
-        halloffame_ratio=HALLOFFAME_RATIO,
+        generations=ConfigParams.GENERATIONS,
+        halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
         alphabet=alphabet
     )
     bad_examples = bad_genetic_strategy.generate()

@@ -1,22 +1,19 @@
-import math
 from copy import deepcopy
 from typing import List, Tuple, Union
 
 from aalpy.automata.Dfa import Dfa, DfaState
-from torch import Tensor, instance_norm
-from tqdm import tqdm
+from torch import Tensor
 
 from alignment.a_star import faster_a_star
 from alignment.actions import Action, decode_action, print_action
 from automata_learning.utils import invert_automata, run_automata
-from constants import MAX_LENGTH
-from exceptions import CounterfactualNotFound, DfaNotAccepting, DfaNotRejecting
-from genetic.utils import NumItems
+from exceptions import CounterfactualNotFound
+from genetic.utils import Items, get_items
 from type_hints import Trace, TraceSplit
 from utils import printd
 
 
-def augment_trace_automata(automata: Dfa, num_items: NumItems = NumItems.ML_1M) -> Dfa:
+def augment_trace_automata(automata: Dfa, items: Items = Items.ML_1M) -> Dfa:
     """
     Given an DFA `T` which only accepts a certain sequence `s`, it augments it
     according to the rules explained in the paper "On the Disruptive
@@ -37,7 +34,7 @@ def augment_trace_automata(automata: Dfa, num_items: NumItems = NumItems.ML_1M) 
     with the corresponding repair propositions.
     """
     # Alphabet is the universe of all the items
-    alphabet = [i for i in range(0, num_items.value)]
+    alphabet = get_items(items)
 
     # Create the new repair propositions
     add_propositions = {p: f"add_{p}" for p in alphabet}
@@ -73,7 +70,7 @@ def ingoing_states(dfa: Dfa, curr_state: DfaState):
     return ingoing
 
 
-def augment_constraint_automata(automata: Dfa, trace_automaton: Dfa) -> Dfa:
+def augment_constraint_automata(automata: Dfa, source_sequence: List[int]) -> Dfa:
     """
     Given an DFA `A` which only accepts good sequences, defined as those
     sequences which label is the same as the ground truth sequence it augments
@@ -94,13 +91,12 @@ def augment_constraint_automata(automata: Dfa, trace_automaton: Dfa) -> Dfa:
     and that have been obtained by repairing the original sequence `s`
     """
     # Alphabet is the universe of all the items
-    # alphabet = [i for i in range(1, NumItems.ML_1M.value)]
     alphabet = automata.get_input_alphabet()
-    trace_alphabet = trace_automaton.get_input_alphabet()
-    print(f"Trace alphabet: ", trace_alphabet)
+    trace_alphabet = set(source_sequence)
 
-    # Create the new repair propositions
+    # we can add anything from the alphabet
     add_propositions = {p: f"add_{p}" for p in alphabet}
+    # We can only delete characters that are included in the sequence
     del_propositions = {p: f"del_{p}" for p in trace_alphabet}
 
     for state in automata.states:
@@ -149,19 +145,34 @@ def planning_aut_to_constraint_aut(a_dfa: Dfa):
 def compute_alignment_cost(alignment: Tuple[int]) -> int:
     """
     Computes the cost of the alignment:
-        - add_e and del_e actions have cost 1
-        - sync_e actions have cost 0
+        - ADD and DEL actions alone have cost 1.
+        - A sequence of ADD-DEL or DEL-ADD has a combined cost of 1.
+        - SYNC actions have cost 0.
 
     Args:
-        Alignment: a tuple of integers that represents Actions and can be decoded in action_type and number.
+        alignment: A tuple of integers that represents Actions and can be decoded into action_type and number.
+
     Returns:
         The alignment cost.
     """
     cost = 0
+    prev_action_type = None
+
     for encoded_e in alignment:
         action_type, _ = decode_action(encoded_e)
         if action_type in {Action.ADD, Action.DEL}:
+            # If the current action pairs with the previous action (ADD-DEL or DEL-ADD), skip increment
+            if prev_action_type in {Action.ADD, Action.DEL} and action_type != prev_action_type:
+                prev_action_type = None  # Reset to avoid counting overlapping pairs
+                continue
             cost += 1
+        elif action_type == Action.SYNC:
+            prev_action_type = None  # Reset since SYNC breaks the pairing
+        else:
+            prev_action_type = action_type  # Update previous action
+
+        prev_action_type = action_type
+
     return cost
 
 
@@ -179,9 +190,9 @@ def trace_alignment(a_dfa_aug: Dfa, trace_split: Union[Trace, TraceSplit]):
     max_length = min_length
 
     alignment = faster_a_star(dfa=a_dfa_aug,
-                                trace_split=safe_trace_split,
-                                min_alignment_length=min_length,
-                                max_alignment_length=max_length)
+                              trace_split=safe_trace_split,
+                              min_alignment_length=min_length,
+                              max_alignment_length=max_length)
     if alignment is None:
         raise CounterfactualNotFound("No best path found")
     printd(f"Alignment is: {[print_action(a) for a in alignment]}")

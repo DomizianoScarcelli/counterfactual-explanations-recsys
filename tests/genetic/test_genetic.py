@@ -11,7 +11,7 @@ from alignment.alignment import augment_constraint_automata
 from automata_learning.learning import (generate_single_accepting_sequence_dfa,
                                         learning_pipeline)
 from automata_learning.utils import run_automata
-from config import DATASET, MODEL
+from config import ConfigParams
 from constants import MAX_LENGTH, MIN_LENGTH
 from genetic.dataset.generate import generate
 from genetic.extended_ea_algorithms import (eaSimpleBatched, indexedCxTwoPoint,
@@ -20,13 +20,13 @@ from genetic.extended_ea_algorithms import (eaSimpleBatched, indexedCxTwoPoint,
 from genetic.mutations import (AddMutation, DeleteMutation, ReplaceMutation,
                                ReverseMutation, ShuffleMutation, SwapMutation,
                                contains_mutation, remove_mutation)
-from genetic.utils import (NumItems, clone, cosine_distance, edit_distance,
-                           self_indicator)
+from genetic.utils import Items, clone, get_items
 from models.config_utils import generate_model, get_config
 from models.model_funcs import model_predict
-from models.utils import pad, trim
-from type_hints import Dataset
+from models.utils import pad, pad_batch, trim
 from utils import set_seed
+from utils_classes.distances import (cosine_distance, edit_distance,
+                                     self_indicator)
 from utils_classes.generators import SequenceGenerator
 
 
@@ -74,13 +74,14 @@ def test_contains_exactly_one_source_sequence(model, sequences):
         i += 1
 
 class TestGeneticDeterminism:
+    #TODO: while this passes each time, when asserting determinism with the `test_mapping` dictionary in the real funciton, it doesn't passes.
     def init_vars(self):
         set_seed()
-        config = get_config(dataset=DATASET, model=MODEL)
+        config = get_config(dataset=ConfigParams.DATASET, model=ConfigParams.MODEL)
         sequences = SequenceGenerator(config)
         self.input_seq = trim(next(sequences).squeeze(0))
         self.model = generate_model(config)
-        self.gt = model_predict(self.input_seq.unsqueeze(0), self.model, prob=True)
+        self.gt = model_predict(self.input_seq.unsqueeze(0), self.model, prob=True).squeeze(0)
         self.source = next(sequences).squeeze(0)
         creator.create("fitness", base.Fitness, weights=(-1.0,))  # Minimize fitness
         creator.create("individual", list, fitness=creator.fitness)
@@ -112,7 +113,7 @@ class TestGeneticDeterminism:
                                    ShuffleMutation(),
                                    AddMutation(),
                                    DeleteMutation()]
-        self.alphabet = list(range(0, NumItems.ML_1M.value))
+        self.alphabet = list(get_items(Items.ML_1M))
 
         self.pop1 = self.toolbox.population()
         self.pop2 = self.toolbox2.population()
@@ -129,14 +130,22 @@ class TestGeneticDeterminism:
         set_seed()
         ALPHA1= 0.5
         ALPHA2 = 1 - ALPHA1
-        candidate_seqs = torch.stack([pad(torch.tensor(i), MAX_LENGTH) for i in individuals])
+        candidate_seqs = pad_batch(individuals, MAX_LENGTH)
         batch_size = candidate_seqs.size(0)
         candidate_probs = model_predict(candidate_seqs, self.model, prob=True)  
         assert candidate_probs.size(0) == batch_size, f"Mismatch in probs shape and batch size: {candidate_probs.shape} != {batch_size}"
         fitnesses = []
+
+        test_mapping = {}
         for batch_idx in range(batch_size):
-            candidate_seq = candidate_seqs[batch_idx]
+            candidate_seq = trim(candidate_seqs[batch_idx])
             candidate_prob = candidate_probs[batch_idx]
+            if tuple(candidate_seq.tolist()) in test_mapping:
+                gt = candidate_prob.argmax(-1)
+                cached = test_mapping[tuple(candidate_seq.tolist())]
+                assert gt == cached, f"Label are different: {gt} != {cached}"
+            else:
+                test_mapping[tuple(candidate_seq.tolist())] = candidate_prob.argmax(-1).item()
             seq_dist = edit_distance(self.input_seq, candidate_seq) #[0,1]
             label_dist = cosine_distance(self.gt, candidate_prob) #[0,1]
             self_ind = self_indicator(self.input_seq, candidate_seq) #0 if different, inf if equal

@@ -2,6 +2,7 @@ import torch
 from recbole.config import Config
 from recbole.model.abstract_recommender import SequentialRecommender
 
+from config import ConfigParams
 from genetic.dataset.utils import get_dataloaders
 from models.extended_models.ExtendedBERT4Rec import ExtendedBERT4Rec
 from models.extended_models.ExtendedSASRec import ExtendedSASRec
@@ -40,6 +41,7 @@ def get_config(dataset: RecDataset, model: RecModel) -> Config:
     parameter_dict_ml1m = {
             'load_col': {"inter": ['user_id', 'item_id', 'rating', 'timestamp']},
             'train_neg_sample_args': None,
-            "eval_batch_size": 1}
+            "eval_batch_size": ConfigParams.TEST_BATCH_SIZE,
+            "train_batch_size": ConfigParams.TRAIN_BATCH_SIZE}
     return Config(model=model.value, dataset=dataset.value, config_dict=parameter_dict_ml1m)
 

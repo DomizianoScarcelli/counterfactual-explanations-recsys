@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import List, Tuple
 
+from exceptions import SplitNotCoherent
 from type_hints import TraceSplit
 
 
@@ -18,6 +19,7 @@ class Split:
     """
     def __init__(self, *args: int | float | None):
         self.split = tuple(args)
+        self.parsed = None not in self.split
         assert len(self.split) == 3
         types = set(type(s) for s in self.split if s is not None) # it can contain None, which will be parsed in the `parse_nan` method
         assert len(types) == 1, "Split should have all ints (in case of absolute values) or floats (in case of ratios)"
@@ -34,7 +36,7 @@ class Split:
             else:
                 assert sum(s for s in self.split if s is not None) <= 1
 
-    def _parse_single_nan(self, seq: List[int]):
+    def _parse_single_nan(self, seq: List[int]) -> Split:
         values = [s for s in self.split if s is not None]
         if self.is_ratio:
             assert 0 <= sum(values) <= 1
@@ -47,7 +49,7 @@ class Split:
         inferredNone = (len(seq) - sum(values))
         return Split(*tuple(inferredNone if s is None else s for s in self.split))
 
-    def _parse_double_nan(self, seq: List[int]):
+    def _parse_double_nan(self, seq: List[int]) -> Split:
         # If the value is int, it should be between 0 and len(seq)
         # If the value is float, it shold be between 0 and 1
         value = [s for s in self.split if s is not None][0]
@@ -94,15 +96,18 @@ class Split:
             print("Split doesn't contain any None values, returning it")
             return self
         if len(nans) == 1:
+            self.parsed = True
             return self._parse_single_nan(seq)
         if len(nans) == 2:
+            self.parsed = True
             return self._parse_double_nan(seq)
         else:
             raise ValueError(f"Cannot infer split with {len(nans)} None values")
 
         
     def is_coherent(self, seq: List[int]) -> bool:
-        """ It tells us if the split is coherent with the input sequence, meaning if the sequence can actually be splitted according to the split.
+        """ 
+        It tells us if the split is coherent with the input sequence, meaning if the sequence can actually be splitted according to the split.
 
         Args:
             seq: The sequence that has to be splitted
@@ -115,40 +120,39 @@ class Split:
         assert isinstance(seq, List)
         if self.is_ratio:
             split = self.to_abs(seq).split
-        if len(seq) != sum(split):
+
+
+        if len(seq) != sum(split): #type: ignore
             return False
         
         # TODO: Are other checks necessary?
         return True
 
     def to_ratio(self, seq: List[int]) -> Split:
-        """[TODO:summary]
-
-        Args:
-            seq: [TODO:description]
-
-        Returns:
-            [TODO:description]
-        """
         assert not self.is_ratio, "Split is already a ratio"
-        return Split(*tuple(i/len(seq) for i in self.split))
+        return Split(*tuple(i/len(seq) for i in self.split)) #type: ignore
     
     def to_abs(self, seq: List[int]) -> Split:
         assert self.is_ratio, "Split is already absolute"
-        return Split(*tuple(round(i * len(seq)) for i in self.split))
+        assert self.parsed, f"Split contains None value, call .parse_nan(seq) first"
+        return Split(*tuple(round(i * len(seq)) for i in self.split)) #type: ignore
 
     def apply(self, seq: List[int]) -> TraceSplit:
         self = self.parse_nan(seq)
-        assert self.is_coherent(seq)
+        if not self.is_coherent(seq):
+            raise SplitNotCoherent(f"Sequence length is not coherent with split: {len(seq)} < {len(self)}")
         split = self.split
         if self.is_ratio:
             split = self.to_abs(seq).split
         start, middle, _ = split
         executed = seq[:start]
-        mutable = seq[start:start+middle]
-        fixed = seq[start+middle:]
+        mutable = seq[start:start+middle] #type: ignore
+        fixed = seq[start+middle:] #type: ignore
         return executed, mutable, fixed
     
+    def __len__(self) -> int:
+        return sum(self.split) #type: ignore
+
     def __eq__(self, other) -> bool:
         if not isinstance(other, Split):
             return False

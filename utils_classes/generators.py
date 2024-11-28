@@ -1,21 +1,19 @@
 from __future__ import annotations
 
 import os
-from typing import List, Optional
+import time
 from abc import ABC, abstractmethod
-from typing import Any, Tuple
+from typing import Any, List, Optional, Tuple
 
 from recbole.config import Config
 from recbole.trainer import Interaction
 from torch import Tensor
 
 from genetic.dataset.generate import generate
-from genetic.dataset.utils import (get_dataloaders,
-                                   get_sequence_from_interaction, load_dataset,
-                                   save_dataset)
+from genetic.dataset.utils import (get_dataloaders, interaction_to_tensor,
+                                   load_dataset, save_dataset)
 from models.config_utils import generate_model
 from type_hints import GoodBadDataset
-import time
 
 
 class SkippableGenerator(ABC):
@@ -35,6 +33,14 @@ class SkippableGenerator(ABC):
         """
         self.index += 1
         pass
+
+    def peek(self) -> Any:
+        """
+        Returns the next generation without incrementing the index
+        """
+        result = next(self)
+        self.index -= 1
+        return result
 
     @abstractmethod
     def next(self) -> Any:
@@ -82,24 +88,59 @@ class InteractionGenerator(SkippableGenerator):
 
     Attributes:
         config (Config): Configuration object containing generator settings.
-        test_data (list): List of test data items.
+        data (list): List of data items.
     """
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, split: str = "test"):
         super().__init__()
         self.config = config
-        _, _, self.test_data = get_dataloaders(config)
-        assert self.test_data is not None, "Test data is None"
+        train_data, eval_data, test_data = get_dataloaders(config)
+        
+        if split == "train":
+            self.data = train_data
+        elif split == "test":
+            self.data = test_data
+        elif split == "eval":
+            self.data = eval_data
+        else:
+            raise NotImplementedError(f"Split must be train, eval or test, not {split}")
+
+
 
         #NOTE: this may be memory inefficent for large datasets, since calling
         #list over a generator will allocate all the items in the memory. A
         #solution is to materialize the list in batches. Whenever the i is
         #bigger than the current list, then we load another batch.
+        
+        self.data = list(self.data)
+        # Self.data is a List of Tuples of the form:
+        # (Interaction, None [1], batch_idx [B], ground_truth(?) [B])
 
-        self.test_data = list(self.test_data)
+        # Example of Interaction.interaction structure
+        # {
+        #         'user_id': Tensor,  # Shape: [B]
+        #         'item_id': Tensor,  # Shape: [B]
+        #         'rating': Tensor,  # Shape: [B]
+        #         'timestamp': Tensor,  # Shape: [B]
+        #         'item_length': Tensor,  # Shape: [B]
+        #         'item_id_list': Tensor,  # Shape: [B, MAX_LENGTH]
+        #         'rating_list': Tensor,  # Shape: [B, MAX_LENGTH]
+        #         'timestamp_list': Tensor,  # Shape: [B, MAX_LENGTH]
+        #         'Mask_item_id_list': Tensor,  # Shape: [B, MAX_LENGTH]
+        #         'Pos_item_id': Tensor,  # Shape: [B, n_masks]
+        #         'Neg_item_id': Tensor,  # Shape: [B, n_masks]
+        #         'MASK_INDEX': Tensor,  # Shape: [B, n_masks]
+        # }
+
+        # for i, elem in enumerate(self.data):
+        #     print(f"Element {i} is made of: ")
+        #     for j, subel in enumerate(elem):
+        #         print(f"    Subelement {j} is: {subel} of type {type(subel)}")
+        # print(f"Interaction is: {self.data[0][0].interaction}")
 
     def next(self) -> Interaction:
         try:
-            data = self.test_data[self.index] #type: ignore
+            data = self.data[self.index] #type: ignore
+            # the actual sequence is the first element of the tuple
             interaction = data[0]
             self.index += 1
             return interaction
@@ -116,7 +157,7 @@ class SequenceGenerator(InteractionGenerator):
 
     def next(self) -> Tensor: #type: ignore
         interaction = super().next()
-        return get_sequence_from_interaction(interaction)
+        return interaction_to_tensor(interaction)
 
 class DatasetGenerator(SkippableGenerator):
     def __init__(self, config: Config, use_cache: bool=True, return_interaction: bool=False):
@@ -154,6 +195,9 @@ class DatasetGenerator(SkippableGenerator):
     def reset(self):
         self.interactions.reset()
         self.index = 0
+
+    def stats(self) -> Optional[Tuple[float, float]]:
+        pass
 
 
 class TimedGenerator:

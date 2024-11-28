@@ -4,6 +4,7 @@ from operator import attrgetter
 from deap.algorithms import tools
 from deap.tools import selRandom
 from tqdm import tqdm
+from config import ConfigParams
 
 from utils import set_seed
 
@@ -11,7 +12,7 @@ from utils import set_seed
 # Taken from deap.algorithms.eaSimple
 # Solution taken from https://github.com/DEAP/deap/issues/508
 def eaSimpleBatched(population, toolbox, cxpb, mutpb, ngen, stats=None,
-             halloffame=None, verbose=__debug__):
+                    halloffame=None, verbose=__debug__, pbar=True):
     """
     This extends the deap.eaSimple method in order for the sequences in the
     population to be evaluated in batch, instead of one-by-one. This is useful
@@ -37,7 +38,7 @@ def eaSimpleBatched(population, toolbox, cxpb, mutpb, ngen, stats=None,
         print(logbook.stream)
 
     # Begin the generational process
-    for gen in tqdm(range(1, ngen + 1), "Running genetic algorithm..."):
+    for gen in tqdm(range(1, ngen + 1), "Running genetic algorithm...", disable=not pbar, leave=False):
         # Select the next generation individuals
         offspring = toolbox.select(population, len(population))
 
@@ -93,19 +94,24 @@ def indexedVarAnd(population, toolbox, cxpb, mutpb):
 
 def indexedSelTournament(individuals, k, tournsize, fit_attr="fitness"):
     chosen = []
+    if ConfigParams.DETERMINISM:
+        hash_key = hash(tuple([ind.fitness.values for ind in individuals])) ^ hash(tuple(hash(tuple(ind)) for ind in individuals))
+        curr_seed = hash_key
     for i in range(k):
-        set_seed(i) 
+        if ConfigParams.DETERMINISM:
+            set_seed(hash(curr_seed)) #type: ignore
         aspirants = [random.choice(individuals) for _ in range(tournsize)]
         chosen.append(max(aspirants, key=attrgetter(fit_attr)))
+        # set the seed based on individuals, index and current chosen ones
+        if ConfigParams.DETERMINISM:
+            curr_seed ^= i ^ hash(tuple(chosen[-1])) #type: ignore
 
-    set_seed()
     return chosen
 
 
 def indexedCxTwoPoint(ind1, ind2, index, return_indices: bool=False):
-    # XOR the two hashes in order to ensure the seed is different for each
-    # combination of two invididuals
-    set_seed(hash(tuple(ind1)) ^ hash(tuple(ind2)) + index)
+    if ConfigParams.DETERMINISM:
+        set_seed(hash(tuple(ind1)) ^ hash(tuple(ind2)) + index)
     size = min(len(ind1), len(ind2))
     cxpoint1 = random.randint(1, size)
     cxpoint2 = random.randint(1, size - 1)

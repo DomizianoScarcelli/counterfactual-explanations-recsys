@@ -76,6 +76,7 @@ def _pad_tensor(seq: Tensor, length: int) -> Tensor:
     if len(seq) == length: return seq
     if (seq >= 0).sum() != len(seq):
         seq = trim(seq)
+    assert length >= len(seq), f"Seq must not be longer than {length}, seq is: {seq} with shape: {seq.shape}"
     return torch.cat((seq, torch.full(fill_value=-1, size=(length - len(seq),))))
 
 def _pad_list(seq: List[int], length: int) -> List[int]:
@@ -111,7 +112,45 @@ def pad(seq: Tensor | List[int], length: int) -> Tensor:
     else:
         return torch.tensor(_pad_list(seq, length))
 
-def pad_batch(seqs: List[list] | Tensor | List[Tensor], length: int) -> Tensor:
+def pad_batch(seqs: List[List[int]] | List[Tensor], length: int) -> Tensor:
+    """
+    Given a list of N Tensors[int] or a list of N List[int], it returns a tensor of
+    tensors padded with PADDING_CHAR of shape [N, length]
+    """
     if isinstance(seqs, Tensor):
         return torch.stack([pad(s, length) for s in seqs])
     return torch.stack([pad(torch.tensor(s), length) for s in seqs])
+
+
+def replace_padding(seq: Tensor, pad_char: int, new_pad_char: int) -> Tensor:
+    """
+    Replaces the padding of a Tensor from the pad_char to the new_pad_char.
+
+    Args:
+        seq: A tensor of shape [B, N] if batched or [N] if not batched.
+        pad_char: an integer representing the old padding char.
+        new_pad_char: an interger representing the new padding char.
+
+    Returns:
+        A new tensor with the same shape of `seq`, where the pad_char has been
+        replaced with new_pad_char
+    """
+    assert new_pad_char not in seq, f"Pad {new_pad_char} is in seq: {seq}"
+    return torch.where(seq == pad_char, torch.tensor(new_pad_char), seq)
+
+def topk(logits: Tensor, k: int, dim: int, indices: bool=False) -> Tensor:
+    """
+    Returns the top-k most probable items if indices is True, the logits if
+    False, giving the logits that represent the likelihood. 
+
+    Args:
+        logits: Input tensor.
+        k: Number of top elements to select.
+        dim: Dimension along which to perform the top-k operation.
+
+    Returns:
+        Tensor: The top-k values along the specified dimension.
+    """
+    # Use PyTorch's built-in topk function
+    topk_values, topk_indices = torch.topk(logits, k, dim=dim, largest=True, sorted=True)
+    return topk_indices if indices else topk_values

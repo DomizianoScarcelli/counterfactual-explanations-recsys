@@ -1,15 +1,15 @@
 import pytest
 import torch
-from recbole.config import Config
 from recbole.model.abstract_recommender import SequentialRecommender
 
 from alignment.alignment import (augment_constraint_automata,
                                  augment_trace_automata)
 from automata_learning.learning import (generate_automata_from_dataset,
                                         generate_single_accepting_sequence_dfa)
+from config import ConfigParams
 from genetic.dataset.utils import load_dataset
-from genetic.utils import NumItems
-from models.config_utils import generate_model
+from genetic.utils import Items
+from models.config_utils import generate_model, get_config
 from utils_classes.generators import InteractionGenerator, SequenceGenerator
 
 
@@ -105,7 +105,7 @@ def mock_a_dfa(mock_dataset):
 def mock_t_dfa_aug(mock_original_trace):
     # Generate another t_dfa since it's augmented on place
     t_dfa = generate_single_accepting_sequence_dfa(mock_original_trace)
-    return augment_trace_automata(t_dfa, num_items=NumItems.MOCK)
+    return augment_trace_automata(t_dfa, items=Items.MOCK)
 
 @pytest.fixture(scope="module")
 def mock_a_dfa_aug(mock_dataset, mock_t_dfa):
@@ -173,15 +173,9 @@ def a_dfa_aug(dataset, t_dfa):
     a_dfa = generate_automata_from_dataset(dataset, load_if_exists=False)
     return augment_constraint_automata(a_dfa, t_dfa)
 
-
 @pytest.fixture(scope="module")
 def config():
-    parameter_dict_ml1m = {
-        'load_col': {"inter": ['user_id', 'item_id', 'rating', 'timestamp']},
-        'train_neg_sample_args': None,
-        "eval_batch_size": 1
-    }
-    return Config(model='BERT4Rec', dataset='ml-1m', config_dict=parameter_dict_ml1m)
+    return get_config(dataset=ConfigParams.DATASET, model=ConfigParams.MODEL)
 
 @pytest.fixture(scope="module")
 def model(config) -> SequentialRecommender:

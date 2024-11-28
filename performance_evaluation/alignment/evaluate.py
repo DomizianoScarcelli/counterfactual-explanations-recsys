@@ -1,10 +1,13 @@
+import json
 import os
-from typing import Optional, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import fire
 import pandas as pd
 from pandas import DataFrame
-from performance_evaluation.alignment.utils import log_run, evaluate_stats
+
+from config import ConfigParams
+from performance_evaluation.alignment.utils import get_log_stats, log_run
 from run import run
 from utils import set_seed
 
@@ -12,10 +15,22 @@ from utils import set_seed
 def evaluate_trace_disalignment(range_i: Tuple[int, Optional[int]],
                                 splits: Optional[List[int]],
                                 use_cache: bool,
-                                save_path: str):
-                                
+                                save_path: Optional[str]=None):
+    """
+    Evaluates the disalignment of traces for a given range and set of splits.
+    Optionally saves the results to a CSV file.
+
+    Args:
+        range_i: The range of indices to evaluate (start, end).
+        splits: List of split indices to evaluate. If None, evaluates all splits.
+        use_cache: Whether to use cached results.
+        save_path: Path to save the results to a CSV file. If None, results are not saved.
+
+    Returns:
+        None
+    """
     log: DataFrame  = DataFrame({})
-    if os.path.exists(save_path):
+    if save_path and os.path.exists(save_path):
         log = pd.read_csv(save_path)
 
     run_logs = run(start_i=range_i[0], 
@@ -24,31 +39,62 @@ def evaluate_trace_disalignment(range_i: Tuple[int, Optional[int]],
                    use_cache=use_cache)
 
     for run_log in run_logs:
-        # TODO: you can make Run a SkippableGenerator, which skips when the source sequence, split and config combination already exists in the log
-        log = log_run(prev_df=log, log=run_log, save_path=save_path)  
+        # TODO: you can make Run a SkippableGenerator, which skips when the
+        # source sequence, split and config combination already exists in the
+        # log
+        if save_path:
+            log = log_run(prev_df=log, 
+                          log=run_log, 
+                          save_path=save_path,
+                          primary_key=["source", "split"])  
 
-def main(mode: str = "evaluate", 
-         use_cache: bool = True, 
-         range_i: Tuple[int, Optional[int]] = (0, None),
-         evaluation_log: Optional[str] = None,
-         stats_output: Optional[str] = None,
-         splits: Optional[List[int]] = None,
-         save_path: str = "run.csv"):
+def main(
+        config_path: Optional[str]=None,
+        mode: str = "evaluate", 
+        use_cache: bool = True, 
+        range_i: Tuple[int, Optional[int]] = (0, None),
+        log_path: Optional[str] = None,
+        stats_save_path: Optional[str] = None,
+        splits: Optional[List[int]] = None,
+        stat_filter: Optional[Dict[str, Any]]=None):
+    """
+    Main entry point to run either the trace disalignment evaluation or log statistics generation.
+
+    Args:
+        config_path: Path to the configuration file. If None, defaults will be used.
+        mode: Mode of operation. Can be "evaluate" (to evaluate traces) or "stats" (to generate statistics).
+        use_cache: Whether to use cached results when evaluating traces.
+        range_i: Tuple of indices (start, end) defining the range of evaluation.
+        log_path: Path to the log file for statistics. Required if mode is "stats".
+        stats_save_path: Path to save the generated statistics in JSON format. If None, not saved.
+        splits: List of splits to evaluate. If None, evaluates all splits.
+        stat_filter: Filter for statistics generation.
+
+    Returns:
+        None
+    """
     set_seed()
+
+    ConfigParams.reload(config_path)
+    ConfigParams.fix()
+
     if mode == "evaluate":
         evaluate_trace_disalignment(
                 range_i=range_i,
                 splits=splits, 
                 use_cache=use_cache,
-                save_path=save_path)
+                save_path=log_path)
     elif mode == "stats":
-        if not evaluation_log:
-            raise ValueError("Evaluation log path needed for stats")
-        if not os.path.exists(evaluation_log):
-            raise FileNotFoundError(f"File {evaluation_log} does not exists")
-        if not stats_output:
-            raise ValueError("Evaluation stats output needed")
-        evaluate_stats(evaluation_log, stats_output)
+        if not log_path:
+            raise ValueError(f"Log path needed for stats")
+        if not os.path.exists(log_path):
+            raise FileNotFoundError(f"File {log_path} does not exists")
+
+        stats_metrics = ["status", "dataset_time", "align_time", "automata_learning_time"]
+        group_by = list(ConfigParams.configs_dict().keys()) + ["split"]
+        group_by.remove("timestamp")
+        stats = get_log_stats(log_path=log_path, save_path=stats_save_path, group_by=group_by, metrics=stats_metrics, filter=stat_filter)
+        print(json.dumps(stats, indent=2))
 
     else:
         raise ValueError(f"Mode {mode} not supported, choose between [evaluate, stats]")

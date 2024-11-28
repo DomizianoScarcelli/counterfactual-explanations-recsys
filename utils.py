@@ -5,7 +5,7 @@ from typing import Any, Callable
 import numpy as np
 import torch
 
-from config import DEBUG, DETERMINISM
+from config import ConfigParams
 
 
 def printd(statement, level=1):
@@ -13,14 +13,15 @@ def printd(statement, level=1):
     Prints the statement only if the specified level is lower than the debug 
     level.
     """
-    if DEBUG and level <= DEBUG:
+    if ConfigParams.DEBUG and level <= ConfigParams.DEBUG:
         print(statement)
 
 
 def set_seed(seed: int = 42):
+    # print(f"[DEBUG] Setting seed: {seed}")
     MAX_SEED = 2**32 - 1
     seed %= (MAX_SEED + 1)
-    if not DETERMINISM:
+    if not ConfigParams.DETERMINISM:
         return
     random.seed(seed)
     np.random.seed(seed)

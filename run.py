@@ -1,17 +1,17 @@
-import warnings
-from typing import List, Optional, Tuple, Generator
 import json
-import toml
+import warnings
+from typing import Generator, List, Optional, Tuple
 
 import fire
+import toml
 
+from alignment.actions import print_action
 from alignment.alignment import trace_disalignment
 from alignment.utils import postprocess_alignment
 from automata_learning.learning import learning_pipeline
-from config import DATASET, MODEL
+from config import ConfigParams
 from exceptions import (CounterfactualNotFound, DfaNotAccepting,
-                        DfaNotRejecting, NoTargetStatesError)
-from alignment.actions import print_action
+                        DfaNotRejecting, NoTargetStatesError, SplitNotCoherent)
 from models.config_utils import generate_model, get_config
 from performance_evaluation.alignment.utils import preprocess_interaction
 from type_hints import Dataset, RecDataset, RecModel, SplitTuple
@@ -29,7 +29,8 @@ error_messages = {
         DfaNotAccepting: "DfaNotAccepting",
         DfaNotRejecting: "DfaNotRejecting",
         NoTargetStatesError: "NoTargetStatesError",
-        CounterfactualNotFound: "CounterfactualNotFound"
+        CounterfactualNotFound: "CounterfactualNotFound",
+        SplitNotCoherent: "SplitNotCoherent"
         }
 
 def single_run(source_sequence: List[int], 
@@ -47,12 +48,12 @@ def single_run(source_sequence: List[int],
     aligned = postprocess_alignment(aligned)
     return aligned, cost, alignment
 
-def run(dataset_type:RecDataset=DATASET,
-         model_type:RecModel=MODEL,
-         start_i: int = 0,
-         end_i: Optional[int]=None,
-         splits: Optional[List[int]] = None, #type: ignore
-         use_cache: bool=True) -> Generator:
+def run(dataset_type:RecDataset=ConfigParams.DATASET,
+        model_type:RecModel=ConfigParams.MODEL,
+        start_i: int = 0,
+        end_i: Optional[int]=None,
+        splits: Optional[List[int]] = None, #type: ignore
+        use_cache: bool=True) -> Generator:
 
     params = {
             "parameters":
@@ -71,7 +72,7 @@ CONFIG
 ---Inputs---
 {json.dumps(params, indent=2)}
 ---Config.toml---
-{json.dumps(toml.load("configs/config.toml"), indent=2)}
+{json.dumps(toml.load(ConfigParams._config_path), indent=2)}
 -----------------------
 """)
     
@@ -111,16 +112,13 @@ CONFIG
                "automata_learning_time": None, 
                "use_cache": use_cache}
     i=0
-    while True:
+    while i < end_i:
         # Execute only the loops where start_i <= i < end_i
         if i < start_i:
             print(f"Skipping i = {i}")
             datasets.skip()
             i += 1
             continue
-        if i >= end_i:
-            print(f"Generated {end_i}, exiting...")
-            break
         
         assert datasets.index == i, f"{datasets.index} != {i}"
         assert len(datasets.get_times()) == i, f"{len(datasets.get_times())} != {i}"
@@ -142,7 +140,7 @@ CONFIG
             print(f"Current Split: {split}")
             try:
                 aligned, cost, alignment = single_run(source_sequence, dataset, split)
-            except (DfaNotAccepting, DfaNotRejecting, NoTargetStatesError, CounterfactualNotFound) as e:
+            except (DfaNotAccepting, DfaNotRejecting, NoTargetStatesError, CounterfactualNotFound, SplitNotCoherent) as e:
                 print(f"Raised {type(e)}")
                 run_log["status"] = error_messages[type(e)]
                 yield run_log
@@ -172,6 +170,21 @@ CONFIG
         
        
         i += 1
+
+
+def main(
+        config_path: Optional[str]=None,
+        dataset_type:RecDataset=ConfigParams.DATASET,
+        model_type:RecModel=ConfigParams.MODEL,
+        start_i: int = 0,
+        end_i: Optional[int]=None,
+        splits: Optional[List[int]] = None, #type: ignore
+        use_cache: bool=True):
+    
+    ConfigParams.reload(config_path) 
+    ConfigParams.fix()
+    for _ in run(dataset_type, model_type, start_i, end_i, splits, use_cache):
+        pass
         
 if __name__ == '__main__':
-  fire.Fire(run)
+  fire.Fire(main)

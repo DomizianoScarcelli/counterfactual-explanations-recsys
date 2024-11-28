@@ -10,6 +10,7 @@ from torch import Tensor
 def save_automata(automata, save_path):
     with open(os.path.join("saved_automatas", save_path), "wb") as f:
         pickle.dump(automata, f)
+        print(f"Automata saved at {save_path}")
 
 def load_automata(load_path):
     with open(os.path.join("saved_automatas", load_path), "rb") as f:
@@ -66,5 +67,6 @@ def run_automata(automata: Dfa, input: list, final_reset: bool = True):
             # pass
             # equivalent to go in sink state and early return
             # return False
-    automata.reset_to_initial()
+    if final_reset:
+        automata.reset_to_initial()
     return result

@@ -2,6 +2,7 @@ import pickle
 from typing import Set, Tuple
 
 import torch
+from numpy._core.multiarray import MAXDIMS
 from recbole.config import Config
 from recbole.data import create_dataset, data_preparation
 from recbole.data.interaction import Interaction
@@ -9,18 +10,9 @@ from recbole.utils import init_seed
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from models.utils import pad
+from constants import MAX_LENGTH, PADDING_CHAR
+from models.utils import pad, pad_batch, replace_padding
 from type_hints import Dataset, GoodBadDataset
-
-
-def train_test_split(dataset: Dataset, test_split: float = 0):
-    train, test = [], []
-    train_end = round(len(dataset) * (1-test_split))
-    for i in range(train_end):
-        train.append(dataset[i])
-    for i in range(train_end, len(dataset)-1):
-        test.append(dataset[i])
-    return train, test
 
 
 def save_dataset(dataset: GoodBadDataset, save_path: str):
@@ -86,18 +78,20 @@ def make_deterministic(dataset: Tuple[Dataset, Dataset]) -> Tuple[Dataset, Datas
     return dataset
 
 
-def get_sequence_from_interaction(interaction: Interaction) -> Tensor:
+def interaction_to_tensor(interaction: Interaction) -> Tensor:
+    """
+    Given an interaction object, it returns the (batched) sequences padded with
+    the ConfigParams.PADDIN_CHAR.
+    """
     sequence = interaction.interaction["item_id_list"]
-    length = interaction.interaction["item_length"]
-    # print(f"""Interaction-Sequence info: 
-    #       Sequence: {sequence} 
-    #       Length: {length}
-    #       Unpadded: {sequence[:, :length]}
-    #       """)
+    # length = interaction.interaction["item_length"]
+    if sequence.dim() == 1 and sequence.size(0) == MAX_LENGTH:
+        sequence = sequence.unsqueeze(0)
+    batch_size = sequence.size(0)
+    
+    assert sequence.shape == (batch_size, MAX_LENGTH), f"Seq has incorrect shape: {sequence.shape} != {(batch_size, MAX_LENGTH)}"
 
-    # Changes padding character from 0 to -1
-    unpadded = sequence[:, :length].flatten()
-    return pad(unpadded, sequence.size(-1)).unsqueeze(0)
+    return replace_padding(sequence, 0, PADDING_CHAR)
 
 def get_dataset_alphabet(dataset: GoodBadDataset) -> Set[int]:
     alphabet = set()
