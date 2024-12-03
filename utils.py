@@ -77,3 +77,5 @@ class TimedFunction:
             float: Time in seconds.
         """
         return self.last_time
+
+

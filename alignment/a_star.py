@@ -6,10 +6,14 @@ from aalpy.automata.Dfa import Dfa, DfaState
 
 from alignment.actions import (Action, decode_action, encode_action_str, is_legal)
 from alignment.utils import alignment_length, prune_paths_by_length
+from config import ConfigParams
 from exceptions import NoTargetStatesError
 from heuristics.heuristics import hops
 from type_hints import TraceSplit
 from utils import printd
+from typing import TypeAlias
+from type_hints import PathsQueue, PathInfo
+
 
 def get_accepting_states(dfa: Dfa, include_sink: bool=True) -> Set[DfaState]:
     if include_sink:
@@ -37,7 +41,7 @@ def get_target_states(dfa: Dfa, leftover_trace: Sequence[int]):
         >>> target_states = get_target_states(dfa, leftover_trace)
         >>> print([state.state_id for state in target_states])
     """
-    accepting_states = get_accepting_states(dfa, include_sink=True)
+    accepting_states = get_accepting_states(dfa, include_sink=ConfigParams.INCLUDE_SINK)
     final_states = set()
     for state in dfa.states:
         curr_state = state
@@ -91,7 +95,7 @@ def faster_a_star(
     """
     printd("-----FAST-A*------")
 
-    accepting_states = get_accepting_states(dfa, include_sink=True) 
+    accepting_states = get_accepting_states(dfa, include_sink=ConfigParams.INCLUDE_SINK) 
     executed_t, alignable_t, leftover_t = trace_split
 
     # Checks
@@ -223,7 +227,7 @@ def a_star(
 
         return hops(curr_state, remaining_trace, target_states)
 
-    def get_constrained_neighbours(state, curr_char: Optional[int]):
+    def get_constrained_neighbours(state, curr_char: Optional[int]) -> List[Tuple[DfaState, int, int]]:
         neighbours = []
         for p, target in state.transitions.items():
             encoded_p = encode_action_str(p) if isinstance(p, str) else p
@@ -254,7 +258,7 @@ def a_star(
         warnings.warn("Origin or target state not in automaton. Returning None.")
         return None
 
-    paths = []
+    paths: PathsQueue = []
     heap_counter = 0
     visited = set()
 
@@ -296,11 +300,9 @@ def a_star(
             printd(f"Paths head (20) costs {[p[0] for p in paths[:20]]}", level=2)
             printd(f"Paths tail (20) costs {[p[0] for p in paths[-20:]]}", level=2)
         
-        popped : Tuple[int, int, int, DfaState, Tuple, Tuple, int] = heapq.heappop(
-            paths
-        )
-
+        popped: PathInfo = heapq.heappop(paths)
         cost, heuristic_value, _, current_state, path, inputs, remaining_trace_idx = popped
+
         curr_alignment_length = alignment_length(inputs)
         if current_state in target_states and remaining_trace_idx == 0:
             if (
@@ -312,9 +314,7 @@ def a_star(
             ):
                 return tuple(inputs)
 
-        curr_char = (
-            remaining_trace[-remaining_trace_idx] if remaining_trace_idx > 0 else None
-        )
+        curr_char = remaining_trace[-remaining_trace_idx] if remaining_trace_idx > 0 else None
         neighbours = get_constrained_neighbours(current_state, curr_char)
 
         for neighbour, action_cost, action in neighbours:

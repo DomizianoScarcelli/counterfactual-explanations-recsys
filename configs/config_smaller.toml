@@ -7,13 +7,10 @@ determinism = true          # Ensure deterministic runs (true = fixed seed)
 train_batch_size = 1        # Batch size for training
 test_batch_size = 1         # Batch size for testing
 
-[automata]
-include_sink = true        # Include sink state in the target states when doing trace alignment
-
 # Settings for the evolutionary algorithm
 [evolution]
 generations = 10            # Number of generations in the evolutionary process
-pop_size = 2048             # Population size for the algorithm
+pop_size = 512             # Population size for the algorithm
 halloffame_ratio = 0.2      # Ratio of the population to keep in the Hall of Fame
 allowed_mutations = [
     "replace",              # Replace an element in a sequence

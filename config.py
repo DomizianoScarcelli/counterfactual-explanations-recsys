@@ -37,6 +37,8 @@ class ConfigParams:
             cls.TRAIN_BATCH_SIZE = config["settings"]["train_batch_size"]
             cls.TEST_BATCH_SIZE = config["settings"]["test_batch_size"]
 
+            cls.INCLUDE_SINK = config["automata"]["include_sink"]
+
             cls.GENERATIONS = config["evolution"]["generations"]
             cls.POP_SIZE = config["evolution"]["pop_size"]
             cls.HALLOFFAME_RATIO = config["evolution"]["halloffame_ratio"]

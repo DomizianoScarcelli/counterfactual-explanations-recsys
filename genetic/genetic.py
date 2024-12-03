@@ -69,9 +69,11 @@ class GeneticGenerationStrategy():
         #TODO: remove for efficiency
         assert PADDING_CHAR not in seq, f"Seq must not contain padding char {PADDING_CHAR}: {seq}"
         mutations = self.allowed_mutations.copy()
-        if not len(seq) <= MAX_LENGTH - ConfigParams.NUM_ADDITIONS and contains_mutation(AddMutation, mutations):
+        # If after NUM_ADDITIONS additions the seq is longer than the MAX_LENGTH, don't allow add mutations
+        if len(seq) > MAX_LENGTH - ConfigParams.NUM_ADDITIONS and contains_mutation(AddMutation, mutations):
             mutations = remove_mutation(AddMutation, mutations)
-        if not len(seq) >= MIN_LENGTH - ConfigParams.NUM_DELETIONS and contains_mutation(DeleteMutation, mutations):
+        # If after NUM_DELETIONS deletions the seq is shorter than the MIN_LENGTh, don't allow delete mutations
+        if len(seq) < MIN_LENGTH + ConfigParams.NUM_DELETIONS and contains_mutation(DeleteMutation, mutations):
             mutations = remove_mutation(DeleteMutation, mutations)
         mutation = random.choice(mutations)
         result = mutation(seq, self.alphabet, index)
