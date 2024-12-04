@@ -42,6 +42,8 @@ def get_config(dataset: RecDataset, model: RecModel) -> Config:
             'load_col': {"inter": ['user_id', 'item_id', 'rating', 'timestamp']},
             'train_neg_sample_args': None,
             "eval_batch_size": ConfigParams.TEST_BATCH_SIZE,
+            "MAX_ITEM_LIST_LENGTH": 50,
+            "eval_args": {'split': {'LS': 'valid_and_test'}, 'order': 'TO'},
             "train_batch_size": ConfigParams.TRAIN_BATCH_SIZE}
     return Config(model=model.value, dataset=dataset.value, config_dict=parameter_dict_ml1m)
 

@@ -21,7 +21,6 @@ from utils import set_seed
 from utils_classes.distances import (edit_distance, jensen_shannon_divergence,
                                      self_indicator)
 
-
 class GeneticGenerationStrategy():
     def __init__(self, input_seq: Tensor, 
                  predictor: Callable,
@@ -88,7 +87,7 @@ class GeneticGenerationStrategy():
         batch_size = 512
         num_batches = math.ceil(len(individuals) / batch_size)
         fitnesses = []
-        ALPHA1= 0.0
+        ALPHA1= 0.5
         ALPHA2 = 1 - ALPHA1
         for batch_i in range(num_batches): 
             batch_individuals = individuals[batch_i * batch_size: (batch_i+1)*batch_size]

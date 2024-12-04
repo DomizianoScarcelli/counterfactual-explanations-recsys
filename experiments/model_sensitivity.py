@@ -41,7 +41,8 @@ def model_sensitivity(sequences: SkippableGenerator,
     prev_df = pd.DataFrame({})
     if os.path.exists(log_path):
         prev_df = pd.read_csv(log_path)
-        seen_idx = set(prev_df["position"].tolist())
+        filtered_df = prev_df[prev_df['k'] == k]
+        seen_idx = set(filtered_df["position"].tolist())
 
     print(f"[DEBUG] seen_idx: {seen_idx}")
 
@@ -83,7 +84,7 @@ def model_sensitivity(sequences: SkippableGenerator,
 
         jaccards.add(mean(jaccard_sim(a=out_k, b=(out_prime_k.squeeze() if k != 1 else out_prime_k)) for out_prime_k in out_primes_k))
         precisions.add(mean(precision_at(k=k, a=out_k, b=(out_prime_k.squeeze() if k != 1 else out_prime_k)) for out_prime_k in out_primes_k))
-        ndcgs.add(mean(ndcg_at(k=k, a=out_k, b=(out_prime_k.squeeze() if k != 1 else out_prime_k)) for out_prime_k in out_primes_k))
+        ndcgs.add(mean(ndcg_at(k=k, a=out_k, b=out_prime_k.squeeze()) for out_prime_k in out_primes_k))
         pbar.set_postfix_str(f"jacc: {mean(jaccards)*100:.2f}, prec: {mean(precisions)*100:.2f}, ndcg: {mean(ndcgs)*100:.2f}")
 
     data = {"position": position,

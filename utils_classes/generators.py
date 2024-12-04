@@ -104,8 +104,6 @@ class InteractionGenerator(SkippableGenerator):
         else:
             raise NotImplementedError(f"Split must be train, eval or test, not {split}")
 
-
-
         #NOTE: this may be memory inefficent for large datasets, since calling
         #list over a generator will allocate all the items in the memory. A
         #solution is to materialize the list in batches. Whenever the i is
@@ -149,7 +147,6 @@ class InteractionGenerator(SkippableGenerator):
 
     def reset(self):
         self.index = 0
-
 
 class SequenceGenerator(InteractionGenerator):
     def __init__(self, config: Config):

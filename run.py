@@ -14,7 +14,7 @@ from exceptions import (CounterfactualNotFound, DfaNotAccepting,
                         DfaNotRejecting, NoTargetStatesError, SplitNotCoherent)
 from models.config_utils import generate_model, get_config
 from performance_evaluation.alignment.utils import preprocess_interaction
-from type_hints import Dataset, RecDataset, RecModel, SplitTuple
+from type_hints import Dataset, GoodBadDataset, RecDataset, RecModel, SplitTuple
 from utils import TimedFunction
 from utils_classes.generators import DatasetGenerator, TimedGenerator
 from utils_classes.Split import Split
@@ -34,7 +34,7 @@ error_messages = {
         }
 
 def single_run(source_sequence: List[int], 
-               _dataset: Tuple[Dataset, Dataset],
+               _dataset: GoodBadDataset,
                split:Optional[Split]=None):
     assert isinstance(source_sequence, list), f"Source sequence is not a list, but a {type(source_sequence)}"
     assert isinstance(source_sequence[0], int), f"Elements of the source sequences are not ints, but {type(source_sequence[0])}"

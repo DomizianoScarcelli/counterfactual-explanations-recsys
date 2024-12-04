@@ -1,7 +1,7 @@
 # General settings for the experiment
 [settings]
 debug = 1                   # Level of debug mode (0=no debug)
-model = "BERT4Rec"          # Name of the model being used
+model = "SASRec"          # Name of the model being used
 dataset = "ML_1M"           # Dataset identifier (e.g., MovieLens 1M)
 determinism = true          # Ensure deterministic runs (true = fixed seed)
 train_batch_size = 1        # Batch size for training
@@ -26,6 +26,6 @@ allowed_mutations = [
 
 # Parameters for specific mutation operations
 [evolution.mutations]
-num_additions = 2           # Number of additions allowed per mutation
-num_deletions = 2           # Number of deletions allowed per mutation
-num_replaces = 2            # Number of replacements allowed per mutation
+num_additions = 6           # Number of additions allowed per mutation
+num_deletions = 6           # Number of deletions allowed per mutation
+num_replaces = 6            # Number of replacements allowed per mutation
