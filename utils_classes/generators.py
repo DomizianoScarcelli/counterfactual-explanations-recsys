@@ -187,13 +187,11 @@ class DatasetGenerator(SkippableGenerator):
                 input_seq = seq,
                 model = self.model,
                 alphabet = alphabet,
-                position=seq.size(1)-1,
                 good_examples=True)
             bad_strat = ExhaustiveGenerationStrategy(
                 input_seq = seq,
                 model = self.model,
                 alphabet = alphabet,
-                position=seq.size(1)-1,
                 good_examples=False)
             return good_strat, bad_strat
         else:
