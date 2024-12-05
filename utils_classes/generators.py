@@ -9,9 +9,13 @@ from recbole.config import Config
 from recbole.trainer import Interaction
 from torch import Tensor
 
+from config import ConfigParams
+from genetic.abstract_generation import GenerationStrategy
 from genetic.dataset.generate import generate
 from genetic.dataset.utils import (get_dataloaders, interaction_to_tensor,
                                    load_dataset, save_dataset)
+from genetic.exhaustive_strategy import ExhaustiveGenerationStrategy
+from genetic.utils import Items, get_items
 from models.config_utils import generate_model
 from type_hints import GoodBadDataset
 
@@ -157,26 +161,57 @@ class SequenceGenerator(InteractionGenerator):
         return interaction_to_tensor(interaction)
 
 class DatasetGenerator(SkippableGenerator):
-    def __init__(self, config: Config, use_cache: bool=True, return_interaction: bool=False):
+    def __init__(self, 
+                 config: Config, 
+                 strategy: str = ConfigParams.GENERATION_STRATEGY,
+                 use_cache: bool=True,
+                 return_interaction: bool=False):
         super().__init__()
         self.config = config
         self.interactions = InteractionGenerator(config)
         self.model = generate_model(config)
         self.use_cache = use_cache
         self.return_interaction = return_interaction
+        self.strategy = strategy
 
     def skip(self):
         super().skip()
         self.interactions.skip()
 
+    def instantiate_strategy(self, seq) -> Tuple[GenerationStrategy, GenerationStrategy]:
+        if self.strategy == "genetic":
+            return None, None #TODO: it's based on the fact that generate can accept None as strategy and defualt to the genetic one, change it
+        elif self.strategy == "exhaustive":
+            alphabet = list(get_items(Items.ML_1M))
+            good_strat = ExhaustiveGenerationStrategy(
+                input_seq = seq,
+                model = self.model,
+                alphabet = alphabet,
+                position=seq.size(1)-1,
+                good_examples=True)
+            bad_strat = ExhaustiveGenerationStrategy(
+                input_seq = seq,
+                model = self.model,
+                alphabet = alphabet,
+                position=seq.size(1)-1,
+                good_examples=False)
+            return good_strat, bad_strat
+        else:
+            raise NotImplementedError(f"Generations strategy '{self.strategy}' not implemented, choose between 'genetic' and 'exhaustive'")
+        pass
+
     def next(self) -> GoodBadDataset | Tuple[GoodBadDataset, Interaction]:
         assert self.interactions.index == self.index, f"{self.interactions.index} != {self.index} at the start of the method"
         interaction = self.interactions.next()
         cache_path = os.path.join(f"dataset_cache/interaction_{self.index}_dataset.pickle")
+        #TODO: make cache path aware of the strategy
         if os.path.exists(cache_path) and self.use_cache:
+            if self.strategy != "genetic":
+                raise NotImplementedError("Cache not implemented for dataset not generated with the 'genetic' strategy")
             dataset = load_dataset(cache_path)
         else:
-            dataset = generate(interaction, self.model)
+            good_strat, bad_strat = self.instantiate_strategy(interaction_to_tensor(interaction))
+            dataset = generate(interaction, self.model, good_strat=good_strat, bad_strat=bad_strat)
             if self.use_cache:
                 save_dataset(dataset, cache_path)
         self.index += 1

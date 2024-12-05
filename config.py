@@ -20,6 +20,9 @@ class SettingsConfig(TypedDict):
     train_batch_size: int
     test_batch_size: int
 
+class GenerationConfig(TypedDict):
+    strategy: str
+
 class AutomataConfig(TypedDict):
     include_sink: bool
 
@@ -38,6 +41,7 @@ class EvolutionConfig(TypedDict):
 
 class ConfigDict(TypedDict):
     debug: DebugConfig
+    generation: GenerationConfig
     settings: SettingsConfig
     automata: AutomataConfig
     evolution: EvolutionConfig
@@ -78,6 +82,8 @@ class ConfigParams:
             cls.TEST_BATCH_SIZE = config["settings"]["test_batch_size"]
 
             cls.INCLUDE_SINK = config["automata"]["include_sink"]
+
+            cls.GENERATION_STRATEGY = config["generation"]["strategy"]
 
             cls.GENERATIONS = config["evolution"]["generations"]
             cls.POP_SIZE = config["evolution"]["pop_size"]
@@ -148,6 +154,7 @@ class ConfigParams:
                 "allowed_mutations": [tuple(ConfigParams.ALLOWED_MUTATIONS)],
                 "include_sink": [ConfigParams.INCLUDE_SINK],
                 "mutation_params": [(ConfigParams.NUM_REPLACES, ConfigParams.NUM_ADDITIONS, ConfigParams.NUM_DELETIONS)],
+                "generation_strategy": [ConfigParams.GENERATION_STRATEGY],
                 "timestamp": [ConfigParams.TIMESTAMP]}
 
     @classmethod

@@ -5,11 +5,11 @@ from typing import Any, Callable, List
 import numpy as np
 import torch
 from deap import base, creator, tools
-from recbole.config import Config
 from torch import Tensor
 
 from config import ConfigParams
 from constants import MAX_LENGTH, MIN_LENGTH, PADDING_CHAR
+from genetic.abstract_generation import GenerationStrategy
 from genetic.extended_ea_algorithms import (eaSimpleBatched, indexedCxTwoPoint,
                                             indexedSelTournament)
 from genetic.mutations import (ALL_MUTATIONS, AddMutation, DeleteMutation,
@@ -22,8 +22,9 @@ from utils_classes.distances import (edit_distance, jensen_shannon_divergence,
                                      self_indicator)
 
 
-class GeneticGenerationStrategy():
-    def __init__(self, input_seq: Tensor, 
+class GeneticGenerationStrategy(GenerationStrategy):
+    def __init__(self, 
+                 input_seq: Tensor, 
                  predictor: Callable,
                  alphabet: List[int],
                  allowed_mutations: List[Mutation] = ALL_MUTATIONS, 
