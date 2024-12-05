@@ -1,11 +1,11 @@
-import random
 import math
+import random
 from typing import Any, Callable, List
 
 import numpy as np
-from recbole.config import Config
 import torch
 from deap import base, creator, tools
+from recbole.config import Config
 from torch import Tensor
 
 from config import ConfigParams
@@ -20,6 +20,7 @@ from type_hints import Dataset
 from utils import set_seed
 from utils_classes.distances import (edit_distance, jensen_shannon_divergence,
                                      self_indicator)
+
 
 class GeneticGenerationStrategy():
     def __init__(self, input_seq: Tensor, 

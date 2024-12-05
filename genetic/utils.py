@@ -1,11 +1,12 @@
+import os
 import random
 from enum import Enum
-import os
+from statistics import mean
 
 import _pickle as cPickle
 from torch import Tensor
-from constants import PADDING_CHAR
 
+from constants import PADDING_CHAR
 from type_hints import Dataset
 from utils_classes.distances import edit_distance
 
@@ -43,8 +44,10 @@ def _evaluate_generation(input_seq: Tensor, dataset: Dataset, label: int):
     # Evaluate label
     same_label = sum(1 for ex in dataset if ex[1] == label)
     # Evaluate example similarity
-    distances = []
+    distances_norm = []
+    distances_nnorm = []
     for seq, _ in dataset:
-        distances.append(edit_distance(input_seq, seq))
-    return (same_label / len(dataset)), (sum(distances)/len(distances))
+        distances_norm.append(edit_distance(input_seq, seq))
+        distances_nnorm.append(edit_distance(input_seq, seq, normalized=False))
+    return (same_label / len(dataset)), (mean(distances_norm), mean(distances_nnorm))
 

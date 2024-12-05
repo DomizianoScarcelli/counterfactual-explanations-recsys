@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import List, Tuple, TypeAlias
+
 from aalpy.automata.Dfa import DfaState
 from torch import Tensor
 

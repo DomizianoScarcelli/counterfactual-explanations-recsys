@@ -14,7 +14,8 @@ from exceptions import (CounterfactualNotFound, DfaNotAccepting,
                         DfaNotRejecting, NoTargetStatesError, SplitNotCoherent)
 from models.config_utils import generate_model, get_config
 from performance_evaluation.alignment.utils import preprocess_interaction
-from type_hints import Dataset, GoodBadDataset, RecDataset, RecModel, SplitTuple
+from type_hints import (Dataset, GoodBadDataset, RecDataset, RecModel,
+                        SplitTuple)
 from utils import TimedFunction
 from utils_classes.generators import DatasetGenerator, TimedGenerator
 from utils_classes.Split import Split

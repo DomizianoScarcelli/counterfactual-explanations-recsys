@@ -1,7 +1,9 @@
-from utils_classes.distances import edit_distance
-from genetic.dataset.utils import load_dataset
 import json
+
 import torch
+
+from genetic.dataset.utils import load_dataset
+from utils_classes.distances import edit_distance
 
 
 def counterfactual_in_dataset():

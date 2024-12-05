@@ -1,12 +1,12 @@
 # General settings for the experiment
 [debug]
 debug = 1                   # Level of debug mode (0=no debug)
-profile = false
+profile = false             # If true it will produce a profiling log with line_profiler
 
 [settings]
 model = "BERT4Rec"          # Name of the model being used
-dataset = "ML_1M"           # Dataset identifier (e.g., MovieLens 1M)
-determinism = true          # Ensure deterministic runs (true = fixed seed)
+dataset = "ML_1M"           # Dataset identifier 
+determinism = true          # Ensure deterministic runs 
 train_batch_size = 1        # Batch size for training
 test_batch_size = 1         # Batch size for testing
 

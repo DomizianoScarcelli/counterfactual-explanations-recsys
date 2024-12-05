@@ -4,8 +4,8 @@ from operator import attrgetter
 from deap.algorithms import tools
 from deap.tools import selRandom
 from tqdm import tqdm
-from config import ConfigParams
 
+from config import ConfigParams
 from utils import set_seed
 
 

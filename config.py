@@ -1,12 +1,46 @@
-import time
-from typing import Optional
+import json
 import os
+import time
+from typing import List, Optional, TypedDict
 
 import toml
 
 from type_hints import RecDataset, RecModel
 
 default_config_path = "configs/config.toml"
+
+class DebugConfig(TypedDict):
+    debug: int
+    profile: bool
+    
+class SettingsConfig(TypedDict):
+    model: str
+    dataset: str
+    determinism: bool
+    train_batch_size: int
+    test_batch_size: int
+
+class AutomataConfig(TypedDict):
+    include_sink: bool
+
+class MutationConfig(TypedDict):
+    num_replaces: int
+    num_additions: int
+    num_deletions: int
+
+class EvolutionConfig(TypedDict):
+    generations: int
+    pop_size: int
+    halloffame_ratio: float
+    fitness_alpha: float
+    mutations: MutationConfig
+    allowed_mutations: List[str]
+
+class ConfigDict(TypedDict):
+    debug: DebugConfig
+    settings: SettingsConfig
+    automata: AutomataConfig
+    evolution: EvolutionConfig
 
 class ConfigParams:
     _instance = None  # Singleton instance
@@ -25,10 +59,10 @@ class ConfigParams:
         return cls._instance
 
     @classmethod
-    def _parse_config(cls):
+    def _parse_config(cls, _dict: Optional[ConfigDict]=None):
         """Load configuration and set class attributes."""
         if not cls._config_loaded:
-            config = toml.load(cls._config_path)
+            config = toml.load(cls._config_path) if not _dict else _dict
             if config["debug"]["profile"]:
                 print(f"!!!!!PROFILING ACTIVATED, PERFORMANCE MAY BE DEGRADRED!!!!!")
                 os.environ["LINE_PROFILE"] = "1"
@@ -82,9 +116,24 @@ class ConfigParams:
         print(f"Config reloaded from {cls._config_path}")
 
     @classmethod
+    def reload_from_dict(cls, _dict: ConfigDict):
+        """Allow setting a custom config file path."""
+        if not cls._reloadable:
+            raise ValueError("Config path is no longer reloadable because .fix() has been called.")
+        
+        cls._config_path = None
+        cls._config_loaded = False  # Reset loaded flag to reload the config
+        cls._parse_config(_dict=_dict)
+        print(f"Config reloaded from provided dictionary")
+
+    @classmethod
     def fix(cls):
         """Make the config path non-reloadable."""
         cls._reloadable = False
+
+    @classmethod
+    def get_default_config(cls) -> ConfigDict:
+        return toml.load(default_config_path) #type: ignore
 
     @classmethod
     def configs_dict(cls):
@@ -96,7 +145,16 @@ class ConfigParams:
                 "generations": [ConfigParams.GENERATIONS],
                 "halloffame_ratio": [ConfigParams.HALLOFFAME_RATIO],
                 "allowed_mutations": [tuple(ConfigParams.ALLOWED_MUTATIONS)],
+                "include_sink": [ConfigParams.INCLUDE_SINK],
+                "mutation_params": [(ConfigParams.NUM_REPLACES, ConfigParams.NUM_ADDITIONS, ConfigParams.NUM_DELETIONS)],
                 "timestamp": [ConfigParams.TIMESTAMP]}
+
+    @classmethod
+    def print_config(cls, indent: Optional[int]=None):
+        config_dict = cls.configs_dict()
+        if indent:
+            config_dict = json.dumps(config_dict, indent=indent)
+        print(config_dict)
 
 # Load default configs
 ConfigParams()

@@ -1,5 +1,5 @@
-from aalpy.automata.Dfa import Dfa, DfaState
 import pytest
+from aalpy.automata.Dfa import Dfa, DfaState
 
 from alignment.a_star import a_star, get_target_states
 from alignment.alignment import align

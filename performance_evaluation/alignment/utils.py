@@ -72,7 +72,7 @@ def log_run(prev_df: DataFrame,
     """
     
     # Create a dictionary with input parameters as columns
-    data = {key: [value] for key, value in log.items()}
+    data = {key: [round(value, 3) if isinstance(value, float) else value] for key, value in log.items()}
     
     configs = ConfigParams.configs_dict()
 
