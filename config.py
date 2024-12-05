@@ -1,5 +1,6 @@
 import time
 from typing import Optional
+import os
 
 import toml
 
@@ -28,9 +29,14 @@ class ConfigParams:
         """Load configuration and set class attributes."""
         if not cls._config_loaded:
             config = toml.load(cls._config_path)
+            if config["debug"]["profile"]:
+                print(f"!!!!!PROFILING ACTIVATED, PERFORMANCE MAY BE DEGRADRED!!!!!")
+                os.environ["LINE_PROFILE"] = "1"
+            else:
+                os.environ["LINE_PROFILE"] = "0"
 
             # Set parameters directly as class attributes
-            cls.DEBUG = config["settings"]["debug"]
+            cls.DEBUG = config["debug"]["debug"]
             cls.DETERMINISM = config["settings"]["determinism"]
             cls.MODEL = RecModel[config["settings"]["model"]]
             cls.DATASET = RecDataset[config["settings"]["dataset"]]
@@ -43,6 +49,7 @@ class ConfigParams:
             cls.POP_SIZE = config["evolution"]["pop_size"]
             cls.HALLOFFAME_RATIO = config["evolution"]["halloffame_ratio"]
             cls.ALLOWED_MUTATIONS = config["evolution"]["allowed_mutations"]
+            cls.FITNESS_ALPHA = config["evolution"]["fitness_alpha"]
 
             cls.NUM_REPLACES = config["evolution"]["mutations"]["num_replaces"]
             cls.NUM_ADDITIONS = config["evolution"]["mutations"]["num_additions"]

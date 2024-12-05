@@ -1,3 +1,4 @@
+from alignment.actions import encode_action
 from copy import deepcopy
 from typing import List, Tuple, Union
 
@@ -7,6 +8,7 @@ from torch import Tensor
 from alignment.a_star import faster_a_star
 from alignment.actions import Action, decode_action, print_action
 from automata_learning.utils import invert_automata, run_automata
+from config import ConfigParams
 from exceptions import CounterfactualNotFound
 from genetic.utils import Items, get_items
 from type_hints import Trace, TraceSplit
@@ -95,9 +97,9 @@ def augment_constraint_automata(automata: Dfa, source_sequence: List[int]) -> Df
     trace_alphabet = set(source_sequence)
 
     # we can add anything from the alphabet
-    add_propositions = {p: f"add_{p}" for p in alphabet}
+    add_propositions = {p: encode_action(Action.ADD, p) for p in alphabet}
     # We can only delete characters that are included in the sequence
-    del_propositions = {p: f"del_{p}" for p in trace_alphabet}
+    del_propositions = {p: encode_action(Action.DEL, p) for p in trace_alphabet}
 
     for state in automata.states:
         transitions_to_add = []
@@ -117,29 +119,29 @@ def augment_constraint_automata(automata: Dfa, source_sequence: List[int]) -> Df
     return automata
 
 
-def constraint_aut_to_planning_aut(a_dfa: Dfa):
-    """
-    Given a constraint automaton `a_dfa` where character are of type `e`,
-    `add_e` and `del_e`, it converts each `e` in `sync_e`.
-    """
-    for state in a_dfa.states:
-        for p, target_state in state.transitions.copy().items():
-            if type(p) is int:
-                state.transitions[f"sync_{p}"] = target_state
-                del state.transitions[p]
+# def constraint_aut_to_planning_aut(a_dfa: Dfa):
+#     """
+#     Given a constraint automaton `a_dfa` where character are of type `e`,
+#     `add_e` and `del_e`, it converts each `e` in `sync_e`.
+#     """
+#     for state in a_dfa.states:
+#         for p, target_state in state.transitions.copy().items():
+#             if type(p) is int:
+#                 state.transitions[f"sync_{p}"] = target_state
+#                 del state.transitions[p]
 
 
-def planning_aut_to_constraint_aut(a_dfa: Dfa):
-    """
-    Given a constraint automaton `a_dfa` where character are of type `sync_e`,
-    `add_e` and `del_e`, it converts each `sync_e` in `e`.
-    """
-    for state in a_dfa.states:
-        for p, target_state in state.transitions.copy().items():
-            if "sync" in p:
-                extracted_p = int(p.replace("sync_", ""))
-                state.transitions[extracted_p] = target_state
-                del state.transitions[p]
+# def planning_aut_to_constraint_aut(a_dfa: Dfa):
+#     """
+#     Given a constraint automaton `a_dfa` where character are of type `sync_e`,
+#     `add_e` and `del_e`, it converts each `sync_e` in `e`.
+#     """
+#     for state in a_dfa.states:
+#         for p, target_state in state.transitions.copy().items():
+#             if "sync" in p:
+#                 extracted_p = int(p.replace("sync_", ""))
+#                 state.transitions[extracted_p] = target_state
+#                 del state.transitions[p]
 
 
 def compute_alignment_cost(alignment: Tuple[int]) -> int:
@@ -177,7 +179,7 @@ def compute_alignment_cost(alignment: Tuple[int]) -> int:
 
 
 def trace_alignment(a_dfa_aug: Dfa, trace_split: Union[Trace, TraceSplit]):
-    constraint_aut_to_planning_aut(a_dfa_aug)
+    # constraint_aut_to_planning_aut(a_dfa_aug)
 
     if not (isinstance(trace_split, tuple) and len(trace_split) == 3):
         trace_split = ([], trace_split, [])
@@ -193,11 +195,14 @@ def trace_alignment(a_dfa_aug: Dfa, trace_split: Union[Trace, TraceSplit]):
                               trace_split=safe_trace_split,
                               min_alignment_length=min_length,
                               max_alignment_length=max_length)
+
+
+
     if alignment is None:
         raise CounterfactualNotFound("No best path found")
     printd(f"Alignment is: {[print_action(a) for a in alignment]}")
     # print("Alignments is: ", [f"{act_str(decode_action(a)[0])}_{decode_action(a)[1]}" for a in alignment])
-    planning_aut_to_constraint_aut(a_dfa_aug)
+    # planning_aut_to_constraint_aut(a_dfa_aug)
     aligned_trace = align(alignment)
     aligned_accepts = run_automata(a_dfa_aug, aligned_trace)
     # TODO: insert it back

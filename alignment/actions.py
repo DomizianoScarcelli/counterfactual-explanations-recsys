@@ -1,4 +1,5 @@
-from typing import Sequence, Set
+from typing import Set, Optional
+from line_profiler import profile
 
 
 # Store actions as raw bits for memory efficiency
@@ -7,9 +8,11 @@ class Action:
     DEL = 0b01   # 1
     ADD = 0b10   # 2
 
+@profile
 def encode_action(action_type: int, number: int) -> int:
     return (action_type << 13) | number  # 2 bits for action type, 13 bits for number
 
+@profile
 def encode_action_str(action: str) -> int:
     action_type = None
     number = None
@@ -28,6 +31,7 @@ def encode_action_str(action: str) -> int:
     
     return encode_action(action_type, number)  # Use the encode_action function
 
+@profile
 def decode_action(encoded_action: int):
     action_type = (encoded_action >> 13) & 0b11  # Extract the action type (2 bits)
     number = encoded_action & 0x1FFF  # Extract the number (13 bits)
@@ -41,15 +45,16 @@ def act_str(action: int):
     if action == Action.DEL:
         return "del"
 
+@profile
 def print_action(encoded_action: int):
     action_type, e = decode_action(encoded_action)
     return f"{act_str(action_type)}_{e}"
 
-
-def is_legal(enc_action: int, 
-             prev_actions: Sequence[int], 
+@profile
+def is_legal(action: int, 
+             prev_actions: Set[int], 
              illegal_symbols: Set[int]) -> bool:
-    _, e = decode_action(enc_action)
+    _, e = decode_action(action)
 
     if e in illegal_symbols:
         return False
@@ -57,8 +62,5 @@ def is_legal(enc_action: int,
     del_e = encode_action(Action.DEL, e)
     sync_e = encode_action(Action.SYNC, e)
     actions = {add_e, del_e, sync_e}
-    other_actions = actions - {enc_action}
-    for other_action in other_actions:
-        if other_action in prev_actions:
-            return False
-    return True
+    other_actions = actions - {action}
+    return not (prev_actions & other_actions)

@@ -1,6 +1,9 @@
 # General settings for the experiment
-[settings]
+[debug]
 debug = 1                   # Level of debug mode (0=no debug)
+profile = false
+
+[settings]
 model = "BERT4Rec"          # Name of the model being used
 dataset = "ML_1M"           # Dataset identifier (e.g., MovieLens 1M)
 determinism = true          # Ensure deterministic runs (true = fixed seed)
@@ -15,6 +18,7 @@ include_sink = true        # Include sink state in the target states when doing 
 generations = 10            # Number of generations in the evolutionary process
 pop_size = 2048             # Population size for the algorithm
 halloffame_ratio = 0.2      # Ratio of the population to keep in the Hall of Fame
+fitness_alpha = 0
 allowed_mutations = [
     "replace",              # Replace an element in a sequence
     "swap",                 # Swap two elements in a sequence
@@ -26,6 +30,6 @@ allowed_mutations = [
 
 # Parameters for specific mutation operations
 [evolution.mutations]
-num_additions = 2           # Number of additions allowed per mutation
-num_deletions = 2           # Number of deletions allowed per mutation
-num_replaces = 2            # Number of replacements allowed per mutation
+num_additions = 6           # Number of additions allowed per mutation
+num_deletions = 6           # Number of deletions allowed per mutation
+num_replaces = 6            # Number of replacements allowed per mutation

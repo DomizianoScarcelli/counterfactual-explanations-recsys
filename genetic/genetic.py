@@ -87,8 +87,7 @@ class GeneticGenerationStrategy():
         batch_size = 512
         num_batches = math.ceil(len(individuals) / batch_size)
         fitnesses = []
-        ALPHA1= 0.5
-        ALPHA2 = 1 - ALPHA1
+        ALPHA2 = 1 - ConfigParams.FITNESS_ALPHA
         for batch_i in range(num_batches): 
             batch_individuals = individuals[batch_i * batch_size: (batch_i+1)*batch_size]
             candidate_seqs = pad_batch(batch_individuals, MAX_LENGTH)
@@ -135,7 +134,7 @@ class GeneticGenerationStrategy():
                 if not self.good_examples:
                     # label_dist = 0 if label_dist == float("inf") else float("inf")
                     label_dist = 1 - label_dist
-                cost = ALPHA1 * seq_dist + ALPHA2 * label_dist + self_ind,
+                cost = ConfigParams.FITNESS_ALPHA * seq_dist + ALPHA2 * label_dist + self_ind,
                 fitnesses.append(cost)
 
         # print(f"[DEBUG] Fitnesses: {list(sorted(fitnesses))}")

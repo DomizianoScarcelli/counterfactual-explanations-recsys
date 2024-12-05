@@ -20,7 +20,7 @@ class Split:
     def __init__(self, *args: int | float | None):
         self.split = tuple(args)
         self.parsed = None not in self.split
-        assert len(self.split) == 3
+        assert len(self.split) == 3, len(self.split)
         types = set(type(s) for s in self.split if s is not None) # it can contain None, which will be parsed in the `parse_nan` method
         assert len(types) == 1, "Split should have all ints (in case of absolute values) or floats (in case of ratios)"
         if list(types)[0] == int:
@@ -39,9 +39,9 @@ class Split:
     def _parse_single_nan(self, seq: List[int]) -> Split:
         values = [s for s in self.split if s is not None]
         if self.is_ratio:
-            assert 0 <= sum(values) <= 1
+            assert 0 <= sum(values) <= 1, f"Sum of values is: {sum(values)}"
         else:
-            assert 0 <= sum(values) <= len(seq)
+            assert 0 <= sum(values) <= len(seq), f"Sum of values is: {sum(values)}"
 
         if self.is_ratio:
             inferredNone = (1 - sum(values))
@@ -54,9 +54,9 @@ class Split:
         # If the value is float, it shold be between 0 and 1
         value = [s for s in self.split if s is not None][0]
         if self.is_ratio:
-            assert 0 <= value <= 1
+            assert 0 <= value <= 1, f"Value is: {value}"
         else:
-            assert 0 <= value <= len(seq)
+            assert 0 <= value <= len(seq), f"Value is: {value}"
 
         # A None value means that the value has to be inferred. Since we have a value
         # meaning that inferredNone + inferredNone + value = len(seq) (or 1 if ratio)
