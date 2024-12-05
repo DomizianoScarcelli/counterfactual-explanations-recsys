@@ -22,7 +22,7 @@ warnings.simplefilter(action='ignore', category=RuntimeWarning)
 
 def update_config(current_config):
     default_config = ConfigParams.get_default_config()
-    allowed_mutations, mutations_param, fitness_alpha, pop_size, halloffame_ratio, include_sink = current_config
+    allowed_mutations, mutations_param, fitness_alpha, pop_size, halloffame_ratio = current_config
     default_config["evolution"]["allowed_mutations"] = allowed_mutations
     default_config["evolution"]["mutations"]["num_replaces"] = mutations_param
     default_config["evolution"]["mutations"]["num_additions"] = mutations_param
@@ -30,7 +30,6 @@ def update_config(current_config):
     default_config["evolution"]["fitness_alpha"] = fitness_alpha
     default_config["evolution"]["pop_size"] = pop_size
     default_config["evolution"]["halloffame_ratio"] = halloffame_ratio
-    default_config["automata"]["include_sink"] = include_sink
     ConfigParams.reload_from_dict(default_config)
     ConfigParams.print_config()
 
@@ -48,7 +47,7 @@ def evaluate_dataset(sequence: Tensor, examples: Dataset, label: int):
             "seq_dist": seq_dist
             }
      
-def evaluate_config(sequence: Tensor, model, alphabet):
+def evaluate_config(sequence: Tensor, model, alphabet, seq_index: int):
     log_save_path = "results/genetic_evaluation.csv"
     prev_df = pd.DataFrame({})
     if os.path.exists(log_save_path):
@@ -89,7 +88,7 @@ def evaluate_config(sequence: Tensor, model, alphabet):
 
     bad_log = evaluate_dataset(sequence, bad_examples,bad_genetic_strategy.gt.argmax(-1).item())
     bad_log = {f"bad_{key}": value for key, value in bad_log.items()}
-    log = {**good_log, **bad_log}
+    log = {"seq_idx": seq_index, **good_log, **bad_log}
     prev_df = log_run(prev_df, log, log_save_path)
 
 
@@ -103,8 +102,7 @@ def main():
             ["replace", "swap","add","delete"]]
     fitness_alphas = [0, 0.25, 0.5, 0.75]
     pop_sizes = [512, 1024, 2048]
-    halloffame_ratios = [0,0.2]
-    include_sink_list =[True, False]
+    halloffame_ratios = [0, 0.2]
 
     # Create the Cartesian product
     permutations = list(product(
@@ -113,7 +111,6 @@ def main():
         fitness_alphas,
         pop_sizes,
         halloffame_ratios,
-        include_sink_list
     ))
      
     print(f"[Info] Creating model and sequence generator...")
@@ -126,13 +123,12 @@ def main():
 
         steps = 1 #number of generations to perform for each configuration
         update_config(current_config)
-        for i, sequence in enumerate(sequences): 
+        for sequence in sequences: 
             sequence = sequence.squeeze()
-            print(f"[DEBUG] sequences index is {sequences.index}, while i is {i}")
-            if i >= steps:
-                print(f"[Info] reached {i} sequences for the current config, skipping to next config")
+            if sequences.index > steps:
+                # print(f"[Info] reached {i} sequences for the current config, skipping to next config")
                 break
-            evaluate_config(sequence, model, alphabet)
+            evaluate_config(sequence, model, alphabet, sequences.index)
         sequences.reset()
 
 if __name__ == "__main__":

@@ -1,0 +1,10 @@
+position,num_seqs,mean_precision,mean_ndgs,mean_jaccard,k,model,dataset,determinism,pop_size,generations,halloffame_ratio,fitness_alpha,allowed_mutations,include_sink,mutation_params,timestamp
+49,100,16.686,16.686,16.686,1,BERT4Rec,ml-1m,True,2048,10,0.2,0,"('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",True,"(6, 6, 6)","Thu, 05 Dec 2024 20:01:41"
+48,100,31.621,31.621,31.621,1,BERT4Rec,ml-1m,True,2048,10,0.2,0,"('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",True,"(6, 6, 6)","Thu, 05 Dec 2024 20:01:41"
+47,100,42.949,42.949,42.949,1,BERT4Rec,ml-1m,True,2048,10,0.2,0,"('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",True,"(6, 6, 6)","Thu, 05 Dec 2024 20:01:41"
+46,100,54.138,54.138,54.138,1,BERT4Rec,ml-1m,True,2048,10,0.2,0,"('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",True,"(6, 6, 6)","Thu, 05 Dec 2024 20:01:41"
+45,100,59.729,59.729,59.729,1,BERT4Rec,ml-1m,True,2048,10,0.2,0,"('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",True,"(6, 6, 6)","Thu, 05 Dec 2024 20:01:41"
+44,100,68.023,68.023,68.023,1,BERT4Rec,ml-1m,True,2048,10,0.2,0,"('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",True,"(6, 6, 6)","Thu, 05 Dec 2024 20:01:41"
+43,100,70.287,70.287,70.287,1,BERT4Rec,ml-1m,True,2048,10,0.2,0,"('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",True,"(6, 6, 6)","Thu, 05 Dec 2024 20:01:41"
+42,100,74.8,74.8,74.8,1,BERT4Rec,ml-1m,True,2048,10,0.2,0,"('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",True,"(6, 6, 6)","Thu, 05 Dec 2024 20:01:41"
+41,100,76.274,76.274,76.274,1,BERT4Rec,ml-1m,True,2048,10,0.2,0,"('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",True,"(6, 6, 6)","Thu, 05 Dec 2024 20:01:41"

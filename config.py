@@ -144,6 +144,7 @@ class ConfigParams:
                 "pop_size": [ConfigParams.POP_SIZE],
                 "generations": [ConfigParams.GENERATIONS],
                 "halloffame_ratio": [ConfigParams.HALLOFFAME_RATIO],
+                "fitness_alpha": [ConfigParams.FITNESS_ALPHA],
                 "allowed_mutations": [tuple(ConfigParams.ALLOWED_MUTATIONS)],
                 "include_sink": [ConfigParams.INCLUDE_SINK],
                 "mutation_params": [(ConfigParams.NUM_REPLACES, ConfigParams.NUM_ADDITIONS, ConfigParams.NUM_DELETIONS)],

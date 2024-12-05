@@ -84,7 +84,7 @@ def model_sensitivity(sequences: SkippableGenerator,
 
         jaccards.add(mean(jaccard_sim(a=out_k, b=(out_prime_k.squeeze() if k != 1 else out_prime_k)) for out_prime_k in out_primes_k))
         precisions.add(mean(precision_at(k=k, a=out_k, b=(out_prime_k.squeeze() if k != 1 else out_prime_k)) for out_prime_k in out_primes_k))
-        ndcgs.add(mean(ndcg_at(k=k, a=out_k, b=out_prime_k.squeeze()) for out_prime_k in out_primes_k))
+        ndcgs.add(mean(ndcg_at(k=k, a=out_k, b=out_prime_k.squeeze() if k!= 1 else out_prime_k) for out_prime_k in out_primes_k))
         pbar.set_postfix_str(f"jacc: {mean(jaccards)*100:.2f}, prec: {mean(precisions)*100:.2f}, ndcg: {mean(ndcgs)*100:.2f}")
 
     data = {"position": position,
@@ -115,9 +115,3 @@ def main(config_path: Optional[str]=None, log_path: str="results/model_sensitivi
 
 if __name__ == "__main__":
     fire.Fire(main)
-
-
-
-
-
-
