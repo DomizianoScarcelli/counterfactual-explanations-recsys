@@ -1,8 +1,7 @@
 import Levenshtein
 import torch
 import torch.nn.functional as F
-from torch import Tensor
-from torch import nn
+from torch import Tensor, nn
 
 
 def edit_distance(t1: Tensor, t2: Tensor, normalized: bool=True):

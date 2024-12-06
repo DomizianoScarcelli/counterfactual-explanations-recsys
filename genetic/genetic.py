@@ -1,15 +1,15 @@
-import random
 import math
+import random
 from typing import Any, Callable, List
 
 import numpy as np
-from recbole.config import Config
 import torch
 from deap import base, creator, tools
 from torch import Tensor
 
 from config import ConfigParams
 from constants import MAX_LENGTH, MIN_LENGTH, PADDING_CHAR
+from genetic.abstract_generation import GenerationStrategy
 from genetic.extended_ea_algorithms import (eaSimpleBatched, indexedCxTwoPoint,
                                             indexedSelTournament)
 from genetic.mutations import (ALL_MUTATIONS, AddMutation, DeleteMutation,
@@ -22,8 +22,9 @@ from utils_classes.distances import (edit_distance, jensen_shannon_divergence,
                                      self_indicator)
 
 
-class GeneticGenerationStrategy():
-    def __init__(self, input_seq: Tensor, 
+class GeneticGenerationStrategy(GenerationStrategy):
+    def __init__(self, 
+                 input_seq: Tensor, 
                  predictor: Callable,
                  alphabet: List[int],
                  allowed_mutations: List[Mutation] = ALL_MUTATIONS, 
@@ -69,9 +70,11 @@ class GeneticGenerationStrategy():
         #TODO: remove for efficiency
         assert PADDING_CHAR not in seq, f"Seq must not contain padding char {PADDING_CHAR}: {seq}"
         mutations = self.allowed_mutations.copy()
-        if not len(seq) <= MAX_LENGTH - ConfigParams.NUM_ADDITIONS and contains_mutation(AddMutation, mutations):
+        # If after NUM_ADDITIONS additions the seq is longer than the MAX_LENGTH, don't allow add mutations
+        if len(seq) > MAX_LENGTH - ConfigParams.NUM_ADDITIONS and contains_mutation(AddMutation, mutations):
             mutations = remove_mutation(AddMutation, mutations)
-        if not len(seq) >= MIN_LENGTH - ConfigParams.NUM_DELETIONS and contains_mutation(DeleteMutation, mutations):
+        # If after NUM_DELETIONS deletions the seq is shorter than the MIN_LENGTh, don't allow delete mutations
+        if len(seq) < MIN_LENGTH + ConfigParams.NUM_DELETIONS and contains_mutation(DeleteMutation, mutations):
             mutations = remove_mutation(DeleteMutation, mutations)
         mutation = random.choice(mutations)
         result = mutation(seq, self.alphabet, index)
@@ -86,8 +89,7 @@ class GeneticGenerationStrategy():
         batch_size = 512
         num_batches = math.ceil(len(individuals) / batch_size)
         fitnesses = []
-        ALPHA1= 0.0
-        ALPHA2 = 1 - ALPHA1
+        ALPHA2 = 1 - ConfigParams.FITNESS_ALPHA
         for batch_i in range(num_batches): 
             batch_individuals = individuals[batch_i * batch_size: (batch_i+1)*batch_size]
             candidate_seqs = pad_batch(batch_individuals, MAX_LENGTH)
@@ -134,7 +136,7 @@ class GeneticGenerationStrategy():
                 if not self.good_examples:
                     # label_dist = 0 if label_dist == float("inf") else float("inf")
                     label_dist = 1 - label_dist
-                cost = ALPHA1 * seq_dist + ALPHA2 * label_dist + self_ind,
+                cost = ConfigParams.FITNESS_ALPHA * seq_dist + ALPHA2 * label_dist + self_ind,
                 fitnesses.append(cost)
 
         # print(f"[DEBUG] Fitnesses: {list(sorted(fitnesses))}")

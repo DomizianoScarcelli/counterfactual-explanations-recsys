@@ -4,8 +4,8 @@ from operator import attrgetter
 from deap.algorithms import tools
 from deap.tools import selRandom
 from tqdm import tqdm
-from config import ConfigParams
 
+from config import ConfigParams
 from utils import set_seed
 
 
@@ -110,6 +110,8 @@ def indexedSelTournament(individuals, k, tournsize, fit_attr="fitness"):
 
 
 def indexedCxTwoPoint(ind1, ind2, index, return_indices: bool=False):
+    # print(f"[DEBUG] len ind1", len(ind1))
+    # print(f"[DEBUG] len ind2", len(ind2))
     if ConfigParams.DETERMINISM:
         set_seed(hash(tuple(ind1)) ^ hash(tuple(ind2)) + index)
     size = min(len(ind1), len(ind2))

@@ -1,5 +1,5 @@
-from aalpy.automata.Dfa import Dfa, DfaState
 import pytest
+from aalpy.automata.Dfa import Dfa, DfaState
 
 from alignment.a_star import a_star, get_target_states
 from alignment.alignment import align
@@ -55,6 +55,7 @@ def test_a_star(mock_a_dfa_aug):
         min_alignment_length=3,
         max_alignment_length=4,
         initial_alignment=tuple(),
+        heuristic_fn=lambda _:0, #dijkstra
     )
     assert alignment is not None, "Result is None"
     result = align(alignment)

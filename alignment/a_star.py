@@ -1,15 +1,19 @@
 import heapq
 import warnings
-from typing import Callable, List, Optional, Sequence, Set, Tuple
+from typing import Callable, List, Optional, Sequence, Set, Tuple, TypeAlias
 
 from aalpy.automata.Dfa import Dfa, DfaState
+from line_profiler import profile
 
-from alignment.actions import (Action, decode_action, encode_action_str, is_legal)
+from alignment.actions import (Action, decode_action, encode_action_str,
+                               is_legal, print_action)
 from alignment.utils import alignment_length, prune_paths_by_length
+from config import ConfigParams
 from exceptions import NoTargetStatesError
 from heuristics.heuristics import hops
-from type_hints import TraceSplit
+from type_hints import PathInfo, PathsQueue, TraceSplit
 from utils import printd
+
 
 def get_accepting_states(dfa: Dfa, include_sink: bool=True) -> Set[DfaState]:
     if include_sink:
@@ -37,17 +41,16 @@ def get_target_states(dfa: Dfa, leftover_trace: Sequence[int]):
         >>> target_states = get_target_states(dfa, leftover_trace)
         >>> print([state.state_id for state in target_states])
     """
-    accepting_states = get_accepting_states(dfa, include_sink=True)
+    accepting_states = get_accepting_states(dfa, include_sink=ConfigParams.INCLUDE_SINK)
     final_states = set()
     for state in dfa.states:
         curr_state = state
         for c in leftover_trace:
-            curr_state = curr_state.transitions[f"sync_{c}"]
+            curr_state = curr_state.transitions[c]
         if curr_state in accepting_states:
             final_states.add(state)
         # print(f"[DEBUG] state {state.state_id} reached {curr_state.state_id} after trace {leftover_trace}")
     return final_states
-
 
 def faster_a_star(
     dfa: Dfa,
@@ -91,7 +94,7 @@ def faster_a_star(
     """
     printd("-----FAST-A*------")
 
-    accepting_states = get_accepting_states(dfa, include_sink=True) 
+    accepting_states = get_accepting_states(dfa, include_sink=ConfigParams.INCLUDE_SINK) 
     executed_t, alignable_t, leftover_t = trace_split
 
     # Checks
@@ -105,10 +108,8 @@ def faster_a_star(
     # Execute the "executed_t" trace
     initial_alignment = []
     for char in executed_t:
-        char = f"sync_{char}"
         dfa.step(char)
-        encoded_char = encode_action_str(char)
-        initial_alignment.append(encoded_char)
+        initial_alignment.append(char)
     initial_alignment = tuple(initial_alignment)
 
     target_states = get_target_states(dfa, leftover_t)
@@ -140,6 +141,7 @@ def faster_a_star(
         min_alignment_length=min_alignment_length,
         max_alignment_length=max_alignment_length,
         initial_alignment=initial_alignment,
+        # heuristic_fn=lambda _:0 #dijkstra
     )
     if remaining_alignment:
         return remaining_alignment + tuple(
@@ -223,29 +225,35 @@ def a_star(
 
         return hops(curr_state, remaining_trace, target_states)
 
-    def get_constrained_neighbours(state, curr_char: Optional[int]):
+    @profile
+    def get_constrained_neighbours(state, curr_char: Optional[int]) -> List[Tuple[DfaState, int, int]]:
         neighbours = []
-        for p, target in state.transitions.items():
-            encoded_p = encode_action_str(p) if isinstance(p, str) else p
-            action_type, e = decode_action(encoded_p)
-            if not is_legal(encoded_p, inputs, leftover_trace_set):
+        inputs_set = set(inputs)
+        candidate_states: Set[int] = set(state.transitions) 
+        if (state.state_id, curr_char) in visited:
+            candidate_states -= visited[(state.state_id, curr_char)]
+        # print(f"All transitions: {len(state.transitions.items())}, pruned: {len(candidate_states)}")
+        for action in candidate_states:
+            action_type, e = decode_action(action)
+            target = state.transitions[action]
+            if not is_legal(action, inputs_set, leftover_trace_set):
                 continue
             if action_type == Action.SYNC and curr_char is not None:
                 if curr_char == e:
-                    neighbours.append((target, 0, encoded_p))  # sync_e cost = 0
+                    neighbours.append((target, 0, action))  # sync_e cost = 0
             elif action_type == Action.DEL and curr_char is not None:
                 if curr_char == e:
                     cost = 1
                     # if the previous action is an ADD, we have a DEL-ADD combo, which is a REPLACE with cost 1
                     if decode_action(inputs[-1])[0] == Action.ADD:
                         cost = 0
-                    neighbours.append((target, cost, encoded_p))  # del_e cost = 1
+                    neighbours.append((target, cost, action))  # del_e cost = 1
             elif action_type == Action.ADD:
                 cost = 1
                 # if the previous action is a DEL, we have a ADD-DEL combo, which is a REPLACE with cost 1
                 if decode_action(inputs[-1])[0] == Action.DEL:
                     cost = 0
-                neighbours.append((target, cost, encoded_p))  # add_e cost = 1
+                neighbours.append((target, cost, action))  # add_e cost = 1
 
         return neighbours
 
@@ -254,9 +262,9 @@ def a_star(
         warnings.warn("Origin or target state not in automaton. Returning None.")
         return None
 
-    paths = []
+    paths: PathsQueue = []
     heap_counter = 0
-    visited = set()
+    visited = {} #{(state_id, current_char): action (int)}
 
     if initial_alignment:
         heapq.heappush(
@@ -296,11 +304,9 @@ def a_star(
             printd(f"Paths head (20) costs {[p[0] for p in paths[:20]]}", level=2)
             printd(f"Paths tail (20) costs {[p[0] for p in paths[-20:]]}", level=2)
         
-        popped : Tuple[int, int, int, DfaState, Tuple, Tuple, int] = heapq.heappop(
-            paths
-        )
-
+        popped: PathInfo = heapq.heappop(paths)
         cost, heuristic_value, _, current_state, path, inputs, remaining_trace_idx = popped
+
         curr_alignment_length = alignment_length(inputs)
         if current_state in target_states and remaining_trace_idx == 0:
             if (
@@ -312,20 +318,20 @@ def a_star(
             ):
                 return tuple(inputs)
 
-        curr_char = (
-            remaining_trace[-remaining_trace_idx] if remaining_trace_idx > 0 else None
-        )
+        curr_char = remaining_trace[-remaining_trace_idx] if remaining_trace_idx > 0 else None
         neighbours = get_constrained_neighbours(current_state, curr_char)
 
         for neighbour, action_cost, action in neighbours:
             if action in set(inputs):
                 continue
 
-            current_visited = (current_state.state_id, curr_char, action)
-            # if decode_action(action)[0] != Action.SYNC:
-            if current_visited in visited:
+            current_visited_key, current_visited_value = (current_state.state_id, curr_char), action
+            if current_visited_key in visited and current_visited_value in visited[current_visited_key]:
                 continue
-            visited.add(current_visited)
+            if current_visited_key in visited:
+                visited[current_visited_key].add(current_visited_value)
+            else:
+                visited[current_visited_key] = {current_visited_value}
 
             new_cost = cost + action_cost
             new_path = path + (neighbour,)
