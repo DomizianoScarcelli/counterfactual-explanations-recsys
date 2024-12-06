@@ -8,13 +8,14 @@
     "halloffame_ratio": "0.2",
     "allowed_mutations": "('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",
     "split": "(None, 1, 0)",
-    "rows": 3,
+    "rows": 78,
     "status": {
-      "good": 3
+      "good": 64,
+      "bad": 14
     },
-    "dataset_time": 48.898101488749184,
-    "align_time": 39.589499711990356,
-    "automata_learning_time": 1.9599453608194988
+    "dataset_time": 52.25711808449183,
+    "align_time": 47.03663402337294,
+    "automata_learning_time": 1.6578077383530445
   },
   {
     "determinism": "True",
@@ -146,13 +147,14 @@
     "halloffame_ratio": "0.2",
     "allowed_mutations": "('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",
     "split": "(None, 5, 0)",
-    "rows": 3,
+    "rows": 77,
     "status": {
-      "good": 3
+      "good": 61,
+      "bad": 16
     },
-    "dataset_time": 48.898101488749184,
-    "align_time": 144.64872312545776,
-    "automata_learning_time": 2.2223482926686606
+    "dataset_time": 52.23301001028581,
+    "align_time": 179.3492296361304,
+    "automata_learning_time": 1.5587324631678594
   },
   {
     "determinism": "True",

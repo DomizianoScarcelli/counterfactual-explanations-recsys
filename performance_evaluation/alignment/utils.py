@@ -82,6 +82,8 @@ def log_run(prev_df: DataFrame,
         primary_key.remove("timestamp")
      
     new_df = pd.DataFrame(data)
+    # Remove the fields in primary key that do not exist in prev_df, otherwise key error
+    primary_key = [field for field in primary_key if field in prev_df.columns]
     # Check for duplicates based on primary_key
     if not prev_df.empty:
         # find records in `new_df` that are not already in `prev_df` based on primary_key
@@ -145,6 +147,9 @@ def get_log_stats(log_path: str,
         [TODO:description]
     """
     df = pd.read_csv(log_path)
+    # Filter `group_by` to include only columns present in the DataFrame
+    group_by = [field for field in group_by if field in df.columns]
+
     results = []
     for fields, group in df.groupby(group_by):
         result = {field_name: str(fields[i]) for i, field_name in enumerate(group_by)} #type: ignore

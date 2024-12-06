@@ -93,8 +93,14 @@ def main(
         stats_metrics = ["status", "dataset_time", "align_time", "automata_learning_time"]
         group_by = list(ConfigParams.configs_dict().keys()) + ["split"]
         group_by.remove("timestamp")
+        #TODO: temp
+        group_by.remove("include_sink")
+        group_by.remove("mutation_params")
+        group_by.remove("generation_strategy")
+        group_by.remove("fitness_alpha")
         stats = get_log_stats(log_path=log_path, save_path=stats_save_path, group_by=group_by, metrics=stats_metrics, filter=stat_filter)
         print(json.dumps(stats, indent=2))
+        return stats
 
     else:
         raise ValueError(f"Mode {mode} not supported, choose between [evaluate, stats]")
