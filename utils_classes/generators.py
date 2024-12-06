@@ -100,11 +100,11 @@ class InteractionGenerator(SkippableGenerator):
         train_data, eval_data, test_data = get_dataloaders(config)
         
         if split == "train":
-            self.data = train_data
+            self.data = train_data #[1,2,3] -> 4
         elif split == "test":
-            self.data = test_data
+            self.data = test_data #[1,2,3] -> 4
         elif split == "eval":
-            self.data = eval_data
+            self.data = eval_data #[2,3,4] -> 5
         else:
             raise NotImplementedError(f"Split must be train, eval or test, not {split}")
 

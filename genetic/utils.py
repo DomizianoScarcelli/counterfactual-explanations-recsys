@@ -1,5 +1,7 @@
+from utils_classes.Cached import Cached
 import os
 import random
+import json
 from enum import Enum
 from statistics import mean
 
@@ -20,14 +22,33 @@ class Items(Enum):
     MOCK=set(range(1, 7))
     ML_1M=os.path.join("data", "universe.txt")
 
+class Category(Enum):
+    ML_1M=os.path.join("data", "category_mapping.json")
+
 def get_items(items: Items):
+
+    def load_items(path):
+        with open(path, "r") as f:
+            return f.read()
+
     if isinstance(items.value, set):
         return items.value
     elif isinstance(items.value, str):
-        with open(items.value, "r") as f:
-            return set(int(x) for x in f.read().replace("{", "").replace("}", "").split(",")) - {PADDING_CHAR}
+        # Use Data class to handle file caching
+        data = Cached(items.value, load_fn=load_items).get_data()
+        return set(
+            int(x) for x in data.replace("{", "").replace("}", "").split(",")
+        ) - {PADDING_CHAR}
     else:
-        raise ValueError("items must be a set of ar a path to a set")
+        raise ValueError("items must be a set or a path to a set")
+
+def get_category_map(category: Category):
+
+    def load_json(path):
+        with open(path, "r") as f:
+            return json.load(f)
+
+    return Cached(category.value, load_fn=load_json).get_data()
 
 def clone(x):
     # return deepcopy(x)

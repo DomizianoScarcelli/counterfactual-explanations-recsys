@@ -18,17 +18,26 @@ from utils import set_seed
 from utils_classes.distances import jaccard_sim, ndcg_at, precision_at
 from utils_classes.generators import SequenceGenerator, SkippableGenerator
 
+def model_sensitivity_category(
+        sequences: SkippableGenerator, 
+        model: SequentialRecommender, 
+        position: int,
+        k: int = 1,
+        log_path: str = "model_sensitivity.csv"):
+    pass
 
-def model_sensitivity(sequences: SkippableGenerator, 
-                      model: SequentialRecommender, 
-                      position: int,
-                      k: int = 1,
-                      log_path: str = "model_sensitivity.csv"):
+
+def model_sensitivity_simple(
+        sequences: SkippableGenerator, 
+        model: SequentialRecommender, 
+        position: int,
+        k: int = 1,
+        log_path: str = "model_sensitivity.csv"):
     """
     The experiments consists in taking a source sequence `x` with a label `y`, result of `model(x)`.
     Then replace the element at position `position` of the sequence with each element of the alphabet (given by the `dataset`), 
     generating a new sequence x', and see the percentage of elements such that: 
-    model(x') != y.
+        model(x') != y.
 
     The percentage reflects the sensitivity of the sequential recommender model on the position`position`of the sequence.
 
@@ -111,7 +120,7 @@ def main(config_path: Optional[str]=None, log_path: str="results/model_sensitivi
     # both ends included
     start_i, end_i = 49, 0
     for i in tqdm(range(start_i, end_i-1, -1), "Testing model sensitivity on all positions"):
-        model_sensitivity(model=model, sequences=sequences, position=i, log_path=log_path, k=k)
+        model_sensitivity_simple(model=model, sequences=sequences, position=i, log_path=log_path, k=k)
 
 if __name__ == "__main__":
     fire.Fire(main)
