@@ -54,7 +54,7 @@ class ExhaustiveGenerationStrategy(GenerationStrategy):
         print(result_xs.shape)
         print(result_out.shape)
 
-        return [(x, int(label.item())) for x, label in zip(result_xs, result_out)]
+        return [(x.to(torch.int16), int(label.item())) for x, label in zip(result_xs, result_out)]
 
 
     def clean(self, examples: Dataset) -> Dataset:
