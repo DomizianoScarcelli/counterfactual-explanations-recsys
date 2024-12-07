@@ -1,6 +1,8 @@
 """
 """
 
+from type_hints import RecDataset
+from genetic.utils import token2id
 import os
 import pandas as pd
 import json
@@ -10,14 +12,19 @@ item_info_path = os.path.join(dataset_path, "ml-1m.item")
 
 df = pd.read_csv(item_info_path, delimiter="\t")
 
-category_map = {
-    row["item_id:token"]: row["genre:token_seq"].split()
-    for _, row in df.iterrows()
-}
+#maps interals ids to categories
+category_map = {}
+for _, row in df.iterrows():
+    token = str(row["item_id:token"])
+    try:
+        id = token2id(RecDataset.ML_1M, token)
+        category_map[id] = row["genre:token_seq"] 
+    except ValueError:
+        continue
 
-
-with open("category_map.json", "w") as f:
+with open("data/category_map.json", "w") as f:
     json.dump(category_map, f, indent=2)
+
 
 
 

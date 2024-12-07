@@ -2,6 +2,7 @@ import Levenshtein
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
+from typing import Set
 
 
 def edit_distance(t1: Tensor, t2: Tensor, normalized: bool=True):
@@ -42,7 +43,7 @@ def self_indicator(seq1: Tensor, seq2: Tensor):
         return 0
     return float("inf") if torch.all(seq1 == seq2).all() else 0
 
-def jaccard_sim(a: Tensor, b: Tensor) -> float:
+def jaccard_sim(a: Set|Tensor, b: Set|Tensor) -> float:
     """
     Computes the Jaccard similarity between two sets of indices.
 
@@ -53,8 +54,16 @@ def jaccard_sim(a: Tensor, b: Tensor) -> float:
     Returns:
         float: Jaccard similarity score.
     """
-    a_set = set(a.tolist())
-    b_set = set(b.tolist())
+    assert isinstance(a, Tensor) or isinstance(a, Set)
+    assert isinstance(b, Tensor) or isinstance(b, Set)
+
+    a_set, b_set = a, b
+    
+    if isinstance(a, Tensor):
+        a_set = set(a.tolist())
+    if isinstance(b, Tensor):
+        b_set = set(b.tolist())
+
     intersection = len(a_set & b_set)
     union = len(a_set | b_set)
     return intersection / union if union > 0 else 0.0
@@ -71,6 +80,7 @@ def precision_at(k: int, a: Tensor, b: Tensor) -> float:
     Returns:
         float: Precision@k score.
     """
+
     a_top_k = set(a[:k].tolist())
     b_set = set(b.tolist())
     intersection = len(a_top_k & b_set)

@@ -44,6 +44,7 @@ def get_config(dataset: RecDataset, model: RecModel) -> Config:
             "eval_batch_size": ConfigParams.TEST_BATCH_SIZE,
             "MAX_ITEM_LIST_LENGTH": 50,
             "eval_args": {'split': {'LS': 'valid_and_test'}, 'order': 'TO'},
+            "save_dataset": True,
             "train_batch_size": ConfigParams.TRAIN_BATCH_SIZE}
     return Config(model=model.value, dataset=dataset.value, config_dict=parameter_dict_ml1m)
 

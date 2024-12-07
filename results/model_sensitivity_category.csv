@@ -1,0 +1,3 @@
+position,num_seqs,mean_changes,invalids,model,dataset,determinism,pop_size,generations,halloffame_ratio,fitness_alpha,allowed_mutations,include_sink,mutation_params,generation_strategy,timestamp
+49,100,3.693,"(0, 0)",BERT4Rec,ml-1m,True,2048,10,0.2,0,"('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",True,"(6, 6, 6)",genetic,"Sat, 07 Dec 2024 12:20:02"
+48,100,2.497,"(0, 0)",BERT4Rec,ml-1m,True,2048,10,0.2,0,"('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",True,"(6, 6, 6)",genetic,"Sat, 07 Dec 2024 12:20:02"

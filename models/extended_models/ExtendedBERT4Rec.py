@@ -22,8 +22,6 @@ class ExtendedBERT4Rec(BERT4Rec):
         return self.full_sort_predict(x)
         
     def full_sort_predict(self, interaction: Union[Interaction, Tensor]):
-        #TODO: if I do model(interaction) directly the result is different from model(sequence).
-        # I need to investigate wether the self.reconstruct_data is needed, and why.
         if isinstance(interaction, Interaction):
             # sequence = get_sequence_from_interaction(interaction)
             return self.full_sort_predict_from_interaction(interaction)
@@ -62,15 +60,15 @@ class ExtendedBERT4Rec(BERT4Rec):
             # last valid position (before padding)
             item_seq = self.reconstruct_test_data(item_seq, item_seq_len)
             # print(f"DEBUG: Reconstructed item_seq: {item_seq}")
-            
-            seq_output = self.forward(item_seq) #[Batch_size B, max_length M, hidden_size H]
-            
+        
+            seq_output = self.forward(item_seq) #[Batch_size B, max_length M, hidden_size H] (example torch.Size([1, 50, 64]))
+
             # Retrieves the embedding corresponding to the position where the
             # mask token was inserted
             seq_output = self.gather_indexes(seq_output, item_seq_len - 1)  # [B H]
             
             #Extracts the embedding for all the items (but not the one of the masked token).
-            test_items_emb = self.item_embedding.weight[:self.n_items]  # [n_items, H]
+            test_items_emb = self.item_embedding.weight[:self.n_items]  # [n_items, H], (example torch.Size([3708, 64]))
             
             # Dot product between the masks embeddings and each item's
             # embedding. It returns a [B, num_items] matrix of similarities
