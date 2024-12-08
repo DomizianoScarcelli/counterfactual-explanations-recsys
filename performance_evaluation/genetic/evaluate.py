@@ -53,6 +53,7 @@ def evaluate_config(sequence: Tensor, model, alphabet, seq_index: int):
         prev_df = pd.read_csv(log_save_path)
 
     allowed_mutations = parse_mutations(ConfigParams.ALLOWED_MUTATIONS)
+    
     good_genetic_strategy = GeneticStrategy(
         input_seq=sequence,
         model=lambda x: model_predict(seq=x, model=model, prob=True),

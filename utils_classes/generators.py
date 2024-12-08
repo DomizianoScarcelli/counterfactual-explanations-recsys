@@ -174,7 +174,7 @@ class DatasetGenerator(SkippableGenerator):
         self,
         config: Optional[Config] = None,
         strategy: str = ConfigParams.GENERATION_STRATEGY,
-        use_cache: bool = True,
+        use_cache: bool = False,
         return_interaction: bool = False,
         alphabet: Optional[List[int]] = None,
     ):

@@ -38,8 +38,13 @@ class Category(Enum):
     ML_1M = os.path.join("data", "category_map.json")
 
 
-def compare_ys(y1: int | CategorySet, y2: int | CategorySet):
-    if isinstance(y1, int) and isinstance(y2, int):
+def compare_ys(y1: int | CategorySet | Tensor, y2: int | CategorySet | Tensor):
+    """
+    Compares model outputs abstracting their type. It works with:
+        - int and torch.Tensor, comparing them with the equal (==) operator
+        - Set[int], comparing them with the subset operator (<=)
+    """
+    if isinstance(y1, (int, Tensor)) and isinstance(y2, (int, Tensor)):
         return y1 == y2
     elif isinstance(y1, set) and isinstance(y2, set):
         return y1 <= y2
@@ -95,7 +100,7 @@ def get_category_map(dataset: RecDataset = ConfigParams.DATASET):
 
 
 def label2cat(
-    label: int, dataset: RecDataset = ConfigParams.DATASET, encode: bool = False
+    label: int, dataset: RecDataset = ConfigParams.DATASET, encode: bool = True
 ) -> List[int]:
     category_map = get_category_map(dataset)
     categories = category_map[label]

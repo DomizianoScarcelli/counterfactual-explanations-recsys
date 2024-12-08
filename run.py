@@ -1,3 +1,5 @@
+from genetic.utils import compare_ys, label2cat
+from genetic.genetic_categorized import CategorizedGeneticStrategy
 import json
 import warnings
 from typing import Generator, List, Optional
@@ -10,8 +12,13 @@ from alignment.alignment import trace_disalignment
 from alignment.utils import postprocess_alignment
 from automata_learning.learning import learning_pipeline
 from config import ConfigParams
-from exceptions import (CounterfactualNotFound, DfaNotAccepting,
-                        DfaNotRejecting, NoTargetStatesError, SplitNotCoherent)
+from exceptions import (
+    CounterfactualNotFound,
+    DfaNotAccepting,
+    DfaNotRejecting,
+    NoTargetStatesError,
+    SplitNotCoherent,
+)
 from models.config_utils import generate_model, get_config
 from performance_evaluation.alignment.utils import preprocess_interaction
 from type_hints import GoodBadDataset, RecDataset, RecModel, SplitTuple
@@ -32,6 +39,7 @@ error_messages = {
     CounterfactualNotFound: "CounterfactualNotFound",
     SplitNotCoherent: "SplitNotCoherent",
 }
+
 
 def single_run(
     source_sequence: List[int], _dataset: GoodBadDataset, split: Optional[Split] = None
@@ -94,11 +102,10 @@ CONFIG
     )
 
     # Init config
-    config = get_config(dataset=dataset_type, model=model_type)
-    model = generate_model(config)
     datasets = TimedGenerator(
-        DatasetGenerator(config=config, use_cache=use_cache, return_interaction=True)
+        DatasetGenerator(use_cache=use_cache, return_interaction=True)
     )
+    model = datasets.generator.model  # type: ignore
 
     # Parse args
     if splits:
@@ -162,8 +169,12 @@ CONFIG
         run_log["i"] = i
 
         source_sequence, source_gt = preprocess_interaction(interaction, model)
+
+        if isinstance(datasets.generator.good_strat, CategorizedGeneticStrategy): #type: ignore
+            source_gt = set(label2cat(source_gt, encode=True)) #type: ignore
+
         run_log["source"] = ",".join([str(c) for c in source_sequence])
-        run_log["gt"] = source_gt
+        run_log["gt"] = source_gt if isinstance(source_gt, int) else tuple(source_gt)
         for split in splits:
             run_log["split"] = str(split)
             split = split.parse_nan(source_sequence)
@@ -191,10 +202,10 @@ CONFIG
             run_log["align_time"] = timed_trace_disalignment.get_last_time()
             run_log["automata_learning_time"] = timed_learning_pipeline.get_last_time()
 
-            aligned_gt = model(aligned).argmax(-1).item()
-            run_log["aligned_gt"] = aligned_gt
+            aligned_gt = set(label2cat(model(aligned).argmax(-1).item(), encode=True))
+            run_log["aligned_gt"] = aligned_gt if isinstance(aligned_gt, int) else tuple(aligned_gt)
 
-            if source_gt == aligned_gt:
+            if compare_ys(source_gt, aligned_gt):
                 run_log["status"] = "bad"
                 print(f"[{i}] Bad counterfactual! {source_gt} == {aligned_gt}")
             else:
