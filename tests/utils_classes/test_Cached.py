@@ -1,5 +1,7 @@
 import pytest
+
 from utils_classes.Cached import Cached
+
 
 @pytest.fixture(autouse=True)
 def reset_cached_instances():

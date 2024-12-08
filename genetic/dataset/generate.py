@@ -18,7 +18,6 @@ warnings.simplefilter(action="ignore", category=FutureWarning)
 
 
 def generate(interaction: Union[Interaction, Tensor], 
-             model: SequentialRecommender, 
              alphabet: Optional[List[int]] = None,
              good_strat: Optional[GenerationStrategy]=None,
              bad_strat: Optional[GenerationStrategy]=None) -> GoodBadDataset:
@@ -49,46 +48,12 @@ def generate(interaction: Union[Interaction, Tensor],
     assert (
         sequence.size(0) == 1
     ), f"Only batch size of 1 is supported, sequence shape is: {sequence.shape}"
-    # user_id = interaction.interaction["user_id"][0].item()
-    if good_strat and bad_strat:
-        good_examples = good_strat.generate()
-        bad_examples = bad_strat.generate()
-        return good_examples, bad_examples
-    else:
-        print(f"[DEPRECATED] Legacy code, please define good and bad strat before calling generate")
-        #TODO: legacy code, remove this and make good and bad strat not optional
-        sequence = sequence.squeeze(0)
-        assert len(sequence.shape) == 1, f"Sequence dim must be 1: {
-            sequence.shape}"
-        allowed_mutations = parse_mutations(ConfigParams.ALLOWED_MUTATIONS)
-        if alphabet is None:
-            alphabet = list(get_items(Items.ML_1M))
-        good_genetic_strategy = GeneticGenerationStrategy(
-            input_seq=sequence,
-            predictor=lambda x: model_predict(seq=x, model=model, prob=True),
-            allowed_mutations=allowed_mutations,
-            pop_size=ConfigParams.POP_SIZE,
-            good_examples=True,
-            generations=ConfigParams.GENERATIONS,
-            halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
-            alphabet=alphabet
-        )
-        good_examples = good_genetic_strategy.generate()
-        good_examples = good_genetic_strategy.postprocess(good_examples)
-        bad_genetic_strategy = GeneticGenerationStrategy(
-            input_seq=sequence,
-            predictor=lambda x: model_predict(seq=x, model=model, prob=True),
-            allowed_mutations=allowed_mutations,
-            pop_size=ConfigParams.POP_SIZE,
-            good_examples=False,
-            generations=ConfigParams.GENERATIONS,
-            halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
-            alphabet=alphabet
-        )
-        bad_examples = bad_genetic_strategy.generate()
-        bad_examples = bad_genetic_strategy.postprocess(bad_examples)
-        
-        return good_examples, bad_examples
+    if alphabet:
+        good_strat.replace_alpahabet(alphabet)
+        bad_strat.replace_alpahabet(alphabet)
+    good_examples = good_strat.generate()
+    bad_examples = bad_strat.generate()
+    return good_examples, bad_examples
 
 # if __name__ == "__main__":
 #     set_seed()

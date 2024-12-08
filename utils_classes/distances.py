@@ -1,8 +1,9 @@
+from typing import Set
+
 import Levenshtein
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
-from typing import Set
 
 
 def edit_distance(t1: Tensor, t2: Tensor, normalized: bool=True):

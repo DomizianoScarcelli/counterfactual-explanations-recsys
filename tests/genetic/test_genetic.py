@@ -113,7 +113,7 @@ class TestGeneticDeterminism:
                                    ShuffleMutation(),
                                    AddMutation(),
                                    DeleteMutation()]
-        self.alphabet = list(get_items(Items.ML_1M))
+        self.alphabet = list(get_items())
 
         self.pop1 = self.toolbox.population()
         self.pop2 = self.toolbox2.population()

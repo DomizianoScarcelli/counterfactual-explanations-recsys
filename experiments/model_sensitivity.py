@@ -1,16 +1,16 @@
 import os
 from statistics import mean
-from typing import Optional, List, Set
-
+from typing import List, Optional, Set, Any
+import json
 import fire
 import pandas as pd
 import torch
 from recbole.model.abstract_recommender import SequentialRecommender
-from torch._prims_common import validate_idx
+from torch import Tensor
 from tqdm import tqdm
 
 from config import ConfigParams
-from genetic.utils import Category, Items, get_category_map, get_items
+from genetic.utils import Items, get_category_map, get_items
 from models.config_utils import generate_model, get_config
 from models.utils import topk, trim
 from performance_evaluation.alignment.utils import log_run
@@ -18,7 +18,32 @@ from type_hints import RecDataset
 from utils import set_seed
 from utils_classes.distances import jaccard_sim, ndcg_at, precision_at
 from utils_classes.generators import SequenceGenerator, SkippableGenerator
-from torch import Tensor
+from collections import Counter
+
+class StatsAccumulator():
+    def __init__(self):
+        self.stats = {}
+
+    def accumulate(self, input_id: int, gt: Any, outputs: Any):
+        if input_id not in self.stats:
+            self.stats[input_id] = {}
+        # print(f"[DEBUG] accumulating {input_id}:{type(input_id)}, {gt}:{type(gt)}, {outputs}:{type(outputs)}")
+        if gt in self.stats[input_id]:
+            self.stats[input_id][gt].append(outputs)
+        else:
+            self.stats[input_id][gt] = [outputs]
+
+    def print_stats(self, input_id):
+        print(f"\n------Stats for id: {input_id}-----\n")
+        print(f"Ground truth is: {list(self.stats[input_id].keys())}")
+        for gt in self.stats[input_id].keys():
+            print(f"Counter of output labels for gt: {gt} are: {Counter(self.stats[input_id][gt])}")
+        print(f"-----------------------------------\n")
+        pass
+
+    def save(self, path):
+        with open(path, "w") as f:
+            json.dump(self.stats, f)
 
 def generate_matrix_of_possible_sequences(
         sequence: Tensor, 
@@ -42,31 +67,49 @@ def generate_matrix_of_possible_sequences(
 
         return out, out_primes
 
+
 def model_sensitivity_category(
         sequences: SkippableGenerator, 
         model: SequentialRecommender, 
         position: int,
-        log_path: str = "model_sensitivity.csv"):
+        log_path: Optional[str] = None,
+        verbose: bool=False,
+        save_stats: bool=False):
 
 
-    def cat_changes(gt: Set[str], new: Set[str]):
+    def cat_all_changes(gt: Set[str], new: Set[str]):
         """
-        Returns 0 if there is at least
+        Returns True if all the labels in gt are changed in new, False otherwise
+            gt: {Horror, Thriller}
+            new: {Drama}
+            changes: True
+
+            gt: {Horror, Thriller}
+            new: {Drama, Thriller}
+            changes: False
+        """
+        return not gt & new
+
+    def cat_at_least_changes(gt: Set[str], new: Set[str]):
+        """
+        Returns True if at least one of the the labels in gt are changed in new, False otherwise
             gt: [Horror, Triller]
             new: [Drama]
             changes: True
 
             gt: [Horror, Triller]
             new: [Drama, Triller]
-            changes: False
+            changes: True
         """
-        return not gt & new
+        return len(gt - new) != 0
 
+    if verbose or save_stats:
+        stats_acc = StatsAccumulator()
     category_map = get_category_map(ConfigParams.DATASET)
 
     seen_idx = set()
     prev_df = pd.DataFrame({})
-    if os.path.exists(log_path):
+    if log_path and os.path.exists(log_path):
         prev_df = pd.read_csv(log_path)
         seen_idx = set(prev_df["position"].tolist())
 
@@ -77,14 +120,12 @@ def model_sensitivity_category(
         return
 
     if ConfigParams.DATASET == RecDataset.ML_1M:
-        alphabet = torch.tensor(list(get_items(Items.ML_1M)))
+        alphabet = torch.tensor(list(get_items()))
     else:
         raise NotImplementedError(f"Dataset {ConfigParams.DATASET} not supported yet!")
     i = 0
-    start_i, end_i = 0, 100
-    jaccards, changes = set(), set()
-    invalid_source = 0
-    invalid_targets = 0
+    start_i, end_i = 0, 500
+    changes, at_least_changes, jaccards = set(), set(), set()
     count = 0
     pbar = tqdm(total=end_i-start_i, desc=f"Testing model sensitivity on position {position}")
     for i, sequence in enumerate(sequences):
@@ -99,25 +140,36 @@ def model_sensitivity_category(
         if not result:
             continue
         out, out_primes = result
-
+        
         out_cat: Set[str] = set(category_map[out.argmax(-1).item()])
+
         out_primes_cat: List[Set[str]] = [set(category_map[out_prime.argmax(-1).item()]) for out_prime in out_primes]
 
-        changes.add(mean(cat_changes(gt=out_cat, new=out_prime_k) for out_prime_k in out_primes_cat))
-        # jaccards.add(mean(jaccard_sim(a=out_cat, b=out_prime_k) for out_prime_k in out_primes_cat))
-        # precisions.add(mean(precision(k=1, a=set(out_cat), b=out_prime_k) for out_prime_k in valid_out_prime_cat))
-        # ndcgs.add(mean(ndcg_at(k=1, a=set(out_cat), b=out_prime_k) for out_prime_k in valid_out_prime_cat))
+        if verbose or save_stats:        
+            for output in out_primes_cat:
+                stats_acc.accumulate(i, " ".join(out_cat), " ".join(list(sorted(list(output))))) #type: ignore
 
-        pbar.set_postfix_str(f"changes: {mean(changes)*100:.2f}%")
+        changes.add(mean(cat_all_changes(gt=out_cat, new=out_prime_k) for out_prime_k in out_primes_cat))
+        at_least_changes.add(mean(cat_at_least_changes(gt=out_cat, new=out_prime_k) for out_prime_k in out_primes_cat))
+        jaccards.add(mean(jaccard_sim(a=out_cat, b=out_prime_k) for out_prime_k in out_primes_cat))
 
-    data = {"position": position,
-            "num_seqs": count,
-            "mean_changes": mean(changes)* 100, 
-            "invalids": (invalid_source, invalid_targets),
-            "model": ConfigParams.MODEL.value,
-            "dataset": ConfigParams.DATASET.value}
+        pbar.set_postfix_str(f"changes: {mean(changes)*100:.2f}%, at_least_changes: {mean(at_least_changes)*100:.2f}%, jacc: {mean(jaccards)*100:.2f}%")
+        
+    # if verbose:
+    #     stats_acc.print_stats(i) #type: ignore
 
-    prev_df = log_run(prev_df=prev_df, log=data,  save_path=log_path, add_config=True)
+    if save_stats:
+        stats_acc.save(f"stats.json") #type: ignore
+    
+    if log_path:
+        data = {"position": position,
+                "num_seqs": count,
+                "mean_changes": mean(changes)* 100, 
+                "mean_at_least_changes": mean(at_least_changes)* 100, 
+                "model": ConfigParams.MODEL.value,
+                "dataset": ConfigParams.DATASET.value}
+
+        prev_df = log_run(prev_df=prev_df, log=data,  save_path=log_path, add_config=True)
 
 
 def model_sensitivity_simple(
@@ -125,7 +177,7 @@ def model_sensitivity_simple(
         model: SequentialRecommender, 
         position: int,
         k: int = 1,
-        log_path: str = "model_sensitivity.csv"):
+        log_path: Optional[str] = None ):
     """
     The experiments consists in taking a source sequence `x` with a label `y`, result of `model(x)`.
     Then replace the element at position `position` of the sequence with each element of the alphabet (given by the `dataset`), 
@@ -141,7 +193,7 @@ def model_sensitivity_simple(
     """
     seen_idx = set()
     prev_df = pd.DataFrame({})
-    if os.path.exists(log_path):
+    if log_path and os.path.exists(log_path):
         prev_df = pd.read_csv(log_path)
         filtered_df = prev_df[prev_df['k'] == k]
         seen_idx = set(filtered_df["position"].tolist())
@@ -153,7 +205,7 @@ def model_sensitivity_simple(
         return
 
     if ConfigParams.DATASET == RecDataset.ML_1M:
-        alphabet = torch.tensor(list(get_items(Items.ML_1M)))
+        alphabet = torch.tensor(list(get_items()))
     else:
         raise NotImplementedError(f"Dataset {ConfigParams.DATASET} not supported yet!")
     i = 0
@@ -183,22 +235,25 @@ def model_sensitivity_simple(
         ndcgs.add(mean(ndcg_at(k=k, a=out_k, b=out_prime_k.squeeze() if k!= 1 else out_prime_k) for out_prime_k in out_primes_k))
         pbar.set_postfix_str(f"jacc: {mean(jaccards)*100:.2f}, prec: {mean(precisions)*100:.2f}, ndcg: {mean(ndcgs)*100:.2f}")
 
-    data = {"position": position,
-            "num_seqs": end_i-start_i,
-            "mean_precision": mean(precisions) * 100,
-            "mean_ndcgs": mean(ndcgs)* 100, 
-            "mean_jaccard": mean(jaccards) * 100, 
-            "k": k,
-            "model": ConfigParams.MODEL.value,
-            "dataset": ConfigParams.DATASET.value}
+    if log_path:
+        data = {"position": position,
+                "num_seqs": end_i-start_i,
+                "mean_precision": mean(precisions) * 100,
+                "mean_ndcgs": mean(ndcgs)* 100, 
+                "mean_jaccard": mean(jaccards) * 100, 
+                "k": k,
+                "model": ConfigParams.MODEL.value,
+                "dataset": ConfigParams.DATASET.value}
 
-    prev_df = log_run(prev_df=prev_df, log=data,  save_path=log_path, add_config=True)
+        prev_df = log_run(prev_df=prev_df, log=data,  save_path=log_path, add_config=True)
 
 
 def main(config_path: Optional[str]=None, 
-         log_path: str="results/model_sensitivity.csv", 
+         log_path: Optional[str]=None, 
          k: int=1,
-         target: str = "item"):
+         target: str = "item",
+         verbose: bool=False,
+         save_stats: bool=False):
     if config_path:
         ConfigParams.reload(config_path)
         ConfigParams.fix()
@@ -211,9 +266,12 @@ def main(config_path: Optional[str]=None,
     start_i, end_i = 49, 0
     for i in tqdm(range(start_i, end_i-1, -1), "Testing model sensitivity on all positions"):
         if target == "item":
-            model_sensitivity_simple(model=model, sequences=sequences, position=i, log_path=log_path, k=k)
+            model_sensitivity_simple(model=model, sequences=sequences,
+                                     position=i, log_path=log_path, k=k)
         elif target == "category":
-            model_sensitivity_category(model=model, sequences=sequences, position=i, log_path=log_path)
+            model_sensitivity_category(model=model, sequences=sequences,
+                                       position=i, log_path=log_path,
+                                       verbose=verbose, save_stats=save_stats)
         else:
             raise ValueError("target must be 'item' or 'category'")
 

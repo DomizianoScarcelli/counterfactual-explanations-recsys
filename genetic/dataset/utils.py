@@ -2,7 +2,6 @@ import pickle
 from typing import Set, Tuple
 
 import torch
-from numpy._core.multiarray import MAXDIMS
 from recbole.config import Config
 from recbole.data import create_dataset, data_preparation
 from recbole.data.interaction import Interaction
@@ -11,7 +10,7 @@ from torch import Tensor
 from torch.utils.data import DataLoader
 
 from constants import MAX_LENGTH, PADDING_CHAR
-from models.utils import pad, pad_batch, replace_padding
+from models.utils import pad, replace_padding
 from type_hints import Dataset, GoodBadDataset
 
 

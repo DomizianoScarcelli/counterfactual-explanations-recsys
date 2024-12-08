@@ -51,7 +51,7 @@ def generate_test_dataset(source_sequence: Tensor, model:SequentialRecommender, 
         A GoodBadDataset tuple.
     """
     alphabet = [c for c in dfa.get_input_alphabet() if isinstance(c, int)]
-    return generate(source_sequence, model, alphabet)
+    return generate(source_sequence, alphabet)
 
 
 def evaluate(dfa: Dfa, test_dataset: GoodBadDataset):

@@ -1,18 +1,13 @@
-from genetic.utils import get_category_map, get_items
 import pickle
+
 from recbole.data.dataset.sequential_dataset import SequentialDataset
+
+from genetic.utils import get_category_map, get_items
 from type_hints import RecDataset
 
 category_map = get_category_map(RecDataset.ML_1M)
 category_map_keys = set(int(a) for a in category_map)
 print(f"Category mapping length is: {len(category_map_keys)}, with min {min(category_map_keys)} and max {max(category_map_keys)}")
-
-alphabet = get_items("data/RS_universe.txt")
-print(f"Alphabet len is: {len(alphabet)}, with min {min(alphabet)} and max {max(alphabet)}")
-
-holes = (set(range(min(alphabet), max(alphabet)+1))) - alphabet
-print(f"Alpahbet has holes: {holes}")
-print(f"Dataset len is: {len(category_map)}")
 
 
 sequential_dataset_path = "data/ml-1m-SequentialDataset.pth"
