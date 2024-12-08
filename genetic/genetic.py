@@ -1,6 +1,6 @@
 import math
 import random
-from typing import Any, Callable, List
+from typing import Any, Callable, Generic, List, cast
 
 import numpy as np
 import torch
@@ -10,28 +10,16 @@ from torch import Tensor
 from config import ConfigParams
 from constants import MAX_LENGTH, MIN_LENGTH, PADDING_CHAR
 from genetic.abstract_generation import GenerationStrategy
-from genetic.extended_ea_algorithms import (
-    eaSimpleBatched,
-    indexedCxTwoPoint,
-    indexedSelTournament,
-)
-from genetic.mutations import (
-    ALL_MUTATIONS,
-    AddMutation,
-    DeleteMutation,
-    Mutation,
-    contains_mutation,
-    remove_mutation,
-)
+from genetic.extended_ea_algorithms import (eaSimpleBatched, indexedCxTwoPoint,
+                                            indexedSelTournament)
+from genetic.mutations import (ALL_MUTATIONS, AddMutation, DeleteMutation,
+                               Mutation, contains_mutation, remove_mutation)
 from genetic.utils import _evaluate_generation, clone
 from models.utils import pad_batch, trim
 from type_hints import Dataset
 from utils import set_seed
-from utils_classes.distances import (
-    edit_distance,
-    jensen_shannon_divergence,
-    self_indicator,
-)
+from utils_classes.distances import (edit_distance, jensen_shannon_divergence,
+                                     self_indicator)
 
 
 class GeneticStrategy(GenerationStrategy):
@@ -214,7 +202,7 @@ class GeneticStrategy(GenerationStrategy):
         )
         if not self.good_examples or self.halloffame_ratio == 0:
             # Augment only good examples, which are the rarest
-            return new_population
+            return self._postprocess(new_population)
 
         augmented = self._augment(population, halloffame)
         new_augmented = []
@@ -259,12 +247,12 @@ class GeneticStrategy(GenerationStrategy):
     def _clean(self, examples: Dataset) -> Dataset:
         label = self.gt.argmax(-1).item()
         if self.good_examples:
-            clean = [ex for ex in examples if ex[1] == label]
+            clean: Dataset = [ex for ex in examples if ex[1] == label]
             self.print(
                 f"Removed {len(examples) - len(clean)} individuals from good (label was not equal to gt)"
             )
             return clean
-        clean = [ex for ex in examples if ex[1] != label]
+        clean: Dataset = [ex for ex in examples if ex[1] != label]
         self.print(
             f"Removed {len(examples) - len(clean)} individuals from bad (label was equal to gt)"
         )
@@ -308,5 +296,5 @@ class GeneticStrategy(GenerationStrategy):
         )
         return clean_pop
 
-    def evaluate_generation(self, examples):
+    def evaluate_generation(self, examples: Dataset):
         return _evaluate_generation(self.input_seq, examples, self.gt.argmax(-1).item())

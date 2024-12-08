@@ -4,13 +4,14 @@ import torch
 from tqdm import tqdm
 
 from config import ConfigParams
-from genetic.utils import  Items, get_items
+from genetic.utils import Items, get_items
 from models.config_utils import generate_model, get_config
 from models.utils import topk
 from type_hints import RecDataset
 from utils import set_seed
 from utils_classes.distances import jaccard_sim, ndcg_at, precision_at
 from utils_classes.generators import SequenceGenerator
+
 
 def test_ModelSensitivity_YieldsCorrectMetrics_WhenSequencesAreAllEqual():
     position = 49

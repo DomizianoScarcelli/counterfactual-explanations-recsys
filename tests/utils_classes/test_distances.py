@@ -3,6 +3,7 @@ from torch import tensor
 
 from utils_classes.distances import jaccard_sim, ndcg_at, precision_at
 
+
 class TestJaccardSim:
     def test_JaccardSim_ReturnsCorrectValue_WhenSetsPartiallyOverlap(self):
         a = tensor([1, 2, 3])

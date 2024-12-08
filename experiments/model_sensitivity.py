@@ -1,7 +1,9 @@
-import os
-from statistics import mean
-from typing import List, Optional, Set, Any
 import json
+import os
+from collections import Counter
+from statistics import mean
+from typing import Any, List, Optional, Set
+
 import fire
 import pandas as pd
 import torch
@@ -18,7 +20,7 @@ from type_hints import RecDataset
 from utils import set_seed
 from utils_classes.distances import jaccard_sim, ndcg_at, precision_at
 from utils_classes.generators import SequenceGenerator, SkippableGenerator
-from collections import Counter
+
 
 class StatsAccumulator():
     def __init__(self):

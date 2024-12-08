@@ -53,13 +53,3 @@ def generate(
     bad_examples = bad_strat.generate()
     return good_examples, bad_examples
 
-
-# if __name__ == "__main__":
-#     set_seed()
-#     config = get_config(model=MODEL, dataset=DATASET)
-#     datasets = DatasetGenerator(config, use_cache=False)
-#     for dataset in datasets:
-#         dataset_save_path = "saved/counterfactual_dataset.pickle"
-#         save_dataset(dataset, save_path=dataset_save_path)
-#         print(dataset)
-#         break

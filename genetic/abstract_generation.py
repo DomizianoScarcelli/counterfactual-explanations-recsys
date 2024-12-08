@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
+from typing import Callable, List
+
+from torch import Tensor
 
 from type_hints import Dataset
-from typing import Callable, List
-from torch import Tensor
 
 
 class GenerationStrategy(ABC):

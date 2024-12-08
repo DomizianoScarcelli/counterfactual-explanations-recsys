@@ -1,6 +1,4 @@
 from __future__ import annotations
-from models.model_funcs import model_predict
-from genetic.genetic import GeneticStrategy
 
 import os
 import time
@@ -14,17 +12,17 @@ from torch import Tensor
 from config import ConfigParams
 from genetic.abstract_generation import GenerationStrategy
 from genetic.dataset.generate import generate
-from genetic.dataset.utils import (
-    get_dataloaders,
-    interaction_to_tensor,
-    load_dataset,
-    save_dataset,
-)
+from genetic.dataset.utils import (get_dataloaders, interaction_to_tensor,
+                                   load_dataset, save_dataset)
 from genetic.exhaustive_strategy import ExhaustiveStrategy
+from genetic.genetic import GeneticStrategy
+from genetic.genetic_categorized import CategorizedGeneticStrategy
 from genetic.mutations import parse_mutations
 from genetic.utils import Items, get_items
-from models.config_utils import generate_model
+from models.config_utils import generate_model, get_config
+from models.model_funcs import model_predict
 from type_hints import GoodBadDataset
+from utils import set_seed
 
 
 class SkippableGenerator(ABC):
@@ -220,6 +218,33 @@ class DatasetGenerator(SkippableGenerator):
                 alphabet=alphabet,
             )
             return good_strat, bad_strat
+
+        elif self.strategy == "genetic_categorized":
+            sequence = seq.squeeze(0)
+            assert len(sequence.shape) == 1, f"Sequence dim must be 1: {sequence.shape}"
+            allowed_mutations = parse_mutations(ConfigParams.ALLOWED_MUTATIONS)
+
+            good_strat = CategorizedGeneticStrategy(
+                input_seq=sequence,
+                model=lambda x: model_predict(seq=x, model=self.model, prob=True),
+                allowed_mutations=allowed_mutations,
+                pop_size=ConfigParams.POP_SIZE,
+                good_examples=True,
+                generations=ConfigParams.GENERATIONS,
+                halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
+                alphabet=alphabet,
+            )
+            bad_strat = CategorizedGeneticStrategy(
+                input_seq=sequence,
+                model=lambda x: model_predict(seq=x, model=self.model, prob=True),
+                allowed_mutations=allowed_mutations,
+                pop_size=ConfigParams.POP_SIZE,
+                good_examples=False,
+                generations=ConfigParams.GENERATIONS,
+                halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
+                alphabet=alphabet,
+            )
+            return good_strat, bad_strat
         elif self.strategy == "exhaustive":
             good_strat = ExhaustiveStrategy(
                 input_seq=seq, model=self.model, alphabet=alphabet, good_examples=True
@@ -253,7 +278,7 @@ class DatasetGenerator(SkippableGenerator):
                 interaction_to_tensor(interaction)
             )
             dataset = generate(
-                interaction, self.model, good_strat=good_strat, bad_strat=bad_strat
+                interaction=interaction, good_strat=good_strat, bad_strat=bad_strat
             )
             if self.use_cache:
                 save_dataset(dataset, cache_path)
@@ -335,3 +360,11 @@ class TimedGenerator:
             is skipped, the time will be None.
         """
         return self.times
+
+
+if __name__ == "__main__":
+    set_seed()
+    config = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
+    datasets = DatasetGenerator(config, use_cache=False, strategy="genetic_categorized")
+    for dataset in datasets:
+        print(f"Finished dataset, next one")

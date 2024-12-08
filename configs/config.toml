@@ -21,7 +21,7 @@ strategy = "genetic"    # [exhaustive, genetic]
 generations = 10            # Number of generations in the evolutionary process
 pop_size = 2048             # Population size for the algorithm
 halloffame_ratio = 0.2      # Ratio of the population to keep in the Hall of Fame
-fitness_alpha = 0
+fitness_alpha = 0.5
 allowed_mutations = [
     "replace",              # Replace an element in a sequence
     "swap",                 # Swap two elements in a sequence
