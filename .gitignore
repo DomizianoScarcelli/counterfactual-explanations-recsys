@@ -2,6 +2,8 @@
 **/__pycache__/**
 **/.DS_store/**
 /dataset/**
-**/dataset_cache/**
+.dataset_cache/**
+.pytest_cache/**
 **/log_tensorboard/**
+log/**
 .ropeproject/**

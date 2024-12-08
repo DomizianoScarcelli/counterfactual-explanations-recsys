@@ -16,7 +16,7 @@ def counterfactual_in_dataset():
     # NOTE: for simplicity now , I will get the dataset from the cache. This is
     # kind of a manual process, but it's ok for now.
 
-    cache_dir = "dataset_cache/interaction_0_dataset.pickle"
+    cache_dir = ".dataset_cache/interaction_0_dataset.pickle"
     _, bad = load_dataset(cache_dir)
     source = torch.tensor([2720, 365, 1634, 1229, 140, 351, 1664, 160, 1534, 1233, 618, 267, 2490, 213, 2483, 89, 273, 665, 352, 222, 2265, 2612, 429, 2492, 2827, 532, 1002, 202, 821, 1615, 1284, 830, 176, 1116, 2626, 23, 415, 1988, 694, 133, 1536, 510, 290, 152, 204, 1034, 1273, 289, 462, 165])
     distances = {}

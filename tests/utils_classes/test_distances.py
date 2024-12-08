@@ -19,12 +19,6 @@ class TestJaccardSim:
         b = tensor([4, 5, 6])
         assert jaccard_sim(a, b) == 0.0, "Failed for disjoint sets."
 
-    # def test_JaccardSim_ReturnsCorrectValue_WhenBIsBatched(self):
-    #     a = tensor([1, 2, 3])
-    #     b = tensor([[1,2,3], [4, 5, 6], [1,2,5], [4, 1, 3, 5, 6]])
-    #     assert jaccard_sim(a, b) == [1, 0, 1/3, 2/5]
-    #     pass
-
 class TestPrecisionAtK:
     def test_PrecisionAtK_ReturnsCorrectValue_WhenPartialMatchOccurs(self):
         a = tensor([1, 2, 3, 4, 5])
