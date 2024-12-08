@@ -1,6 +1,6 @@
 import json
 import warnings
-from typing import Generator, List, Optional, Tuple
+from typing import Generator, List, Optional
 
 import fire
 import toml
@@ -14,59 +14,74 @@ from exceptions import (CounterfactualNotFound, DfaNotAccepting,
                         DfaNotRejecting, NoTargetStatesError, SplitNotCoherent)
 from models.config_utils import generate_model, get_config
 from performance_evaluation.alignment.utils import preprocess_interaction
-from type_hints import (Dataset, GoodBadDataset, RecDataset, RecModel,
-                        SplitTuple)
+from type_hints import GoodBadDataset, RecDataset, RecModel, SplitTuple
 from utils import TimedFunction
 from utils_classes.generators import DatasetGenerator, TimedGenerator
 from utils_classes.Split import Split
 
-warnings.simplefilter(action='ignore', category=FutureWarning)
-warnings.simplefilter(action='ignore', category=RuntimeWarning)
+warnings.simplefilter(action="ignore", category=FutureWarning)
+warnings.simplefilter(action="ignore", category=RuntimeWarning)
 
 timed_learning_pipeline = TimedFunction(learning_pipeline)
 timed_trace_disalignment = TimedFunction(trace_disalignment)
 
 error_messages = {
-        DfaNotAccepting: "DfaNotAccepting",
-        DfaNotRejecting: "DfaNotRejecting",
-        NoTargetStatesError: "NoTargetStatesError",
-        CounterfactualNotFound: "CounterfactualNotFound",
-        SplitNotCoherent: "SplitNotCoherent"
-        }
+    DfaNotAccepting: "DfaNotAccepting",
+    DfaNotRejecting: "DfaNotRejecting",
+    NoTargetStatesError: "NoTargetStatesError",
+    CounterfactualNotFound: "CounterfactualNotFound",
+    SplitNotCoherent: "SplitNotCoherent",
+}
 
-def single_run(source_sequence: List[int], 
-               _dataset: GoodBadDataset,
-               split:Optional[Split]=None):
-    assert isinstance(source_sequence, list), f"Source sequence is not a list, but a {type(source_sequence)}"
-    assert isinstance(source_sequence[0], int), f"Elements of the source sequences are not ints, but {type(source_sequence[0])}"
-    
+def single_run(
+    source_sequence: List[int], _dataset: GoodBadDataset, split: Optional[Split] = None
+):
+    assert isinstance(
+        source_sequence, list
+    ), f"Source sequence is not a list, but a {type(source_sequence)}"
+    assert isinstance(
+        source_sequence[0], int
+    ), f"Elements of the source sequences are not ints, but {type(source_sequence[0])}"
+
     dfa = timed_learning_pipeline(source=source_sequence, dataset=_dataset)
-    
+
     if split:
-        source_sequence = split.apply(source_sequence) #type: ignore
+        source_sequence = split.apply(source_sequence)  # type: ignore
 
     aligned, cost, alignment = timed_trace_disalignment(dfa, source_sequence)
     aligned = postprocess_alignment(aligned)
     return aligned, cost, alignment
 
-def run(dataset_type:RecDataset=ConfigParams.DATASET,
-        model_type:RecModel=ConfigParams.MODEL,
-        start_i: int = 0,
-        end_i: Optional[int]=None,
-        splits: Optional[List[int]] = None, #type: ignore
-        use_cache: bool=True) -> Generator:
 
-    params = {
-            "parameters":
-            {"use_cache": use_cache,
-            "start_i": start_i,
-            "end_i": start_i+1 if end_i is None else end_i,
-            "splits": "(0, None, 0)" if not splits else ", ".join([str(s) for s in splits])},
+def run(
+    dataset_type: RecDataset = ConfigParams.DATASET,
+    model_type: RecModel = ConfigParams.MODEL,
+    start_i: int = 0,
+    end_i: Optional[int] = None,
+    splits: Optional[List[int]] = None,  # type: ignore
+    use_cache: bool = True,
+) -> Generator:
+
+    params = (
+        {
+            "parameters": {
+                "use_cache": use_cache,
+                "start_i": start_i,
+                "end_i": start_i + 1 if end_i is None else end_i,
+                "splits": (
+                    "(0, None, 0)"
+                    if not splits
+                    else ", ".join([str(s) for s in splits])
+                ),
+            },
             "model": {
                 "dataset_type": dataset_type.value,
-                "model_type": model_type.value
-            }},
-    print(f"""
+                "model_type": model_type.value,
+            },
+        },
+    )
+    print(
+        f"""
 -----------------------
 CONFIG
 -----------------------
@@ -75,44 +90,57 @@ CONFIG
 ---Config.toml---
 {json.dumps(toml.load(ConfigParams._config_path), indent=2)}
 -----------------------
-""")
-    
-    #Init config
+"""
+    )
+
+    # Init config
     config = get_config(dataset=dataset_type, model=model_type)
     model = generate_model(config)
-    datasets = TimedGenerator(DatasetGenerator(config=config, use_cache=use_cache, return_interaction=True))
-    
-    #Parse args
+    datasets = TimedGenerator(
+        DatasetGenerator(config=config, use_cache=use_cache, return_interaction=True)
+    )
+
+    # Parse args
     if splits:
-        splits: SplitTuple = tuple(splits) #type: ignore
+        splits: SplitTuple = tuple(splits)  # type: ignore
         if isinstance(splits[0], tuple):
-            splits: List[Split] = [Split(*s) for s in splits] #type: ignore
-        elif isinstance(splits[0], int) or isinstance(splits[0], float) or splits[0] is None:
-            splits: List[Split] = [Split(*splits)] #type: ignore
-    
-        assert isinstance(splits, list) and isinstance(splits[0], Split), f"Malformed splits: {splits}"
+            splits: List[Split] = [Split(*s) for s in splits]  # type: ignore
+        elif (
+            isinstance(splits[0], int)
+            or isinstance(splits[0], float)
+            or splits[0] is None
+        ):
+            splits: List[Split] = [Split(*splits)]  # type: ignore
+
+        assert isinstance(splits, list) and isinstance(
+            splits[0], Split
+        ), f"Malformed splits: {splits}"
     else:
         splits = [Split(0, None, 0)]
 
     if end_i is None:
         end_i = start_i + 1
-    assert start_i < end_i, f"Start index must be strictly less than end index: {start_i} < {end_i}"
-    
-    #Running loop
-    run_log = {"i": None, 
-               "split": None, 
-               "status": None, 
-               "source": None, 
-               "aligned": None,
-               "alignment": None,
-               "cost": None,
-               "gt": None, 
-               "aligned_gt": None, 
-               "dataset_time": None, 
-               "align_time": None, 
-               "automata_learning_time": None, 
-               "use_cache": use_cache}
-    i=0
+    assert (
+        start_i < end_i
+    ), f"Start index must be strictly less than end index: {start_i} < {end_i}"
+
+    # Running loop
+    run_log = {
+        "i": None,
+        "split": None,
+        "status": None,
+        "source": None,
+        "aligned": None,
+        "alignment": None,
+        "cost": None,
+        "gt": None,
+        "aligned_gt": None,
+        "dataset_time": None,
+        "align_time": None,
+        "automata_learning_time": None,
+        "use_cache": use_cache,
+    }
+    i = 0
     while i < end_i:
         # Execute only the loops where start_i <= i < end_i
         if i < start_i:
@@ -120,13 +148,15 @@ CONFIG
             datasets.skip()
             i += 1
             continue
-        
+
         assert datasets.index == i, f"{datasets.index} != {i}"
         assert len(datasets.get_times()) == i, f"{len(datasets.get_times())} != {i}"
 
         dataset, interaction = next(datasets)
 
-        assert len(datasets.get_times()) == i+1, f"{len(datasets.get_times())} != {i+1}"
+        assert (
+            len(datasets.get_times()) == i + 1
+        ), f"{len(datasets.get_times())} != {i+1}"
 
         run_log["dataset_time"] = datasets.get_times()[i]
         run_log["i"] = i
@@ -141,7 +171,13 @@ CONFIG
             print(f"Current Split: {split}")
             try:
                 aligned, cost, alignment = single_run(source_sequence, dataset, split)
-            except (DfaNotAccepting, DfaNotRejecting, NoTargetStatesError, CounterfactualNotFound, SplitNotCoherent) as e:
+            except (
+                DfaNotAccepting,
+                DfaNotRejecting,
+                NoTargetStatesError,
+                CounterfactualNotFound,
+                SplitNotCoherent,
+            ) as e:
                 print(f"Raised {type(e)}")
                 run_log["status"] = error_messages[type(e)]
                 yield run_log
@@ -165,27 +201,28 @@ CONFIG
                 run_log["status"] = "good"
                 print(f"[{i}] Good counterfactual! {source_gt} != {aligned_gt}")
             print("--------------------")
-            
+
             print(json.dumps(run_log, indent=2))
             yield run_log
-        
-       
+
         i += 1
 
 
 def main(
-        config_path: Optional[str]=None,
-        dataset_type:RecDataset=ConfigParams.DATASET,
-        model_type:RecModel=ConfigParams.MODEL,
-        start_i: int = 0,
-        end_i: Optional[int]=None,
-        splits: Optional[List[int]] = None, #type: ignore
-        use_cache: bool=True):
-    
-    ConfigParams.reload(config_path) 
+    config_path: Optional[str] = None,
+    dataset_type: RecDataset = ConfigParams.DATASET,
+    model_type: RecModel = ConfigParams.MODEL,
+    start_i: int = 0,
+    end_i: Optional[int] = None,
+    splits: Optional[List[int]] = None,  # type: ignore
+    use_cache: bool = True,
+):
+
+    ConfigParams.reload(config_path)
     ConfigParams.fix()
     for _ in run(dataset_type, model_type, start_i, end_i, splits, use_cache):
         pass
-        
-if __name__ == '__main__':
-  fire.Fire(main)
+
+
+if __name__ == "__main__":
+    fire.Fire(main)

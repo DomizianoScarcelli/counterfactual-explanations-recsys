@@ -172,18 +172,22 @@ class SequenceGenerator(InteractionGenerator):
 class DatasetGenerator(SkippableGenerator):
     def __init__(
         self,
-        config: Config,
+        config: Optional[Config] = None,
         strategy: str = ConfigParams.GENERATION_STRATEGY,
         use_cache: bool = True,
         return_interaction: bool = False,
+        alphabet: Optional[List[int]] = None,
     ):
         super().__init__()
-        self.config = config
-        self.interactions = InteractionGenerator(config)
-        self.model = generate_model(config)
+        self.config = (
+            config if config else get_config(ConfigParams.DATASET, ConfigParams.MODEL)
+        )
+        self.interactions = InteractionGenerator(self.config)
+        self.model = generate_model(self.config)
         self.use_cache = use_cache
         self.return_interaction = return_interaction
         self.strategy = strategy
+        self.alphabet = alphabet if alphabet else list(get_items())
 
     def skip(self):
         super().skip()
@@ -192,12 +196,11 @@ class DatasetGenerator(SkippableGenerator):
     def instantiate_strategy(
         self, seq
     ) -> Tuple[GenerationStrategy, GenerationStrategy]:
-        alphabet = list(get_items())
         if self.strategy == "genetic":
             sequence = seq.squeeze(0)
             assert len(sequence.shape) == 1, f"Sequence dim must be 1: {sequence.shape}"
             allowed_mutations = parse_mutations(ConfigParams.ALLOWED_MUTATIONS)
-            good_strat = GeneticStrategy(
+            self.good_strat = GeneticStrategy(
                 input_seq=sequence,
                 model=lambda x: model_predict(seq=x, model=self.model, prob=True),
                 allowed_mutations=allowed_mutations,
@@ -205,9 +208,9 @@ class DatasetGenerator(SkippableGenerator):
                 good_examples=True,
                 generations=ConfigParams.GENERATIONS,
                 halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
-                alphabet=alphabet,
+                alphabet=self.alphabet,
             )
-            bad_strat = GeneticStrategy(
+            self.bad_strat = GeneticStrategy(
                 input_seq=sequence,
                 model=lambda x: model_predict(seq=x, model=self.model, prob=True),
                 allowed_mutations=allowed_mutations,
@@ -215,16 +218,16 @@ class DatasetGenerator(SkippableGenerator):
                 good_examples=False,
                 generations=ConfigParams.GENERATIONS,
                 halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
-                alphabet=alphabet,
+                alphabet=self.alphabet,
             )
-            return good_strat, bad_strat
+            return self.good_strat, self.bad_strat
 
         elif self.strategy == "genetic_categorized":
             sequence = seq.squeeze(0)
             assert len(sequence.shape) == 1, f"Sequence dim must be 1: {sequence.shape}"
             allowed_mutations = parse_mutations(ConfigParams.ALLOWED_MUTATIONS)
 
-            good_strat = CategorizedGeneticStrategy(
+            self.good_strat = CategorizedGeneticStrategy(
                 input_seq=sequence,
                 model=lambda x: model_predict(seq=x, model=self.model, prob=True),
                 allowed_mutations=allowed_mutations,
@@ -232,9 +235,9 @@ class DatasetGenerator(SkippableGenerator):
                 good_examples=True,
                 generations=ConfigParams.GENERATIONS,
                 halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
-                alphabet=alphabet,
+                alphabet=self.alphabet,
             )
-            bad_strat = CategorizedGeneticStrategy(
+            self.bad_strat = CategorizedGeneticStrategy(
                 input_seq=sequence,
                 model=lambda x: model_predict(seq=x, model=self.model, prob=True),
                 allowed_mutations=allowed_mutations,
@@ -242,17 +245,23 @@ class DatasetGenerator(SkippableGenerator):
                 good_examples=False,
                 generations=ConfigParams.GENERATIONS,
                 halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
-                alphabet=alphabet,
+                alphabet=self.alphabet,
             )
-            return good_strat, bad_strat
+            return self.good_strat, self.bad_strat
         elif self.strategy == "exhaustive":
-            good_strat = ExhaustiveStrategy(
-                input_seq=seq, model=self.model, alphabet=alphabet, good_examples=True
+            self.good_strat = ExhaustiveStrategy(
+                input_seq=seq,
+                model=self.model,
+                alphabet=self.alphabet,
+                good_examples=True,
             )
-            bad_strat = ExhaustiveStrategy(
-                input_seq=seq, model=self.model, alphabet=alphabet, good_examples=False
+            self.bad_strat = ExhaustiveStrategy(
+                input_seq=seq,
+                model=self.model,
+                alphabet=self.alphabet,
+                good_examples=False,
             )
-            return good_strat, bad_strat
+            return self.good_strat, self.bad_strat
         else:
             raise NotImplementedError(
                 f"Generations strategy '{self.strategy}' not implemented, choose between 'genetic' and 'exhaustive'"

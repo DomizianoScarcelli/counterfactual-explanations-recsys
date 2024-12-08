@@ -54,6 +54,7 @@ class ExtendedBERT4Rec(BERT4Rec):
             item_seq_len = (item_seq != PADDING_CHAR).sum(-1).to(torch.int64)
             item_seq = replace_padding(item_seq, PADDING_CHAR, 0).to(torch.int64)
 
+
             # print(f"DEBUG: item_seq: {item_seq}, \n item_seq_len: {item_seq_len} with shapes: {item_seq.shape}, {item_seq_len.shape}")
 
             # Shifts sequence by 1 and adds a mask token (NumItems+1) to the

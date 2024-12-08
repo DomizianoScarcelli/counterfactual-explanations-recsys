@@ -9,6 +9,7 @@ from typing import List, Set, Tuple, TypedDict
 import _pickle as cPickle
 from recbole.data.dataset.sequential_dataset import SequentialDataset
 from torch import Tensor
+from torch._prims_common import is_integer_dtype
 
 from config import ConfigParams
 from constants import PADDING_CHAR, cat2id
@@ -35,6 +36,17 @@ class Items(Enum):
 
 class Category(Enum):
     ML_1M = os.path.join("data", "category_map.json")
+
+
+def compare_ys(y1: int | CategorySet, y2: int | CategorySet):
+    if isinstance(y1, int) and isinstance(y2, int):
+        return y1 == y2
+    elif isinstance(y1, set) and isinstance(y2, set):
+        return y1 <= y2
+    else:
+        raise TypeError(
+            f"y1 and y2 must be both ints or sets, not {type(y1).__name__} and {type(y2).__name__}"
+        )
 
 
 def get_items(dataset: RecDataset = ConfigParams.DATASET) -> Set[int]:

@@ -13,7 +13,8 @@ from constants import MAX_LENGTH
 from genetic.extended_ea_algorithms import eaSimpleBatched
 from genetic.genetic import GeneticStrategy
 from genetic.mutations import ALL_MUTATIONS, Mutation
-from genetic.utils import _evaluate_categorized_generation, get_category_map, label2cat
+from genetic.utils import (_evaluate_categorized_generation, get_category_map,
+                           label2cat)
 from models.utils import pad_batch, trim
 from type_hints import CategorizedDataset
 from utils import set_seed
@@ -52,7 +53,7 @@ class CategorizedGeneticStrategy(GeneticStrategy):
         Evaluates the fitness for each individual, feeding the individuals into the predictor in batches.
         """
         set_seed()
-        batch_size = 512
+        batch_size = 10 #TODO: debug, put back to 512
         num_batches = math.ceil(len(individuals) / batch_size)
         fitnesses = []
         ALPHA2 = 1 - ConfigParams.FITNESS_ALPHA
@@ -61,11 +62,12 @@ class CategorizedGeneticStrategy(GeneticStrategy):
                 batch_i * batch_size : (batch_i + 1) * batch_size
             ]
             candidate_seqs = pad_batch(batch_individuals, MAX_LENGTH)
-            candidate_probs = self.model(candidate_seqs).argmax(-1) #[batch_size, 1]
+            # print(
+            #     f"[DEBUG] candidate seqs are: {candidate_seqs.tolist()}, with min and max: {torch.min(candidate_seqs), torch.max(candidate_seqs)}"
+            # )
+            candidate_probs = self.model(candidate_seqs).argmax(-1)  # [batch_size, 1]
 
-            # print(f"[DEBUG] candidate probs shape: {candidate_probs.shape}")
             # print(f"[DEBUG] candidate seqs shape: {candidate_seqs.shape}")
-
 
             gt_cat = set(label2cat(self.gt.argmax(-1).item(), encode=True))
 
@@ -78,7 +80,7 @@ class CategorizedGeneticStrategy(GeneticStrategy):
                 seq_dist = edit_distance(
                     self.input_seq, candidate_seq, normalized=True
                 )  # [0,MAX_LENGTH] if not normalized, [0,1] if normalized
-                cat_dist = 1- jaccard_sim(a=gt_cat, b=set(candidate_cats))
+                cat_dist = 1 - jaccard_sim(a=gt_cat, b=set(candidate_cats))
 
                 # print(f"[DEBUG] cat dist is: {cat_dist}\n")
 
@@ -133,7 +135,9 @@ class CategorizedGeneticStrategy(GeneticStrategy):
         new_augmented = []
         preds = self.model(pad_batch(augmented, MAX_LENGTH)).argmax(-1)
         for i, x in enumerate(augmented):
-            new_augmented.append((torch.tensor(x), set(label2cat(preds[i].item(), encode=True))))
+            new_augmented.append(
+                (torch.tensor(x), set(label2cat(preds[i].item(), encode=True)))
+            )
         label_eval, seq_eval = self.evaluate_generation(new_augmented)
         self.print(
             f"[Augmented] Good examples = {self.good_examples} [{len(new_augmented)}] ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}"
@@ -162,7 +166,10 @@ class CategorizedGeneticStrategy(GeneticStrategy):
         clean_pop = self._clean(population)
         label_eval, seq_eval = self.evaluate_generation(clean_pop)
 
-        source_point = (self.input_seq, set(label2cat(self.gt.argmax(-1).item(), encode=True)))
+        source_point = (
+            self.input_seq,
+            set(label2cat(self.gt.argmax(-1).item(), encode=True)),
+        )
 
         # Remove any copy of the source point from the good or bad dataset.
         new_pop = [
@@ -198,5 +205,7 @@ class CategorizedGeneticStrategy(GeneticStrategy):
 
     def evaluate_generation(self, examples: CategorizedDataset):  # type: ignore
         return _evaluate_categorized_generation(
-            self.input_seq, examples, set(label2cat(self.gt.argmax(-1).item(), encode=True))
+            self.input_seq,
+            examples,
+            set(label2cat(self.gt.argmax(-1).item(), encode=True)),
         )

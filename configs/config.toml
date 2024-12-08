@@ -14,7 +14,7 @@ test_batch_size = 1         # Batch size for testing
 include_sink = true        # Include sink state in the target states when doing trace alignment
 
 [generation]
-strategy = "genetic"    # [exhaustive, genetic]
+strategy = "genetic_categorized"    # [exhaustive, genetic, genetic_categorized]
 
 # Settings for the evolutionary algorithm
 [evolution]
