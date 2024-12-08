@@ -2,10 +2,9 @@ import pickle
 
 from recbole.data.dataset.sequential_dataset import SequentialDataset
 
-from genetic.utils import get_category_map, get_items
-from type_hints import RecDataset
+from genetic.utils import get_category_map
 
-category_map = get_category_map(RecDataset.ML_1M)
+category_map = get_category_map()
 category_map_keys = set(int(a) for a in category_map)
 print(f"Category mapping length is: {len(category_map_keys)}, with min {min(category_map_keys)} and max {max(category_map_keys)}")
 

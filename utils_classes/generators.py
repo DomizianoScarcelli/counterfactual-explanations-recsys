@@ -1,6 +1,6 @@
 from __future__ import annotations
 from models.model_funcs import model_predict
-from genetic.genetic import GeneticGenerationStrategy
+from genetic.genetic import GeneticStrategy
 
 import os
 import time
@@ -20,7 +20,7 @@ from genetic.dataset.utils import (
     load_dataset,
     save_dataset,
 )
-from genetic.exhaustive_strategy import ExhaustiveGenerationStrategy
+from genetic.exhaustive_strategy import ExhaustiveStrategy
 from genetic.mutations import parse_mutations
 from genetic.utils import Items, get_items
 from models.config_utils import generate_model
@@ -199,7 +199,7 @@ class DatasetGenerator(SkippableGenerator):
             sequence = seq.squeeze(0)
             assert len(sequence.shape) == 1, f"Sequence dim must be 1: {sequence.shape}"
             allowed_mutations = parse_mutations(ConfigParams.ALLOWED_MUTATIONS)
-            good_strat = GeneticGenerationStrategy(
+            good_strat = GeneticStrategy(
                 input_seq=sequence,
                 model=lambda x: model_predict(seq=x, model=self.model, prob=True),
                 allowed_mutations=allowed_mutations,
@@ -209,7 +209,7 @@ class DatasetGenerator(SkippableGenerator):
                 halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
                 alphabet=alphabet,
             )
-            bad_strat = GeneticGenerationStrategy(
+            bad_strat = GeneticStrategy(
                 input_seq=sequence,
                 model=lambda x: model_predict(seq=x, model=self.model, prob=True),
                 allowed_mutations=allowed_mutations,
@@ -221,10 +221,10 @@ class DatasetGenerator(SkippableGenerator):
             )
             return good_strat, bad_strat
         elif self.strategy == "exhaustive":
-            good_strat = ExhaustiveGenerationStrategy(
+            good_strat = ExhaustiveStrategy(
                 input_seq=seq, model=self.model, alphabet=alphabet, good_examples=True
             )
-            bad_strat = ExhaustiveGenerationStrategy(
+            bad_strat = ExhaustiveStrategy(
                 input_seq=seq, model=self.model, alphabet=alphabet, good_examples=False
             )
             return good_strat, bad_strat

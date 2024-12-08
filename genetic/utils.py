@@ -1,3 +1,4 @@
+from constants import cat2id
 import json
 import os
 import pickle
@@ -69,11 +70,12 @@ def get_items(dataset: RecDataset=ConfigParams.DATASET):
         raise ValueError("items must be a set or a path to a set")
 
 
-def get_category_map(dataset: RecDataset):
+def get_category_map(dataset: RecDataset=ConfigParams.DATASET):
 
     def load_json(path):
         with open(path, "r") as f:
             data = json.load(f)
+
         return {int(key): value for key, value in data.items()}
 
     if dataset == RecDataset.ML_1M:
@@ -85,6 +87,12 @@ def get_category_map(dataset: RecDataset):
 
     return Cached(category.value, load_fn=load_json).get_data()
 
+def label2cat(label: int, dataset: RecDataset=ConfigParams.DATASET, encode: bool=False):
+    category_map = get_category_map(dataset)
+    categories = category_map[label]
+    if not encode:
+        return categories
+    return [cat2id[cat] for cat in categories]
 
 def get_remapped_dataset(dataset: RecDataset) -> SequentialDataset:
     def load_pickle(path):

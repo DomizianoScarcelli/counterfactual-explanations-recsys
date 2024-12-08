@@ -8,7 +8,7 @@ from models.utils import trim
 from type_hints import Dataset
 
 
-class ExhaustiveGenerationStrategy(GenerationStrategy):
+class ExhaustiveStrategy(GenerationStrategy):
     def __init__(
         self,
         input_seq: Tensor,

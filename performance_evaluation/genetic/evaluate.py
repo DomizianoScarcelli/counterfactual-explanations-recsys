@@ -7,7 +7,7 @@ from torch import Tensor
 from tqdm import tqdm
 
 from config import ConfigParams
-from genetic.genetic import GeneticGenerationStrategy
+from genetic.genetic import GeneticStrategy
 from genetic.mutations import parse_mutations
 from genetic.utils import Items, _evaluate_generation, get_items
 from models.config_utils import generate_model, get_config
@@ -53,7 +53,7 @@ def evaluate_config(sequence: Tensor, model, alphabet, seq_index: int):
         prev_df = pd.read_csv(log_save_path)
 
     allowed_mutations = parse_mutations(ConfigParams.ALLOWED_MUTATIONS)
-    good_genetic_strategy = GeneticGenerationStrategy(
+    good_genetic_strategy = GeneticStrategy(
         input_seq=sequence,
         model=lambda x: model_predict(seq=x, model=model, prob=True),
         allowed_mutations=allowed_mutations,
@@ -70,7 +70,7 @@ def evaluate_config(sequence: Tensor, model, alphabet, seq_index: int):
     good_log = {f"good_{key}": value for key, value in good_log.items()}
 
 
-    bad_genetic_strategy = GeneticGenerationStrategy(
+    bad_genetic_strategy = GeneticStrategy(
         input_seq=sequence,
         model=lambda x: model_predict(seq=x, model=model, prob=True),
         allowed_mutations=allowed_mutations,

@@ -34,7 +34,7 @@ from utils_classes.distances import (
 )
 
 
-class GeneticGenerationStrategy(GenerationStrategy):
+class GeneticStrategy(GenerationStrategy):
     def __init__(
         self,
         input_seq: Tensor,

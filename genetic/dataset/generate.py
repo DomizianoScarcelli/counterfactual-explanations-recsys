@@ -8,7 +8,7 @@ from torch import Tensor
 from config import ConfigParams
 from genetic.abstract_generation import GenerationStrategy
 from genetic.dataset.utils import interaction_to_tensor
-from genetic.genetic import GeneticGenerationStrategy
+from genetic.genetic import GeneticStrategy
 from genetic.mutations import parse_mutations
 from genetic.utils import Items, get_items
 from models.model_funcs import model_predict

@@ -105,7 +105,7 @@ def model_sensitivity_category(
 
     if verbose or save_stats:
         stats_acc = StatsAccumulator()
-    category_map = get_category_map(ConfigParams.DATASET)
+    category_map = get_category_map()
 
     seen_idx = set()
     prev_df = pd.DataFrame({})
@@ -223,7 +223,8 @@ def model_sensitivity_simple(
         if not result:
             continue
         out, out_primes = result
-
+        
+        #TODO: since I'm using metrics@k, I don't think I need this
         out_k = topk(out, k, dim=-1, indices=True).squeeze() #[K]
         out_primes_k = topk(out_primes, k, dim=-1, indices=True) #[len(alphabet), K]
 
