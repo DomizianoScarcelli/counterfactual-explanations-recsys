@@ -9,7 +9,6 @@ from typing import List, Set, Tuple, TypedDict
 import _pickle as cPickle
 from recbole.data.dataset.sequential_dataset import SequentialDataset
 from torch import Tensor
-from torch._prims_common import is_integer_dtype
 
 from config import ConfigParams
 from constants import PADDING_CHAR, cat2id
@@ -84,6 +83,8 @@ def get_items(dataset: RecDataset = ConfigParams.DATASET) -> Set[int]:
 def get_category_map(dataset: RecDataset = ConfigParams.DATASET):
 
     def load_json(path):
+        if not os.path.exists(path):
+            raise FileNotFoundError("Category map has not been found, generate it with `python -m scripts.create_category_mapping`")
         with open(path, "r") as f:
             data = json.load(f)
 
