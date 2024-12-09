@@ -92,7 +92,6 @@ def precision_at(k: int, a: Tensor, b: Tensor) -> float:
     Returns:
         float: Precision@k score.
     """
-
     a_top_k = set(a[:k].tolist())
     b_set = set(b.tolist())
     intersection = len(a_top_k & b_set)

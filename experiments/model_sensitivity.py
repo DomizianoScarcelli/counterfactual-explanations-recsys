@@ -1,9 +1,7 @@
 from performance_evaluation.alignment.utils import get_log_stats, stats_to_df
-import json
 import os
-from collections import Counter
 from statistics import mean
-from typing import Any, List, Optional, Set
+from typing import List, Optional, Set, Literal
 
 import fire
 import pandas as pd
@@ -17,39 +15,11 @@ from config import ConfigParams
 from genetic.utils import get_category_map, get_items
 from models.config_utils import generate_model, get_config
 from models.utils import topk, trim
-from performance_evaluation.alignment.utils import log_run, pk_exists
+from performance_evaluation.alignment.utils import log_run
 from type_hints import RecDataset
 from utils import set_seed
 from utils_classes.distances import jaccard_sim, ndcg_at, precision_at
 from utils_classes.generators import SequenceGenerator, SkippableGenerator
-
-
-class StatsAccumulator:
-    def __init__(self):
-        self.stats = {}
-
-    def accumulate(self, input_id: int, gt: Any, outputs: Any):
-        if input_id not in self.stats:
-            self.stats[input_id] = {}
-        # print(f"[DEBUG] accumulating {input_id}:{type(input_id)}, {gt}:{type(gt)}, {outputs}:{type(outputs)}")
-        if gt in self.stats[input_id]:
-            self.stats[input_id][gt].append(outputs)
-        else:
-            self.stats[input_id][gt] = [outputs]
-
-    def print_stats(self, input_id):
-        print(f"\n------Stats for id: {input_id}-----\n")
-        print(f"Ground truth is: {list(self.stats[input_id].keys())}")
-        for gt in self.stats[input_id].keys():
-            print(
-                f"Counter of output labels for gt: {gt} are: {Counter(self.stats[input_id][gt])}"
-            )
-        print(f"-----------------------------------\n")
-        pass
-
-    def save(self, path):
-        with open(path, "w") as f:
-            json.dump(self.stats, f)
 
 
 def generate_matrix_of_possible_sequences(
@@ -80,8 +50,6 @@ def model_sensitivity_category(
     model: SequentialRecommender,
     position: int,
     log_path: Optional[str] = None,
-    verbose: bool = False,
-    save_stats: bool = False,
 ):
 
     def cat_all_changes(gt: Set[str], new: Set[str]):
@@ -110,8 +78,6 @@ def model_sensitivity_category(
         """
         return len(gt - new) != 0
 
-    if verbose or save_stats:
-        stats_acc = StatsAccumulator()
     category_map = get_category_map()
 
     seen_idx = set()
@@ -141,8 +107,8 @@ def model_sensitivity_category(
             continue
         if i >= end_i:
             break
-        
-        #TODO: don't know if this is working
+
+        # TODO: don't know if this is working
         # if pk_exists(prev_df, primary_key=["i", "position"], consider_config=True):
         #     # print(f"Skipping i: {i} at pos: {position}...")
         #     continue
@@ -162,10 +128,6 @@ def model_sensitivity_category(
             set(category_map[out_prime.argmax(-1).item()]) for out_prime in out_primes
         ]
 
-        if verbose or save_stats:
-            for output in out_primes_cat:
-                stats_acc.accumulate(i, " ".join(out_cat), " ".join(list(sorted(list(output)))))  # type: ignore
-
         all_change = mean(
             cat_all_changes(gt=out_cat, new=out_prime_k)
             for out_prime_k in out_primes_cat
@@ -178,21 +140,11 @@ def model_sensitivity_category(
         jaccard = mean(
             jaccard_sim(a=out_cat, b=out_prime_k) for out_prime_k in out_primes_cat
         )
-
-        # pbar.set_postfix_str(
-        #     f"changes: {mean(changes)*100:.2f}%, at_least_changes: {mean(at_least_changes)*100:.2f}%, jacc: {mean(jaccards)*100:.2f}%"
-        # )
-
-        # if verbose:
-        #     stats_acc.print_stats(i) #type: ignore
-
-        # if save_stats:
-        #     stats_acc.save(f"stats.json") #type: ignore
         i_list.append(i)
         all_changes.append(all_change)
         any_changes.append(any_change)
         jaccards.append(jaccard)
-        sequence_list.append(",".join([str(x) for x in sequence.squeeze().tolist()]))
+        sequence_list.append(sequence.squeeze())
 
     if log_path:
         data = {
@@ -201,7 +153,7 @@ def model_sensitivity_category(
             "all_changes": [v * 100 for v in all_changes],
             "any_changes": [v * 100 for v in any_changes],
             "jaccards": [v * 100 for v in jaccards],
-            "sequence": sequence_list,
+            "sequence": [str(x.tolist()) for x in sequence_list],
             "model": [ConfigParams.MODEL.value] * len(i_list),
             "dataset": [ConfigParams.DATASET.value] * len(i_list),
         }
@@ -335,7 +287,7 @@ def get_all_stats(log_path: str, metrics: List[str]) -> DataFrame:
     return df
 
 
-def get_sequence_stats(log_path: str, metrics: List[str]):
+def get_sequence_stats(log_path: str, metrics: List[str]) -> DataFrame:
     """
     Given a dataframe result of a model sensitivity experiment, it returns a dataframe of the type
 
@@ -349,8 +301,8 @@ def get_sequence_stats(log_path: str, metrics: List[str]):
     For each sequence, where the the mean is grouped by the same sequence over different positions.
     """
     stats = get_log_stats(log_path=log_path, group_by=["sequence"], metrics=metrics)
-    return stats
-    pass
+    df = stats_to_df(stats)
+    return df
 
 
 def main(
@@ -358,9 +310,9 @@ def main(
     log_path: Optional[str] = None,
     k: int = 1,
     target: str = "item",
-    verbose: bool = False,
-    save_stats: bool = False,
-    mode: str = "evaluate",
+    mode: Literal["evaluate", "stats"] = "evaluate",
+    groupby: Literal["sequence", "position"] = "sequence",
+    stats_save_path: Optional[str] = None,
 ):
     if config_path:
         ConfigParams.reload(config_path)
@@ -386,8 +338,6 @@ def main(
                     sequences=sequences,
                     position=i,
                     log_path=log_path,
-                    verbose=verbose,
-                    save_stats=save_stats,
                 )
             else:
                 raise ValueError(f"target must be 'item' or 'category', not '{target}'")
@@ -398,8 +348,22 @@ def main(
             metrics = ["all_changes", "any_changes", "jaccards"]
         else:
             raise ValueError(f"target must be 'item' or 'category', not '{target}'")
-        stats = get_all_stats(log_path, metrics)
-        print(stats)
+
+        if not log_path:
+            raise ValueError(f"define a log_path as a source for the stats")
+        if groupby == "sequence":
+            stats = get_sequence_stats(log_path, metrics)
+        elif groupby == "position":
+            stats = get_all_stats(log_path, metrics)
+        else:
+            raise ValueError(
+                f"groupby must be 'sequence' or 'position', not '{groupby}'"
+            )
+        if stats is not None:
+            print(stats)
+
+        if stats is not None and stats_save_path:
+            stats.to_csv(stats_save_path, index=False)
     else:
         raise ValueError(f"mode must be 'evaluate' or 'stats', not '{mode}'")
 
