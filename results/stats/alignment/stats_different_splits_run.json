@@ -1,0 +1,212 @@
+[
+  {
+    "determinism": "True",
+    "model": "BERT4Rec",
+    "dataset": "ml-1m",
+    "pop_size": "2048",
+    "generations": "10",
+    "halloffame_ratio": "0.2",
+    "allowed_mutations": "('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",
+    "split": "(None, 1, 0)",
+    "rows": 3,
+    "status": {
+      "good": 2,
+      "bad": 1
+    },
+    "dataset_time": 48.578415314356484,
+    "align_time": 5.7788192431132,
+    "automata_learning_time": 1.1677016417185466
+  },
+  {
+    "determinism": "True",
+    "model": "BERT4Rec",
+    "dataset": "ml-1m",
+    "pop_size": "2048",
+    "generations": "10",
+    "halloffame_ratio": "0.2",
+    "allowed_mutations": "('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",
+    "split": "(None, 1, 10)",
+    "rows": 3,
+    "status": {
+      "bad": 3
+    },
+    "dataset_time": 48.578415314356484,
+    "align_time": 4.258568445841472,
+    "automata_learning_time": 1.1360503832499187
+  },
+  {
+    "determinism": "True",
+    "model": "BERT4Rec",
+    "dataset": "ml-1m",
+    "pop_size": "2048",
+    "generations": "10",
+    "halloffame_ratio": "0.2",
+    "allowed_mutations": "('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",
+    "split": "(None, 1, 3)",
+    "rows": 3,
+    "status": {
+      "bad": 2,
+      "good": 1
+    },
+    "dataset_time": 48.578415314356484,
+    "align_time": 8.012673934300741,
+    "automata_learning_time": 1.1072746912638347
+  },
+  {
+    "determinism": "True",
+    "model": "BERT4Rec",
+    "dataset": "ml-1m",
+    "pop_size": "2048",
+    "generations": "10",
+    "halloffame_ratio": "0.2",
+    "allowed_mutations": "('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",
+    "split": "(None, 1, 5)",
+    "rows": 3,
+    "status": {
+      "bad": 2,
+      "good": 1
+    },
+    "dataset_time": 48.578415314356484,
+    "align_time": 8.086044708887735,
+    "automata_learning_time": 1.1250837643941243
+  },
+  {
+    "determinism": "True",
+    "model": "BERT4Rec",
+    "dataset": "ml-1m",
+    "pop_size": "2048",
+    "generations": "10",
+    "halloffame_ratio": "0.2",
+    "allowed_mutations": "('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",
+    "split": "(None, 10, 0)",
+    "rows": 3,
+    "status": {
+      "good": 2,
+      "bad": 1
+    },
+    "dataset_time": 48.578415314356484,
+    "align_time": 53.8197770913442,
+    "automata_learning_time": 1.0692379474639893
+  },
+  {
+    "determinism": "True",
+    "model": "BERT4Rec",
+    "dataset": "ml-1m",
+    "pop_size": "2048",
+    "generations": "10",
+    "halloffame_ratio": "0.2",
+    "allowed_mutations": "('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",
+    "split": "(None, 10, 10)",
+    "rows": 2,
+    "status": {
+      "bad": 2
+    },
+    "dataset_time": 49.63737595081329,
+    "align_time": 26.949026465415958,
+    "automata_learning_time": 1.2536964416503906
+  },
+  {
+    "determinism": "True",
+    "model": "BERT4Rec",
+    "dataset": "ml-1m",
+    "pop_size": "2048",
+    "generations": "10",
+    "halloffame_ratio": "0.2",
+    "allowed_mutations": "('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",
+    "split": "(None, 10, 3)",
+    "rows": 3,
+    "status": {
+      "bad": 3
+    },
+    "dataset_time": 48.578415314356484,
+    "align_time": 55.39108681678772,
+    "automata_learning_time": 1.128455638885498
+  },
+  {
+    "determinism": "True",
+    "model": "BERT4Rec",
+    "dataset": "ml-1m",
+    "pop_size": "2048",
+    "generations": "10",
+    "halloffame_ratio": "0.2",
+    "allowed_mutations": "('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",
+    "split": "(None, 10, 5)",
+    "rows": 3,
+    "status": {
+      "bad": 3
+    },
+    "dataset_time": 48.578415314356484,
+    "align_time": 51.35719497998556,
+    "automata_learning_time": 1.1006957689921062
+  },
+  {
+    "determinism": "True",
+    "model": "BERT4Rec",
+    "dataset": "ml-1m",
+    "pop_size": "2048",
+    "generations": "10",
+    "halloffame_ratio": "0.2",
+    "allowed_mutations": "('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",
+    "split": "(None, 5, 0)",
+    "rows": 3,
+    "status": {
+      "good": 2,
+      "bad": 1
+    },
+    "dataset_time": 48.578415314356484,
+    "align_time": 31.12372096379598,
+    "automata_learning_time": 1.0952603816986084
+  },
+  {
+    "determinism": "True",
+    "model": "BERT4Rec",
+    "dataset": "ml-1m",
+    "pop_size": "2048",
+    "generations": "10",
+    "halloffame_ratio": "0.2",
+    "allowed_mutations": "('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",
+    "split": "(None, 5, 10)",
+    "rows": 3,
+    "status": {
+      "bad": 3
+    },
+    "dataset_time": 48.578415314356484,
+    "align_time": 19.4251290957133,
+    "automata_learning_time": 1.1017203330993652
+  },
+  {
+    "determinism": "True",
+    "model": "BERT4Rec",
+    "dataset": "ml-1m",
+    "pop_size": "2048",
+    "generations": "10",
+    "halloffame_ratio": "0.2",
+    "allowed_mutations": "('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",
+    "split": "(None, 5, 3)",
+    "rows": 3,
+    "status": {
+      "bad": 3
+    },
+    "dataset_time": 48.578415314356484,
+    "align_time": 32.399916648864746,
+    "automata_learning_time": 1.119543234507243
+  },
+  {
+    "determinism": "True",
+    "model": "BERT4Rec",
+    "dataset": "ml-1m",
+    "pop_size": "2048",
+    "generations": "10",
+    "halloffame_ratio": "0.2",
+    "allowed_mutations": "('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",
+    "split": "(None, 5, 5)",
+    "rows": 3,
+    "status": {
+      "bad": 2,
+      "good": 1
+    },
+    "dataset_time": 48.578415314356484,
+    "align_time": 28.704660018285114,
+    "automata_learning_time": 1.118023951848348
+  }
+]

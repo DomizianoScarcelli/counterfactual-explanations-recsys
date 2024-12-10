@@ -213,22 +213,3 @@ CONFIG
 
         i += 1
 
-
-def main(
-    config_path: Optional[str] = None,
-    dataset_type: RecDataset = ConfigParams.DATASET,
-    model_type: RecModel = ConfigParams.MODEL,
-    start_i: int = 0,
-    end_i: Optional[int] = None,
-    splits: Optional[List[int]] = None,  # type: ignore
-    use_cache: bool = True,
-):
-
-    ConfigParams.reload(config_path)
-    ConfigParams.fix()
-    for _ in run(dataset_type, model_type, start_i, end_i, splits, use_cache):
-        pass
-
-
-if __name__ == "__main__":
-    fire.Fire(main)

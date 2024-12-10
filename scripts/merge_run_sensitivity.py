@@ -1,9 +1,11 @@
-from typing import List, Optional, Tuple
-import pandas as pd
-import fire
 import ast
+from typing import List, Optional, Tuple
 
+import fire
+import pandas as pd
 from pandas.core.api import DataFrame, Series
+
+from constants import MAX_LENGTH
 
 
 def calculate_metrics(
@@ -13,10 +15,14 @@ def calculate_metrics(
     s2 = split[1]
     s3 = split[2]
 
+    min_pos_range, max_pos_range = (MAX_LENGTH - (s3+s2), MAX_LENGTH - (s3))
+    # print(split, min_pos_range, max_pos_range)
+
     mask = (
-        (df_stats[on[0]] == row[on[1]])
-        & (df_stats["position"] > s3)
-        & (df_stats["position"] <= s2)
+        (df_stats[on[1]] == row[on[0]])
+        # & (df_stats["position"] in pos_range)
+        & (df_stats["position"] > min_pos_range)
+        & (df_stats["position"] <= max_pos_range)
     )
     filtered_df1 = df_stats[mask]
 
@@ -46,7 +52,7 @@ def main(
 
     if save_path:
         merged.to_csv(save_path, index=False)
-    print(f"Merged is:", merged)
+    print(merged)
     return merged
 
 

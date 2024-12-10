@@ -1,12 +1,11 @@
-from performance_evaluation.alignment.utils import get_log_stats, stats_to_df
 import os
 from statistics import mean
-from typing import List, Optional, Set, Literal
+from typing import List, Literal, Optional, Set
 
 import fire
 import pandas as pd
-from pandas import DataFrame
 import torch
+from pandas import DataFrame
 from recbole.model.abstract_recommender import SequentialRecommender
 from torch import Tensor
 from tqdm import tqdm
@@ -15,7 +14,8 @@ from config import ConfigParams
 from genetic.utils import get_category_map, get_items
 from models.config_utils import generate_model, get_config
 from models.utils import topk, trim
-from performance_evaluation.alignment.utils import log_run
+from performance_evaluation.alignment.utils import (get_log_stats, log_run,
+                                                    stats_to_df)
 from type_hints import RecDataset
 from utils import set_seed
 from utils_classes.distances import jaccard_sim, ndcg_at, precision_at
@@ -153,7 +153,7 @@ def model_sensitivity_category(
             "all_changes": [v * 100 for v in all_changes],
             "any_changes": [v * 100 for v in any_changes],
             "jaccards": [v * 100 for v in jaccards],
-            "sequence": [str(x.tolist()) for x in sequence_list],
+            "sequence": [",".join(str(v) for v in x) for x in sequence_list],
             "model": [ConfigParams.MODEL.value] * len(i_list),
             "dataset": [ConfigParams.DATASET.value] * len(i_list),
         }
@@ -309,9 +309,9 @@ def main(
     config_path: Optional[str] = None,
     log_path: Optional[str] = None,
     k: int = 1,
-    target: str = "item",
+    target: Literal["item", "category"] = "item",
     mode: Literal["evaluate", "stats"] = "evaluate",
-    groupby: Literal["sequence", "position"] = "sequence",
+    groupby: Optional[Literal["sequence", "position"]] = None,
     stats_save_path: Optional[str] = None,
 ):
     if config_path:
@@ -368,5 +368,5 @@ def main(
         raise ValueError(f"mode must be 'evaluate' or 'stats', not '{mode}'")
 
 
-if __name__ == "__main__":
-    fire.Fire(main)
+# if __name__ == "__main__":
+#     fire.Fire(main)
