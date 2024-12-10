@@ -14,8 +14,7 @@ from config import ConfigParams
 from genetic.utils import get_category_map, get_items
 from models.config_utils import generate_model, get_config
 from models.utils import topk, trim
-from performance_evaluation.alignment.utils import (get_log_stats, log_run,
-                                                    stats_to_df)
+from performance_evaluation.alignment.utils import get_log_stats, log_run, stats_to_df
 from type_hints import RecDataset
 from utils import set_seed
 from utils_classes.distances import jaccard_sim, ndcg_at, precision_at
