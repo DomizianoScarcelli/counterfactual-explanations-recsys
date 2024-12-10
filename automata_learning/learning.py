@@ -1,5 +1,5 @@
 import os
-from typing import List, Union
+from typing import List, Tuple, Union
 
 from aalpy.automata.Dfa import Dfa, DfaState
 from aalpy.learning_algs import run_RPNI
@@ -11,8 +11,12 @@ from genetic.dataset.utils import load_dataset
 from type_hints import GoodBadDataset
 
 
-def _generate_automata(dataset: GoodBadDataset, load_if_exists: bool = True, save_path: str = "automata.pickle") -> Union[None, Dfa]:
-    """ 
+def _generate_automata(
+    dataset: List[Tuple[list, bool]],
+    load_if_exists: bool = True,
+    save_path: str = "automata.pickle",
+) -> Union[None, Dfa]:
+    """
     Util function that runs the RPNI algorithm over the input dataset, which is
     loaded from cache if specified, and if the file exists.
 
@@ -28,14 +32,25 @@ def _generate_automata(dataset: GoodBadDataset, load_if_exists: bool = True, sav
         print("[INFO] Loaded existing automata")
         dfa = load_automata(save_path)
         return dfa
-    print("[INFO] Existing automata not found, generating a new one based on the provided dataset")
-    dfa = run_RPNI(data=dataset, automaton_type="dfa", print_info=True, input_completeness="sink_state")
+    print(
+        "[INFO] Existing automata not found, generating a new one based on the provided dataset"
+    )
+    dfa = run_RPNI(
+        data=dataset,
+        automaton_type="dfa",
+        print_info=True,
+        input_completeness="sink_state",
+    )
     if dfa is None:
         return
-    return dfa
+    return dfa #type: ignore
 
 
-def generate_automata_from_dataset(dataset: GoodBadDataset, load_if_exists: bool = True, save_path: str = "automata.pickle") -> Dfa:
+def generate_automata_from_dataset(
+    dataset: GoodBadDataset,
+    load_if_exists: bool = True,
+    save_path: str = "automata.pickle",
+) -> Dfa:
     """
     Given a dataset with the following syntax:
         ([(torch.tensor([...]), good_label), ...],
@@ -43,7 +58,9 @@ def generate_automata_from_dataset(dataset: GoodBadDataset, load_if_exists: bool
     it learns a DFA that accepts good points and rejects bad points
     """
     good_points, bad_points = dataset
-    data = [(seq[0].tolist(), True) for seq in good_points] + [(seq[0].tolist(), False) for seq in bad_points]
+    data = [(seq[0].tolist(), True) for seq in good_points] + [
+        (seq[0].tolist(), False) for seq in bad_points
+    ]
     dfa = _generate_automata(data, load_if_exists, save_path)
     if dfa is None:
         raise RuntimeError("DFA is None, aborting")
@@ -57,13 +74,14 @@ def generate_single_accepting_sequence_dfa(sequence):
     """
     raise NotImplementedError("Deprecated, remove")
 
+
 def learning_pipeline(source: List[Tensor] | List[int], dataset: GoodBadDataset) -> Dfa:
     if isinstance(source[0], Tensor):
-        source = [c.item() for c in source] #type: ignore
+        source = [c.item() for c in source]  # type: ignore
 
     assert isinstance(source[0], int)
     a_dfa = generate_automata_from_dataset(dataset, load_if_exists=False)
-    a_dfa_aug = augment_constraint_automata(a_dfa, source) #type: ignore
+    a_dfa_aug = augment_constraint_automata(a_dfa, source)  # type: ignore
     return a_dfa_aug
 
 

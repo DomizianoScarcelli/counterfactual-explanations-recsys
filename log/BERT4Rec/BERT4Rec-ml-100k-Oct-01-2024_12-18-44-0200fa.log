@@ -1,4 +1,0 @@
-Tue 01 Oct 2024 12:18:45 INFO  [Training]: train_batch_size = [2048] train_neg_sample_args: [{'distribution': 'none', 'sample_num': 'none', 'alpha': 'none', 'dynamic': False, 'candidate_num': 0}]
-Tue 01 Oct 2024 12:18:45 INFO  [Evaluation]: eval_batch_size = [4096] eval_args: [{'split': {'LS': 'valid_and_test'}, 'order': 'TO', 'group_by': 'user', 'mode': {'valid': 'full', 'test': 'full'}}]
-Tue 01 Oct 2024 12:20:40 INFO  epoch 0 training [time: 114.77s, train loss: 331.3932]
-Tue 01 Oct 2024 12:20:40 INFO  Saving current: saved/BERT4Rec-Oct-01-2024_12-18-45.pth

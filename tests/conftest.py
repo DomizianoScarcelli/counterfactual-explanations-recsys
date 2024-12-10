@@ -105,7 +105,7 @@ def mock_a_dfa(mock_dataset):
 def mock_t_dfa_aug(mock_original_trace):
     # Generate another t_dfa since it's augmented on place
     t_dfa = generate_single_accepting_sequence_dfa(mock_original_trace)
-    return augment_trace_automata(t_dfa, items=Items.MOCK)
+    return augment_trace_automata(t_dfa)
 
 @pytest.fixture(scope="module")
 def mock_a_dfa_aug(mock_dataset, mock_t_dfa):

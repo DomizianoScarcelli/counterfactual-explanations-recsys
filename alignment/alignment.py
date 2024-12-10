@@ -10,12 +10,12 @@ from alignment.actions import (Action, decode_action, encode_action,
 from automata_learning.utils import invert_automata, run_automata
 from config import ConfigParams
 from exceptions import CounterfactualNotFound
-from genetic.utils import Items, get_items
+from genetic.utils import get_items
 from type_hints import Trace, TraceSplit
 from utils import printd
 
 
-def augment_trace_automata(automata: Dfa, items: Items = Items.ML_1M) -> Dfa:
+def augment_trace_automata(automata: Dfa) -> Dfa:
     """
     Given an DFA `T` which only accepts a certain sequence `s`, it augments it
     according to the rules explained in the paper "On the Disruptive
@@ -36,7 +36,7 @@ def augment_trace_automata(automata: Dfa, items: Items = Items.ML_1M) -> Dfa:
     with the corresponding repair propositions.
     """
     # Alphabet is the universe of all the items
-    alphabet = get_items(items)
+    alphabet = get_items()
 
     # Create the new repair propositions
     add_propositions = {p: f"add_{p}" for p in alphabet}

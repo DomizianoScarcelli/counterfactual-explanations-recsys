@@ -11,17 +11,17 @@ train_batch_size = 1        # Batch size for training
 test_batch_size = 1         # Batch size for testing
 
 [automata]
-include_sink = true        # Include sink state in the target states when doing trace alignment
+include_sink = false # Include sink state in the target states when doing trace alignment
 
 [generation]
-strategy = "genetic"    # [exhaustive, genetic]
+strategy = "genetic_categorized"    # [exhaustive, genetic, genetic_categorized]
 
 # Settings for the evolutionary algorithm
 [evolution]
-generations = 10            # Number of generations in the evolutionary process
+generations = 20            # Number of generations in the evolutionary process
 pop_size = 2048             # Population size for the algorithm
 halloffame_ratio = 0.2      # Ratio of the population to keep in the Hall of Fame
-fitness_alpha = 0
+fitness_alpha = 0.5
 allowed_mutations = [
     "replace",              # Replace an element in a sequence
     "swap",                 # Swap two elements in a sequence

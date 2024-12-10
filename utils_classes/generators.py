@@ -14,10 +14,15 @@ from genetic.abstract_generation import GenerationStrategy
 from genetic.dataset.generate import generate
 from genetic.dataset.utils import (get_dataloaders, interaction_to_tensor,
                                    load_dataset, save_dataset)
-from genetic.exhaustive_strategy import ExhaustiveGenerationStrategy
+from genetic.exhaustive_strategy import ExhaustiveStrategy
+from genetic.genetic import GeneticStrategy
+from genetic.genetic_categorized import CategorizedGeneticStrategy
+from genetic.mutations import parse_mutations
 from genetic.utils import Items, get_items
-from models.config_utils import generate_model
+from models.config_utils import generate_model, get_config
+from models.model_funcs import model_predict
 from type_hints import GoodBadDataset
+from utils import set_seed
 
 
 class SkippableGenerator(ABC):
@@ -28,9 +33,10 @@ class SkippableGenerator(ABC):
         Attributes:
             index (int): The current position of the generator.
     """
+
     def __init__(self):
         self.index = 0
-        
+
     def skip(self) -> None:
         """
         Skips to the next element without performing the generation.
@@ -55,7 +61,7 @@ class SkippableGenerator(ABC):
             The next generated element.
         """
         pass
-    
+
     def __iter__(self) -> SkippableGenerator:
         """
         Resets the generator index and returns itself for iteration.
@@ -77,7 +83,7 @@ class SkippableGenerator(ABC):
             StopIteration: If no more elements are available.
         """
         return self.next()
-    
+
     @abstractmethod
     def reset(self) -> None:
         """
@@ -94,25 +100,26 @@ class InteractionGenerator(SkippableGenerator):
         config (Config): Configuration object containing generator settings.
         data (list): List of data items.
     """
+
     def __init__(self, config: Config, split: str = "test"):
         super().__init__()
         self.config = config
         train_data, eval_data, test_data = get_dataloaders(config)
-        
+
         if split == "train":
-            self.data = train_data
+            self.data = train_data  # [1,2,3] -> 4
         elif split == "test":
-            self.data = test_data
+            self.data = test_data  # [1,2,3] -> 4
         elif split == "eval":
-            self.data = eval_data
+            self.data = eval_data  # [2,3,4] -> 5
         else:
             raise NotImplementedError(f"Split must be train, eval or test, not {split}")
 
-        #NOTE: this may be memory inefficent for large datasets, since calling
-        #list over a generator will allocate all the items in the memory. A
-        #solution is to materialize the list in batches. Whenever the i is
-        #bigger than the current list, then we load another batch.
-        
+        # NOTE: this may be memory inefficent for large datasets, since calling
+        # list over a generator will allocate all the items in the memory. A
+        # solution is to materialize the list in batches. Whenever the i is
+        # bigger than the current list, then we load another batch.
+
         self.data = list(self.data)
         # Self.data is a List of Tuples of the form:
         # (Interaction, None [1], batch_idx [B], ground_truth(?) [B])
@@ -141,7 +148,7 @@ class InteractionGenerator(SkippableGenerator):
 
     def next(self) -> Interaction:
         try:
-            data = self.data[self.index] #type: ignore
+            data = self.data[self.index]  # type: ignore
             # the actual sequence is the first element of the tuple
             interaction = data[0]
             self.index += 1
@@ -152,68 +159,142 @@ class InteractionGenerator(SkippableGenerator):
     def reset(self):
         self.index = 0
 
+
 class SequenceGenerator(InteractionGenerator):
     def __init__(self, config: Config):
         super().__init__(config)
 
-    def next(self) -> Tensor: #type: ignore
+    def next(self) -> Tensor:  # type: ignore
         interaction = super().next()
         return interaction_to_tensor(interaction)
 
+
 class DatasetGenerator(SkippableGenerator):
-    def __init__(self, 
-                 config: Config, 
-                 strategy: str = ConfigParams.GENERATION_STRATEGY,
-                 use_cache: bool=True,
-                 return_interaction: bool=False):
+    def __init__(
+        self,
+        config: Optional[Config] = None,
+        strategy: str = ConfigParams.GENERATION_STRATEGY,
+        use_cache: bool = False,
+        return_interaction: bool = False,
+        alphabet: Optional[List[int]] = None,
+    ):
         super().__init__()
-        self.config = config
-        self.interactions = InteractionGenerator(config)
-        self.model = generate_model(config)
+        self.config = (
+            config if config else get_config(ConfigParams.DATASET, ConfigParams.MODEL)
+        )
+        self.interactions = InteractionGenerator(self.config)
+        self.model = generate_model(self.config)
         self.use_cache = use_cache
         self.return_interaction = return_interaction
         self.strategy = strategy
+        self.alphabet = alphabet if alphabet else list(get_items())
 
     def skip(self):
         super().skip()
         self.interactions.skip()
 
-    def instantiate_strategy(self, seq) -> Tuple[GenerationStrategy, GenerationStrategy]:
+    def instantiate_strategy(
+        self, seq
+    ) -> Tuple[GenerationStrategy, GenerationStrategy]:
         if self.strategy == "genetic":
-            return None, None #TODO: it's based on the fact that generate can accept None as strategy and defualt to the genetic one, change it
+            sequence = seq.squeeze(0)
+            assert len(sequence.shape) == 1, f"Sequence dim must be 1: {sequence.shape}"
+            allowed_mutations = parse_mutations(ConfigParams.ALLOWED_MUTATIONS)
+            self.good_strat = GeneticStrategy(
+                input_seq=sequence,
+                model=lambda x: model_predict(seq=x, model=self.model, prob=True),
+                allowed_mutations=allowed_mutations,
+                pop_size=ConfigParams.POP_SIZE,
+                good_examples=True,
+                generations=ConfigParams.GENERATIONS,
+                halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
+                alphabet=self.alphabet,
+            )
+            self.bad_strat = GeneticStrategy(
+                input_seq=sequence,
+                model=lambda x: model_predict(seq=x, model=self.model, prob=True),
+                allowed_mutations=allowed_mutations,
+                pop_size=ConfigParams.POP_SIZE,
+                good_examples=False,
+                generations=ConfigParams.GENERATIONS,
+                halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
+                alphabet=self.alphabet,
+            )
+            return self.good_strat, self.bad_strat
+
+        elif self.strategy == "genetic_categorized":
+            sequence = seq.squeeze(0)
+            assert len(sequence.shape) == 1, f"Sequence dim must be 1: {sequence.shape}"
+            allowed_mutations = parse_mutations(ConfigParams.ALLOWED_MUTATIONS)
+
+            self.good_strat = CategorizedGeneticStrategy(
+                input_seq=sequence,
+                model=lambda x: model_predict(seq=x, model=self.model, prob=True),
+                allowed_mutations=allowed_mutations,
+                pop_size=ConfigParams.POP_SIZE,
+                good_examples=True,
+                generations=ConfigParams.GENERATIONS,
+                halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
+                alphabet=self.alphabet,
+            )
+            self.bad_strat = CategorizedGeneticStrategy(
+                input_seq=sequence,
+                model=lambda x: model_predict(seq=x, model=self.model, prob=True),
+                allowed_mutations=allowed_mutations,
+                pop_size=ConfigParams.POP_SIZE,
+                good_examples=False,
+                generations=ConfigParams.GENERATIONS,
+                halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
+                alphabet=self.alphabet,
+            )
+            return self.good_strat, self.bad_strat
         elif self.strategy == "exhaustive":
-            alphabet = list(get_items(Items.ML_1M))
-            good_strat = ExhaustiveGenerationStrategy(
-                input_seq = seq,
-                model = self.model,
-                alphabet = alphabet,
-                good_examples=True)
-            bad_strat = ExhaustiveGenerationStrategy(
-                input_seq = seq,
-                model = self.model,
-                alphabet = alphabet,
-                good_examples=False)
-            return good_strat, bad_strat
+            self.good_strat = ExhaustiveStrategy(
+                input_seq=seq,
+                model=self.model,
+                alphabet=self.alphabet,
+                good_examples=True,
+            )
+            self.bad_strat = ExhaustiveStrategy(
+                input_seq=seq,
+                model=self.model,
+                alphabet=self.alphabet,
+                good_examples=False,
+            )
+            return self.good_strat, self.bad_strat
         else:
-            raise NotImplementedError(f"Generations strategy '{self.strategy}' not implemented, choose between 'genetic' and 'exhaustive'")
-        pass
+            raise NotImplementedError(
+                f"Generations strategy '{self.strategy}' not implemented, choose between 'genetic' and 'exhaustive'"
+            )
 
     def next(self) -> GoodBadDataset | Tuple[GoodBadDataset, Interaction]:
-        assert self.interactions.index == self.index, f"{self.interactions.index} != {self.index} at the start of the method"
+        assert (
+            self.interactions.index == self.index
+        ), f"{self.interactions.index} != {self.index} at the start of the method"
         interaction = self.interactions.next()
-        cache_path = os.path.join(f"dataset_cache/interaction_{self.index}_dataset.pickle")
-        #TODO: make cache path aware of the strategy
+        cache_path = os.path.join(
+            f".dataset_cache/interaction_{self.index}_dataset.pickle"
+        )
+        # TODO: make cache path aware of the strategy
         if os.path.exists(cache_path) and self.use_cache:
             if self.strategy != "genetic":
-                raise NotImplementedError("Cache not implemented for dataset not generated with the 'genetic' strategy")
+                raise NotImplementedError(
+                    "Cache not implemented for dataset not generated with the 'genetic' strategy"
+                )
             dataset = load_dataset(cache_path)
         else:
-            good_strat, bad_strat = self.instantiate_strategy(interaction_to_tensor(interaction))
-            dataset = generate(interaction, self.model, good_strat=good_strat, bad_strat=bad_strat)
+            good_strat, bad_strat = self.instantiate_strategy(
+                interaction_to_tensor(interaction)
+            )
+            dataset = generate(
+                interaction=interaction, good_strat=good_strat, bad_strat=bad_strat
+            )
             if self.use_cache:
                 save_dataset(dataset, cache_path)
         self.index += 1
-        assert self.interactions.index == self.index, f"{self.interactions.index} != {self.index} at the end of the method"
+        assert (
+            self.interactions.index == self.index
+        ), f"{self.interactions.index} != {self.index} at the end of the method"
         if self.return_interaction:
             return dataset, interaction
         return dataset
@@ -232,7 +313,7 @@ class DatasetGenerator(SkippableGenerator):
 
 class TimedGenerator:
     """
-    A wrapper class for a generator that measures and stores the time taken 
+    A wrapper class for a generator that measures and stores the time taken
     to yield each item from the generator.
 
     Attributes:
@@ -240,11 +321,10 @@ class TimedGenerator:
         times (List[float]): A list storing the time taken to yield each item.
 
     Methods:
-        __iter__(): Yields the same items as the original generator, while 
+        __iter__(): Yields the same items as the original generator, while
                     measuring the time taken for each yield.
         get_times(): Returns the list of times taken for each yield operation.
     """
-
 
     def __init__(self, generator: SkippableGenerator):
         """
@@ -253,7 +333,9 @@ class TimedGenerator:
         Args:
             generator (Generator): The generator to be wrapped and timed.
         """
-        assert isinstance(generator, SkippableGenerator), f"Generator of type {type(generator)} not supported"
+        assert isinstance(
+            generator, SkippableGenerator
+        ), f"Generator of type {type(generator)} not supported"
         self.generator = generator
         self.times: List[Optional[float]] = []
 
@@ -288,3 +370,10 @@ class TimedGenerator:
         """
         return self.times
 
+
+if __name__ == "__main__":
+    set_seed()
+    config = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
+    datasets = DatasetGenerator(config, use_cache=False, strategy="genetic_categorized")
+    for dataset in datasets:
+        print(f"Finished dataset, next one")

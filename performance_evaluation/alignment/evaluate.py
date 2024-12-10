@@ -48,65 +48,65 @@ def evaluate_trace_disalignment(range_i: Tuple[int, Optional[int]],
                           save_path=save_path,
                           primary_key=["source", "split"])  
 
-def main(
-        config_path: Optional[str]=None,
-        mode: str = "evaluate", 
-        use_cache: bool = True, 
-        range_i: Tuple[int, Optional[int]] = (0, None),
-        log_path: Optional[str] = None,
-        stats_save_path: Optional[str] = None,
-        splits: Optional[List[int]] = None,
-        stat_filter: Optional[Dict[str, Any]]=None):
-    """
-    Main entry point to run either the trace disalignment evaluation or log statistics generation.
+#def main(
+#        config_path: Optional[str]=None,
+#        mode: str = "evaluate", 
+#        use_cache: bool = True, 
+#        range_i: Tuple[int, Optional[int]] = (0, None),
+#        log_path: Optional[str] = None,
+#        stats_save_path: Optional[str] = None,
+#        splits: Optional[List[int]] = None,
+#        stat_filter: Optional[Dict[str, Any]]=None):
+#    """
+#    Main entry point to run either the trace disalignment evaluation or log statistics generation.
 
-    Args:
-        config_path: Path to the configuration file. If None, defaults will be used.
-        mode: Mode of operation. Can be "evaluate" (to evaluate traces) or "stats" (to generate statistics).
-        use_cache: Whether to use cached results when evaluating traces.
-        range_i: Tuple of indices (start, end) defining the range of evaluation.
-        log_path: Path to the log file for statistics. Required if mode is "stats".
-        stats_save_path: Path to save the generated statistics in JSON format. If None, not saved.
-        splits: List of splits to evaluate. If None, evaluates all splits.
-        stat_filter: Filter for statistics generation.
+#    Args:
+#        config_path: Path to the configuration file. If None, defaults will be used.
+#        mode: Mode of operation. Can be "evaluate" (to evaluate traces) or "stats" (to generate statistics).
+#        use_cache: Whether to use cached results when evaluating traces.
+#        range_i: Tuple of indices (start, end) defining the range of evaluation.
+#        log_path: Path to the log file for statistics. Required if mode is "stats".
+#        stats_save_path: Path to save the generated statistics in JSON format. If None, not saved.
+#        splits: List of splits to evaluate. If None, evaluates all splits.
+#        stat_filter: Filter for statistics generation.
 
-    Returns:
-        None
-    """
-    set_seed()
+#    Returns:
+#        None
+#    """
+#    set_seed()
 
-    ConfigParams.reload(config_path)
-    ConfigParams.fix()
+#    ConfigParams.reload(config_path)
+#    ConfigParams.fix()
 
-    if mode == "evaluate":
-        evaluate_trace_disalignment(
-                range_i=range_i,
-                splits=splits, 
-                use_cache=use_cache,
-                save_path=log_path)
-    elif mode == "stats":
-        if not log_path:
-            raise ValueError(f"Log path needed for stats")
-        if not os.path.exists(log_path):
-            raise FileNotFoundError(f"File {log_path} does not exists")
+#    if mode == "evaluate":
+#        evaluate_trace_disalignment(
+#                range_i=range_i,
+#                splits=splits, 
+#                use_cache=use_cache,
+#                save_path=log_path)
+#    elif mode == "stats":
+#        if not log_path:
+#            raise ValueError(f"Log path needed for stats")
+#        if not os.path.exists(log_path):
+#            raise FileNotFoundError(f"File {log_path} does not exists")
 
-        stats_metrics = ["status", "dataset_time", "align_time", "automata_learning_time"]
-        group_by = list(ConfigParams.configs_dict().keys()) + ["split"]
-        group_by.remove("timestamp")
-        #TODO: temp
-        group_by.remove("include_sink")
-        group_by.remove("mutation_params")
-        group_by.remove("generation_strategy")
-        group_by.remove("fitness_alpha")
-        stats = get_log_stats(log_path=log_path, save_path=stats_save_path, group_by=group_by, metrics=stats_metrics, filter=stat_filter)
-        print(json.dumps(stats, indent=2))
-        return stats
+#        stats_metrics = ["status", "dataset_time", "align_time", "automata_learning_time"]
+#        group_by = list(ConfigParams.configs_dict().keys()) + ["split"]
+#        group_by.remove("timestamp")
+#        #TODO: temp
+#        group_by.remove("include_sink")
+#        group_by.remove("mutation_params")
+#        group_by.remove("generation_strategy")
+#        group_by.remove("fitness_alpha")
+#        stats = get_log_stats(log_path=log_path, save_path=stats_save_path, group_by=group_by, metrics=stats_metrics, filter=stat_filter)
+#        print(json.dumps(stats, indent=2))
+#        return stats
 
-    else:
-        raise ValueError(f"Mode {mode} not supported, choose between [evaluate, stats]")
+#    else:
+#        raise ValueError(f"Mode {mode} not supported, choose between [evaluate, stats]")
 
 
 
-if __name__ == "__main__":
-    fire.Fire(main)
+#if __name__ == "__main__":
+#    fire.Fire(main)
     

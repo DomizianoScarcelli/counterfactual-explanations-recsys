@@ -142,20 +142,20 @@ class ConfigParams:
         return toml.load(default_config_path) #type: ignore
 
     @classmethod
-    def configs_dict(cls):
+    def configs_dict(cls, length=1):
         return {
-                "determinism": [ConfigParams.DETERMINISM],
-                "model": [ConfigParams.MODEL.value],
-                "dataset": [ConfigParams.DATASET.value],
-                "pop_size": [ConfigParams.POP_SIZE],
-                "generations": [ConfigParams.GENERATIONS],
-                "halloffame_ratio": [ConfigParams.HALLOFFAME_RATIO],
-                "fitness_alpha": [ConfigParams.FITNESS_ALPHA],
-                "allowed_mutations": [tuple(ConfigParams.ALLOWED_MUTATIONS)],
-                "include_sink": [ConfigParams.INCLUDE_SINK],
-                "mutation_params": [(ConfigParams.NUM_REPLACES, ConfigParams.NUM_ADDITIONS, ConfigParams.NUM_DELETIONS)],
-                "generation_strategy": [ConfigParams.GENERATION_STRATEGY],
-                "timestamp": [ConfigParams.TIMESTAMP]}
+                "determinism": [ConfigParams.DETERMINISM] * length,
+                "model": [ConfigParams.MODEL.value] * length,
+                "dataset": [ConfigParams.DATASET.value] * length,
+                "pop_size": [ConfigParams.POP_SIZE] * length,
+                "generations": [ConfigParams.GENERATIONS] * length,
+                "halloffame_ratio": [ConfigParams.HALLOFFAME_RATIO] * length,
+                "fitness_alpha": [ConfigParams.FITNESS_ALPHA] * length,
+                "allowed_mutations": [tuple(ConfigParams.ALLOWED_MUTATIONS)] * length,
+                "include_sink": [ConfigParams.INCLUDE_SINK] * length,
+                "mutation_params": [(ConfigParams.NUM_REPLACES, ConfigParams.NUM_ADDITIONS, ConfigParams.NUM_DELETIONS)] * length,
+                "generation_strategy": [ConfigParams.GENERATION_STRATEGY] * length,
+                "timestamp": [ConfigParams.TIMESTAMP] * length}
 
     @classmethod
     def print_config(cls, indent: Optional[int]=None):

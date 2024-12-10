@@ -47,8 +47,9 @@ def test_RangeOfItemsIsCorrect():
         if items == correct_set:
             return
 
-    with open("data/universe.txt", "w") as f:
+    with open("data/RS_universe.txt", "w") as f:
         f.write(str(items))
+    print(f"Alphabet len is: {len(items)}, with min {min(items)} and max {max(items)}")
 
     assert items == correct_set, f"Range of items is not correct. Lengths are: {len(items)} and {len(correct_set)}, difference: {(correct_set - items) if len(correct_set) > len(items) else items - correct_set}"
 

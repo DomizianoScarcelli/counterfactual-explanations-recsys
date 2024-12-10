@@ -1,21 +1,20 @@
 import os
 import warnings
 from itertools import product
-from typing import Optional
 
 import pandas as pd
 from torch import Tensor
 from tqdm import tqdm
 
 from config import ConfigParams
-from genetic.genetic import GeneticGenerationStrategy
+from genetic.genetic import GeneticStrategy
 from genetic.mutations import parse_mutations
 from genetic.utils import Items, _evaluate_generation, get_items
 from models.config_utils import generate_model, get_config
 from models.model_funcs import model_predict
 from performance_evaluation.alignment.utils import log_run
 from type_hints import Dataset
-from utils_classes.generators import InteractionGenerator, SequenceGenerator
+from utils_classes.generators import SequenceGenerator
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=RuntimeWarning)
@@ -54,9 +53,10 @@ def evaluate_config(sequence: Tensor, model, alphabet, seq_index: int):
         prev_df = pd.read_csv(log_save_path)
 
     allowed_mutations = parse_mutations(ConfigParams.ALLOWED_MUTATIONS)
-    good_genetic_strategy = GeneticGenerationStrategy(
+    
+    good_genetic_strategy = GeneticStrategy(
         input_seq=sequence,
-        predictor=lambda x: model_predict(seq=x, model=model, prob=True),
+        model=lambda x: model_predict(seq=x, model=model, prob=True),
         allowed_mutations=allowed_mutations,
         pop_size=ConfigParams.POP_SIZE,
         good_examples=True,
@@ -66,15 +66,14 @@ def evaluate_config(sequence: Tensor, model, alphabet, seq_index: int):
         verbose=False
     )
     good_examples = good_genetic_strategy.generate()
-    good_examples = good_genetic_strategy.postprocess(good_examples)
 
     good_log = evaluate_dataset(sequence, good_examples,good_genetic_strategy.gt.argmax(-1).item())
     good_log = {f"good_{key}": value for key, value in good_log.items()}
 
 
-    bad_genetic_strategy = GeneticGenerationStrategy(
+    bad_genetic_strategy = GeneticStrategy(
         input_seq=sequence,
-        predictor=lambda x: model_predict(seq=x, model=model, prob=True),
+        model=lambda x: model_predict(seq=x, model=model, prob=True),
         allowed_mutations=allowed_mutations,
         pop_size=ConfigParams.POP_SIZE,
         good_examples=False,
@@ -84,7 +83,6 @@ def evaluate_config(sequence: Tensor, model, alphabet, seq_index: int):
         verbose=False
     )
     bad_examples = bad_genetic_strategy.generate()
-    bad_examples = bad_genetic_strategy.postprocess(bad_examples)
 
     bad_log = evaluate_dataset(sequence, bad_examples,bad_genetic_strategy.gt.argmax(-1).item())
     bad_log = {f"bad_{key}": value for key, value in bad_log.items()}
@@ -117,7 +115,7 @@ def main():
     conf = get_config(ConfigParams.DATASET, ConfigParams.MODEL)
     sequences = SequenceGenerator(conf) 
     model = generate_model(conf)
-    alphabet = list(get_items(Items.ML_1M))
+    alphabet = list(get_items())
     print(f"[Info] Finished creating stuff, starting evaluation...")
     for current_config in tqdm(permutations, desc="Evaluating genetic..."):
 

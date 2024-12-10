@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import pandas as pd
+
 from performance_evaluation.alignment.evaluate import main as get_stats
 
 # Example data structure
