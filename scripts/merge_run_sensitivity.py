@@ -1,23 +1,54 @@
+from typing import List, Optional, Tuple
 import pandas as pd
 import fire
+import ast
+
+from pandas.core.api import DataFrame, Series
 
 
-def merge_run_sensitivity(evaluation_log_path: str, sens_stats_log_path: str):
-    """
-    Given an `evaluation_log_path` generated with `performance_evalutation.alignment.evaluate` and a `sens_stats_log_path` generated with `experiments.model_alignment`
-    it joins the two logs (pandas Dataframes) into a single log, joining on the sequence.
-    """
-    # sens_df = pd.read_csv(sensitivity_log_path)
-    eval_df = pd.read_csv(evaluation_log_path)
-    stats_df = pd.read_csv(sens_stats_log_path)
+def calculate_metrics(
+    row, df_stats: DataFrame, metrics: List[str], on: Tuple[str, str]
+):
+    split = ast.literal_eval(row["split"])
+    s2 = split[1]
+    s3 = split[2]
 
-    # TODO: take config in considerations, for now is ignored
-    df = eval_df.merge(
-        right=stats_df, how="left", left_on="source", right_on="sequence"
+    mask = (
+        (df_stats[on[0]] == row[on[1]])
+        & (df_stats["position"] > s3)
+        & (df_stats["position"] <= s2)
+    )
+    filtered_df1 = df_stats[mask]
+
+    values = [
+        filtered_df1[metric].mean() if not filtered_df1.empty else None
+        for metric in metrics
+    ]
+    return Series(values)
+
+
+def main(
+    df_run: str | DataFrame,
+    df_stats: str | DataFrame,
+    metrics: List[str],
+    on: Tuple[str, str] = ("source", "sequence"),
+    save_path: Optional[str] = None,
+):
+    if isinstance(df_run, str):
+        df_run = pd.read_csv(df_run)
+    if isinstance(df_stats, str):
+        df_stats = pd.read_csv(df_stats)
+
+    merged = df_run.copy()
+    merged[metrics] = df_run.apply(
+        calculate_metrics, axis=1, df_stats=df_stats, metrics=metrics, on=on
     )
 
-    print(df)
+    if save_path:
+        merged.to_csv(save_path, index=False)
+    print(f"Merged is:", merged)
+    return merged
 
 
 if __name__ == "__main__":
-    fire.Fire(merge_run_sensitivity)
+    fire.Fire(main)
