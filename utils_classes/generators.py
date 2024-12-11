@@ -101,9 +101,11 @@ class InteractionGenerator(SkippableGenerator):
         data (list): List of data items.
     """
 
-    def __init__(self, config: Config, split: str = "test"):
+    def __init__(self, config: Config, split: str = "test", whole_interaction: bool= False):
         super().__init__()
         self.config = config
+        self.whole_interaction = whole_interaction
+
         train_data, eval_data, test_data = get_dataloaders(config)
 
         if split == "train":
@@ -149,9 +151,11 @@ class InteractionGenerator(SkippableGenerator):
     def next(self) -> Interaction:
         try:
             data = self.data[self.index]  # type: ignore
+            self.index += 1
+            if self.whole_interaction:
+                return data
             # the actual sequence is the first element of the tuple
             interaction = data[0]
-            self.index += 1
             return interaction
         except IndexError:
             raise StopIteration

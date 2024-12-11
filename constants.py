@@ -30,3 +30,5 @@ cat2id = {
     "War": 16,
     "Western": 17,
 }
+
+id2cat = {value: key for key, value in cat2id.items()}

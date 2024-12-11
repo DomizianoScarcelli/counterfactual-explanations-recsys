@@ -1,6 +1,6 @@
 from typing import Callable
 
-
+#TODO: put generic type
 class Cached:
     """
     A class to implement a caching mechanism for loading and storing data based on unique paths.

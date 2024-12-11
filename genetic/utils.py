@@ -84,7 +84,9 @@ def get_category_map(dataset: RecDataset = ConfigParams.DATASET):
 
     def load_json(path):
         if not os.path.exists(path):
-            raise FileNotFoundError("Category map has not been found, generate it with `python -m scripts.create_category_mapping`")
+            raise FileNotFoundError(
+                "Category map has not been found, generate it with `python -m scripts.create_category_mapping`"
+            )
         with open(path, "r") as f:
             data = json.load(f)
 
