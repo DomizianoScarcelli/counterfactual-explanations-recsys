@@ -7,7 +7,7 @@ from torch import Tensor
 
 from alignment.alignment import augment_constraint_automata
 from automata_learning.utils import load_automata
-from genetic.dataset.utils import load_dataset
+from generation.dataset.utils import load_dataset
 from type_hints import GoodBadDataset
 
 

@@ -5,10 +5,11 @@ from typing import Any, Dict, List, Literal, Optional, Tuple
 import fire
 
 from config import ConfigParams
-from sensitivity.model_sensitivity import main as evaluate_sensitivity
-from performance_evaluation.alignment.evaluate import evaluate_trace_disalignment
+from performance_evaluation.alignment.evaluate import \
+    evaluate_trace_disalignment
 from performance_evaluation.alignment.utils import get_log_stats
 from run import run as og_run
+from sensitivity.model_sensitivity import main as evaluate_sensitivity
 from type_hints import RecDataset, RecModel
 from utils import set_seed
 
@@ -20,7 +21,7 @@ class CLI:
     def stats(
         self,
         what: Optional[
-            Literal["alignment", "genetic", "automata_learning", "sensitivity"]
+            Literal["alignment", "generation", "automata_learning", "sensitivity"]
         ] = None,
         config_path: Optional[str] = None,
         log_path: Optional[str] = None,
@@ -101,7 +102,7 @@ class CLI:
             print(json.dumps(stats, indent=2))
             return stats
 
-        if what == "genetic":
+        if what == "generation":
             # TODO: implement
             raise NotImplementedError()
 
@@ -166,7 +167,7 @@ class CLI:
     def evaluate(
         self,
         what: Optional[
-            Literal["alignment", "genetic", "automata_learning", "sensitivity"]
+            Literal["alignment", "generation", "automata_learning", "sensitivity"]
         ] = None,
         config_path: Optional[str] = None,
         k: Optional[int] = None,
@@ -182,7 +183,7 @@ class CLI:
         Evaluate trace disalignment or other specified tasks.
 
         Args:
-            what (Optional[Literal["alignment", "genetic", "automata_learning", "sensitivity"]]):
+            what (Optional[Literal["alignment", "generation", "automata_learning", "sensitivity"]]):
                 Type of evaluation to perform. Defaults to None.
             config_path (Optional[str]): Path to the configuration file. Defaults to None.
             k (Optional[int]): Number of top results to consider for sensitivity analysis. Required for "sensitivity".
@@ -207,8 +208,8 @@ class CLI:
             2. Evaluate sensitivity analysis with `k=5` for items:
                 python -m cli evaluate sensitivity --k=5 --target="item"
 
-            3. Evaluate genetic analysis (not implemented yet):
-                python -m cli evaluate genetic
+            3. Evaluate generation analysis (not implemented yet):
+                python -m cli evaluate generation
         """
         ConfigParams.reload(config_path)
         ConfigParams.fix()
@@ -226,7 +227,7 @@ class CLI:
                 target=target,
                 mode="evaluate",
             )
-        if what == "genetic":
+        if what == "generation":
             # TODO: implement
             raise NotImplementedError()
         if what == "automata_learning":

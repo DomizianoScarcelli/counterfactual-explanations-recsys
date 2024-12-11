@@ -1,9 +1,9 @@
-from utils import seq_tostr
 import json
 
 import torch
 
-from genetic.dataset.utils import load_dataset
+from generation.dataset.utils import load_dataset
+from utils import seq_tostr
 from utils_classes.distances import edit_distance
 
 

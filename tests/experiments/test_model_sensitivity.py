@@ -4,7 +4,7 @@ import torch
 from tqdm import tqdm
 
 from config import ConfigParams
-from genetic.utils import Items, get_items
+from generation.utils import Items, get_items
 from models.config_utils import generate_model, get_config
 from models.utils import topk
 from type_hints import RecDataset

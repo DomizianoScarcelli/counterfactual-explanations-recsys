@@ -2,7 +2,7 @@ import torch
 from recbole.trainer import Interaction
 from torch import Tensor
 
-from genetic.dataset.utils import are_dataset_equal
+from generation.dataset.utils import are_dataset_equal
 from type_hints import GoodBadDataset
 from utils_classes.generators import (DatasetGenerator, InteractionGenerator,
                                       SequenceGenerator)

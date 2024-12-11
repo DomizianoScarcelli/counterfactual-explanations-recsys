@@ -3,7 +3,7 @@ from recbole.config import Config
 from recbole.model.abstract_recommender import SequentialRecommender
 
 from config import ConfigParams
-from genetic.dataset.utils import get_dataloaders
+from generation.dataset.utils import get_dataloaders
 from models.extended_models.ExtendedBERT4Rec import ExtendedBERT4Rec
 from models.extended_models.ExtendedSASRec import ExtendedSASRec
 from type_hints import RecDataset, RecModel

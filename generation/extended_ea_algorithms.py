@@ -38,7 +38,7 @@ def eaSimpleBatched(population, toolbox, cxpb, mutpb, ngen, stats=None,
         print(logbook.stream)
 
     # Begin the generational process
-    for gen in tqdm(range(1, ngen + 1), "Running genetic algorithm...", disable=not pbar, leave=False):
+    for gen in tqdm(range(1, ngen + 1), "Running generation algorithm...", disable=not pbar, leave=False):
         # Select the next generation individuals
         offspring = toolbox.select(population, len(population))
 

@@ -1,12 +1,13 @@
-from models.utils import topk
-from models.utils import pad
+from math import log2
+from typing import Counter, List
+
+import torch
+
 from config import ConfigParams
 from constants import MAX_LENGTH
+from generation.utils import get_category_map
 from models.config_utils import generate_model, get_config
-from typing import Counter, List
-import torch
-from math import log2
-from genetic.utils import get_category_map
+from models.utils import pad, topk
 
 cat_map = get_category_map()
 conf = get_config(dataset=ConfigParams.DATASET, model=ConfigParams.MODEL)
@@ -22,7 +23,7 @@ def entropy(counter: Counter) -> float:
     return entropy
 
 
-def print_topk_info(seq, cat_count: Counter, dscores: Counter):
+def print_topk_info(seq: List[int], cat_count: Counter, dscores: Counter):
     padded_seq = pad(torch.tensor(seq, dtype=torch.long), MAX_LENGTH).unsqueeze(0)
     k = 10  # TODO: make k a parameter
     topk_items = topk(model(padded_seq), k=k, dim=1, indices=True).squeeze(0).tolist()

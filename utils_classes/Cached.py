@@ -1,5 +1,6 @@
 from typing import Callable
 
+
 #TODO: put generic type
 class Cached:
     """

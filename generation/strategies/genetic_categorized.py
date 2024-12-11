@@ -1,6 +1,4 @@
 import math
-from pickle import encode_long
-from statistics import mean
 from typing import Callable, List
 
 import numpy as np
@@ -10,11 +8,10 @@ from torch import Tensor
 
 from config import ConfigParams
 from constants import MAX_LENGTH
-from genetic.extended_ea_algorithms import eaSimpleBatched
-from genetic.genetic import GeneticStrategy
-from genetic.mutations import ALL_MUTATIONS, Mutation
-from genetic.utils import (_evaluate_categorized_generation, get_category_map,
-                           label2cat)
+from generation.extended_ea_algorithms import eaSimpleBatched
+from generation.generation import GeneticStrategy
+from generation.mutations import ALL_MUTATIONS, Mutation
+from generation.utils import _evaluate_categorized_generation, get_category_map, label2cat
 from models.utils import pad_batch, trim
 from type_hints import CategorizedDataset
 from utils import set_seed
@@ -53,7 +50,7 @@ class CategorizedGeneticStrategy(GeneticStrategy):
         Evaluates the fitness for each individual, feeding the individuals into the predictor in batches.
         """
         set_seed()
-        batch_size = 10 #TODO: debug, put back to 512
+        batch_size = 512
         num_batches = math.ceil(len(individuals) / batch_size)
         fitnesses = []
         ALPHA2 = 1 - ConfigParams.FITNESS_ALPHA

@@ -1,4 +1,4 @@
-# from genetic.dataset.utils import interaction_to_tensor
+# from generation.dataset.utils import interaction_to_tensor
 # from models.utils import topk
 # from utils_classes.generators import InteractionGenerator
 # from config import ConfigParams

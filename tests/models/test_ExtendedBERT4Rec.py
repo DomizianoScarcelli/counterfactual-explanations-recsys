@@ -3,7 +3,7 @@ import torch
 from torch import Tensor
 from tqdm import tqdm
 
-from genetic.dataset.utils import interaction_to_tensor
+from generation.dataset.utils import interaction_to_tensor
 from models.extended_models.ExtendedBERT4Rec import ExtendedBERT4Rec
 from models.model_funcs import model_predict
 from utils_classes.generators import InteractionGenerator

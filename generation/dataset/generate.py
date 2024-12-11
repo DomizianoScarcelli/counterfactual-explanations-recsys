@@ -4,8 +4,8 @@ from typing import List, Optional, Union
 from recbole.trainer import Interaction
 from torch import Tensor
 
-from genetic.abstract_generation import GenerationStrategy
-from genetic.dataset.utils import interaction_to_tensor
+from generation.strategies.abstract_generation import GenerationStrategy
+from generation.dataset.utils import interaction_to_tensor
 from type_hints import GoodBadDataset
 
 warnings.simplefilter(action="ignore", category=FutureWarning)

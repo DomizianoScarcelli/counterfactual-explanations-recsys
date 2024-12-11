@@ -4,7 +4,7 @@ from typing import List, Tuple
 
 from config import ConfigParams
 from constants import PADDING_CHAR
-from genetic.utils import random_points_with_offset
+from generation.utils import random_points_with_offset
 from utils import set_seed
 
 

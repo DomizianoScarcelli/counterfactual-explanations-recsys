@@ -1,7 +1,7 @@
 import torch
 
 from config import ConfigParams
-from genetic.dataset.utils import (are_dataset_equal, dataset_difference,
+from generation.dataset.utils import (are_dataset_equal, dataset_difference,
                                    get_dataloaders, interaction_to_tensor)
 from models.utils import replace_padding
 from type_hints import Dataset

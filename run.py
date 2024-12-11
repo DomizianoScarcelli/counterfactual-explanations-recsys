@@ -1,4 +1,3 @@
-from utils import seq_tostr
 import json
 import warnings
 from typing import Generator, List, Optional
@@ -11,19 +10,14 @@ from alignment.alignment import trace_disalignment
 from alignment.utils import postprocess_alignment
 from automata_learning.learning import learning_pipeline
 from config import ConfigParams
-from exceptions import (
-    CounterfactualNotFound,
-    DfaNotAccepting,
-    DfaNotRejecting,
-    NoTargetStatesError,
-    SplitNotCoherent,
-)
-from genetic.genetic_categorized import CategorizedGeneticStrategy
-from genetic.utils import compare_ys, label2cat
+from exceptions import (CounterfactualNotFound, DfaNotAccepting,
+                        DfaNotRejecting, NoTargetStatesError, SplitNotCoherent)
+from generation.strategies.genetic_categorized import CategorizedGeneticStrategy
+from generation.utils import compare_ys, label2cat
 from models.config_utils import generate_model, get_config
 from performance_evaluation.alignment.utils import preprocess_interaction
 from type_hints import GoodBadDataset, RecDataset, RecModel, SplitTuple
-from utils import TimedFunction
+from utils import TimedFunction, seq_tostr
 from utils_classes.generators import DatasetGenerator, TimedGenerator
 from utils_classes.Split import Split
 

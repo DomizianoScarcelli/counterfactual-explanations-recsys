@@ -7,8 +7,8 @@ from alignment.alignment import (augment_constraint_automata,
 from automata_learning.learning import (generate_automata_from_dataset,
                                         generate_single_accepting_sequence_dfa)
 from config import ConfigParams
-from genetic.dataset.utils import load_dataset
-from genetic.utils import Items
+from generation.dataset.utils import load_dataset
+from generation.utils import Items
 from models.config_utils import generate_model, get_config
 from utils_classes.generators import InteractionGenerator, SequenceGenerator
 

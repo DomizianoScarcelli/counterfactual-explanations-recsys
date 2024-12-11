@@ -10,8 +10,8 @@ from alignment.alignment import align, trace_alignment, trace_disalignment
 from automata_learning.learning import learning_pipeline
 from automata_learning.utils import invert_automata, run_automata
 from constants import MAX_LENGTH
-from genetic.dataset.generate import generate
-from genetic.dataset.utils import get_dataset_alphabet
+from generation.dataset.generate import generate
+from generation.dataset.utils import get_dataset_alphabet
 from models.utils import pad, trim
 from type_hints import GoodBadDataset, Trace
 from utils import set_seed
@@ -297,7 +297,7 @@ class TestEdgeCases:
         For some traces, they are not rejected by the DFA (incorrect), and
         because of this the counterfactual is equal to the original sequence.
 
-        The reason is due by the fact that the genetic algorithm fails to
+        The reason is due by the fact that the generation algorithm fails to
         generate a high percentace of good examples.
         """
         set_seed()

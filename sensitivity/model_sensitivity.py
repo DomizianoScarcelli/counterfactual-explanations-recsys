@@ -1,5 +1,3 @@
-from utils import seq_tostr
-from constants import cat2id
 import os
 from statistics import mean
 from typing import List, Literal, Optional, Set
@@ -12,12 +10,14 @@ from torch import Tensor
 from tqdm import tqdm
 
 from config import ConfigParams
-from genetic.utils import get_category_map, get_items
+from constants import cat2id
+from generation.utils import get_category_map, get_items
 from models.config_utils import generate_model, get_config
 from models.utils import topk, trim
-from performance_evaluation.alignment.utils import get_log_stats, log_run, stats_to_df
+from performance_evaluation.alignment.utils import (get_log_stats, log_run,
+                                                    stats_to_df)
 from type_hints import RecDataset
-from utils import set_seed
+from utils import seq_tostr, set_seed
 from utils_classes.distances import jaccard_sim, ndcg_at, precision_at
 from utils_classes.generators import SequenceGenerator, SkippableGenerator
 
@@ -169,7 +169,7 @@ def model_sensitivity_category(
         "k": [k] * len(i_list),
         "all_changes": [v * 100 for v in all_changes],
         "any_changes": [v * 100 for v in any_changes],
-        "jaccards": [v * 100 for v in jaccards],
+        "jaccards": [v * 100 for v in jaccards], #similarity
         "sequence": [seq_tostr(x) for x in sequence_list],
         "model": [ConfigParams.MODEL.value] * len(i_list),
         "dataset": [ConfigParams.DATASET.value] * len(i_list),

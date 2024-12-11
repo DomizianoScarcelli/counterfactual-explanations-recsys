@@ -14,13 +14,13 @@ python -m cli run [flags]
 ### Evaluation
 
 ```
-python -m cli evlauate [alignment | automata_learning | genetic | sensitivity] [flags]
+python -m cli evlauate [alignment | automata_learning | generation | sensitivity] [flags]
 ```
 
 ### Statistics
 
 ```
-python -m cli stats [alignment | automata_learning | genetic | sensitivity] [flags]
+python -m cli stats [alignment | automata_learning | generation | sensitivity] [flags]
 ```
 
 ## Directory Structure

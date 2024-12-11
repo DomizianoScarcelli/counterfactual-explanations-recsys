@@ -5,7 +5,7 @@ from recbole.trainer import Interaction
 from torch import Tensor
 
 from config import ConfigParams
-from genetic.dataset.utils import interaction_to_tensor
+from generation.dataset.utils import interaction_to_tensor
 from models.config_utils import generate_model, get_config
 from models.model_funcs import model_predict
 from utils_classes.generators import InteractionGenerator

@@ -9,12 +9,12 @@ from torch import Tensor
 
 from config import ConfigParams
 from constants import MAX_LENGTH, MIN_LENGTH, PADDING_CHAR
-from genetic.abstract_generation import GenerationStrategy
-from genetic.extended_ea_algorithms import (eaSimpleBatched, indexedCxTwoPoint,
+from generation.abstract_generation import GenerationStrategy
+from generation.extended_ea_algorithms import (eaSimpleBatched, indexedCxTwoPoint,
                                             indexedSelTournament)
-from genetic.mutations import (ALL_MUTATIONS, AddMutation, DeleteMutation,
+from generation.mutations import (ALL_MUTATIONS, AddMutation, DeleteMutation,
                                Mutation, contains_mutation, remove_mutation)
-from genetic.utils import _evaluate_generation, clone
+from generation.utils import _evaluate_generation, clone
 from models.utils import pad_batch, trim
 from type_hints import Dataset
 from utils import set_seed

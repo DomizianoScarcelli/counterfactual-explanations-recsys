@@ -8,7 +8,7 @@ from recbole.trainer import Interaction
 from torch import Tensor
 
 from config import ConfigParams
-from genetic.dataset.utils import interaction_to_tensor
+from generation.dataset.utils import interaction_to_tensor
 from models.utils import trim
 
 
