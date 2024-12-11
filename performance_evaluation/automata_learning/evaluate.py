@@ -27,12 +27,17 @@ from genetic.dataset.generate import generate
 from genetic.dataset.utils import dataset_difference
 from models.config_utils import generate_model, get_config
 from models.utils import trim
-from performance_evaluation.alignment.utils import (log_run, pk_exists,
-                                                    preprocess_interaction)
-from performance_evaluation.evaluation_utils import (compute_metrics,
-                                                     print_confusion_matrix)
+from performance_evaluation.alignment.utils import (
+    log_run,
+    pk_exists,
+    preprocess_interaction,
+)
+from performance_evaluation.evaluation_utils import (
+    compute_metrics,
+    print_confusion_matrix,
+)
 from type_hints import GoodBadDataset
-from utils import set_seed
+from utils import seq_tostr, set_seed
 from utils_classes.generators import DatasetGenerator
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
@@ -54,7 +59,9 @@ def generate_test_dataset(
     Returns:
         A GoodBadDataset tuple.
     """
-    alphabet = [c for c in dfa.get_input_alphabet() if decode_action(c)[0] == Action.SYNC]
+    alphabet = [
+        c for c in dfa.get_input_alphabet() if decode_action(c)[0] == Action.SYNC
+    ]
     return generate(
         interaction=source_sequence,
         good_strat=source_generator.good_strat,
@@ -109,7 +116,7 @@ def evaluate_all(
     while i < end_i:
         pbar.update(1)
         next_sequence = preprocess_interaction(datasets.interactions.peek())
-        next_sequence_str = ",".join([str(c) for c in next_sequence])
+        next_sequence_str = seq_tostr(next_sequence.tolist())
         config_dict = ConfigParams.configs_dict()
         new_row = pd.DataFrame({"source_sequence": [next_sequence_str], **config_dict})
         temp_df = pd.concat([prev_df, new_row], ignore_index=True)
@@ -125,9 +132,7 @@ def evaluate_all(
             dataset, interaction = next(datasets)
             # print(f"[DEBUG] dataset is: {dataset}")
             source_sequence = preprocess_interaction(interaction)
-            pbar.set_postfix_str(
-                f"On sequence: {",".join([str(c) for c in next_sequence])}"
-            )
+            pbar.set_postfix_str(f"On sequence: {seq_tostr(next_sequence)}")
             assert isinstance(source_sequence, list) and (
                 all(isinstance(x, Tensor) for x in source_sequence)
                 or all(isinstance(x, int) for x in source_sequence)
@@ -163,7 +168,7 @@ def evaluate_all(
                 "train_dataset_len": train_dataset_len,
                 "test_dataset_len": test_dataset_len,
                 "source_sequence_len": len(source_sequence),
-                "source_sequence": ",".join([str(c) for c in source_sequence]),
+                "source_sequence": seq_tostr(source_sequence),
             }
             if log_path:
                 prev_df = log_run(

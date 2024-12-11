@@ -1,3 +1,4 @@
+from utils import seq_tostr
 from constants import cat2id
 import os
 from statistics import mean
@@ -134,8 +135,8 @@ def model_sensitivity_category(
             [set(itemid2cat[y_prime.item()]) for y_prime in topk_out_prime]
             for topk_out_prime in topk_out_primes
         ]
-        
-        #TODO: This can be vectorized by using torch operations
+
+        # TODO: This can be vectorized by using torch operations
         all_change_i, any_change_i, jaccard_i = [], [], []
         for y, y_primes in zip(out_cat, out_primes_cat):
             all_change_j, any_change_j, jaccard_j = [], [], []
@@ -169,7 +170,7 @@ def model_sensitivity_category(
         "all_changes": [v * 100 for v in all_changes],
         "any_changes": [v * 100 for v in any_changes],
         "jaccards": [v * 100 for v in jaccards],
-        "sequence": [",".join(str(v) for v in x) for x in sequence_list],
+        "sequence": [seq_tostr(x) for x in sequence_list],
         "model": [ConfigParams.MODEL.value] * len(i_list),
         "dataset": [ConfigParams.DATASET.value] * len(i_list),
     }
@@ -194,7 +195,7 @@ def model_sensitivity_simple(
     log_path: Optional[str] = None,
 ):
     """
-    The experiments consists in taking a source sequence `x` with a label `y`, result of `model(x)`.
+    The sensitivity consists in taking a source sequence `x` with a label `y`, result of `model(x)`.
     Then replace the element at position `position` of the sequence with each element of the alphabet (given by the `dataset`),
     generating a new sequence x', and see the percentage of elements such that:
         model(x') != y.
@@ -270,7 +271,7 @@ def model_sensitivity_simple(
         if log_path:
             data = {
                 "i": i,
-                "sequence": ",".join([str(x) for x in sequence]),
+                "sequence": seq_tostr(sequence),
                 "position": position,
                 "num_seqs": end_i - start_i,
                 "mean_precision": precisions * 100,
@@ -383,4 +384,3 @@ def main(
             stats.to_csv(stats_save_path, index=False)
     else:
         raise ValueError(f"mode must be 'evaluate' or 'stats', not '{mode}'")
-

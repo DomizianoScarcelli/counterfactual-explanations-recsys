@@ -1,3 +1,4 @@
+from utils import seq_tostr
 import json
 
 import torch
@@ -20,13 +21,11 @@ def counterfactual_in_dataset():
     _, bad = load_dataset(cache_dir)
     source = torch.tensor([2720, 365, 1634, 1229, 140, 351, 1664, 160, 1534, 1233, 618, 267, 2490, 213, 2483, 89, 273, 665, 352, 222, 2265, 2612, 429, 2492, 2827, 532, 1002, 202, 821, 1615, 1284, 830, 176, 1116, 2626, 23, 415, 1988, 694, 133, 1536, 510, 290, 152, 204, 1034, 1273, 289, 462, 165])
     distances = {}
-    def to_str(t):
-        return ",".join([str(x) for x in t])
-    distances[to_str(source.tolist())] = 0
+    distances[seq_tostr(source.tolist())] = 0
     for seq, _ in bad:
         distance_n = edit_distance(source, seq.squeeze())
         distance_nn = edit_distance(source, seq.squeeze(), normalized=False)
-        distances[to_str(seq.squeeze().tolist())] = (distance_nn, distance_n)
+        distances[seq_tostr(seq.squeeze().tolist())] = (distance_nn, distance_n)
     save_path = "results/counterfactual_in_dataset_0.json"
     with open(save_path, "w") as f:
         json.dump(distances, f, indent=2)

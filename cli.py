@@ -5,9 +5,8 @@ from typing import Any, Dict, List, Literal, Optional, Tuple
 import fire
 
 from config import ConfigParams
-from experiments.model_sensitivity import main as evaluate_sensitivity
-from performance_evaluation.alignment.evaluate import \
-    evaluate_trace_disalignment
+from sensitivity.model_sensitivity import main as evaluate_sensitivity
+from performance_evaluation.alignment.evaluate import evaluate_trace_disalignment
 from performance_evaluation.alignment.utils import get_log_stats
 from run import run as og_run
 from type_hints import RecDataset, RecModel

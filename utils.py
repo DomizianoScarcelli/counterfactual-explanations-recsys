@@ -1,16 +1,17 @@
 import random
 import time
-from typing import Any, Callable
+from typing import Any, Callable, List
 
 import numpy as np
 import torch
+from torch import Tensor
 
 from config import ConfigParams
 
 
 def printd(statement, level=1):
     """
-    Prints the statement only if the specified level is lower than the debug 
+    Prints the statement only if the specified level is lower than the debug
     level.
     """
     if ConfigParams.DEBUG and level <= ConfigParams.DEBUG:
@@ -20,7 +21,7 @@ def printd(statement, level=1):
 def set_seed(seed: int = 42):
     # print(f"[DEBUG] Setting seed: {seed}")
     MAX_SEED = 2**32 - 1
-    seed %= (MAX_SEED + 1)
+    seed %= MAX_SEED + 1
     if not ConfigParams.DETERMINISM:
         return
     random.seed(seed)
@@ -28,6 +29,16 @@ def set_seed(seed: int = 42):
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
+
+
+def seq_tostr(seq: Tensor | List) -> str:
+    if isinstance(seq, Tensor):
+        assert (
+            seq.dim == 1
+        ), f"Sequence should be 1-dimensional, its shape is: {seq.shape}"
+        seq = seq.tolist()
+
+    return ",".join(str(x) for x in seq)
 
 
 class TimedFunction:
@@ -77,5 +88,3 @@ class TimedFunction:
             float: Time in seconds.
         """
         return self.last_time
-
-

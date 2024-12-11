@@ -1,3 +1,4 @@
+from utils import seq_tostr
 import json
 import warnings
 from typing import Generator, List, Optional
@@ -10,8 +11,13 @@ from alignment.alignment import trace_disalignment
 from alignment.utils import postprocess_alignment
 from automata_learning.learning import learning_pipeline
 from config import ConfigParams
-from exceptions import (CounterfactualNotFound, DfaNotAccepting,
-                        DfaNotRejecting, NoTargetStatesError, SplitNotCoherent)
+from exceptions import (
+    CounterfactualNotFound,
+    DfaNotAccepting,
+    DfaNotRejecting,
+    NoTargetStatesError,
+    SplitNotCoherent,
+)
 from genetic.genetic_categorized import CategorizedGeneticStrategy
 from genetic.utils import compare_ys, label2cat
 from models.config_utils import generate_model, get_config
@@ -165,10 +171,10 @@ CONFIG
 
         source_sequence, source_gt = preprocess_interaction(interaction, model)
 
-        if isinstance(datasets.generator.good_strat, CategorizedGeneticStrategy): #type: ignore
-            source_gt = set(label2cat(source_gt, encode=True)) #type: ignore
+        if isinstance(datasets.generator.good_strat, CategorizedGeneticStrategy):  # type: ignore
+            source_gt = set(label2cat(source_gt, encode=True))  # type: ignore
 
-        run_log["source"] = ",".join([str(c) for c in source_sequence])
+        run_log["source"] = seq_tostr(source_sequence)
         run_log["gt"] = source_gt if isinstance(source_gt, int) else tuple(source_gt)
         for split in splits:
             run_log["split"] = str(split)
@@ -189,8 +195,8 @@ CONFIG
                 yield run_log
                 continue
 
-            run_log["aligned"] = ",".join([str(c) for c in aligned.squeeze(0).tolist()])
-            run_log["alignment"] = ",".join([print_action(a) for a in alignment])
+            run_log["aligned"] = seq_tostr(aligned.squeeze(0).tolist())
+            run_log["alignment"] = seq_tostr([print_action(a) for a in alignment])
             run_log["cost"] = cost
             print(f"[{i}] Alignment cost: {cost}")
 
@@ -198,7 +204,9 @@ CONFIG
             run_log["automata_learning_time"] = timed_learning_pipeline.get_last_time()
 
             aligned_gt = set(label2cat(model(aligned).argmax(-1).item(), encode=True))
-            run_log["aligned_gt"] = aligned_gt if isinstance(aligned_gt, int) else tuple(aligned_gt)
+            run_log["aligned_gt"] = (
+                aligned_gt if isinstance(aligned_gt, int) else tuple(aligned_gt)
+            )
 
             if compare_ys(source_gt, aligned_gt):
                 run_log["status"] = "bad"
@@ -212,4 +220,3 @@ CONFIG
             yield run_log
 
         i += 1
-
