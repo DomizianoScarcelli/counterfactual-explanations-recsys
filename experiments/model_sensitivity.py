@@ -1,8 +1,8 @@
+from constants import cat2id
 import os
 from statistics import mean
 from typing import List, Literal, Optional, Set
 
-import fire
 import pandas as pd
 import torch
 from pandas import DataFrame
@@ -48,10 +48,11 @@ def model_sensitivity_category(
     sequences: SkippableGenerator,
     model: SequentialRecommender,
     position: int,
+    k: int,
     log_path: Optional[str] = None,
 ):
 
-    def cat_all_changes(gt: Set[str], new: Set[str]):
+    def cat_all_changes(gt: Set, new: Set):
         """
         Returns True if all the labels in gt are changed in new, False otherwise
             gt: {Horror, Thriller}
@@ -64,7 +65,7 @@ def model_sensitivity_category(
         """
         return not gt & new
 
-    def cat_at_least_changes(gt: Set[str], new: Set[str]):
+    def cat_at_least_changes(gt: Set, new: Set):
         """
         Returns True if at least one of the the labels in gt are changed in new, False otherwise
             gt: [Horror, Triller]
@@ -77,13 +78,14 @@ def model_sensitivity_category(
         """
         return len(gt - new) != 0
 
-    category_map = get_category_map()
+    itemid2cat = get_category_map()
 
     seen_idx = set()
     prev_df = pd.DataFrame({})
     if log_path and os.path.exists(log_path):
         prev_df = pd.read_csv(log_path)
-        seen_idx = set(prev_df["position"].tolist())
+        filtered_df = prev_df[prev_df["k"] == k]
+        seen_idx = set(filtered_df["position"].tolist())
 
     print(f"[DEBUG] seen_idx: {seen_idx}")
 
@@ -107,7 +109,7 @@ def model_sensitivity_category(
         if i >= end_i:
             break
 
-        # TODO: don't know if this is working
+        # TODO: fix pk_exists before removing the comment
         # if pk_exists(prev_df, primary_key=["i", "position"], consider_config=True):
         #     # print(f"Skipping i: {i} at pos: {position}...")
         #     continue
@@ -121,51 +123,66 @@ def model_sensitivity_category(
             continue
         out, out_primes = result
 
-        out_cat: Set[str] = set(category_map[out.argmax(-1).item()])
+        topk_out = topk(logits=out, k=k, dim=-1, indices=True).squeeze(0)  # [k]
+        out_cat: List[Set[str]] = [set(itemid2cat[y.item()]) for y in topk_out]
 
-        out_primes_cat: List[Set[str]] = [
-            set(category_map[out_prime.argmax(-1).item()]) for out_prime in out_primes
+        topk_out_primes = topk(
+            logits=out_primes, k=k, dim=-1, indices=True
+        )  # [n_items, k]
+
+        out_primes_cat: List[List[Set[str]]] = [
+            [set(itemid2cat[y_prime.item()]) for y_prime in topk_out_prime]
+            for topk_out_prime in topk_out_primes
         ]
+        
+        #TODO: This can be vectorized by using torch operations
+        all_change_i, any_change_i, jaccard_i = [], [], []
+        for y, y_primes in zip(out_cat, out_primes_cat):
+            all_change_j, any_change_j, jaccard_j = [], [], []
+            y = {cat2id[cat] for cat in y}
+            for y_prime in y_primes:
+                y_prime = {cat2id[cat] for cat in y_prime}
+                all_change_j.append(cat_all_changes(gt=y, new=y_prime))
+                any_change_j.append(cat_at_least_changes(gt=y, new=y_prime))
+                jaccard_j.append(jaccard_sim(a=y, b=y_prime))
+            all_change_i.append(mean(all_change_j))
+            any_change_i.append(mean(any_change_j))
+            jaccard_i.append(mean(jaccard_j))
 
-        all_change = mean(
-            cat_all_changes(gt=out_cat, new=out_prime_k)
-            for out_prime_k in out_primes_cat
-        )
-        any_change = mean(
-            cat_at_least_changes(gt=out_cat, new=out_prime_k)
-            for out_prime_k in out_primes_cat
-        )
+        all_change = mean(all_change_i)
+        any_change = mean(any_change_i)
+        jaccard = mean(jaccard_i)
 
-        jaccard = mean(
-            jaccard_sim(a=out_cat, b=out_prime_k) for out_prime_k in out_primes_cat
-        )
         i_list.append(i)
         all_changes.append(all_change)
         any_changes.append(any_change)
         jaccards.append(jaccard)
-        sequence_list.append(sequence.squeeze())
+        sequence_list.append(sequence.squeeze().tolist())
+        # pbar.set_postfix_str(
+        #     f"jacc: {mean(jaccards)*100:.2f}, any: {mean(any_changes)*100:.2f}, all: {mean(all_changes)*100:.2f}"
+        # )
 
+    data = {
+        "i": i_list,
+        "position": [position] * len(i_list),
+        "k": [k] * len(i_list),
+        "all_changes": [v * 100 for v in all_changes],
+        "any_changes": [v * 100 for v in any_changes],
+        "jaccards": [v * 100 for v in jaccards],
+        "sequence": [",".join(str(v) for v in x) for x in sequence_list],
+        "model": [ConfigParams.MODEL.value] * len(i_list),
+        "dataset": [ConfigParams.DATASET.value] * len(i_list),
+    }
     if log_path:
-        data = {
-            "i": i_list,
-            "position": [position] * len(i_list),
-            "all_changes": [v * 100 for v in all_changes],
-            "any_changes": [v * 100 for v in any_changes],
-            "jaccards": [v * 100 for v in jaccards],
-            "sequence": [",".join(str(v) for v in x) for x in sequence_list],
-            "model": [ConfigParams.MODEL.value] * len(i_list),
-            "dataset": [ConfigParams.DATASET.value] * len(i_list),
-        }
-
         prev_df = log_run(
             prev_df=prev_df,
             log=data,
             save_path=log_path,
             add_config=True,
-            primary_key=["i", "position"],
+            primary_key=["i", "position", "k"],
         )
-
-        # prev_df = prev_df.sort_values(by="i")
+    else:
+        print(pd.DataFrame(data))
 
 
 # TODO: reflect changes from the categorized one
@@ -207,7 +224,7 @@ def model_sensitivity_simple(
     else:
         raise NotImplementedError(f"Dataset {ConfigParams.DATASET} not supported yet!")
     i = 0
-    start_i, end_i = 0, 100
+    start_i, end_i = 0, 20
     pbar = tqdm(
         total=end_i - start_i, desc=f"Testing model sensitivity on position {position}"
     )
@@ -336,6 +353,7 @@ def main(
                     model=model,
                     sequences=sequences,
                     position=i,
+                    k=k,
                     log_path=log_path,
                 )
             else:
@@ -366,6 +384,3 @@ def main(
     else:
         raise ValueError(f"mode must be 'evaluate' or 'stats', not '{mode}'")
 
-
-# if __name__ == "__main__":
-#     fire.Fire(main)
