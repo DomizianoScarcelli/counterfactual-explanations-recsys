@@ -1,3 +1,4 @@
+from utils import timeit
 import json
 import os
 import pickle
@@ -43,6 +44,8 @@ def compare_ys(y1: int | CategorySet | Tensor, y2: int | CategorySet | Tensor):
         - int and torch.Tensor, comparing them with the equal (==) operator
         - Set[int], comparing them with the subset operator (<=)
     """
+    # TODO: as in https://trello.com/c/Y2sqwlVH, change the way categories are comapred, using a threshold on weighted jaccard similarity.
+    threshold = 0.5
     if isinstance(y1, (int, Tensor)) and isinstance(y2, (int, Tensor)):
         return y1 == y2
     elif isinstance(y1, set) and isinstance(y2, set):

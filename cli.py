@@ -26,8 +26,10 @@ class CLI:
         config_path: Optional[str] = None,
         log_path: Optional[str] = None,
         group_by: Optional[List[str] | str] = None,
+        order_by: Optional[List[str] | str] = None,
         metrics: Optional[List[str]] = None,
         filter: Optional[Dict[str, Any]] = None,
+        target: Optional[str] = None,
         save_path: Optional[str] = None,
     ):
         """
@@ -63,13 +65,15 @@ class CLI:
         ConfigParams.fix()
 
         if what == "sensitivity":
-            if not group_by:
-                group_by = "sequence"
-            if group_by not in ["position", "sequence"]:
-                raise ValueError(
-                    f"group_by should be 'items' or 'sequence', not {group_by}"
-                )
-            evaluate_sensitivity(mode="stats", groupby=group_by[0], stats_save_path=save_path)  # type: ignore
+            return evaluate_sensitivity(
+                mode="stats",
+                groupby=group_by,  # type: ignore
+                orderby=order_by,
+                stats_save_path=save_path,
+                log_path=log_path,
+                target=target,  # type: ignore
+                metrics=metrics,
+            )
 
         if what == "alignment":
             if not log_path:
@@ -111,7 +115,7 @@ class CLI:
             raise NotImplementedError()
 
         if not what and log_path and group_by and metrics:
-            get_log_stats(
+            return get_log_stats(
                 log_path=log_path,
                 group_by=group_by,
                 metrics=metrics,
@@ -233,6 +237,10 @@ class CLI:
         if what == "automata_learning":
             # TODO: implement
             raise NotImplementedError()
+
+    def utils(self):
+        # TODO: insert csv utils that allow pipe-read and pipe-write to modify the csv files on the fly
+        raise NotImplementedError()
 
 
 if __name__ == "__main__":

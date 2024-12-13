@@ -1,6 +1,7 @@
 import random
 import time
 from typing import Any, Callable, List
+from functools import wraps
 
 import numpy as np
 import torch
@@ -34,11 +35,31 @@ def set_seed(seed: int = 42):
 def seq_tostr(seq: Tensor | List) -> str:
     if isinstance(seq, Tensor):
         assert (
-            seq.dim == 1
+            seq.dim() == 1
         ), f"Sequence should be 1-dimensional, its shape is: {seq.shape}"
         seq = seq.tolist()
 
     return ",".join(str(x) for x in seq)
+
+
+def timeit(func):
+    """
+    Decorator to measure and print the execution time of a function.
+
+    Args:
+        func (callable): The function to measure.
+    """
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()  # Record the start time
+        result = func(*args, **kwargs)  # Call the original function
+        end_time = time.time()  # Record the end time
+        elapsed_time = end_time - start_time
+        print(f"Function '{func.__name__}' executed in {elapsed_time:.4f} seconds.")
+        return result
+
+    return wrapper
 
 
 class TimedFunction:

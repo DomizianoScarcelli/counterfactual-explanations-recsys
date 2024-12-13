@@ -3,7 +3,7 @@ from typing import Callable, List
 import torch
 from torch import Tensor
 
-from generation.strategies.abstract_generation import GenerationStrategy
+from generation.strategies.abstract_strategy import GenerationStrategy
 from models.utils import trim
 from type_hints import Dataset
 

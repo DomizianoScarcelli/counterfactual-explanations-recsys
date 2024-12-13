@@ -14,12 +14,14 @@ from automata_learning.utils import run_automata
 from config import ConfigParams
 from constants import MAX_LENGTH, MIN_LENGTH
 from generation.dataset.generate import generate
-from generation.extended_ea_algorithms import (eaSimpleBatched, indexedCxTwoPoint,
-                                            indexedSelTournament,
-                                            indexedVarAnd)
+from generation.extended_ea_algorithms import (eaSimpleBatched,
+                                               indexedCxTwoPoint,
+                                               indexedSelTournament,
+                                               indexedVarAnd)
 from generation.mutations import (AddMutation, DeleteMutation, ReplaceMutation,
-                               ReverseMutation, ShuffleMutation, SwapMutation,
-                               contains_mutation, remove_mutation)
+                                  ReverseMutation, ShuffleMutation,
+                                  SwapMutation, contains_mutation,
+                                  remove_mutation)
 from generation.utils import Items, clone, get_items
 from models.config_utils import generate_model, get_config
 from models.model_funcs import model_predict

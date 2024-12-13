@@ -4,8 +4,8 @@ from typing import List, Optional, Union
 from recbole.trainer import Interaction
 from torch import Tensor
 
-from generation.strategies.abstract_generation import GenerationStrategy
 from generation.dataset.utils import interaction_to_tensor
+from generation.strategies.abstract_strategy import GenerationStrategy
 from type_hints import GoodBadDataset
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
@@ -52,4 +52,3 @@ def generate(
     good_examples = good_strat.generate()
     bad_examples = bad_strat.generate()
     return good_examples, bad_examples
-

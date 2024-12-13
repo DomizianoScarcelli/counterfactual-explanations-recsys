@@ -22,9 +22,38 @@ from utils_classes.distances import jaccard_sim, ndcg_at, precision_at
 from utils_classes.generators import SequenceGenerator, SkippableGenerator
 
 
-def generate_matrix_of_possible_sequences(
+def generate_sequence_variants(
     sequence: Tensor, model: SequentialRecommender, position: int, alphabet: Tensor
 ):
+    """
+    Generate a matrix of possible sequences by modifying a single position in the input sequence.
+
+    This function takes an input sequence, modifies a specific position using each element in the given alphabet,
+    and passes both the original and modified sequences through the provided model. It returns the model's output
+    for the original sequence and the modified sequences.
+
+    Args:
+        sequence (Tensor): The input sequence as a tensor of shape `(1, seq_length)`.
+        model (SequentialRecommender): The model used to generate outputs for the sequences.
+        position (int): The index of the position in the sequence to be modified.
+        alphabet (Tensor): A tensor containing the values to be used for modification.
+
+    Returns:
+        Tuple[Tensor, Tensor]:
+            - `out`: The model's output for the original sequence.
+            - `out_primes`: The model's outputs for the modified sequences, with shape `(len(alphabet), output_dim)`.
+
+    Notes:
+        - The `trim` function is assumed to preprocess the sequence by trimming unwanted padding or values.
+        - The function ensures that the `position` is within the bounds of the sequence.
+        - The tensor `x_primes` is created by repeating the original sequence for each element in the alphabet
+          and substituting the value at the specified `position` with the corresponding alphabet value.
+
+    Example:
+        Given `sequence = [[1, 2, 3]]`, `position = 1`, and `alphabet = [4, 5]`:
+        - The modified sequences are `[[1, 4, 3], [1, 5, 3]]`.
+        - The function returns the model's output for `[[1, 2, 3]]` and `[[1, 4, 3], [1, 5, 3]]`.
+    """
 
     x = trim(sequence.squeeze(0)).unsqueeze(0)
 
@@ -52,6 +81,40 @@ def model_sensitivity_category(
     k: int,
     log_path: Optional[str] = None,
 ):
+    """
+    Analyze the sensitivity of a sequential recommender model to changes in category predictions
+    when input sequences are modified at a specific position. Optionally logs the results to a file.
+
+    Parameters:
+        sequences (SkippableGenerator): A generator that provides sequences to analyze.
+        model (SequentialRecommender): The recommender model to evaluate.
+        position (int): The index in the sequence where modifications will be made.
+        k (int): The number of top predictions to consider for sensitivity analysis.
+        log_path (Optional[str]): Path to a CSV file for logging results. If provided, results
+                                  are appended to the file; otherwise, they are printed.
+
+    Returns:
+        None
+
+    Description:
+        - The function evaluates the model's sensitivity to changes in the categories of its top-k predictions
+          when the sequence is modified at the specified `position`.
+        - Each sequence is modified by replacing the character at `position` with all possible characters
+          in the `alphabet`.
+        - The function computes the following metrics:
+          - **All Changes**: Proportion of categories in the original predictions that are completely replaced.
+          - **Any Changes**: Proportion of categories in the original predictions that are partially replaced.
+          - **Jaccard Similarity**: Similarity measure between the original and modified category sets.
+
+    Output:
+        - Logs or prints metrics for each sequence, including the proportion of changes and similarity scores.
+        - If `log_path` is specified, results are saved with additional context, including the dataset and model used.
+
+    Notes:
+        - Skips sequences that have already been processed if a `log_path` is provided with existing results.
+        - Supports only the MovieLens 1M dataset (`ML_1M`). Throws a `NotImplementedError` for other datasets.
+
+    """
 
     def cat_all_changes(gt: Set, new: Set):
         """
@@ -117,9 +180,7 @@ def model_sensitivity_category(
 
         pbar.update(1)
 
-        result = generate_matrix_of_possible_sequences(
-            sequence, model, position, alphabet
-        )
+        result = generate_sequence_variants(sequence, model, position, alphabet)
         if not result:
             continue
         out, out_primes = result
@@ -169,7 +230,7 @@ def model_sensitivity_category(
         "k": [k] * len(i_list),
         "all_changes": [v * 100 for v in all_changes],
         "any_changes": [v * 100 for v in any_changes],
-        "jaccards": [v * 100 for v in jaccards], #similarity
+        "jaccards": [v * 100 for v in jaccards],  # similarity
         "sequence": [seq_tostr(x) for x in sequence_list],
         "model": [ConfigParams.MODEL.value] * len(i_list),
         "dataset": [ConfigParams.DATASET.value] * len(i_list),
@@ -236,9 +297,7 @@ def model_sensitivity_simple(
             break
         pbar.update(1)
 
-        result = generate_matrix_of_possible_sequences(
-            sequence, model, position, alphabet
-        )
+        result = generate_sequence_variants(sequence, model, position, alphabet)
         if not result:
             continue
         out, out_primes = result
@@ -287,38 +346,15 @@ def model_sensitivity_simple(
             )
 
 
-def get_all_stats(log_path: str, metrics: List[str]) -> DataFrame:
-    """
-    Given a dataframe result of a model sensitivity experiment, it returns a dataframe of the type
-    ```csv
-    position,num_seqs,mean_precision,mean_ndcgs,mean_jaccard,k,model,dataset,determinism,pop_size,generations,halloffame_ratio,allowed_mutations,timestamp
-    49,100,31.062,34.446,21.233,10,BERT4Rec,ml-1m,True,2048,10,0.2,"('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')","Tue, 03 Dec 2024 10:38:26"
-    48,100,47.649,52.966,34.73,10,BERT4Rec,ml-1m,True,2048,10,0.2,"('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')","Tue, 03 Dec 2024 10:38:26"
-    47,100,58.732,64.677,45.015,10,BERT4Rec,ml-1m,True,2048,10,0.2,"('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')","Tue, 03 Dec 2024 10:38:26"
-    ...
-    ```
-    For each sequence, where the the mean is grouped by the same position over different sequences.
-    """
-    stats = get_log_stats(log_path=log_path, group_by=["position"], metrics=metrics)
+def get_stats(
+    log_path: str, metrics: List[str], groupby: List[str], orderby: Optional[List[str]]
+) -> DataFrame:
+    stats = get_log_stats(log_path=log_path, group_by=groupby, metrics=metrics)
     df = stats_to_df(stats)
-    return df
-
-
-def get_sequence_stats(log_path: str, metrics: List[str]) -> DataFrame:
-    """
-    Given a dataframe result of a model sensitivity experiment, it returns a dataframe of the type
-
-    ```csv
-    position,sequence,num_seqs,mean_precision,mean_ndcgs,mean_jaccard,k,model,dataset,determinism,pop_size,generations,halloffame_ratio,allowed_mutations,timestamp
-    49,"1,2,3,4,5,6",100,31.062,34.446,21.233,10,BERT4Rec,ml-1m,True,2048,10,0.2,"('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')","Tue, 03 Dec 2024 10:38:26"
-    49,"1,2,3,4,5,7",100,31.062,34.446,21.233,10,BERT4Rec,ml-1m,True,2048,10,0.2,"('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')","Tue, 03 Dec 2024 10:38:26"
-    48,"1,2,3,4,5,6",100,47.649,52.966,34.73,10,BERT4Rec,ml-1m,True,2048,10,0.2,"('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')","Tue, 03 Dec 2024 10:38:26"
-    48,"1,2,3,4,5,7",100,47.649,52.966,34.73,10,BERT4Rec,ml-1m,True,2048,10,0.2,"('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')","Tue, 03 Dec 2024 10:38:26"
-    ...
-    For each sequence, where the the mean is grouped by the same sequence over different positions.
-    """
-    stats = get_log_stats(log_path=log_path, group_by=["sequence"], metrics=metrics)
-    df = stats_to_df(stats)
+    if orderby:
+        for col in orderby:
+            df[col] = pd.to_numeric(df[col], errors="ignore", downcast="integer")
+        df = df.sort_values(by=orderby)
     return df
 
 
@@ -328,9 +364,12 @@ def main(
     k: int = 1,
     target: Literal["item", "category"] = "item",
     mode: Literal["evaluate", "stats"] = "evaluate",
-    groupby: Optional[Literal["sequence", "position"]] = None,
+    groupby: Optional[List[str]] = None,
+    orderby: Optional[List[str]] = None,
+    metrics: Optional[List[str]] = None,
     stats_save_path: Optional[str] = None,
 ):
+    # TODO: merge this with the `cli.stats` method, this is cli logic, shouldn't be here.
     if config_path:
         ConfigParams.reload(config_path)
         ConfigParams.fix()
@@ -360,23 +399,25 @@ def main(
             else:
                 raise ValueError(f"target must be 'item' or 'category', not '{target}'")
     elif mode == "stats":
-        if target == "item":
+        if not target and not metrics:
+            raise ValueError("target or metrics should be set to something")
+
+        if target == "item" and not metrics:
             metrics = []  # TODO: to be defined
-        elif target == "category":
+
+        if target == "category" and not metrics:
             metrics = ["all_changes", "any_changes", "jaccards"]
-        else:
-            raise ValueError(f"target must be 'item' or 'category', not '{target}'")
+
+        assert metrics
 
         if not log_path:
             raise ValueError(f"define a log_path as a source for the stats")
-        if groupby == "sequence":
-            stats = get_sequence_stats(log_path, metrics)
-        elif groupby == "position":
-            stats = get_all_stats(log_path, metrics)
-        else:
-            raise ValueError(
-                f"groupby must be 'sequence' or 'position', not '{groupby}'"
-            )
+
+        if not groupby:
+            raise ValueError(f"group_by should not be None: {groupby}")
+        stats = get_stats(
+            log_path=log_path, groupby=groupby, metrics=metrics, orderby=orderby
+        )
         if stats is not None:
             print(stats)
 

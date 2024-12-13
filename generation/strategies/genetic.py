@@ -1,6 +1,6 @@
 import math
 import random
-from typing import Any, Callable, Generic, List, cast
+from typing import Any, Callable, List
 
 import numpy as np
 import torch
@@ -9,11 +9,12 @@ from torch import Tensor
 
 from config import ConfigParams
 from constants import MAX_LENGTH, MIN_LENGTH, PADDING_CHAR
-from generation.abstract_generation import GenerationStrategy
-from generation.extended_ea_algorithms import (eaSimpleBatched, indexedCxTwoPoint,
-                                            indexedSelTournament)
+from generation.extended_ea_algorithms import (eaSimpleBatched,
+                                               indexedCxTwoPoint,
+                                               indexedSelTournament)
 from generation.mutations import (ALL_MUTATIONS, AddMutation, DeleteMutation,
-                               Mutation, contains_mutation, remove_mutation)
+                                  Mutation, contains_mutation, remove_mutation)
+from generation.strategies.abstract_strategy import GenerationStrategy
 from generation.utils import _evaluate_generation, clone
 from models.utils import pad_batch, trim
 from type_hints import Dataset

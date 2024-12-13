@@ -9,9 +9,10 @@ from torch import Tensor
 from config import ConfigParams
 from constants import MAX_LENGTH
 from generation.extended_ea_algorithms import eaSimpleBatched
-from generation.generation import GeneticStrategy
 from generation.mutations import ALL_MUTATIONS, Mutation
-from generation.utils import _evaluate_categorized_generation, get_category_map, label2cat
+from generation.strategies.genetic import GeneticStrategy
+from generation.utils import (_evaluate_categorized_generation,
+                              get_category_map, label2cat)
 from models.utils import pad_batch, trim
 from type_hints import CategorizedDataset
 from utils import set_seed

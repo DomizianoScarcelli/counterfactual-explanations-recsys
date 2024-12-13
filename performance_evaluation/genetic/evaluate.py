@@ -7,8 +7,8 @@ from torch import Tensor
 from tqdm import tqdm
 
 from config import ConfigParams
-from generation.strategies.genetic import GeneticStrategy
 from generation.mutations import parse_mutations
+from generation.strategies.genetic import GeneticStrategy
 from generation.utils import Items, _evaluate_generation, get_items
 from models.config_utils import generate_model, get_config
 from models.model_funcs import model_predict

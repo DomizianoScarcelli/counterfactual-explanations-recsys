@@ -12,7 +12,8 @@ from automata_learning.learning import learning_pipeline
 from config import ConfigParams
 from exceptions import (CounterfactualNotFound, DfaNotAccepting,
                         DfaNotRejecting, NoTargetStatesError, SplitNotCoherent)
-from generation.strategies.genetic_categorized import CategorizedGeneticStrategy
+from generation.strategies.genetic_categorized import \
+    CategorizedGeneticStrategy
 from generation.utils import compare_ys, label2cat
 from models.config_utils import generate_model, get_config
 from performance_evaluation.alignment.utils import preprocess_interaction
