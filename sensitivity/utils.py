@@ -52,7 +52,7 @@ def print_topk_info(seq: List[int], cat_count: Counter, dscores: Counter):
         -------------------------------------------------
     """
     padded_seq = pad(torch.tensor(seq, dtype=torch.long), MAX_LENGTH).unsqueeze(0)
-    k = 10  # TODO: make k a parameter
+    k = ConfigParams.TOPK 
     topk_items = topk(model(padded_seq), k=k, dim=1, indices=True).squeeze(0).tolist()
 
     cat_map = get_category_map()

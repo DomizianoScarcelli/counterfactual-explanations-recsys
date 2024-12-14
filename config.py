@@ -21,6 +21,7 @@ class SettingsConfig(TypedDict):
     determinism: bool
     train_batch_size: int
     test_batch_size: int
+    topk: int
 
 
 class GenerationConfig(TypedDict):
@@ -89,6 +90,7 @@ class ConfigParams:
             cls.DATASET = RecDataset[config["settings"]["dataset"]]
             cls.TRAIN_BATCH_SIZE = config["settings"]["train_batch_size"]
             cls.TEST_BATCH_SIZE = config["settings"]["test_batch_size"]
+            cls.TOPK = config["settings"]["topk"]
 
             cls.INCLUDE_SINK = config["automata"]["include_sink"]
 

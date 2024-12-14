@@ -9,6 +9,7 @@ dataset = "ML_1M"           # Dataset identifier
 determinism = true          # Ensure deterministic runs 
 train_batch_size = 1        # Batch size for training
 test_batch_size = 1         # Batch size for testing
+topk = 10                  # K to use when sampling topk
 
 [automata]
 include_sink = false # Include sink state in the target states when doing trace alignment

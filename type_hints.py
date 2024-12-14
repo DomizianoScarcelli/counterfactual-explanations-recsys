@@ -7,7 +7,7 @@ from torch import Tensor
 LabeledTensor: TypeAlias = Tuple[Tensor, int]
 
 CategorySet: TypeAlias = Set[int]
-CategorizedTensor = Tuple[Tensor, CategorySet]
+CategorizedTensor = Tuple[Tensor, List[CategorySet]]
 
 Dataset: TypeAlias = List[LabeledTensor]
 CategorizedDataset: TypeAlias = List[CategorizedTensor]

@@ -1,3 +1,7 @@
+from models.utils import pad
+from constants import MAX_LENGTH
+from generation.utils import labels2cat
+from models.utils import topk
 import json
 import warnings
 from typing import Generator, List, Optional
@@ -8,11 +12,15 @@ from alignment.actions import print_action
 from alignment.alignment import trace_disalignment
 from alignment.utils import postprocess_alignment
 from automata_learning.learning import learning_pipeline
-from config import ConfigParams
-from exceptions import (CounterfactualNotFound, DfaNotAccepting,
-                        DfaNotRejecting, NoTargetStatesError, SplitNotCoherent)
-from generation.strategies.genetic_categorized import \
-    CategorizedGeneticStrategy
+from config import ConfigDict, ConfigParams
+from exceptions import (
+    CounterfactualNotFound,
+    DfaNotAccepting,
+    DfaNotRejecting,
+    NoTargetStatesError,
+    SplitNotCoherent,
+)
+from generation.strategies.genetic_categorized import CategorizedGeneticStrategy
 from generation.utils import equal_ys, label2cat
 from performance_evaluation.alignment.utils import preprocess_interaction
 from type_hints import GoodBadDataset, RecDataset, RecModel, SplitTuple
@@ -61,6 +69,7 @@ def run(
     start_i: int = 0,
     end_i: Optional[int] = None,
     splits: Optional[List[int]] = None,  # type: ignore
+    k: int = ConfigParams.TOPK,
     use_cache: bool = True,
 ) -> Generator:
 
@@ -163,13 +172,19 @@ CONFIG
         run_log["dataset_time"] = datasets.get_times()[i]
         run_log["i"] = i
 
-        source_sequence, source_gt = preprocess_interaction(interaction, model)
+        source_sequence: List[Tensor] = preprocess_interaction(interaction)  # type: ignore
+        gt_preds = model(pad(source_sequence, MAX_LENGTH).unsqueeze(0))  # type: ignore
 
-        if isinstance(datasets.generator.good_strat, CategorizedGeneticStrategy):  # type: ignore
-            source_gt = set(label2cat(source_gt, encode=True))  # type: ignore
+        source_gt = labels2cat(
+            topk(logits=gt_preds, k=k, dim=-1, indices=True).squeeze(0), encode=True
+        )
+
+        # TODO: I don't  think this is useful now, test if run works with the not-categorized dataset
+        # if isinstance(datasets.generator.good_strat, CategorizedGeneticStrategy):  # type: ignore
+        #     source_gt = set(label2cat(source_gt, encode=True))  # type: ignore
 
         run_log["source"] = seq_tostr(source_sequence)
-        run_log["gt"] = source_gt if isinstance(source_gt, int) else tuple(source_gt)
+        run_log["gt"] = source_gt if isinstance(source_gt, int) else str(source_gt)
         for split in splits:
             run_log["split"] = str(split)
             split = split.parse_nan(source_sequence)
@@ -197,19 +212,27 @@ CONFIG
             run_log["align_time"] = timed_trace_disalignment.get_last_time()
             run_log["automata_learning_time"] = timed_learning_pipeline.get_last_time()
 
-            aligned_gt = set(label2cat(model(aligned).argmax(-1).item(), encode=True))
-            run_log["aligned_gt"] = (
-                aligned_gt if isinstance(aligned_gt, int) else tuple(aligned_gt)
+            aligned_gt = labels2cat(
+                topk(logits=model(aligned), k=k, dim=-1, indices=True).squeeze(0),
+                encode=True,
             )
-            
-            is_good, score = equal_ys(source_gt, aligned_gt, return_score=True) #type: ignore
+
+            run_log["aligned_gt"] = (
+                aligned_gt if isinstance(aligned_gt, int) else str(aligned_gt)
+            )
+
+            is_good, score = equal_ys(source_gt, aligned_gt, return_score=True)  # type: ignore
             run_log["score"] = score
             if is_good:
                 run_log["status"] = "bad"
-                print(f"[{i}] Bad counterfactual! {source_gt} == {aligned_gt}, score is {score}")
+                print(
+                    f"[{i}] Bad counterfactual! {source_gt} == {aligned_gt}, score is {score}"
+                )
             else:
                 run_log["status"] = "good"
-                print(f"[{i}] Good counterfactual! {source_gt} != {aligned_gt}, score is {score}")
+                print(
+                    f"[{i}] Good counterfactual! {source_gt} != {aligned_gt}, score is {score}"
+                )
             print("--------------------")
 
             print(json.dumps(run_log, indent=2))

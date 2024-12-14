@@ -1,3 +1,4 @@
+from generation.utils import labels2catmodel_sensi
 import os
 from statistics import mean
 from typing import List, Literal, Optional, Set
@@ -192,9 +193,7 @@ def model_sensitivity_category(
         out_primes = model(x_primes)
 
         topk_out = topk(logits=out, k=k, dim=-1, indices=True).squeeze(0)  # [k]
-        out_cat: List[CategorySet] = [
-            set(cat2id[cat] for cat in itemid2cat[y.item()]) for y in topk_out  # type: ignore
-        ]  # [k]
+        out_cat: List[CategorySet] = labels2cat(topk_out)  # type: ignore
 
         topk_out_primes = topk(
             logits=out_primes, k=k, dim=-1, indices=True
@@ -202,8 +201,7 @@ def model_sensitivity_category(
 
         # TODO: this and out_cat must be rivisited, is the content really what you need?
         out_primes_cat: List[List[CategorySet]] = [
-            [set(cat2id[cat] for cat in itemid2cat[y.item()]) for y in topk_out_prime]  # type: ignore
-            for topk_out_prime in topk_out_primes
+            labels2cat(topk_out_prime) for topk_out_prime in topk_out_primes  # type: ignore
         ]  # [n_items, k]
 
         # TODO: This can be vectorized by using torch operations

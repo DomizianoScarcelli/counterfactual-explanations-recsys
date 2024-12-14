@@ -1,3 +1,6 @@
+from generation.utils import Category, labels2cat
+from utils_classes.distances import ndcg
+from models.utils import topk
 import math
 from typing import Callable, List
 
@@ -18,9 +21,9 @@ from generation.utils import (
     label2cat,
 )
 from models.utils import pad_batch, trim
-from type_hints import CategorizedDataset
+from type_hints import CategorizedDataset, CategorySet
 from utils import set_seed
-from utils_classes.distances import edit_distance, jaccard_sim, self_indicator
+from utils_classes.distances import edit_distance, self_indicator
 
 
 class CategorizedGeneticStrategy(GeneticStrategy):
@@ -32,6 +35,7 @@ class CategorizedGeneticStrategy(GeneticStrategy):
         allowed_mutations: List[Mutation] = ALL_MUTATIONS,
         pop_size: int = ConfigParams.POP_SIZE,
         generations: int = ConfigParams.GENERATIONS,
+        k: int = 10,
         good_examples: bool = True,
         halloffame_ratio: float = 0.1,
         verbose: bool = True,
@@ -49,6 +53,7 @@ class CategorizedGeneticStrategy(GeneticStrategy):
             verbose=verbose,
         )
         self.category_map = get_category_map()
+        self.k = k
 
     def evaluate_fitness_batch(self, individuals: List[List[int]]) -> List[float]:
         """
@@ -63,21 +68,33 @@ class CategorizedGeneticStrategy(GeneticStrategy):
             batch_individuals = individuals[
                 batch_i * batch_size : (batch_i + 1) * batch_size
             ]
-            candidate_seqs = pad_batch(batch_individuals, MAX_LENGTH)
-            candidate_probs = self.model(candidate_seqs).argmax(-1)  # [batch_size, 1]
+            candidate_seqs = pad_batch(batch_individuals, MAX_LENGTH)  # [num_seqs]
 
-            gt_cat = set(label2cat(self.gt.argmax(-1).item(), encode=True))
+            candidate_preds = self.model(candidate_seqs)
+            topk_y_primes = topk(
+                logits=candidate_preds, dim=-1, k=self.k, indices=True
+            ).squeeze(
+                0
+            )  # shape: [num_seqs, k]
 
-            for i in range(candidate_seqs.size(0)):
-                candidate_seq = trim(candidate_seqs[i])
-                candidate_y = candidate_probs[i]
-                candidate_cats: List[int] = label2cat(candidate_y.item(), encode=True)
+            y_primes = [
+                labels2cat(topk_y_prime, encode=True) for topk_y_prime in topk_y_primes
+            ]  # [num_seqs, k]
+
+            topk_ys = topk(logits=self.gt, dim=-1, k=self.k, indices=True).squeeze(
+                0
+            )  # shape [k]
+            ys = labels2cat(topk_ys, encode=True)  # shape [k]
+
+            for n_i in range(candidate_seqs.size(0)):
+                candidate_seq = trim(candidate_seqs[n_i])
 
                 # assert self.gt.shape == candidate_y.shape, f"Shape mismatch: {self.gt.shape} != {candidate_y.shape}"
                 seq_dist = edit_distance(
                     self.input_seq, candidate_seq, normalized=True
                 )  # [0,MAX_LENGTH] if not normalized, [0,1] if normalized
-                cat_dist = 1 - jaccard_sim(a=gt_cat, b=set(candidate_cats))
+                score = ndcg(ys, y_primes[n_i])
+                cat_dist = 1 - score
 
                 self_ind = self_indicator(
                     self.input_seq, candidate_seq
@@ -112,12 +129,17 @@ class CategorizedGeneticStrategy(GeneticStrategy):
             verbose=False,
             pbar=self.verbose,
         )
-        preds = self.model(pad_batch(population, MAX_LENGTH)).argmax(-1)
+        preds = self.model(pad_batch(population, MAX_LENGTH))
+        preds = topk(logits=preds, dim=-1, k=self.k, indices=True).squeeze(
+            0
+        )  # [pop_size, k]
+        cats = [labels2cat(y, encode=True) for y in preds]  # [pop_size, k]
 
+        # cats = labels2cat(preds, encode=True)
         new_population: CategorizedDataset = [
-            (torch.tensor(x), set(label2cat(preds[i].item(), encode=True)))
-            for (i, x) in enumerate(population)
+            (torch.tensor(ind), cat) for ind, cat in zip(population, cats)
         ]
+
         label_eval, seq_eval = self.evaluate_generation(new_population)
         self.print(
             f"[Original] Good examples = {self.good_examples} [{len(new_population)}] ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}"
@@ -128,11 +150,13 @@ class CategorizedGeneticStrategy(GeneticStrategy):
 
         augmented = self._augment(population, halloffame)
         new_augmented = []
-        preds = self.model(pad_batch(augmented, MAX_LENGTH)).argmax(-1)
-        for i, x in enumerate(augmented):
-            new_augmented.append(
-                (torch.tensor(x), set(label2cat(preds[i].item(), encode=True)))
-            )
+        preds = self.model(pad_batch(augmented, MAX_LENGTH))
+        preds = topk(logits=preds, dim=-1, k=self.k, indices=True).squeeze(0)
+        cats = [labels2cat(y, encode=True) for y in preds]  # [pop_size, k]
+
+        for ind, cat in zip(augmented, cats):
+            new_augmented.append((torch.tensor(ind), cat))
+
         label_eval, seq_eval = self.evaluate_generation(new_augmented)
         self.print(
             f"[Augmented] Good examples = {self.good_examples} [{len(new_augmented)}] ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}"
@@ -140,17 +164,18 @@ class CategorizedGeneticStrategy(GeneticStrategy):
         return self._postprocess(new_augmented)
 
     def _clean(self, examples: CategorizedDataset) -> CategorizedDataset:  # type: ignore
-        categories = set(label2cat(self.gt.argmax(-1).item(), encode=True))
+        gt_preds = topk(logits=self.gt, dim=-1, k=self.k, indices=True).squeeze(0)
+        gt_cats = labels2cat(gt_preds, encode=True)
         if self.good_examples:
             clean: CategorizedDataset = [
-                (seq, cats) for seq, cats in examples if equal_ys(cats, categories)
+                (seq, cats) for seq, cats in examples if equal_ys(gt_cats, cats)
             ]
             self.print(
                 f"Removed {len(examples) - len(clean)} individuals from good (label was not equal to gt)"
             )
             return clean
         clean: CategorizedDataset = [
-            (seq, cats) for seq, cats in examples if not equal_ys(cats, categories)
+            (seq, cats) for seq, cats in examples if not equal_ys(gt_cats, cats)
         ]
         self.print(
             f"Removed {len(examples) - len(clean)} individuals from bad (label was equal to gt)"
@@ -161,10 +186,9 @@ class CategorizedGeneticStrategy(GeneticStrategy):
         clean_pop = self._clean(population)
         label_eval, seq_eval = self.evaluate_generation(clean_pop)
 
-        source_point = (
-            self.input_seq,
-            set(label2cat(self.gt.argmax(-1).item(), encode=True)),
-        )
+        gt_preds = topk(logits=self.gt, dim=-1, k=self.k, indices=True).squeeze(0)
+        gt_cats = labels2cat(gt_preds, encode=True)
+        source_point = (self.input_seq, gt_cats)
 
         # Remove any copy of the source point from the good or bad dataset.
         new_pop = [
@@ -199,8 +223,10 @@ class CategorizedGeneticStrategy(GeneticStrategy):
         return clean_pop
 
     def evaluate_generation(self, examples: CategorizedDataset):  # type: ignore
+        gt_preds = topk(logits=self.gt, dim=-1, k=self.k, indices=True).squeeze(0)
+        gt_cats = labels2cat(gt_preds, encode=True)
         return _evaluate_categorized_generation(
-            self.input_seq,
-            examples,
-            set(label2cat(self.gt.argmax(-1).item(), encode=True)),
+            input_seq=self.input_seq,
+            dataset=examples,
+            cats=gt_cats,
         )

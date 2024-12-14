@@ -5,7 +5,7 @@ import pickle
 import random
 from enum import Enum
 from statistics import mean
-from typing import List, Set, Tuple, TypedDict, Dict
+from typing import List, Set, Tuple, TypedDict, Dict, overload, Literal
 
 import _pickle as cPickle
 from recbole.data.dataset.sequential_dataset import SequentialDataset
@@ -125,11 +125,42 @@ def get_category_map(dataset: RecDataset = ConfigParams.DATASET) -> Dict[int, st
     return Cached(category.value, load_fn=load_json).get_data()
 
 
+@overload
+def labels2cat(
+    ys: List[int] | Tensor,
+    encode: Literal[True],  # When encode is True
+    dataset: RecDataset = ConfigParams.DATASET,
+) -> List[CategorySet]:  # Encoded categories are sets of ints
+    ...
+
+
+@overload
+def labels2cat(
+    ys: List[int] | Tensor,
+    encode: Literal[False],  # When encode is False
+    dataset: RecDataset = ConfigParams.DATASET,
+) -> List[Set[str]]:  # Unencoded categories are sets of strings
+    ...
+
+
+def labels2cat(
+    ys: List[int] | Tensor,
+    encode: bool = True,
+    dataset: RecDataset = ConfigParams.DATASET,
+) -> List[CategorySet] | List[Set[str]]:
+    itemid2cat = get_category_map(dataset)
+    if isinstance(ys, Tensor):
+        ys = ys.tolist()
+    if encode:
+        return [set(cat2id[cat] for cat in itemid2cat[y]) for y in ys]  # type: ignore
+    return [set(itemid2cat[y]) for y in ys]
+
+
 def label2cat(
     label: int, dataset: RecDataset = ConfigParams.DATASET, encode: bool = True
 ) -> List[int]:
-    category_map = get_category_map(dataset)
-    categories = category_map[label]
+    itemid2cat = get_category_map(dataset)
+    categories = itemid2cat[label]
     if not encode:
         return categories
     return [cat2id[cat] for cat in categories]
@@ -201,7 +232,7 @@ def _evaluate_generation(
 
 
 def _evaluate_categorized_generation(
-    input_seq: Tensor, dataset: CategorizedDataset, cats: CategorySet
+    input_seq: Tensor, dataset: CategorizedDataset, cats: List[CategorySet]
 ) -> Tuple[float, Tuple[float, float]]:
     # Evaluate label
     equal_cats = sum(1 for _, cat in dataset if equal_ys(cat, cats))
