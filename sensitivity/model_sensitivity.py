@@ -11,20 +11,23 @@ from tqdm import tqdm
 
 from config import ConfigParams
 from constants import cat2id
-from generation.utils import get_category_map, get_items
+from generation.utils import equal_ys, get_category_map, get_items
 from models.config_utils import generate_model, get_config
 from models.utils import topk, trim
-from performance_evaluation.alignment.utils import (get_log_stats, log_run,
-                                                    stats_to_df)
-from type_hints import RecDataset
+from performance_evaluation.alignment.utils import get_log_stats, log_run, stats_to_df
+from type_hints import CategorySet, RecDataset
 from utils import seq_tostr, set_seed
-from utils_classes.distances import jaccard_sim, ndcg_at, precision_at
+from utils_classes.distances import (
+    jaccard_sim,
+    DEPRECATED_ndng_at,
+    ndcg,
+    pairwise_jaccard_sim,
+    precision_at,
+)
 from utils_classes.generators import SequenceGenerator, SkippableGenerator
 
 
-def generate_sequence_variants(
-    sequence: Tensor, model: SequentialRecommender, position: int, alphabet: Tensor
-):
+def generate_sequence_variants(sequence: Tensor, position: int, alphabet: Tensor):
     """
     Generate a matrix of possible sequences by modifying a single position in the input sequence.
 
@@ -54,13 +57,11 @@ def generate_sequence_variants(
         - The modified sequences are `[[1, 4, 3], [1, 5, 3]]`.
         - The function returns the model's output for `[[1, 2, 3]]` and `[[1, 4, 3], [1, 5, 3]]`.
     """
-
-    x = trim(sequence.squeeze(0)).unsqueeze(0)
+    x = sequence
+    assert x.dim() == 2 and x.size(0) == 1
 
     if x.size(1) <= position:
         return
-
-    out = model(x)
 
     x_primes = x.repeat(len(alphabet), 1)
     assert x_primes.shape == torch.Size(
@@ -69,9 +70,8 @@ def generate_sequence_variants(
     positions = torch.tensor([position] * len(alphabet))
 
     x_primes[torch.arange(len(alphabet)), positions] = alphabet
-    out_primes = model(x_primes)
 
-    return out, out_primes
+    return x_primes
 
 
 def model_sensitivity_category(
@@ -162,16 +162,19 @@ def model_sensitivity_category(
     else:
         raise NotImplementedError(f"Dataset {ConfigParams.DATASET} not supported yet!")
     i = 0
-    start_i, end_i = 0, 500
+    start_i, end_i = 0, 200
     pbar = tqdm(
         total=end_i - start_i, desc=f"Testing model sensitivity on position {position}"
     )
-    i_list, all_changes, any_changes, jaccards, sequence_list = [], [], [], [], []
+    count = 0
+    i_list, jaccards, sequence_list, counterfactuals, ndcgs = ([], [], [], [], [])
     for i, sequence in enumerate(sequences):
         if i < start_i:
             continue
         if i >= end_i:
             break
+
+        count += 1
 
         # TODO: fix pk_exists before removing the comment
         # if pk_exists(prev_df, primary_key=["i", "position"], consider_config=True):
@@ -180,57 +183,60 @@ def model_sensitivity_category(
 
         pbar.update(1)
 
-        result = generate_sequence_variants(sequence, model, position, alphabet)
-        if not result:
+        sequence = trim(sequence.squeeze(0)).unsqueeze(0)
+        x_primes = generate_sequence_variants(sequence, position, alphabet)
+        if x_primes is None:
             continue
-        out, out_primes = result
+
+        out = model(sequence)
+        out_primes = model(x_primes)
 
         topk_out = topk(logits=out, k=k, dim=-1, indices=True).squeeze(0)  # [k]
-        out_cat: List[Set[str]] = [set(itemid2cat[y.item()]) for y in topk_out]
+        out_cat: List[CategorySet] = [
+            set(cat2id[cat] for cat in itemid2cat[y.item()]) for y in topk_out  # type: ignore
+        ]  # [k]
 
         topk_out_primes = topk(
             logits=out_primes, k=k, dim=-1, indices=True
         )  # [n_items, k]
 
-        out_primes_cat: List[List[Set[str]]] = [
-            [set(itemid2cat[y_prime.item()]) for y_prime in topk_out_prime]
+        # TODO: this and out_cat must be rivisited, is the content really what you need?
+        out_primes_cat: List[List[CategorySet]] = [
+            [set(cat2id[cat] for cat in itemid2cat[y.item()]) for y in topk_out_prime]  # type: ignore
             for topk_out_prime in topk_out_primes
-        ]
+        ]  # [n_items, k]
 
         # TODO: This can be vectorized by using torch operations
-        all_change_i, any_change_i, jaccard_i = [], [], []
-        for y, y_primes in zip(out_cat, out_primes_cat):
-            all_change_j, any_change_j, jaccard_j = [], [], []
-            y = {cat2id[cat] for cat in y}
-            for y_prime in y_primes:
-                y_prime = {cat2id[cat] for cat in y_prime}
-                all_change_j.append(cat_all_changes(gt=y, new=y_prime))
-                any_change_j.append(cat_at_least_changes(gt=y, new=y_prime))
-                jaccard_j.append(jaccard_sim(a=y, b=y_prime))
-            all_change_i.append(mean(all_change_j))
-            any_change_i.append(mean(any_change_j))
-            jaccard_i.append(mean(jaccard_j))
+        jaccard, counterfactual, ndcg_v = [], [], []
+        n_items = len(out_primes_cat)
+        for n_i in range(n_items):
+            y = out_cat
+            y_prime = out_primes_cat[n_i]
 
-        all_change = mean(all_change_i)
-        any_change = mean(any_change_i)
-        jaccard = mean(jaccard_i)
+            assert len(y) == len(y_prime) == k
+
+            jaccard.append(pairwise_jaccard_sim(y, y_prime))
+            counterfactual.append(not equal_ys(y, y_prime))
+            ndcg_v.append(ndcg(y, y_prime))
 
         i_list.append(i)
-        all_changes.append(all_change)
-        any_changes.append(any_change)
-        jaccards.append(jaccard)
+        jaccards.append(mean(jaccard))
+        ndcgs.append(mean(ndcg_v))
+        counterfactuals.append(mean(counterfactual))
         sequence_list.append(sequence.squeeze().tolist())
-        # pbar.set_postfix_str(
-        #     f"jacc: {mean(jaccards)*100:.2f}, any: {mean(any_changes)*100:.2f}, all: {mean(all_changes)*100:.2f}"
-        # )
+        pbar.set_postfix_str(
+            f"jacc: {mean(jaccards)*100:.2f}%, ndcg: {mean(ndcgs) * 100:.2f}, counterfactuals: {mean(counterfactuals)*100:.2f}%"
+        )
 
     data = {
         "i": i_list,
         "position": [position] * len(i_list),
+        "count": [count] * len(i_list),
         "k": [k] * len(i_list),
-        "all_changes": [v * 100 for v in all_changes],
-        "any_changes": [v * 100 for v in any_changes],
         "jaccards": [v * 100 for v in jaccards],  # similarity
+        "ndcg": [v * 100 for v in ndcgs],  # the higher, the more similar
+        "counterfactuals": counterfactuals,
+        "alphabet_len": [len(alphabet)] * len(i_list),
         "sequence": [seq_tostr(x) for x in sequence_list],
         "model": [ConfigParams.MODEL.value] * len(i_list),
         "dataset": [ConfigParams.DATASET.value] * len(i_list),
@@ -247,7 +253,7 @@ def model_sensitivity_category(
         print(pd.DataFrame(data))
 
 
-# TODO: reflect changes from the categorized one
+# TODO: reflect changes from the categorized one, this must be heavily changed.
 def model_sensitivity_simple(
     sequences: SkippableGenerator,
     model: SequentialRecommender,
@@ -320,7 +326,9 @@ def model_sensitivity_simple(
             for out_prime_k in out_primes_k
         )
         ndcgs = mean(
-            ndcg_at(k=k, a=out_k, b=out_prime_k.squeeze() if k != 1 else out_prime_k)
+            DEPRECATED_ndng_at(
+                k=k, a=out_k, b=out_prime_k.squeeze() if k != 1 else out_prime_k
+            )
             for out_prime_k in out_primes_k
         )
         # pbar.set_postfix_str(

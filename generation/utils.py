@@ -1,21 +1,21 @@
-from utils import timeit
+from utils_classes.distances import ndcg
 import json
 import os
 import pickle
 import random
 from enum import Enum
 from statistics import mean
-from typing import List, Set, Tuple, TypedDict
+from typing import List, Set, Tuple, TypedDict, Dict
 
 import _pickle as cPickle
 from recbole.data.dataset.sequential_dataset import SequentialDataset
-from torch import Tensor
+from torch import Tensor, Value
 
 from config import ConfigParams
 from constants import PADDING_CHAR, cat2id
 from type_hints import CategorizedDataset, CategorySet, Dataset, RecDataset
 from utils_classes.Cached import Cached
-from utils_classes.distances import edit_distance
+from utils_classes.distances import edit_distance, pairwise_jaccard_sim
 
 
 class ItemInfo(TypedDict):
@@ -38,22 +38,42 @@ class Category(Enum):
     ML_1M = os.path.join("data", "category_map.json")
 
 
-def compare_ys(y1: int | CategorySet | Tensor, y2: int | CategorySet | Tensor):
+def _compare_int_ys(y1: int, y2: int):
+    return y1 == y2
+
+
+def _compare_set_ys(
+    y1: CategorySet | List[CategorySet],
+    y2: CategorySet | List[CategorySet],
+    return_score: bool = False,
+) -> bool | Tuple[bool, float]:
+    if isinstance(y1, set):
+        y1 = [y1]
+    if isinstance(y2, set):
+        y2 = [y2]
+
+    score = ndcg(y1, y2)
+    equal = score >= ConfigParams.THRESHOLD
+    if return_score:
+        return equal, score
+    return equal
+
+
+def equal_ys(
+    y1: int | CategorySet | List[CategorySet] | Tensor,
+    y2: int | CategorySet | List[CategorySet] | Tensor,
+    return_score: bool = False,
+):
     """
     Compares model outputs abstracting their type. It works with:
         - int and torch.Tensor, comparing them with the equal (==) operator
-        - Set[int], comparing them with the subset operator (<=)
+        - Set[int], comparing them with a thresholded jaccard similarity
     """
-    # TODO: as in https://trello.com/c/Y2sqwlVH, change the way categories are comapred, using a threshold on weighted jaccard similarity.
-    threshold = 0.5
     if isinstance(y1, (int, Tensor)) and isinstance(y2, (int, Tensor)):
-        return y1 == y2
-    elif isinstance(y1, set) and isinstance(y2, set):
-        return y1 <= y2
-    else:
-        raise TypeError(
-            f"y1 and y2 must be both ints or sets, not {type(y1).__name__} and {type(y2).__name__}"
-        )
+        y1 = y1.item() if isinstance(y1, Tensor) else y1  # type: ignore
+        y2 = y2.item() if isinstance(y2, Tensor) else y2  # type: ignore
+        return _compare_int_ys(y1, y2)  # type: ignore
+    return _compare_set_ys(y1, y2, return_score)  # type: ignore
 
 
 def get_items(dataset: RecDataset = ConfigParams.DATASET) -> Set[int]:
@@ -83,7 +103,7 @@ def get_items(dataset: RecDataset = ConfigParams.DATASET) -> Set[int]:
     return item_set
 
 
-def get_category_map(dataset: RecDataset = ConfigParams.DATASET):
+def get_category_map(dataset: RecDataset = ConfigParams.DATASET) -> Dict[int, str]:
 
     def load_json(path):
         if not os.path.exists(path):
@@ -184,14 +204,14 @@ def _evaluate_categorized_generation(
     input_seq: Tensor, dataset: CategorizedDataset, cats: CategorySet
 ) -> Tuple[float, Tuple[float, float]]:
     # Evaluate label
-    subset_categories = sum(1 for _, cat in dataset if cat <= cats)
+    equal_cats = sum(1 for _, cat in dataset if equal_ys(cat, cats))
     # Evaluate example similarity
     distances_norm = []
     distances_nnorm = []
     for seq, _ in dataset:
         distances_norm.append(edit_distance(input_seq, seq))
         distances_nnorm.append(edit_distance(input_seq, seq, normalized=False))
-    return (subset_categories / len(dataset)), (
+    return (equal_cats / len(dataset)), (
         mean(distances_norm),
         mean(distances_nnorm),
     )

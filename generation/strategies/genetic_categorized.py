@@ -11,8 +11,12 @@ from constants import MAX_LENGTH
 from generation.extended_ea_algorithms import eaSimpleBatched
 from generation.mutations import ALL_MUTATIONS, Mutation
 from generation.strategies.genetic import GeneticStrategy
-from generation.utils import (_evaluate_categorized_generation,
-                              get_category_map, label2cat)
+from generation.utils import (
+    _evaluate_categorized_generation,
+    equal_ys,
+    get_category_map,
+    label2cat,
+)
 from models.utils import pad_batch, trim
 from type_hints import CategorizedDataset
 from utils import set_seed
@@ -60,12 +64,7 @@ class CategorizedGeneticStrategy(GeneticStrategy):
                 batch_i * batch_size : (batch_i + 1) * batch_size
             ]
             candidate_seqs = pad_batch(batch_individuals, MAX_LENGTH)
-            # print(
-            #     f"[DEBUG] candidate seqs are: {candidate_seqs.tolist()}, with min and max: {torch.min(candidate_seqs), torch.max(candidate_seqs)}"
-            # )
             candidate_probs = self.model(candidate_seqs).argmax(-1)  # [batch_size, 1]
-
-            # print(f"[DEBUG] candidate seqs shape: {candidate_seqs.shape}")
 
             gt_cat = set(label2cat(self.gt.argmax(-1).item(), encode=True))
 
@@ -79,8 +78,6 @@ class CategorizedGeneticStrategy(GeneticStrategy):
                     self.input_seq, candidate_seq, normalized=True
                 )  # [0,MAX_LENGTH] if not normalized, [0,1] if normalized
                 cat_dist = 1 - jaccard_sim(a=gt_cat, b=set(candidate_cats))
-
-                # print(f"[DEBUG] cat dist is: {cat_dist}\n")
 
                 self_ind = self_indicator(
                     self.input_seq, candidate_seq
@@ -146,14 +143,14 @@ class CategorizedGeneticStrategy(GeneticStrategy):
         categories = set(label2cat(self.gt.argmax(-1).item(), encode=True))
         if self.good_examples:
             clean: CategorizedDataset = [
-                (seq, cats) for seq, cats in examples if cats <= categories
+                (seq, cats) for seq, cats in examples if equal_ys(cats, categories)
             ]
             self.print(
                 f"Removed {len(examples) - len(clean)} individuals from good (label was not equal to gt)"
             )
             return clean
         clean: CategorizedDataset = [
-            (seq, cats) for seq, cats in examples if not cats <= categories
+            (seq, cats) for seq, cats in examples if not equal_ys(cats, categories)
         ]
         self.print(
             f"Removed {len(examples) - len(clean)} individuals from bad (label was equal to gt)"

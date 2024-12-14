@@ -2,7 +2,6 @@ import json
 import warnings
 from typing import Generator, List, Optional
 
-import fire
 import toml
 
 from alignment.actions import print_action
@@ -14,8 +13,7 @@ from exceptions import (CounterfactualNotFound, DfaNotAccepting,
                         DfaNotRejecting, NoTargetStatesError, SplitNotCoherent)
 from generation.strategies.genetic_categorized import \
     CategorizedGeneticStrategy
-from generation.utils import compare_ys, label2cat
-from models.config_utils import generate_model, get_config
+from generation.utils import equal_ys, label2cat
 from performance_evaluation.alignment.utils import preprocess_interaction
 from type_hints import GoodBadDataset, RecDataset, RecModel, SplitTuple
 from utils import TimedFunction, seq_tostr
@@ -138,6 +136,7 @@ CONFIG
         "cost": None,
         "gt": None,
         "aligned_gt": None,
+        "score": None,
         "dataset_time": None,
         "align_time": None,
         "automata_learning_time": None,
@@ -202,13 +201,15 @@ CONFIG
             run_log["aligned_gt"] = (
                 aligned_gt if isinstance(aligned_gt, int) else tuple(aligned_gt)
             )
-
-            if compare_ys(source_gt, aligned_gt):
+            
+            is_good, score = equal_ys(source_gt, aligned_gt, return_score=True) #type: ignore
+            run_log["score"] = score
+            if is_good:
                 run_log["status"] = "bad"
-                print(f"[{i}] Bad counterfactual! {source_gt} == {aligned_gt}")
+                print(f"[{i}] Bad counterfactual! {source_gt} == {aligned_gt}, score is {score}")
             else:
                 run_log["status"] = "good"
-                print(f"[{i}] Good counterfactual! {source_gt} != {aligned_gt}")
+                print(f"[{i}] Good counterfactual! {source_gt} != {aligned_gt}, score is {score}")
             print("--------------------")
 
             print(json.dumps(run_log, indent=2))

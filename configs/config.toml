@@ -15,6 +15,7 @@ include_sink = false # Include sink state in the target states when doing trace 
 
 [generation]
 strategy = "genetic_categorized"    # [exhaustive, genetic, genetic_categorized]
+similarity_threshold = 0.7             # threshold of jaccard similarity (between set of categories) above which two outputs are considered equal
 
 # Settings for the evolutionary algorithm
 [evolution]

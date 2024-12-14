@@ -9,10 +9,12 @@ from type_hints import RecDataset, RecModel
 
 default_config_path = "configs/config.toml"
 
+
 class DebugConfig(TypedDict):
     debug: int
     profile: bool
-    
+
+
 class SettingsConfig(TypedDict):
     model: str
     dataset: str
@@ -20,16 +22,21 @@ class SettingsConfig(TypedDict):
     train_batch_size: int
     test_batch_size: int
 
+
 class GenerationConfig(TypedDict):
     strategy: str
+    similarity_threshold: float
+
 
 class AutomataConfig(TypedDict):
     include_sink: bool
+
 
 class MutationConfig(TypedDict):
     num_replaces: int
     num_additions: int
     num_deletions: int
+
 
 class EvolutionConfig(TypedDict):
     generations: int
@@ -39,12 +46,14 @@ class EvolutionConfig(TypedDict):
     mutations: MutationConfig
     allowed_mutations: List[str]
 
+
 class ConfigDict(TypedDict):
     debug: DebugConfig
     generation: GenerationConfig
     settings: SettingsConfig
     automata: AutomataConfig
     evolution: EvolutionConfig
+
 
 class ConfigParams:
     _instance = None  # Singleton instance
@@ -63,7 +72,7 @@ class ConfigParams:
         return cls._instance
 
     @classmethod
-    def _parse_config(cls, _dict: Optional[ConfigDict]=None):
+    def _parse_config(cls, _dict: Optional[ConfigDict] = None):
         """Load configuration and set class attributes."""
         if not cls._config_loaded:
             config = toml.load(cls._config_path) if not _dict else _dict
@@ -84,6 +93,7 @@ class ConfigParams:
             cls.INCLUDE_SINK = config["automata"]["include_sink"]
 
             cls.GENERATION_STRATEGY = config["generation"]["strategy"]
+            cls.THRESHOLD = config["generation"]["similarity_threshold"]
 
             cls.GENERATIONS = config["evolution"]["generations"]
             cls.POP_SIZE = config["evolution"]["pop_size"]
@@ -111,8 +121,10 @@ class ConfigParams:
     def reload(cls, path: Optional[str]):
         """Allow setting a custom config file path."""
         if not cls._reloadable:
-            raise ValueError("Config path is no longer reloadable because .fix() has been called.")
-        
+            raise ValueError(
+                "Config path is no longer reloadable because .fix() has been called."
+            )
+
         new_path = path if path else default_config_path
         if new_path == cls._config_path:
             return
@@ -125,8 +137,10 @@ class ConfigParams:
     def reload_from_dict(cls, _dict: ConfigDict):
         """Allow setting a custom config file path."""
         if not cls._reloadable:
-            raise ValueError("Config path is no longer reloadable because .fix() has been called.")
-        
+            raise ValueError(
+                "Config path is no longer reloadable because .fix() has been called."
+            )
+
         cls._config_path = None
         cls._config_loaded = False  # Reset loaded flag to reload the config
         cls._parse_config(_dict=_dict)
@@ -139,30 +153,40 @@ class ConfigParams:
 
     @classmethod
     def get_default_config(cls) -> ConfigDict:
-        return toml.load(default_config_path) #type: ignore
+        return toml.load(default_config_path)  # type: ignore
 
     @classmethod
     def configs_dict(cls, length=1):
         return {
-                "determinism": [ConfigParams.DETERMINISM] * length,
-                "model": [ConfigParams.MODEL.value] * length,
-                "dataset": [ConfigParams.DATASET.value] * length,
-                "pop_size": [ConfigParams.POP_SIZE] * length,
-                "generations": [ConfigParams.GENERATIONS] * length,
-                "halloffame_ratio": [ConfigParams.HALLOFFAME_RATIO] * length,
-                "fitness_alpha": [ConfigParams.FITNESS_ALPHA] * length,
-                "allowed_mutations": [tuple(ConfigParams.ALLOWED_MUTATIONS)] * length,
-                "include_sink": [ConfigParams.INCLUDE_SINK] * length,
-                "mutation_params": [(ConfigParams.NUM_REPLACES, ConfigParams.NUM_ADDITIONS, ConfigParams.NUM_DELETIONS)] * length,
-                "generation_strategy": [ConfigParams.GENERATION_STRATEGY] * length,
-                "timestamp": [ConfigParams.TIMESTAMP] * length}
+            "determinism": [ConfigParams.DETERMINISM] * length,
+            "model": [ConfigParams.MODEL.value] * length,
+            "dataset": [ConfigParams.DATASET.value] * length,
+            "pop_size": [ConfigParams.POP_SIZE] * length,
+            "generations": [ConfigParams.GENERATIONS] * length,
+            "halloffame_ratio": [ConfigParams.HALLOFFAME_RATIO] * length,
+            "fitness_alpha": [ConfigParams.FITNESS_ALPHA] * length,
+            "allowed_mutations": [tuple(ConfigParams.ALLOWED_MUTATIONS)] * length,
+            "include_sink": [ConfigParams.INCLUDE_SINK] * length,
+            "mutation_params": [
+                (
+                    ConfigParams.NUM_REPLACES,
+                    ConfigParams.NUM_ADDITIONS,
+                    ConfigParams.NUM_DELETIONS,
+                )
+            ]
+            * length,
+            "generation_strategy": [ConfigParams.GENERATION_STRATEGY] * length,
+            "jaccard_threshold": [ConfigParams.THRESHOLD] * length,
+            "timestamp": [ConfigParams.TIMESTAMP] * length,
+        }
 
     @classmethod
-    def print_config(cls, indent: Optional[int]=None):
+    def print_config(cls, indent: Optional[int] = None):
         config_dict = cls.configs_dict()
         if indent:
             config_dict = json.dumps(config_dict, indent=indent)
         print(config_dict)
+
 
 # Load default configs
 ConfigParams()
