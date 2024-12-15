@@ -52,7 +52,7 @@ def print_topk_info(seq: List[int], cat_count: Counter, dscores: Counter):
         -------------------------------------------------
     """
     padded_seq = pad(torch.tensor(seq, dtype=torch.long), MAX_LENGTH).unsqueeze(0)
-    k = ConfigParams.TOPK 
+    k = ConfigParams.TOPK
     topk_items = topk(model(padded_seq), k=k, dim=1, indices=True).squeeze(0).tolist()
 
     cat_map = get_category_map()
@@ -106,7 +106,7 @@ def compute_scores(seq: Tensor) -> Tuple[Counter, Counter]:
     batch_size, _ = seq.shape
 
     for batch in range(batch_size):
-        for idx, char in enumerate(seq[batch]):
+        for idx, char in enumerate(reversed(seq[batch])):
             # Add categories for the current character
             char = char.item()
             char_categories = cat_map[char]

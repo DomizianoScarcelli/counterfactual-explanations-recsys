@@ -1,9 +1,9 @@
-import ast
+from utils_classes.generators import SequenceGenerator
 import os
-import line_profiler
 import warnings
 from statistics import mean
 from typing import List, Optional, Tuple
+import json
 
 import fire
 import pandas as pd
@@ -12,6 +12,7 @@ from tqdm import tqdm
 
 from config import ConfigParams
 from generation.utils import get_items
+from models.config_utils import get_config
 from models.utils import trim
 from sensitivity.utils import (
     compute_scores,
@@ -61,7 +62,27 @@ def scores_from_csv(csv_path: str, print_info: bool = False):
         if print_info:
             print_topk_info(seq, cat_count, dscores)
 
-    print(f"Mapping is: {mapping}")
+    # print(f"[DEBUG] Mapping is: {mapping}")
+    return mapping
+
+
+def scores_from_sequences(range_i: Tuple[int, int], print_info: bool = False):
+    mapping = {}
+    config = get_config(dataset=ConfigParams.DATASET, model=ConfigParams.MODEL)
+    sequences = SequenceGenerator(config)
+    start, end = range_i
+    for _ in range(start):
+        sequences.skip()
+    for _ in range(start, end):
+        seq = sequences.next()
+        seq = trim(seq.squeeze())
+        cat_count, dscores = compute_scores(seq)
+        mapping[seq_tostr(seq)] = {"cat_count": cat_count, "dscores": dscores}
+
+        if print_info:
+            print_topk_info(seq.tolist(), cat_count, dscores)
+
+    # print(f"[DEBUG] Mapping is: {mapping}")
     return mapping
 
 
@@ -102,7 +123,6 @@ def counterfactual_scores_from_csv(
         NotImplementedError: If the dataset specified in `ConfigParams.DATASET` is not supported.
     """
     og_df = pd.read_csv(csv_path)
-
     # just keep the first occurrence of the sequence
     df = og_df.drop_duplicates(subset=["i"], keep="first")
     if ConfigParams.DATASET == RecDataset.ML_1M:
@@ -164,28 +184,41 @@ def counterfactual_scores_from_csv(
 
 
 def main(
-    csv_path: str,
+    csv_path: Optional[str] = None,
+    on_counterfactuals: bool = False,
     join_on: Optional[Tuple[str, str] | str] = None,
-    save: bool = False,
+    save_path: Optional[str] = None,
     select: Optional[List[str]] = None,
+    print_info: bool = False,
 ):
-    start_i, end_i = 49, 0
-    result_df = pd.DataFrame({})
-    for position in tqdm(
-        range(start_i, end_i - 1, -1), "Testing model sensitivity on all positions"
-    ):
-        df = counterfactual_scores_from_csv(
-            csv_path=csv_path, join_on=join_on, position=position, select=select
-        )
-        result_df = pd.concat([result_df, df])
+    if on_counterfactuals and csv_path:
+        start_i, end_i = 49, 0
+        result_df = pd.DataFrame({})
+        for position in tqdm(range(start_i, end_i - 1, -1)):
+            df = counterfactual_scores_from_csv(
+                csv_path=csv_path, join_on=join_on, position=position, select=select
+            )
+            result_df = pd.concat([result_df, df])
 
-        if save:
-            base, ext = os.path.splitext(csv_path)
-            result_df.to_csv(f"{base}_scores{ext}")
+            if save_path:
+                if save_path == "same":
+                    base, ext = os.path.splitext(csv_path)
+                    result_df.to_csv(f"{base}_scores{ext}")
+                else:
+                    result_df.to_csv(save_path)
+            if print_info:
+                print(result_df.head())
+    else:
+        if csv_path:
+            mapping = scores_from_csv(csv_path=csv_path, print_info=print_info)
         else:
-            print(result_df.head())
+            mapping = scores_from_sequences(range_i=(0, 50), print_info=print_info)
+
+        if save_path:
+            with open(save_path, "w") as f:
+                json.dump(mapping, f)
+            print(f"Mappings saved to {save_path}")
 
 
 if __name__ == "__main__":
-    # fire.Fire(scores_from_csv)
     fire.Fire(main)

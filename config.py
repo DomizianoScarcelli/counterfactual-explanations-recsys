@@ -46,6 +46,8 @@ class EvolutionConfig(TypedDict):
     fitness_alpha: float
     mutations: MutationConfig
     allowed_mutations: List[str]
+    mut_prob: float
+    crossover_prob: float
 
 
 class ConfigDict(TypedDict):
@@ -102,6 +104,8 @@ class ConfigParams:
             cls.HALLOFFAME_RATIO = config["evolution"]["halloffame_ratio"]
             cls.ALLOWED_MUTATIONS = config["evolution"]["allowed_mutations"]
             cls.FITNESS_ALPHA = config["evolution"]["fitness_alpha"]
+            cls.MUT_PROB = config["evolution"]["mut_prob"]
+            cls.CROSSOVER_PROB = config["evolution"]["crossover_prob"]
 
             cls.NUM_REPLACES = config["evolution"]["mutations"]["num_replaces"]
             cls.NUM_ADDITIONS = config["evolution"]["mutations"]["num_additions"]
@@ -169,6 +173,8 @@ class ConfigParams:
             "fitness_alpha": [ConfigParams.FITNESS_ALPHA] * length,
             "allowed_mutations": [tuple(ConfigParams.ALLOWED_MUTATIONS)] * length,
             "include_sink": [ConfigParams.INCLUDE_SINK] * length,
+            "mut_prob": [ConfigParams.MUT_PROB] * length,
+            "crossover_prob": [ConfigParams.CROSSOVER_PROB] * length,
             "mutation_params": [
                 (
                     ConfigParams.NUM_REPLACES,

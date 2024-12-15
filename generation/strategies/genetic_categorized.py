@@ -1,4 +1,4 @@
-from generation.utils import Category, labels2cat
+from generation.utils import labels2cat
 from utils_classes.distances import ndcg
 from models.utils import topk
 import math
@@ -18,10 +18,9 @@ from generation.utils import (
     _evaluate_categorized_generation,
     equal_ys,
     get_category_map,
-    label2cat,
 )
 from models.utils import pad_batch, trim
-from type_hints import CategorizedDataset, CategorySet
+from type_hints import CategorizedDataset
 from utils import set_seed
 from utils_classes.distances import edit_distance, self_indicator
 
@@ -35,7 +34,7 @@ class CategorizedGeneticStrategy(GeneticStrategy):
         allowed_mutations: List[Mutation] = ALL_MUTATIONS,
         pop_size: int = ConfigParams.POP_SIZE,
         generations: int = ConfigParams.GENERATIONS,
-        k: int = 10,
+        k: int = ConfigParams.TOPK,
         good_examples: bool = True,
         halloffame_ratio: float = 0.1,
         verbose: bool = True,
@@ -93,8 +92,10 @@ class CategorizedGeneticStrategy(GeneticStrategy):
                 seq_dist = edit_distance(
                     self.input_seq, candidate_seq, normalized=True
                 )  # [0,MAX_LENGTH] if not normalized, [0,1] if normalized
-                score = ndcg(ys, y_primes[n_i])
-                cat_dist = 1 - score
+                cat_dist = 1 - ndcg(ys, y_primes[n_i])
+
+                # print(f"Seq dist: {seq_dist}")
+                # print(f"Cat dist: {cat_dist}")
 
                 self_ind = self_indicator(
                     self.input_seq, candidate_seq
@@ -109,7 +110,7 @@ class CategorizedGeneticStrategy(GeneticStrategy):
                 )
                 fitnesses.append(cost)
 
-        # print(f"[DEBUG] Fitnesses: {list(sorted(fitnesses))}")
+        # print(f"[DEBUG] Fitnesses: {list(round(x[0], 3) for x in sorted(fitnesses))[:20]}")
         return fitnesses
 
     def generate(self) -> CategorizedDataset:  # type: ignore
@@ -122,8 +123,8 @@ class CategorizedGeneticStrategy(GeneticStrategy):
         population, _ = eaSimpleBatched(
             population,
             self.toolbox,
-            cxpb=0.7,
-            mutpb=0.5,
+            cxpb=ConfigParams.CROSSOVER_PROB,
+            mutpb=ConfigParams.MUT_PROB,
             ngen=self.generations,
             halloffame=halloffame if self.halloffame_ratio != 0 else None,
             verbose=False,
@@ -225,6 +226,7 @@ class CategorizedGeneticStrategy(GeneticStrategy):
     def evaluate_generation(self, examples: CategorizedDataset):  # type: ignore
         gt_preds = topk(logits=self.gt, dim=-1, k=self.k, indices=True).squeeze(0)
         gt_cats = labels2cat(gt_preds, encode=True)
+        #TODO: return also the average score in the evaluation
         return _evaluate_categorized_generation(
             input_seq=self.input_seq,
             dataset=examples,

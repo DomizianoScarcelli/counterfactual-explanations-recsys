@@ -27,10 +27,15 @@ from generation.dataset.generate import generate
 from generation.dataset.utils import dataset_difference
 from models.config_utils import generate_model, get_config
 from models.utils import trim
-from performance_evaluation.alignment.utils import (log_run, pk_exists,
-                                                    preprocess_interaction)
-from performance_evaluation.evaluation_utils import (compute_metrics,
-                                                     print_confusion_matrix)
+from performance_evaluation.alignment.utils import (
+    log_run,
+    pk_exists,
+    preprocess_interaction,
+)
+from performance_evaluation.evaluation_utils import (
+    compute_metrics,
+    print_confusion_matrix,
+)
 from type_hints import GoodBadDataset
 from utils import seq_tostr, set_seed
 from utils_classes.generators import DatasetGenerator
@@ -111,7 +116,7 @@ def evaluate_all(
     while i < end_i:
         pbar.update(1)
         next_sequence = preprocess_interaction(datasets.interactions.peek())
-        next_sequence_str = seq_tostr(next_sequence.tolist())
+        next_sequence_str = seq_tostr(next_sequence)
         config_dict = ConfigParams.configs_dict()
         new_row = pd.DataFrame({"source_sequence": [next_sequence_str], **config_dict})
         temp_df = pd.concat([prev_df, new_row], ignore_index=True)

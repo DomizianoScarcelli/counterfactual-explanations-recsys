@@ -1,4 +1,4 @@
-from generation.utils import labels2catmodel_sensi
+from generation.utils import labels2cat
 import os
 from statistics import mean
 from typing import List, Literal, Optional, Set

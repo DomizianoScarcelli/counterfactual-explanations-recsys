@@ -90,12 +90,6 @@ class CLI:
             group_by = list(ConfigParams.configs_dict().keys()) + ["split"]
             group_by.remove("timestamp")
 
-            # TODO: temp
-            # group_by.remove("include_sink")
-            # group_by.remove("mutation_params")
-            # group_by.remove("generation_strategy")
-            # group_by.remove("fitness_alpha")
-
             stats = get_log_stats(
                 log_path=log_path,
                 save_path=save_path,
