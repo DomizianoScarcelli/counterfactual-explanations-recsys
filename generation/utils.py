@@ -60,8 +60,8 @@ def _compare_set_ys(
 
 
 def equal_ys(
-    y1: int | CategorySet | List[CategorySet] | Tensor,
-    y2: int | CategorySet | List[CategorySet] | Tensor,
+    gt: int | CategorySet | List[CategorySet] | Tensor,
+    pred: int | CategorySet | List[CategorySet] | Tensor,
     return_score: bool = False,
 ):
     """
@@ -69,11 +69,11 @@ def equal_ys(
         - int and torch.Tensor, comparing them with the equal (==) operator
         - Set[int], comparing them with a thresholded jaccard similarity
     """
-    if isinstance(y1, (int, Tensor)) and isinstance(y2, (int, Tensor)):
-        y1 = y1.item() if isinstance(y1, Tensor) else y1  # type: ignore
-        y2 = y2.item() if isinstance(y2, Tensor) else y2  # type: ignore
-        return _compare_int_ys(y1, y2)  # type: ignore
-    return _compare_set_ys(y1, y2, return_score)  # type: ignore
+    if isinstance(gt, (int, Tensor)) and isinstance(pred, (int, Tensor)):
+        gt = gt.item() if isinstance(gt, Tensor) else gt  # type: ignore
+        pred = pred.item() if isinstance(pred, Tensor) else pred  # type: ignore
+        return _compare_int_ys(gt, pred)  # type: ignore
+    return _compare_set_ys(gt, pred, return_score)  # type: ignore
 
 
 def get_items(dataset: RecDataset = ConfigParams.DATASET) -> Set[int]:
@@ -235,7 +235,7 @@ def _evaluate_categorized_generation(
     input_seq: Tensor, dataset: CategorizedDataset, cats: List[CategorySet]
 ) -> Tuple[float, Tuple[float, float]]:
     # Evaluate label
-    equal_cats = sum(1 for _, cat in dataset if equal_ys(cat, cats))
+    equal_cats = sum(1 for _, cat in dataset if equal_ys(cats, cat))
     # Evaluate example similarity
     distances_norm = []
     distances_nnorm = []

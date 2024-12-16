@@ -1,12 +1,13 @@
 import random
 import time
-from typing import Any, Callable, List
+from typing import Any, Callable, List, Optional
 from functools import wraps
 
 import numpy as np
 import torch
-from torch import Tensor
+from torch import Tensor, Value
 
+import zlib
 from config import ConfigParams
 
 
@@ -19,12 +20,25 @@ def printd(statement, level=1):
         print(statement)
 
 
-def set_seed(seed: int = 42):
+def compute_seed(dependencies: List[list | tuple | int]) -> int:
+    if any(x for x in dependencies if not isinstance(x, (list, tuple, int))):
+        raise ValueError(f"Some dependencies are not list, tuple or ints")
+    _bytes = [bytes(x) for x in dependencies if isinstance(x, (list, tuple))]
+    count = _bytes[0]
+    for b in _bytes[1:]:
+        count += b
+    other = sum(x for x in dependencies if isinstance(x, (int)))
+    return zlib.crc32(count) + other
+
+
+def set_seed(seed: int = 42, dependencies: Optional[List[list | tuple | int]] = None):
     # print(f"[DEBUG] Setting seed: {seed}")
-    MAX_SEED = 2**32 - 1
-    seed %= MAX_SEED + 1
     if not ConfigParams.DETERMINISM:
         return
+    if dependencies:
+        seed = compute_seed(dependencies)
+    # MAX_SEED = 2**32 - 1
+    # seed %= MAX_SEED + 1
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)

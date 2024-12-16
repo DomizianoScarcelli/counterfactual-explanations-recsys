@@ -16,11 +16,11 @@ class Mutation(ABC):
         # Change the seed according to the index of the mutated sequence
         assert PADDING_CHAR not in seq, f"Padding char {PADDING_CHAR} is in seq: {seq}"
         if ConfigParams.DETERMINISM:
-            set_seed(hash(tuple(seq)) ^ hash(tuple(alphabet)) + index)
+            set_seed(dependencies=[seq, alphabet, index])
         result = (self._apply(seq, alphabet),)
         # Resets the seed back to the original one to ensure determinism for
         # the following operations
-        set_seed()
+        # set_seed()
         return result
 
     @abstractmethod

@@ -1,7 +1,7 @@
 import json
 import os
 import time
-from typing import List, Optional, TypedDict
+from typing import List, Optional, TypedDict, Dict, Any
 
 import toml
 
@@ -57,6 +57,25 @@ class ConfigDict(TypedDict):
     automata: AutomataConfig
     evolution: EvolutionConfig
 
+def deep_update(config: dict, override: dict):
+    """
+    Recursively updates the `config` dictionary with values from `override`.
+    If a key in `override` points to a dictionary, it updates the corresponding
+    dictionary in `config` recursively.
+
+    Args:
+        config (dict): The original configuration dictionary.
+        override (dict): The dictionary with the values to update.
+
+    Returns:
+        dict: The updated configuration dictionary.
+    """
+    for key, value in override.items():
+        if isinstance(value, dict) and key in config and isinstance(config[key], dict):
+            deep_update(config[key], value)  # Recurse into the sub-dictionary
+        else:
+            config[key] = value  # Directly update the key in config
+    return config
 
 class ConfigParams:
     _instance = None  # Singleton instance
@@ -138,6 +157,14 @@ class ConfigParams:
         cls._config_loaded = False  # Reset loaded flag to reload the config
         cls._parse_config()
         print(f"Config reloaded from {cls._config_path}")
+
+    @classmethod
+    def override_params(cls, override: ConfigDict):
+        config = toml.load(
+            cls._config_path if cls._config_path else default_config_path
+        )
+        config = deep_update(config, override)
+        cls.reload_from_dict(_dict=config)  # type: ignore
 
     @classmethod
     def reload_from_dict(cls, _dict: ConfigDict):

@@ -153,7 +153,7 @@ def ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
     num_queries = len(a)
 
     for truth_set in a:
-        # Compute relevance scores for predicted items
+        # The score between two category sets is the number of common elements
         relevance_scores = [len(truth_set & predicted_set) for predicted_set in b]
 
         # DCG and IDCG
