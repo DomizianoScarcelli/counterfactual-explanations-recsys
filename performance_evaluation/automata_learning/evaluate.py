@@ -12,7 +12,6 @@ from typing import Optional
 
 import fire
 import pandas as pd
-import toml
 from aalpy.automata.Dfa import Dfa
 from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import os
@@ -198,13 +197,16 @@ def main(
         ConfigParams.override_params(config_dict)
     ConfigParams.fix()
 
-    # TODO: if config combination already exists for the current i, skip it.
-
-    config = get_config(dataset=ConfigParams().DATASET, model=ConfigParams().MODEL)
-    oracle: SequentialRecommender = generate_model(config)
-    datasets = DatasetGenerator(
-        config=config, use_cache=use_cache, return_interaction=True
-    )
+    if save_path:
+        prev_df = pd.read_csv(save_path)
+        future_df = pd.DataFrame(ConfigParams.configs_dict())
+        df = pd.concat([prev_df, future_df], ignore_index=True)
+        # TODO: for now this works only when we are generating a result for the first sequence
+        # I need to extend it to more sequences, but then this has to be put inside `evaluate_all`,
+        # which will be slower since the config, oracle and dataset generator are created anyways.
+        if end_i == 1 and pk_exists(df, primary_key=[], consider_config=True):
+            print(f"Config skipped since it already exists")
+            return
 
     params = {
         "parameters": {
@@ -223,6 +225,11 @@ def main(
           {ConfigParams.print_config(indent=2)}
           -----------------------
           """
+    )
+    config = get_config(dataset=ConfigParams().DATASET, model=ConfigParams().MODEL)
+    oracle: SequentialRecommender = generate_model(config)
+    datasets = DatasetGenerator(
+        config=config, use_cache=use_cache, return_interaction=True
     )
 
     evaluate_all(datasets=datasets, oracle=oracle, end_i=end_i, log_path=save_path)

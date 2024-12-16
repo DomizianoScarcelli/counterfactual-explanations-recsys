@@ -49,6 +49,8 @@ def pk_exists(
         config_keys.remove("timestamp")
         primary_key = primary_key + config_keys
 
+    df = df.copy()  # Avoid modifying the original DataFrame
+    df[primary_key] = df[primary_key].astype(str)
     return df[primary_key].duplicated().any()
 
 

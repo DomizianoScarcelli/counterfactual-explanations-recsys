@@ -4,8 +4,10 @@
 crossover_prob_options=(0.2 0.5 0.7)
 mutation_prob_options=(0.2 0.5 0.7)
 fitness_alpha_options=(0.2 0.5 0.7)
-generations_options=(5 10 20 40)
-pop_size_options=(1024 2048 4096 8192 16384)
+# generations_options=(5 10 20 40)
+generations_options=(10 20 40)
+# pop_size_options=(1024 2048 4096 8192 16384)
+pop_size_options=(8192)
 similarity_threshold_options=(0.5 0.7 0.8)
 
 # Calculate the total number of iterations
@@ -37,6 +39,9 @@ for crossover_prob in "${crossover_prob_options[@]}"; do
     "mut_prob": $mutation_prob,
     "pop_size": $pop_size,
   },
+  "generation": {
+    "similarity_threshold": $similarity_threshold
+},
 }
 EOF
 )
