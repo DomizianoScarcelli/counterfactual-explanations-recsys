@@ -5,29 +5,35 @@ from deap.algorithms import tools
 from deap.tools import selRandom
 from tqdm import tqdm
 
-from config import ConfigParams
-from utils import set_seed
 
 
 # Taken from deap.algorithms.eaSimple
 # Solution taken from https://github.com/DEAP/deap/issues/508
-def eaSimpleBatched(population, toolbox, cxpb, mutpb, ngen, stats=None,
-                    halloffame=None, verbose=__debug__, pbar=True):
+def eaSimpleBatched(
+    population,
+    toolbox,
+    cxpb,
+    mutpb,
+    ngen,
+    stats=None,
+    halloffame=None,
+    verbose=__debug__,
+    pbar=True,
+):
     """
     This extends the deap.eaSimple method in order for the sequences in the
     population to be evaluated in batch, instead of one-by-one. This is useful
     in order to improve the speed when the evaluation involved a deep learning
     model
     """
-    set_seed()
     logbook = tools.Logbook()
-    logbook.header = ['gen', 'nevals'] + (stats.fields if stats else [])
+    logbook.header = ["gen", "nevals"] + (stats.fields if stats else [])
 
     # Evaluate the individuals with an invalid fitness
     invalid_ind = [ind for ind in population if not ind.fitness.valid]
     fitnesses = toolbox.evaluate(invalid_ind)
-    for i,ind in enumerate(invalid_ind):
-          ind.fitness.values = fitnesses[i]
+    for i, ind in enumerate(invalid_ind):
+        ind.fitness.values = fitnesses[i]
 
     if halloffame is not None:
         halloffame.update(population)
@@ -38,7 +44,12 @@ def eaSimpleBatched(population, toolbox, cxpb, mutpb, ngen, stats=None,
         print(logbook.stream)
 
     # Begin the generational process
-    for gen in tqdm(range(1, ngen + 1), "Running generation algorithm...", disable=not pbar, leave=False):
+    for gen in tqdm(
+        range(1, ngen + 1),
+        "Running generation algorithm...",
+        disable=not pbar,
+        leave=False,
+    ):
         # Select the next generation individuals
         offspring = toolbox.select(population, len(population))
 
@@ -48,9 +59,8 @@ def eaSimpleBatched(population, toolbox, cxpb, mutpb, ngen, stats=None,
         # Evaluate the individuals with an invalid fitness
         invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
         fitnesses = toolbox.evaluate(invalid_ind)
-        for i,ind in enumerate(invalid_ind):
-              ind.fitness.values = fitnesses[i]
-
+        for i, ind in enumerate(invalid_ind):
+            ind.fitness.values = fitnesses[i]
 
         # Update the hall of fame with the generated individuals
         if halloffame is not None:
@@ -67,6 +77,7 @@ def eaSimpleBatched(population, toolbox, cxpb, mutpb, ngen, stats=None,
 
     return population, logbook
 
+
 def indexedVarAnd(population, toolbox, cxpb, mutpb):
     """
     Extends the `deap.algorithms.varAnd` method in order to also inject the
@@ -76,44 +87,39 @@ def indexedVarAnd(population, toolbox, cxpb, mutpb):
     apply the same mutation to the same sequence at all indices, which will
     result in all the sequences in the population to always be equal.
     """
-    set_seed()
     offspring = [toolbox.clone(ind) for ind in population]
     # Apply crossover and mutation on the offspring
     for i in range(1, len(offspring), 2):
         if random.random() < cxpb:
-            offspring[i - 1], offspring[i] = toolbox.mate(offspring[i - 1],
-                                                          offspring[i], i)
+            offspring[i - 1], offspring[i] = toolbox.mate(
+                offspring[i - 1], offspring[i], i
+            )
             del offspring[i - 1].fitness.values, offspring[i].fitness.values
 
     for i in range(len(offspring)):
         if random.random() < mutpb:
-            offspring[i], = toolbox.mutate(offspring[i], i)
+            (offspring[i],) = toolbox.mutate(offspring[i], i)
             del offspring[i].fitness.values
 
     return offspring
 
+
 def indexedSelTournament(individuals, k, tournsize, fit_attr="fitness"):
     chosen = []
-    if ConfigParams.DETERMINISM:
-        hash_key = hash(tuple([ind.fitness.values for ind in individuals])) ^ hash(tuple(hash(tuple(ind)) for ind in individuals))
-        curr_seed = hash_key
+
+    all_choices = random.choices(individuals, k=k * tournsize)
     for i in range(k):
-        if ConfigParams.DETERMINISM:
-            set_seed(hash(curr_seed)) #type: ignore
-        aspirants = [random.choice(individuals) for _ in range(tournsize)]
+        aspirants = all_choices[i * tournsize : (i + 1) * tournsize]
         chosen.append(max(aspirants, key=attrgetter(fit_attr)))
-        # set the seed based on individuals, index and current chosen ones
-        if ConfigParams.DETERMINISM:
-            curr_seed ^= i ^ hash(tuple(chosen[-1])) #type: ignore
 
     return chosen
 
 
-def indexedCxTwoPoint(ind1, ind2, index, return_indices: bool=False):
-    # print(f"[DEBUG] len ind1", len(ind1))
-    # print(f"[DEBUG] len ind2", len(ind2))
-    if ConfigParams.DETERMINISM:
-        set_seed(dependencies=[ind1, ind2, index])
+def indexedCxTwoPoint(ind1, ind2, index, return_indices: bool = False):
+    # TODO: instead of passing the index and changinf the seed based on the index and the individuals,
+    # batch generate all the indices before with a single random.randints call, like it happens in
+    # indexedSelTournament
+
     size = min(len(ind1), len(ind2))
     cxpoint1 = random.randint(1, size)
     cxpoint2 = random.randint(1, size - 1)
@@ -122,10 +128,11 @@ def indexedCxTwoPoint(ind1, ind2, index, return_indices: bool=False):
     else:  # Swap the two cx points
         cxpoint1, cxpoint2 = cxpoint2, cxpoint1
 
-    ind1[cxpoint1:cxpoint2], ind2[cxpoint1:cxpoint2] \
-        = ind2[cxpoint1:cxpoint2], ind1[cxpoint1:cxpoint2]
-    
-    set_seed()
+    ind1[cxpoint1:cxpoint2], ind2[cxpoint1:cxpoint2] = (
+        ind2[cxpoint1:cxpoint2],
+        ind1[cxpoint1:cxpoint2],
+    )
+
     if return_indices:
         return (ind1, ind2), (cxpoint1, cxpoint2)
     return ind1, ind2

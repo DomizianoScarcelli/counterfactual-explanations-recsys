@@ -49,7 +49,8 @@ EOF
                         python -m performance_evaluation.automata_learning.evaluate \
                             --use-cache=False \
                             --save-path="results/temp_automata_learning_eval.csv" \
-                            --config_dict="$config_json"
+                            --config_dict="$config_json" \
+                            --end-i=1
                     done
                 done
             done

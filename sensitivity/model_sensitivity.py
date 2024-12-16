@@ -17,7 +17,7 @@ from models.config_utils import generate_model, get_config
 from models.utils import topk, trim
 from performance_evaluation.alignment.utils import get_log_stats, log_run, stats_to_df
 from type_hints import CategorySet, RecDataset
-from utils import seq_tostr, set_seed
+from utils import seq_tostr
 from utils_classes.distances import (
     jaccard_sim,
     DEPRECATED_ndng_at,
@@ -381,7 +381,6 @@ def main(
         ConfigParams.fix()
     if mode == "evaluate":
         print(ConfigParams.configs_dict())
-        set_seed()
         config = get_config(dataset=ConfigParams.DATASET, model=ConfigParams.MODEL)
         sequences = SequenceGenerator(config)
         model = generate_model(config)

@@ -14,7 +14,6 @@ from generation.dataset.generate import generate
 from generation.dataset.utils import get_dataset_alphabet
 from models.utils import pad, trim
 from type_hints import GoodBadDataset, Trace
-from utils import set_seed
 from utils_classes.Split import Split
 
 
@@ -226,7 +225,6 @@ class TestEdgeCases:
     """
 
     def test_seq_subseq_equality(self, model):
-        set_seed()
         trace = torch.tensor([1346, 669, 648, 198, 1315, 1334, 423, 1342, 658,
                              1773, 1380, 1175, 1089, 908, 622, 2892, 3284, 2469,
                              2797, 811, 914, 576, 2885, 2147, 2609, 1834, 2828,
@@ -271,7 +269,6 @@ class TestEdgeCases:
         
 
     def test_all_syncs(self, model):
-        set_seed()
         trace = torch.tensor([578, 65, 28, 1432, 2079, 199, 1043, 1713, 80,
                               63, 265, 44, 152, 157, 1059, 133, 93, 49, 631,
                               433, 190, 134, 844, 79, 118, 105, 639, 1396, 51,
@@ -300,7 +297,6 @@ class TestEdgeCases:
         The reason is due by the fact that the generation algorithm fails to
         generate a high percentace of good examples.
         """
-        set_seed()
         trace = torch.tensor([578, 65, 28, 1432, 2079, 199, 1043, 1713, 80, 63,
                               265, 44, 152, 157, 1059, 133, 93, 49, 631, 433,
                               190, 134, 844, 79, 118, 105, 639, 1396, 51, 117,

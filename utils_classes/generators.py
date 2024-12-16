@@ -23,7 +23,6 @@ from generation.utils import get_items
 from models.config_utils import generate_model, get_config
 from models.model_funcs import model_predict
 from type_hints import GoodBadDataset
-from utils import set_seed
 
 
 class SkippableGenerator(ABC):
@@ -379,7 +378,6 @@ class TimedGenerator:
 
 
 if __name__ == "__main__":
-    set_seed()
     config = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
     datasets = DatasetGenerator(config, use_cache=False, strategy="genetic_categorized")
     for dataset in datasets:

@@ -1,3 +1,4 @@
+from utils import modulo_div
 import math
 import random
 from typing import Any, Callable, List
@@ -9,18 +10,28 @@ from torch import Tensor
 
 from config import ConfigParams
 from constants import MAX_LENGTH, MIN_LENGTH, PADDING_CHAR
-from generation.extended_ea_algorithms import (eaSimpleBatched,
-                                               indexedCxTwoPoint,
-                                               indexedSelTournament)
-from generation.mutations import (ALL_MUTATIONS, AddMutation, DeleteMutation,
-                                  Mutation, contains_mutation, remove_mutation)
+from generation.extended_ea_algorithms import (
+    eaSimpleBatched,
+    indexedCxTwoPoint,
+    indexedSelTournament,
+)
+from generation.mutations import (
+    ALL_MUTATIONS,
+    AddMutation,
+    DeleteMutation,
+    Mutation,
+    contains_mutation,
+    remove_mutation,
+)
 from generation.strategies.abstract_strategy import GenerationStrategy
 from generation.utils import _evaluate_generation, clone
 from models.utils import pad_batch, trim
 from type_hints import Dataset
-from utils import set_seed
-from utils_classes.distances import (edit_distance, jensen_shannon_divergence,
-                                     self_indicator)
+from utils_classes.distances import (
+    edit_distance,
+    jensen_shannon_divergence,
+    self_indicator,
+)
 
 
 class GeneticStrategy(GenerationStrategy):
@@ -36,7 +47,6 @@ class GeneticStrategy(GenerationStrategy):
         halloffame_ratio: float = 0.1,
         verbose: bool = True,
     ):
-        set_seed()
         super().__init__(
             input_seq=trim(input_seq),
             model=model,
@@ -83,8 +93,6 @@ class GeneticStrategy(GenerationStrategy):
 
     def mutate(self, seq: List[int], index: int):
         # Set seed according to the index in order to always choose a different mutation
-        if ConfigParams.DETERMINISM:
-            set_seed(hash(tuple(seq)) + index)
         # TODO: remove for efficiency
         assert (
             PADDING_CHAR not in seq
@@ -102,14 +110,12 @@ class GeneticStrategy(GenerationStrategy):
             mutations = remove_mutation(DeleteMutation, mutations)
         mutation = random.choice(mutations)
         result = mutation(seq, self.alphabet, index)
-        set_seed()
         return result
 
     def evaluate_fitness_batch(self, individuals: List[List[int]]) -> List[float]:
         """
         Evaluates the fitness for each individual, feeding the individuals into the predictor in batches.
         """
-        set_seed()
         batch_size = 512
         num_batches = math.ceil(len(individuals) / batch_size)
         fitnesses = []
@@ -177,7 +183,6 @@ class GeneticStrategy(GenerationStrategy):
         return fitnesses
 
     def generate(self) -> Dataset:
-        set_seed()
         population = self.toolbox.population()
 
         halloffame_size = int(np.round(self.pop_size * self.halloffame_ratio))

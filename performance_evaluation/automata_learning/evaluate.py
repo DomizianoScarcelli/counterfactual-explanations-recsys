@@ -37,7 +37,7 @@ from performance_evaluation.evaluation_utils import (
     print_confusion_matrix,
 )
 from type_hints import GoodBadDataset
-from utils import seq_tostr, set_seed
+from utils import SeedSetter, seq_tostr
 from utils_classes.generators import DatasetGenerator
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
@@ -187,7 +187,7 @@ def main(
     end_i: int = 30,
     save_path: Optional[str] = None,
 ):
-    set_seed()
+    SeedSetter.set_seed()
     if config_path and config_dict:
         raise ValueError(
             "Only one between config_path and config_dict must be set, not both"
@@ -197,7 +197,8 @@ def main(
     if config_dict:
         ConfigParams.override_params(config_dict)
     ConfigParams.fix()
-    ConfigParams.print_config()
+
+    # TODO: if config combination already exists for the current i, skip it.
 
     config = get_config(dataset=ConfigParams().DATASET, model=ConfigParams().MODEL)
     oracle: SequentialRecommender = generate_model(config)
@@ -219,7 +220,7 @@ def main(
           ---Inputs---
           {json.dumps(params, indent=2)}
           ---Config.toml---
-          {json.dumps(toml.load(ConfigParams._config_path), indent=2)}
+          {ConfigParams.print_config(indent=2)}
           -----------------------
           """
     )

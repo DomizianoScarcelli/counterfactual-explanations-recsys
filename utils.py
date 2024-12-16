@@ -5,7 +5,7 @@ from functools import wraps
 
 import numpy as np
 import torch
-from torch import Tensor, Value
+from torch import Tensor
 
 import zlib
 from config import ConfigParams
@@ -20,30 +20,43 @@ def printd(statement, level=1):
         print(statement)
 
 
-def compute_seed(dependencies: List[list | tuple | int]) -> int:
-    if any(x for x in dependencies if not isinstance(x, (list, tuple, int))):
-        raise ValueError(f"Some dependencies are not list, tuple or ints")
-    _bytes = [bytes(x) for x in dependencies if isinstance(x, (list, tuple))]
-    count = _bytes[0]
-    for b in _bytes[1:]:
-        count += b
-    other = sum(x for x in dependencies if isinstance(x, (int)))
-    return zlib.crc32(count) + other
+def modulo_div(x: int, max_value: int):
+    while x > max_value:
+        x //= max_value
+    return x
 
 
-def set_seed(seed: int = 42, dependencies: Optional[List[list | tuple | int]] = None):
-    # print(f"[DEBUG] Setting seed: {seed}")
-    if not ConfigParams.DETERMINISM:
-        return
-    if dependencies:
-        seed = compute_seed(dependencies)
-    # MAX_SEED = 2**32 - 1
-    # seed %= MAX_SEED + 1
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
+class SeedSetter:
+    # Class-level attribute to hold the single instance
+    _instance = None
+    previous_seed = None
+
+    # Private constructor to ensure only one instance is created
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls, *args, **kwargs)
+        return cls._instance
+
+    @classmethod
+    def set_seed(cls, seed: int = 42):
+        # Check if we are trying to change the seed once it's already set
+        if cls.previous_seed is not None:
+            raise ValueError(
+                f"Seed has already been set to {cls.previous_seed}, cannot change it."
+            )
+
+        if not ConfigParams.DETERMINISM:
+            return
+        # Set random seeds
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(seed)
+
+        # Store the seed as previous_seed
+        cls.previous_seed = seed
+
 
 
 def seq_tostr(seq: Tensor | List) -> str:

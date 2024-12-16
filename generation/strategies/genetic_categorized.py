@@ -21,7 +21,6 @@ from generation.utils import (
 )
 from models.utils import pad_batch, trim
 from type_hints import CategorizedDataset
-from utils import set_seed
 from utils_classes.distances import edit_distance, self_indicator
 
 
@@ -58,7 +57,6 @@ class CategorizedGeneticStrategy(GeneticStrategy):
         """
         Evaluates the fitness for each individual, feeding the individuals into the predictor in batches.
         """
-        set_seed()
         batch_size = 512
         num_batches = math.ceil(len(individuals) / batch_size)
         fitnesses = []
@@ -114,7 +112,6 @@ class CategorizedGeneticStrategy(GeneticStrategy):
         return fitnesses
 
     def generate(self) -> CategorizedDataset:  # type: ignore
-        set_seed()
         population = self.toolbox.population()
 
         halloffame_size = int(np.round(self.pop_size * self.halloffame_ratio))

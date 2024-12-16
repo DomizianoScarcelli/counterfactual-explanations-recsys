@@ -6,7 +6,6 @@ from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
 from torch import Tensor
 
-from utils import set_seed
 
 
 def predict(model: SequentialRecommender, seq: Tensor, argmax: bool=True) -> torch.Tensor:
@@ -46,7 +45,6 @@ def batch_predict(model: SequentialRecommender, seq: Tensor, argmax: bool=True) 
 def model_predict(seq:torch.Tensor, 
                   model: SequentialRecommender,
                   prob: bool=True) -> Tensor | float:
-    set_seed()
     preds = batch_predict(model=model, seq=seq, argmax=not prob)
     if not prob:
         return preds.item()

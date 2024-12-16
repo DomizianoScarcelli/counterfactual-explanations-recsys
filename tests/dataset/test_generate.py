@@ -9,7 +9,7 @@ from generation.dataset.utils import (are_dataset_equal, dataset_difference,
 from generation.utils import NumItems
 from models.config_utils import generate_model, get_config
 from type_hints import RecDataset
-from utils_classes.generators import SequenceGenerator
+from utils_classes.generators import DatasetGenerator, SequenceGenerator
 
 
 def test_RangeOfItemsIsCorrect():

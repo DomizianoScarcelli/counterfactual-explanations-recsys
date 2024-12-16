@@ -1,3 +1,4 @@
+from utils import SeedSetter
 import json
 import os
 from typing import Any, Dict, List, Literal, Optional, Tuple
@@ -5,18 +6,16 @@ from typing import Any, Dict, List, Literal, Optional, Tuple
 import fire
 
 from config import ConfigParams
-from performance_evaluation.alignment.evaluate import \
-    evaluate_trace_disalignment
+from performance_evaluation.alignment.evaluate import evaluate_trace_disalignment
 from performance_evaluation.alignment.utils import get_log_stats
 from run import run as og_run
 from sensitivity.model_sensitivity import main as evaluate_sensitivity
 from type_hints import RecDataset, RecModel
-from utils import set_seed
 
 
 class CLI:
     def __init__(self):
-        set_seed()
+        SeedSetter.set_seed()
 
     def stats(
         self,

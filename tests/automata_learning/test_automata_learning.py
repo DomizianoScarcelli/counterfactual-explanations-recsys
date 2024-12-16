@@ -2,17 +2,17 @@ from automata_learning.learning import learning_pipeline
 from automata_learning.utils import run_automata
 from config import ConfigParams
 from generation.dataset.generate import generate
+from generation.dataset.utils import interaction_to_tensor
+from generation.strategies.abstract_strategy import GenerationStrategy
 from models.config_utils import generate_model, get_config
 from models.utils import trim
-from utils import set_seed
-from utils_classes.generators import SequenceGenerator
+from utils_classes.generators import DatasetGenerator, SequenceGenerator
 
 
 def test_automata_accepts_source_sequence():
     """
     Test if automata accepts the source sequence
     """
-    set_seed()
     config = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
     model = generate_model(config)
     sequences = SequenceGenerator(config)
@@ -21,7 +21,7 @@ def test_automata_accepts_source_sequence():
         # While instead of for loop in order to be able to skip some indices
         # without generating the dataset
         if i < 12:
-        # if i < 0:
+            # if i < 0:
             i += 1
             sequences.skip()
             continue
@@ -37,27 +37,27 @@ def test_automata_accepts_source_sequence():
         i += 1
         print(f"{i} [PASSED], automata accepts the source trace")
 
+
 def test_automata_learning_determinism():
     """
     Tests if the automata learning algorithm is deterministic, meaning the
     same source sequence with the same learning dataset should always
     generate the same DFA.
     """
-    set_seed()
     config = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
-    sequences = SequenceGenerator(config)
-    model = generate_model(config)
+    datasets = DatasetGenerator(config, return_interaction=True)
     i = 0
     while True:
         try:
-            sequence = next(sequences)
+            dataset, interaction = next(datasets)
         except StopIteration:
             break
         if i > 20:
             break
-        dataset = generate(sequence, model)
-        sequence = sequence.squeeze(0).tolist()
+        sequence = interaction_to_tensor(interaction)
+        sequence = trim(sequence.squeeze()).tolist()
         dfa = learning_pipeline(sequence, dataset)
         other_dfa = learning_pipeline(sequence, dataset)
-        assert dfa == other_dfa, f"Learning is non deterministic for sequence {sequence}"
-
+        assert (
+            dfa == other_dfa
+        ), f"Learning is non deterministic for sequence {sequence}"
