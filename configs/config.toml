@@ -9,19 +9,19 @@ dataset = "ML_1M"           # Dataset identifier
 determinism = true         # Ensure deterministic runs 
 train_batch_size = 1        # Batch size for training
 test_batch_size = 1         # Batch size for testing
-topk = 5                  # K to use when sampling topk
+topk = 10                  # K to use when sampling topk
 
 [automata]
-include_sink = false # Include sink state in the target states when doing trace alignment
+include_sink = true # Include sink state in the target states when doing trace alignment
 
 [generation]
 strategy = "genetic_categorized"    # [exhaustive, genetic, genetic_categorized]
-similarity_threshold = 0.7             # threshold of jaccard similarity (between set of categories) above which two outputs are considered equal
+similarity_threshold = 0.7             # threshold of similarity (between set of categories) above which two outputs are considered equal
 
 # Settings for the evolutionary algorithm
 [evolution]
-generations = 20            # Number of generations in the evolutionary process
-pop_size = 10000             # Population size for the algorithm
+generations = 30            # Number of generations in the evolutionary process
+pop_size = 4096             # Population size for the algorithm
 halloffame_ratio = 0.2      # Ratio of the population to keep in the Hall of Fame
 fitness_alpha = 0.5         # Weight to give to the sequence distance w.r.t. to the label distance
 allowed_mutations = [
@@ -33,10 +33,10 @@ allowed_mutations = [
     "reverse"               # Reverse a subsequence
 ]                           # List of mutation types allowed in the evolution
 mut_prob = 0.5              
-crossover_prob = 0.7
+crossover_prob = 0.5
 
 # Parameters for specific mutation operations
 [evolution.mutations]
-num_additions = 4           # Number of additions allowed per mutation
-num_deletions = 4           # Number of deletions allowed per mutation
-num_replaces = 4            # Number of replacements allowed per mutation
+num_additions = 1           # Number of additions allowed per mutation
+num_deletions = 1           # Number of deletions allowed per mutation
+num_replaces = 1            # Number of replacements allowed per mutation

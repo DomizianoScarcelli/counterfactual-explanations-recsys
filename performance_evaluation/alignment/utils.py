@@ -225,12 +225,12 @@ def get_log_stats(
     return results
 
 
-if __name__ == "__main__":
-    print(
-        get_log_stats(
-            "results/different_splits_run.csv",
-            ["pop_size", "generations"],
-            ["status", "dataset_time", "align_time"],
-            "test",
-        )
-    )
+# if __name__ == "__main__":
+#     print(
+#         get_log_stats(
+#             "results/different_splits_run.csv",
+#             ["pop_size", "generations"],
+#             ["status", "dataset_time", "align_time"],
+#             "test",
+#         )
+#     )

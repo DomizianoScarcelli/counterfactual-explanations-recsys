@@ -1,3 +1,4 @@
+from config import ConfigDict
 from utils import SeedSetter
 import json
 import os
@@ -6,8 +7,7 @@ from typing import Any, Dict, List, Literal, Optional, Tuple
 import fire
 
 from config import ConfigParams
-from performance_evaluation.alignment.evaluate import evaluate_trace_disalignment
-from performance_evaluation.alignment.utils import get_log_stats
+from performance_evaluation import alignment
 from run import run as og_run
 from sensitivity.model_sensitivity import main as evaluate_sensitivity
 from type_hints import RecDataset, RecModel
@@ -23,6 +23,7 @@ class CLI:
             Literal["alignment", "generation", "automata_learning", "sensitivity"]
         ] = None,
         config_path: Optional[str] = None,
+        config_dict: Optional[ConfigDict] = None,
         log_path: Optional[str] = None,
         group_by: Optional[List[str] | str] = None,
         order_by: Optional[List[str] | str] = None,
@@ -60,7 +61,15 @@ class CLI:
             3. Generate general statistics for a CSV file:
                 python -m cli stats --log_path="path/to/file.csv" --group_by=["column1"] --metrics=["metric1", "metric2"]
         """
-        ConfigParams.reload(config_path)
+
+        if config_path and config_dict:
+            raise ValueError(
+                "Only one between config_path and config_dict must be set, not both"
+            )
+        if config_path:
+            ConfigParams.reload(config_path)
+        if config_dict:
+            ConfigParams.override_params(config_dict)
         ConfigParams.fix()
 
         if what == "sensitivity":
@@ -89,7 +98,7 @@ class CLI:
             group_by = list(ConfigParams.configs_dict().keys()) + ["split"]
             group_by.remove("timestamp")
 
-            stats = get_log_stats(
+            stats = alignment.utils.get_log_stats(
                 log_path=log_path,
                 save_path=save_path,
                 group_by=group_by,
@@ -108,7 +117,7 @@ class CLI:
             raise NotImplementedError()
 
         if not what and log_path and group_by and metrics:
-            return get_log_stats(
+            return alignment.utils.get_log_stats(
                 log_path=log_path,
                 group_by=group_by,
                 metrics=metrics,
@@ -167,6 +176,7 @@ class CLI:
             Literal["alignment", "generation", "automata_learning", "sensitivity"]
         ] = None,
         config_path: Optional[str] = None,
+        config_dict: Optional[ConfigDict] = None,
         k: Optional[int] = None,
         target: Optional[Literal["item", "category"]] = None,
         use_cache: bool = True,
@@ -208,17 +218,24 @@ class CLI:
             3. Evaluate generation analysis (not implemented yet):
                 python -m cli evaluate generation
         """
-        ConfigParams.reload(config_path)
+        if config_path and config_dict:
+            raise ValueError(
+                "Only one between config_path and config_dict must be set, not both"
+            )
+        if config_path:
+            ConfigParams.reload(config_path)
+        if config_dict:
+            ConfigParams.override_params(config_dict)
         ConfigParams.fix()
+
         if what == "alignment":
-            evaluate_trace_disalignment(
+            alignment.evaluate.evaluate_trace_disalignment(
                 range_i=range_i, splits=splits, use_cache=use_cache, save_path=save_path
             )
         if what == "sensitivity":
             if not k or not target:
                 raise ValueError("k and target must not be None")
             evaluate_sensitivity(
-                config_path=None,  # TODO: remove
                 log_path=log_path,
                 k=k,
                 target=target,

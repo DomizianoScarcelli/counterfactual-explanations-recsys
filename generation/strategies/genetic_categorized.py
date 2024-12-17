@@ -70,9 +70,7 @@ class CategorizedGeneticStrategy(GeneticStrategy):
             candidate_preds = self.model(candidate_seqs)
             topk_y_primes = topk(
                 logits=candidate_preds, dim=-1, k=self.k, indices=True
-            ).squeeze(
-                0
-            )  # shape: [num_seqs, k]
+            )
 
             y_primes = [
                 labels2cat(topk_y_prime, encode=True) for topk_y_prime in topk_y_primes
@@ -128,9 +126,7 @@ class CategorizedGeneticStrategy(GeneticStrategy):
             pbar=self.verbose,
         )
         preds = self.model(pad_batch(population, MAX_LENGTH))
-        preds = topk(logits=preds, dim=-1, k=self.k, indices=True).squeeze(
-            0
-        )  # [pop_size, k]
+        preds = topk(logits=preds, dim=-1, k=self.k, indices=True) # [pop_size, k]
         cats = [labels2cat(y, encode=True) for y in preds]  # [pop_size, k]
 
         # cats = labels2cat(preds, encode=True)
@@ -149,7 +145,7 @@ class CategorizedGeneticStrategy(GeneticStrategy):
         augmented = self._augment(population, halloffame)
         new_augmented = []
         preds = self.model(pad_batch(augmented, MAX_LENGTH))
-        preds = topk(logits=preds, dim=-1, k=self.k, indices=True).squeeze(0)
+        preds = topk(logits=preds, dim=-1, k=self.k, indices=True)
         cats = [labels2cat(y, encode=True) for y in preds]  # [pop_size, k]
 
         for ind, cat in zip(augmented, cats):
@@ -223,7 +219,7 @@ class CategorizedGeneticStrategy(GeneticStrategy):
     def evaluate_generation(self, examples: CategorizedDataset):  # type: ignore
         gt_preds = topk(logits=self.gt, dim=-1, k=self.k, indices=True).squeeze(0)
         gt_cats = labels2cat(gt_preds, encode=True)
-        #TODO: return also the average score in the evaluation
+        # TODO: return also the average score in the evaluation
         return _evaluate_categorized_generation(
             input_seq=self.input_seq,
             dataset=examples,

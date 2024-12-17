@@ -53,7 +53,7 @@ EOF
                         # Run the script with the JSON string as the --config-dict argument
                         python -m performance_evaluation.automata_learning.evaluate \
                             --use-cache=False \
-                            --save-path="results/temp_automata_learning_eval.csv" \
+                            --save-path="results/evaluate/automata_learning/automata_learning_eval.csv" \
                             --config_dict="$config_json" \
                             --end-i=1
                     done

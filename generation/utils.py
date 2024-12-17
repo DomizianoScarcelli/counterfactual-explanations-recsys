@@ -152,6 +152,11 @@ def labels2cat(
     if isinstance(ys, Tensor):
         ys = ys.tolist()
     if encode:
+        # for y in ys:
+        #     assert isinstance(
+        #         itemid2cat[y], list
+        #     ), f"itemid2cat of y = {y} is not a list: {itemid2cat[y]}"
+        # assert isinstance(ys, list), f"ys is not a list: {ys}"
         return [set(cat2id[cat] for cat in itemid2cat[y]) for y in ys]  # type: ignore
     return [set(itemid2cat[y]) for y in ys]
 

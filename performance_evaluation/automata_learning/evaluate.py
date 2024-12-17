@@ -178,6 +178,8 @@ def evaluate_all(
                 )
             i += 1
 
+def get_log_stats():
+    pass
 
 def main(
     use_cache: bool = False,
@@ -197,7 +199,7 @@ def main(
         ConfigParams.override_params(config_dict)
     ConfigParams.fix()
 
-    if save_path:
+    if save_path and os.path.exists(save_path):
         prev_df = pd.read_csv(save_path)
         future_df = pd.DataFrame(ConfigParams.configs_dict())
         df = pd.concat([prev_df, future_df], ignore_index=True)

@@ -1,3 +1,4 @@
+from performance_evaluation.alignment.utils import pk_exists
 from generation.utils import labels2cat
 import os
 from statistics import mean
@@ -11,7 +12,6 @@ from torch import Tensor
 from tqdm import tqdm
 
 from config import ConfigParams
-from constants import cat2id
 from generation.utils import equal_ys, get_category_map, get_items
 from models.config_utils import generate_model, get_config
 from models.utils import topk, trim
@@ -177,10 +177,14 @@ def model_sensitivity_category(
 
         count += 1
 
-        # TODO: fix pk_exists before removing the comment
-        # if pk_exists(prev_df, primary_key=["i", "position"], consider_config=True):
-        #     # print(f"Skipping i: {i} at pos: {position}...")
-        #     continue
+        future_df = pd.concat(
+            [prev_df, pd.DataFrame({"i": [i], "position": [position], "k": [k]})]
+        )
+        if pk_exists(
+            future_df, primary_key=["i", "position", "k"], consider_config=True
+        ):
+            print(f"Skipping i: {i} at pos: {position}...")
+            continue
 
         pbar.update(1)
 
@@ -222,9 +226,9 @@ def model_sensitivity_category(
         ndcgs.append(mean(ndcg_v))
         counterfactuals.append(mean(counterfactual))
         sequence_list.append(sequence.squeeze().tolist())
-        pbar.set_postfix_str(
-            f"jacc: {mean(jaccards)*100:.2f}%, ndcg: {mean(ndcgs) * 100:.2f}, counterfactuals: {mean(counterfactuals)*100:.2f}%"
-        )
+        # pbar.set_postfix_str(
+        #     f"jacc: {mean(jaccards)*100:.2f}%, ndcg: {mean(ndcgs) * 100:.2f}, counterfactuals: {mean(counterfactuals)*100:.2f}%"
+        # )
 
     data = {
         "i": i_list,
@@ -233,7 +237,7 @@ def model_sensitivity_category(
         "k": [k] * len(i_list),
         "jaccards": [v * 100 for v in jaccards],  # similarity
         "ndcg": [v * 100 for v in ndcgs],  # the higher, the more similar
-        "counterfactuals": counterfactuals,
+        "counterfactuals": [v * 100 for v in counterfactuals],
         "alphabet_len": [len(alphabet)] * len(i_list),
         "sequence": [seq_tostr(x) for x in sequence_list],
         "model": [ConfigParams.MODEL.value] * len(i_list),
@@ -251,7 +255,8 @@ def model_sensitivity_category(
         print(pd.DataFrame(data))
 
 
-# TODO: reflect changes from the categorized one, this must be heavily changed.
+# TODO: This method doesn't work right now, since it has to be edited to reflect the changes
+# from the categorized one, this must be heavily changed.
 def model_sensitivity_simple(
     sequences: SkippableGenerator,
     model: SequentialRecommender,
@@ -365,7 +370,6 @@ def get_stats(
 
 
 def main(
-    config_path: Optional[str] = None,
     log_path: Optional[str] = None,
     k: int = 1,
     target: Literal["item", "category"] = "item",
@@ -376,9 +380,6 @@ def main(
     stats_save_path: Optional[str] = None,
 ):
     # TODO: merge this with the `cli.stats` method, this is cli logic, shouldn't be here.
-    if config_path:
-        ConfigParams.reload(config_path)
-        ConfigParams.fix()
     if mode == "evaluate":
         print(ConfigParams.configs_dict())
         config = get_config(dataset=ConfigParams.DATASET, model=ConfigParams.MODEL)
