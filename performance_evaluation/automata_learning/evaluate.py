@@ -12,7 +12,6 @@ from typing import Optional
 
 import fire
 import pandas as pd
-import toml
 from aalpy.automata.Dfa import Dfa
 from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import os
@@ -22,17 +21,22 @@ from tqdm import tqdm
 from alignment.actions import Action, decode_action
 from automata_learning.learning import learning_pipeline
 from automata_learning.utils import run_automata
-from config import ConfigParams
-from genetic.dataset.generate import generate
-from genetic.dataset.utils import dataset_difference
+from config import ConfigDict, ConfigParams
+from generation.dataset.generate import generate
+from generation.dataset.utils import dataset_difference
 from models.config_utils import generate_model, get_config
 from models.utils import trim
-from performance_evaluation.alignment.utils import (log_run, pk_exists,
-                                                    preprocess_interaction)
-from performance_evaluation.evaluation_utils import (compute_metrics,
-                                                     print_confusion_matrix)
+from performance_evaluation.alignment.utils import (
+    log_run,
+    pk_exists,
+    preprocess_interaction,
+)
+from performance_evaluation.evaluation_utils import (
+    compute_metrics,
+    print_confusion_matrix,
+)
 from type_hints import GoodBadDataset
-from utils import set_seed
+from utils import SeedSetter, seq_tostr
 from utils_classes.generators import DatasetGenerator
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
@@ -54,7 +58,9 @@ def generate_test_dataset(
     Returns:
         A GoodBadDataset tuple.
     """
-    alphabet = [c for c in dfa.get_input_alphabet() if decode_action(c)[0] == Action.SYNC]
+    alphabet = [
+        c for c in dfa.get_input_alphabet() if decode_action(c)[0] == Action.SYNC
+    ]
     return generate(
         interaction=source_sequence,
         good_strat=source_generator.good_strat,
@@ -109,7 +115,7 @@ def evaluate_all(
     while i < end_i:
         pbar.update(1)
         next_sequence = preprocess_interaction(datasets.interactions.peek())
-        next_sequence_str = ",".join([str(c) for c in next_sequence])
+        next_sequence_str = seq_tostr(next_sequence)
         config_dict = ConfigParams.configs_dict()
         new_row = pd.DataFrame({"source_sequence": [next_sequence_str], **config_dict})
         temp_df = pd.concat([prev_df, new_row], ignore_index=True)
@@ -125,9 +131,7 @@ def evaluate_all(
             dataset, interaction = next(datasets)
             # print(f"[DEBUG] dataset is: {dataset}")
             source_sequence = preprocess_interaction(interaction)
-            pbar.set_postfix_str(
-                f"On sequence: {",".join([str(c) for c in next_sequence])}"
-            )
+            pbar.set_postfix_str(f"On sequence: {seq_tostr(next_sequence)}")
             assert isinstance(source_sequence, list) and (
                 all(isinstance(x, Tensor) for x in source_sequence)
                 or all(isinstance(x, int) for x in source_sequence)
@@ -163,7 +167,7 @@ def evaluate_all(
                 "train_dataset_len": train_dataset_len,
                 "test_dataset_len": test_dataset_len,
                 "source_sequence_len": len(source_sequence),
-                "source_sequence": ",".join([str(c) for c in source_sequence]),
+                "source_sequence": seq_tostr(source_sequence),
             }
             if log_path:
                 prev_df = log_run(
@@ -174,21 +178,37 @@ def evaluate_all(
                 )
             i += 1
 
+def get_log_stats():
+    pass
 
 def main(
     use_cache: bool = False,
     config_path: Optional[str] = None,
+    config_dict: Optional[ConfigDict] = None,
     end_i: int = 30,
-    log_path: Optional[str] = None,
+    save_path: Optional[str] = None,
 ):
-    set_seed()
-    ConfigParams.reload(config_path)
+    SeedSetter.set_seed()
+    if config_path and config_dict:
+        raise ValueError(
+            "Only one between config_path and config_dict must be set, not both"
+        )
+    if config_path:
+        ConfigParams.reload(config_path)
+    if config_dict:
+        ConfigParams.override_params(config_dict)
     ConfigParams.fix()
-    config = get_config(dataset=ConfigParams().DATASET, model=ConfigParams().MODEL)
-    oracle: SequentialRecommender = generate_model(config)
-    datasets = DatasetGenerator(
-        config=config, use_cache=use_cache, return_interaction=True
-    )
+
+    if save_path and os.path.exists(save_path):
+        prev_df = pd.read_csv(save_path)
+        future_df = pd.DataFrame(ConfigParams.configs_dict())
+        df = pd.concat([prev_df, future_df], ignore_index=True)
+        # TODO: for now this works only when we are generating a result for the first sequence
+        # I need to extend it to more sequences, but then this has to be put inside `evaluate_all`,
+        # which will be slower since the config, oracle and dataset generator are created anyways.
+        if end_i == 1 and pk_exists(df, primary_key=[], consider_config=True):
+            print(f"Config skipped since it already exists")
+            return
 
     params = {
         "parameters": {
@@ -204,12 +224,17 @@ def main(
           ---Inputs---
           {json.dumps(params, indent=2)}
           ---Config.toml---
-          {json.dumps(toml.load(ConfigParams._config_path), indent=2)}
+          {ConfigParams.print_config(indent=2)}
           -----------------------
           """
     )
+    config = get_config(dataset=ConfigParams().DATASET, model=ConfigParams().MODEL)
+    oracle: SequentialRecommender = generate_model(config)
+    datasets = DatasetGenerator(
+        config=config, use_cache=use_cache, return_interaction=True
+    )
 
-    evaluate_all(datasets=datasets, oracle=oracle, end_i=end_i, log_path=log_path)
+    evaluate_all(datasets=datasets, oracle=oracle, end_i=end_i, log_path=save_path)
 
 
 if __name__ == "__main__":

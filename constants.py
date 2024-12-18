@@ -5,7 +5,7 @@ class InputLength(Enum):
     Bert4Rec = (10, 50)
 
 
-# The minimum and maximum length that a sequence may be during the genetic generation
+# The minimum and maximum length that a sequence may be during the generation generation
 MIN_LENGTH, MAX_LENGTH = InputLength.Bert4Rec.value
 PADDING_CHAR = -1
 
@@ -30,3 +30,5 @@ cat2id = {
     "War": 16,
     "Western": 17,
 }
+
+id2cat = {value: key for key, value in cat2id.items()}

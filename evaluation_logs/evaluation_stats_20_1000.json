@@ -1,1 +1,0 @@
-{"1_mut": {"total_runs": 20, "good_runs": 17, "bad_runs": {"counterfactual_not_found": 3, "malformed_dfa": 0, "other": 0}, "mean_time_dataset_generation": 38.37429091509651, "mean_time_automata_learning": 0.41713546304141774, "mean_time_alignment": 6.272153658025405, "mean_total_time": 45.06358003616333, "min_cost": 1, "max_cost": 2, "mean_cost": 1.8235294117647058}}

@@ -6,22 +6,24 @@ profile = false             # If true it will produce a profiling log with line_
 [settings]
 model = "BERT4Rec"          # Name of the model being used
 dataset = "ML_1M"           # Dataset identifier 
-determinism = true          # Ensure deterministic runs 
+determinism = true         # Ensure deterministic runs 
 train_batch_size = 1        # Batch size for training
 test_batch_size = 1         # Batch size for testing
+topk = 5                  # K to use when sampling topk
 
 [automata]
-include_sink = false # Include sink state in the target states when doing trace alignment
+include_sink = true # Include sink state in the target states when doing trace alignment
 
 [generation]
 strategy = "genetic_categorized"    # [exhaustive, genetic, genetic_categorized]
+similarity_threshold = 0.5             # threshold of similarity (between set of categories) above which two outputs are considered equal
 
 # Settings for the evolutionary algorithm
 [evolution]
-generations = 20            # Number of generations in the evolutionary process
-pop_size = 2048             # Population size for the algorithm
+generations = 40            # Number of generations in the evolutionary process
+pop_size = 8192             # Population size for the algorithm
 halloffame_ratio = 0.2      # Ratio of the population to keep in the Hall of Fame
-fitness_alpha = 0.5
+fitness_alpha = 0.7         # Weight to give to the sequence distance w.r.t. to the label distance
 allowed_mutations = [
     "replace",              # Replace an element in a sequence
     "swap",                 # Swap two elements in a sequence
@@ -30,9 +32,11 @@ allowed_mutations = [
     "shuffle",              # Shuffle a subsequence
     "reverse"               # Reverse a subsequence
 ]                           # List of mutation types allowed in the evolution
+mut_prob = 0.2              
+crossover_prob = 0.2
 
 # Parameters for specific mutation operations
 [evolution.mutations]
-num_additions = 6           # Number of additions allowed per mutation
-num_deletions = 6           # Number of deletions allowed per mutation
-num_replaces = 6            # Number of replacements allowed per mutation
+num_additions = 2           # Number of additions allowed per mutation
+num_deletions = 2           # Number of deletions allowed per mutation
+num_replaces = 2            # Number of replacements allowed per mutation

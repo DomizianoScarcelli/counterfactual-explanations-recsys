@@ -10,19 +10,19 @@ from recbole.trainer import Interaction
 from torch import Tensor
 
 from config import ConfigParams
-from genetic.abstract_generation import GenerationStrategy
-from genetic.dataset.generate import generate
-from genetic.dataset.utils import (get_dataloaders, interaction_to_tensor,
-                                   load_dataset, save_dataset)
-from genetic.exhaustive_strategy import ExhaustiveStrategy
-from genetic.genetic import GeneticStrategy
-from genetic.genetic_categorized import CategorizedGeneticStrategy
-from genetic.mutations import parse_mutations
-from genetic.utils import Items, get_items
+from generation.dataset.generate import generate
+from generation.dataset.utils import (get_dataloaders, interaction_to_tensor,
+                                      load_dataset, save_dataset)
+from generation.mutations import parse_mutations
+from generation.strategies.abstract_strategy import GenerationStrategy
+from generation.strategies.exhaustive import ExhaustiveStrategy
+from generation.strategies.genetic import GeneticStrategy
+from generation.strategies.genetic_categorized import \
+    CategorizedGeneticStrategy
+from generation.utils import get_items
 from models.config_utils import generate_model, get_config
 from models.model_funcs import model_predict
 from type_hints import GoodBadDataset
-from utils import set_seed
 
 
 class SkippableGenerator(ABC):
@@ -101,9 +101,13 @@ class InteractionGenerator(SkippableGenerator):
         data (list): List of data items.
     """
 
-    def __init__(self, config: Config, split: str = "test"):
+    def __init__(
+        self, config: Config, split: str = "test", whole_interaction: bool = False
+    ):
         super().__init__()
         self.config = config
+        self.whole_interaction = whole_interaction
+
         train_data, eval_data, test_data = get_dataloaders(config)
 
         if split == "train":
@@ -149,9 +153,11 @@ class InteractionGenerator(SkippableGenerator):
     def next(self) -> Interaction:
         try:
             data = self.data[self.index]  # type: ignore
+            self.index += 1
+            if self.whole_interaction:
+                return data
             # the actual sequence is the first element of the tuple
             interaction = data[0]
-            self.index += 1
             return interaction
         except IndexError:
             raise StopIteration
@@ -196,7 +202,7 @@ class DatasetGenerator(SkippableGenerator):
     def instantiate_strategy(
         self, seq
     ) -> Tuple[GenerationStrategy, GenerationStrategy]:
-        if self.strategy == "genetic":
+        if self.strategy == "generation":
             sequence = seq.squeeze(0)
             assert len(sequence.shape) == 1, f"Sequence dim must be 1: {sequence.shape}"
             allowed_mutations = parse_mutations(ConfigParams.ALLOWED_MUTATIONS)
@@ -264,7 +270,7 @@ class DatasetGenerator(SkippableGenerator):
             return self.good_strat, self.bad_strat
         else:
             raise NotImplementedError(
-                f"Generations strategy '{self.strategy}' not implemented, choose between 'genetic' and 'exhaustive'"
+                f"Generations strategy '{self.strategy}' not implemented, choose between 'generation' and 'exhaustive'"
             )
 
     def next(self) -> GoodBadDataset | Tuple[GoodBadDataset, Interaction]:
@@ -277,9 +283,9 @@ class DatasetGenerator(SkippableGenerator):
         )
         # TODO: make cache path aware of the strategy
         if os.path.exists(cache_path) and self.use_cache:
-            if self.strategy != "genetic":
+            if self.strategy != "generation":
                 raise NotImplementedError(
-                    "Cache not implemented for dataset not generated with the 'genetic' strategy"
+                    "Cache not implemented for dataset not generated with the 'generation' strategy"
                 )
             dataset = load_dataset(cache_path)
         else:
@@ -372,7 +378,6 @@ class TimedGenerator:
 
 
 if __name__ == "__main__":
-    set_seed()
     config = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
     datasets = DatasetGenerator(config, use_cache=False, strategy="genetic_categorized")
     for dataset in datasets:

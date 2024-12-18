@@ -7,9 +7,9 @@ from torch import Tensor
 from tqdm import tqdm
 
 from config import ConfigParams
-from genetic.genetic import GeneticStrategy
-from genetic.mutations import parse_mutations
-from genetic.utils import Items, _evaluate_generation, get_items
+from generation.mutations import parse_mutations
+from generation.strategies.genetic import GeneticStrategy
+from generation.utils import Items, _evaluate_generation, get_items
 from models.config_utils import generate_model, get_config
 from models.model_funcs import model_predict
 from performance_evaluation.alignment.utils import log_run
@@ -117,7 +117,7 @@ def main():
     model = generate_model(conf)
     alphabet = list(get_items())
     print(f"[Info] Finished creating stuff, starting evaluation...")
-    for current_config in tqdm(permutations, desc="Evaluating genetic..."):
+    for current_config in tqdm(permutations, desc="Evaluating generation..."):
 
         steps = 1 #number of generations to perform for each configuration
         update_config(current_config)

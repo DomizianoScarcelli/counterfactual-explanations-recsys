@@ -6,14 +6,12 @@ from recbole.trainer import Interaction
 from torch import Tensor
 
 from constants import PADDING_CHAR
-from genetic.dataset.utils import interaction_to_tensor
+from generation.dataset.utils import interaction_to_tensor
 from models.utils import replace_padding
-from utils import set_seed
 
 
 class ExtendedBERT4Rec(BERT4Rec):
     def __init__(self, config, dataset):
-        set_seed()
         super().__init__(config=config, dataset=dataset)
         self.eval()
 

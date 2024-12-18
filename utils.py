@@ -1,33 +1,92 @@
 import random
 import time
-from typing import Any, Callable
+from typing import Any, Callable, List, Optional
+from functools import wraps
 
 import numpy as np
 import torch
+from torch import Tensor
 
+import zlib
 from config import ConfigParams
 
 
 def printd(statement, level=1):
     """
-    Prints the statement only if the specified level is lower than the debug 
+    Prints the statement only if the specified level is lower than the debug
     level.
     """
     if ConfigParams.DEBUG and level <= ConfigParams.DEBUG:
         print(statement)
 
 
-def set_seed(seed: int = 42):
-    # print(f"[DEBUG] Setting seed: {seed}")
-    MAX_SEED = 2**32 - 1
-    seed %= (MAX_SEED + 1)
-    if not ConfigParams.DETERMINISM:
-        return
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
+def modulo_div(x: int, max_value: int):
+    while x > max_value:
+        x //= max_value
+    return x
+
+
+class SeedSetter:
+    # Class-level attribute to hold the single instance
+    _instance = None
+    previous_seed = None
+
+    # Private constructor to ensure only one instance is created
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls, *args, **kwargs)
+        return cls._instance
+
+    @classmethod
+    def set_seed(cls, seed: int = 42):
+        # Check if we are trying to change the seed once it's already set
+        if cls.previous_seed is not None:
+            raise ValueError(
+                f"Seed has already been set to {cls.previous_seed}, cannot change it."
+            )
+
+        if not ConfigParams.DETERMINISM:
+            return
+        # Set random seeds
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(seed)
+
+        # Store the seed as previous_seed
+        cls.previous_seed = seed
+
+
+
+def seq_tostr(seq: Tensor | List) -> str:
+    if isinstance(seq, Tensor):
+        assert (
+            seq.dim() == 1
+        ), f"Sequence should be 1-dimensional, its shape is: {seq.shape}"
+        seq = seq.tolist()
+
+    return ",".join(str(x) for x in seq)
+
+
+def timeit(func):
+    """
+    Decorator to measure and print the execution time of a function.
+
+    Args:
+        func (callable): The function to measure.
+    """
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()  # Record the start time
+        result = func(*args, **kwargs)  # Call the original function
+        end_time = time.time()  # Record the end time
+        elapsed_time = end_time - start_time
+        print(f"Function '{func.__name__}' executed in {elapsed_time:.4f} seconds.")
+        return result
+
+    return wrapper
 
 
 class TimedFunction:
@@ -77,5 +136,3 @@ class TimedFunction:
             float: Time in seconds.
         """
         return self.last_time
-
-

@@ -10,7 +10,7 @@ from alignment.actions import (Action, decode_action, encode_action,
 from automata_learning.utils import invert_automata, run_automata
 from config import ConfigParams
 from exceptions import CounterfactualNotFound
-from genetic.utils import get_items
+from generation.utils import get_items
 from type_hints import Trace, TraceSplit
 from utils import printd
 

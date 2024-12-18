@@ -1,11 +1,19 @@
 import matplotlib.pyplot as plt
 import pandas as pd
-
-from performance_evaluation.alignment.evaluate import main as get_stats
+from cli import CLI
 
 # Example data structure
-data = get_stats(mode="stats", log_path="results/different_splits_run_old.csv")
-data = [{"split": x["split"], "good": x["status"].get("good", 0), "bad": x["status"].get("bad", 0) + x["status"].get("CounterfactualNotFound", 0)} for x in data]
+data = CLI().stats(
+    what="alignment", log_path="results/evaluate_alignment_new_conf.csv"
+)
+data = [
+    {
+        "split": x["split"],
+        "good": x["status"].get("good", 0),
+        "bad": x["status"].get("bad", 0) + x["status"].get("CounterfactualNotFound", 0),
+    }
+    for x in data
+]
 data = [x for x in data if x["good"] + x["bad"] >= 10]
 
 # Convert to DataFrame
@@ -34,12 +42,8 @@ for i, (index, row) in enumerate(df.iterrows()):
     bad_pct = (bad / total) * 100 if total > 0 else 0
 
     # Plot stacked bar
-    ax.bar(
-        ["Counts"], [good], color="green", label="Good", alpha=0.8
-    )
-    ax.bar(
-        ["Counts"], [bad], bottom=[good], color="red", label="Bad", alpha=0.8
-    )
+    ax.bar(["Counts"], [good], color="green", label="Good", alpha=0.8)
+    ax.bar(["Counts"], [bad], bottom=[good], color="red", label="Bad", alpha=0.8)
 
     # Add percentages inside bars
     ax.text(
@@ -68,7 +72,9 @@ for i, (index, row) in enumerate(df.iterrows()):
     ax.set_xlabel(f"Counts ({total})")
 
 # Add a shared legend
-fig.legend(["Good", "Bad"], loc="upper center", ncol=2, fontsize=10, bbox_to_anchor=(0.5, 1.05))
+fig.legend(
+    ["Good", "Bad"], loc="upper center", ncol=2, fontsize=10, bbox_to_anchor=(0.5, 1.05)
+)
 
 # Adjust layout for better spacing
 plt.tight_layout()

@@ -5,12 +5,9 @@ from recbole.model.sequential_recommender import SASRec
 from recbole.trainer import Interaction
 from torch import Tensor
 
-from utils import set_seed
-
 
 class ExtendedSASRec(SASRec):
     def __init__(self, config, dataset):
-        set_seed()
         super().__init__(config=config, dataset=dataset)
         self.eval()
 

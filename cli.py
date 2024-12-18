@@ -1,3 +1,5 @@
+from config import ConfigDict
+from utils import SeedSetter
 import json
 import os
 from typing import Any, Dict, List, Literal, Optional, Tuple
@@ -5,29 +7,29 @@ from typing import Any, Dict, List, Literal, Optional, Tuple
 import fire
 
 from config import ConfigParams
-from experiments.model_sensitivity import main as evaluate_sensitivity
-from performance_evaluation.alignment.evaluate import \
-    evaluate_trace_disalignment
-from performance_evaluation.alignment.utils import get_log_stats
+from performance_evaluation import alignment
 from run import run as og_run
+from sensitivity.model_sensitivity import main as evaluate_sensitivity
 from type_hints import RecDataset, RecModel
-from utils import set_seed
 
 
 class CLI:
     def __init__(self):
-        set_seed()
+        SeedSetter.set_seed()
 
     def stats(
         self,
         what: Optional[
-            Literal["alignment", "genetic", "automata_learning", "sensitivity"]
+            Literal["alignment", "generation", "automata_learning", "sensitivity"]
         ] = None,
         config_path: Optional[str] = None,
+        config_dict: Optional[ConfigDict] = None,
         log_path: Optional[str] = None,
         group_by: Optional[List[str] | str] = None,
+        order_by: Optional[List[str] | str] = None,
         metrics: Optional[List[str]] = None,
         filter: Optional[Dict[str, Any]] = None,
+        target: Optional[str] = None,
         save_path: Optional[str] = None,
     ):
         """
@@ -59,17 +61,27 @@ class CLI:
             3. Generate general statistics for a CSV file:
                 python -m cli stats --log_path="path/to/file.csv" --group_by=["column1"] --metrics=["metric1", "metric2"]
         """
-        ConfigParams.reload(config_path)
+
+        if config_path and config_dict:
+            raise ValueError(
+                "Only one between config_path and config_dict must be set, not both"
+            )
+        if config_path:
+            ConfigParams.reload(config_path)
+        if config_dict:
+            ConfigParams.override_params(config_dict)
         ConfigParams.fix()
 
         if what == "sensitivity":
-            if not group_by:
-                group_by = "sequence"
-            if group_by not in ["position", "sequence"]:
-                raise ValueError(
-                    f"group_by should be 'items' or 'sequence', not {group_by}"
-                )
-            evaluate_sensitivity(mode="stats", groupby=group_by[0], stats_save_path=save_path)  # type: ignore
+            return evaluate_sensitivity(
+                mode="stats",
+                groupby=group_by,  # type: ignore
+                orderby=order_by,
+                stats_save_path=save_path,
+                log_path=log_path,
+                target=target,  # type: ignore
+                metrics=metrics,
+            )
 
         if what == "alignment":
             if not log_path:
@@ -86,13 +98,7 @@ class CLI:
             group_by = list(ConfigParams.configs_dict().keys()) + ["split"]
             group_by.remove("timestamp")
 
-            # TODO: temp
-            # group_by.remove("include_sink")
-            # group_by.remove("mutation_params")
-            # group_by.remove("generation_strategy")
-            # group_by.remove("fitness_alpha")
-
-            stats = get_log_stats(
+            stats = alignment.utils.get_log_stats(
                 log_path=log_path,
                 save_path=save_path,
                 group_by=group_by,
@@ -102,7 +108,7 @@ class CLI:
             print(json.dumps(stats, indent=2))
             return stats
 
-        if what == "genetic":
+        if what == "generation":
             # TODO: implement
             raise NotImplementedError()
 
@@ -111,7 +117,7 @@ class CLI:
             raise NotImplementedError()
 
         if not what and log_path and group_by and metrics:
-            get_log_stats(
+            return alignment.utils.get_log_stats(
                 log_path=log_path,
                 group_by=group_by,
                 metrics=metrics,
@@ -167,9 +173,10 @@ class CLI:
     def evaluate(
         self,
         what: Optional[
-            Literal["alignment", "genetic", "automata_learning", "sensitivity"]
+            Literal["alignment", "generation", "automata_learning", "sensitivity"]
         ] = None,
         config_path: Optional[str] = None,
+        config_dict: Optional[ConfigDict] = None,
         k: Optional[int] = None,
         target: Optional[Literal["item", "category"]] = None,
         use_cache: bool = True,
@@ -183,7 +190,7 @@ class CLI:
         Evaluate trace disalignment or other specified tasks.
 
         Args:
-            what (Optional[Literal["alignment", "genetic", "automata_learning", "sensitivity"]]):
+            what (Optional[Literal["alignment", "generation", "automata_learning", "sensitivity"]]):
                 Type of evaluation to perform. Defaults to None.
             config_path (Optional[str]): Path to the configuration file. Defaults to None.
             k (Optional[int]): Number of top results to consider for sensitivity analysis. Required for "sensitivity".
@@ -208,31 +215,42 @@ class CLI:
             2. Evaluate sensitivity analysis with `k=5` for items:
                 python -m cli evaluate sensitivity --k=5 --target="item"
 
-            3. Evaluate genetic analysis (not implemented yet):
-                python -m cli evaluate genetic
+            3. Evaluate generation analysis (not implemented yet):
+                python -m cli evaluate generation
         """
-        ConfigParams.reload(config_path)
+        if config_path and config_dict:
+            raise ValueError(
+                "Only one between config_path and config_dict must be set, not both"
+            )
+        if config_path:
+            ConfigParams.reload(config_path)
+        if config_dict:
+            ConfigParams.override_params(config_dict)
         ConfigParams.fix()
+
         if what == "alignment":
-            evaluate_trace_disalignment(
+            alignment.evaluate.evaluate_trace_disalignment(
                 range_i=range_i, splits=splits, use_cache=use_cache, save_path=save_path
             )
         if what == "sensitivity":
             if not k or not target:
                 raise ValueError("k and target must not be None")
             evaluate_sensitivity(
-                config_path=None,  # TODO: remove
                 log_path=log_path,
                 k=k,
                 target=target,
                 mode="evaluate",
             )
-        if what == "genetic":
+        if what == "generation":
             # TODO: implement
             raise NotImplementedError()
         if what == "automata_learning":
             # TODO: implement
             raise NotImplementedError()
+
+    def utils(self):
+        # TODO: insert csv utils that allow pipe-read and pipe-write to modify the csv files on the fly
+        raise NotImplementedError()
 
 
 if __name__ == "__main__":

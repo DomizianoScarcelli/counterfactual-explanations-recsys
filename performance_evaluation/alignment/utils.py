@@ -8,7 +8,7 @@ from recbole.trainer import Interaction
 from torch import Tensor
 
 from config import ConfigParams
-from genetic.dataset.utils import interaction_to_tensor
+from generation.dataset.utils import interaction_to_tensor
 from models.utils import trim
 
 
@@ -49,6 +49,8 @@ def pk_exists(
         config_keys.remove("timestamp")
         primary_key = primary_key + config_keys
 
+    df = df.copy()  # Avoid modifying the original DataFrame
+    df[primary_key] = df[primary_key].astype(str)
     return df[primary_key].duplicated().any()
 
 
@@ -137,6 +139,7 @@ def metric_mean(df: pd.DataFrame, metric_name: str) -> Union[float, Dict[str, in
     else:
         raise TypeError(f"Unsupported dtype for column '{metric_name}': {column.dtype}")
 
+
 def stats_to_df(stats: List[Dict[str, Any]]) -> DataFrame:
     data = {}
     for stat in stats:
@@ -147,6 +150,7 @@ def stats_to_df(stats: List[Dict[str, Any]]) -> DataFrame:
                 data[key].append(round(value, 3) if isinstance(value, float) else value)
     return DataFrame(data)
 
+
 def get_log_stats(
     log_path: str,
     group_by: List[str],
@@ -155,25 +159,48 @@ def get_log_stats(
     save_path: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
-    Given a path where a log (pandas Datframe) is generated, returns a list of
-    dictionaries containing the statistics. For each group (defined by the
-    fields in group by) a dictionary of the metrics (defined in the `metrics`
-    list of fields) is computed. If `save_path` is not None, the stats are
-    saved to the disk as json.
+    Compute statistics from a log file and optionally save the results.
 
     Args:
-        log_path: [TODO:description]
-        group_by: [TODO:description]
-        metrics: [TODO:description]
-        filter: A dictionary that maps strings (fields names) to values. The
-        stat will be taken only for the groups which field is equal to the
-        defined value. Note that the value has to be compatible with the one of
-        the field. Only one value can be inserted into the filter. Example:
-        {"determinsim": "true"} or {"split": "(None, 1, None)"}
-        save_path: [TODO:description]
+        log_path (str): Path to the CSV file containing the log data.
+        group_by (List[str]): List of column names to group the data by.
+                              Only columns present in the log file are considered.
+        metrics (List[str]): List of column names for which the mean is computed
+                             within each group.
+        filter (Optional[Dict[str, Any]]): A dictionary specifying filters to apply.
+                                           Each key is a column name, and its value
+                                           is the expected value for that column.
+                                           Only rows matching the filter criteria
+                                           are included in the analysis.
+                                           Example: `{"determinism": "true"}`.
+        save_path (Optional[str]): Path to save the resulting statistics as a JSON file.
+                                   If `None`, the results are not saved.
 
     Returns:
-        [TODO:description]
+        List[Dict[str, Any]]: A list of dictionaries containing the computed statistics.
+                              Each dictionary includes:
+                              - Fields from `group_by`
+                              - The number of rows in the group (`rows`)
+                              - The mean value for each metric in `metrics`
+
+    Notes:
+        - Columns specified in `group_by` and `metrics` that are not present in the
+          log file are ignored.
+        - The function filters the data based on the `filter` dictionary before grouping,
+          ensuring only relevant rows are included in the computation.
+        - If `save_path` is provided, the results are saved as a JSON file.
+
+    Example:
+        ```python
+        stats = get_log_stats(
+            log_path="logs.csv",
+            group_by=["model", "dataset"],
+            metrics=["accuracy", "loss"],
+            filter={"split": "test"},
+            save_path="stats.json"
+        )
+        print(stats)
+        ```
     """
     df = pd.read_csv(log_path)
     # Filter `group_by` to include only columns present in the DataFrame
@@ -198,12 +225,12 @@ def get_log_stats(
     return results
 
 
-if __name__ == "__main__":
-    print(
-        get_log_stats(
-            "results/different_splits_run.csv",
-            ["pop_size", "generations"],
-            ["status", "dataset_time", "align_time"],
-            "test",
-        )
-    )
+# if __name__ == "__main__":
+#     print(
+#         get_log_stats(
+#             "results/different_splits_run.csv",
+#             ["pop_size", "generations"],
+#             ["status", "dataset_time", "align_time"],
+#             "test",
+#         )
+#     )

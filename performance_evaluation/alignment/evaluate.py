@@ -9,7 +9,6 @@ from pandas import DataFrame
 from config import ConfigParams
 from performance_evaluation.alignment.utils import get_log_stats, log_run
 from run import run
-from utils import set_seed
 
 
 def evaluate_trace_disalignment(range_i: Tuple[int, Optional[int]],

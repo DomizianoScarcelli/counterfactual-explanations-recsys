@@ -3,13 +3,13 @@ from tqdm import tqdm
 
 from config import ConfigParams
 from constants import PADDING_CHAR
-from genetic.dataset.generate import generate
-from genetic.dataset.utils import (are_dataset_equal, dataset_difference,
-                                   get_dataloaders, interaction_to_tensor)
-from genetic.utils import NumItems
+from generation.dataset.generate import generate
+from generation.dataset.utils import (are_dataset_equal, dataset_difference,
+                                      get_dataloaders, interaction_to_tensor)
+from generation.utils import NumItems
 from models.config_utils import generate_model, get_config
 from type_hints import RecDataset
-from utils_classes.generators import SequenceGenerator
+from utils_classes.generators import DatasetGenerator, SequenceGenerator
 
 
 def test_RangeOfItemsIsCorrect():

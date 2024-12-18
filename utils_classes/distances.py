@@ -1,9 +1,13 @@
-from typing import Set
+from typing import Set, List
+from statistics import mean
+import math
 
 import Levenshtein
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
+
+from type_hints import CategorySet
 
 
 def edit_distance(t1: Tensor, t2: Tensor, normalized: bool = True):
@@ -56,6 +60,34 @@ def self_indicator(seq1: Tensor, seq2: Tensor):
     return float("inf") if torch.all(seq1 == seq2).all() else 0
 
 
+def pairwise_jaccard_sim(
+    a: CategorySet | List[CategorySet], b: CategorySet | List[CategorySet]
+) -> float:
+    jaccards = set()
+    if isinstance(a, list) and isinstance(b, list):
+        if len(a) != len(b):
+            raise ValueError(
+                f"set a and b must be of the same length, got: {len(a)} != {len(b)}"
+            )
+        for a_i, b_i in zip(a, b):
+            jaccards.add(jaccard_sim(a_i, b_i))
+        return mean(jaccards)
+    elif isinstance(a, set) and isinstance(b, list):
+        for b_i in b:
+            jaccards.add(jaccard_sim(a, b_i))
+        return mean(jaccards)
+    elif isinstance(a, list) and isinstance(b, set):
+        for a_i in a:
+            jaccards.add(jaccard_sim(a_i, b))
+        return mean(jaccards)
+    elif isinstance(a, set) and isinstance(b, set):
+        return jaccard_sim(a, b)
+    else:
+        raise ValueError(
+            f"Parameters must be sets of ints or lists of sets of ints, not: {type(a).__name__} and {type(b).__name__}"
+        )
+
+
 def jaccard_sim(a: Set[int] | Tensor, b: Set[int] | Tensor) -> float:
     """
     Computes the Jaccard similarity between two sets or tensors of indices.
@@ -71,7 +103,7 @@ def jaccard_sim(a: Set[int] | Tensor, b: Set[int] | Tensor) -> float:
         raise TypeError(f"Expected a Tensor or Set, but got {type(a).__name__}")
     if not isinstance(b, (Tensor, set)):
         raise TypeError(f"Expected a Tensor or Set, but got {type(b).__name__}")
-    
+
     b_set = set(b.tolist()) if isinstance(b, Tensor) else b
     a_set = set(a.tolist()) if isinstance(a, Tensor) else a
 
@@ -79,6 +111,7 @@ def jaccard_sim(a: Set[int] | Tensor, b: Set[int] | Tensor) -> float:
     union = len(a_set | b_set)
 
     return intersection / union if union > 0 else 0.0
+
 
 def precision_at(k: int, a: Tensor, b: Tensor) -> float:
     """
@@ -97,8 +130,44 @@ def precision_at(k: int, a: Tensor, b: Tensor) -> float:
     intersection = len(a_top_k & b_set)
     return intersection / k if k > 0 else 0.0
 
+#TODO: cambia con https://lightning.ai/docs/torchmetrics/stable/retrieval/normalized_dcg.html
+def ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
+    """
+    Calculate the NDCG for a list of ground truth sets (a)
+    and predicted sets (b).
+    """
 
-def ndcg_at(k: int, a: Tensor, b: Tensor) -> float:
+    def dcg(relevance_scores: List[float]) -> float:
+        """Calculate Discounted Cumulative Gain (DCG)."""
+        return sum(rel / math.log2(idx + 2) for idx, rel in enumerate(relevance_scores))
+
+    def ideal_dcg(relevance_scores: List[float]) -> float:
+        """Calculate Ideal DCG (IDCG)."""
+        sorted_scores = sorted(relevance_scores, reverse=True)
+        return dcg(sorted_scores)
+
+    if len(a) != len(b):
+        raise ValueError("Ground truth and prediction lists must have the same length.")
+
+    total_ndcg = 0.0
+    num_queries = len(a)
+
+    for truth_set, predicted_set in zip(a, b):
+        # Compute relevance scores: 1 if an element of predicted_set is in truth_set, else 0
+        relevance_scores = [1 if item in truth_set else 0 for item in predicted_set]
+
+        # DCG and IDCG
+        actual_dcg = dcg(relevance_scores)
+        max_dcg = ideal_dcg(relevance_scores)
+
+        # NDCG
+        ndcg = actual_dcg / max_dcg if max_dcg > 0 else 0.0
+        total_ndcg += ndcg
+
+    return total_ndcg / num_queries if num_queries > 0 else 0.0
+
+
+def DEPRECATED_ndng_at(k: int, a: Tensor, b: Tensor) -> float:
     """
     Computes the Normalized Discounted Cumulative Gain (NDCG) at k.
 

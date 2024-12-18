@@ -3,7 +3,7 @@ import pickle
 
 from recbole.data.dataset.sequential_dataset import SequentialDataset
 
-from genetic.utils import get_category_map
+from generation.utils import get_category_map
 
 category_map = get_category_map()
 category_map_keys = set(int(a) for a in category_map)

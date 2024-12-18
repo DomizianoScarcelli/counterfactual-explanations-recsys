@@ -3,7 +3,7 @@ import os
 
 import pandas as pd
 
-from genetic.utils import token2id
+from generation.utils import token2id
 from type_hints import RecDataset
 
 
@@ -12,7 +12,7 @@ def create_category_mapping():
     This script processes the MovieLens 1M dataset to create a mapping between internal item IDs and their associated
     categories (genres). The resulting mapping is saved as a JSON file for further use.
 
-    The json file is used by `genetic.utils.get_category_map()`
+    The json file is used by `generation.utils.get_category_map()`
     """
     dataset_path = "dataset/ml-1m"
     item_info_path = os.path.join(dataset_path, "ml-1m.item")

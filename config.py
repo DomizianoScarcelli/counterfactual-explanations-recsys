@@ -1,7 +1,7 @@
 import json
 import os
 import time
-from typing import List, Optional, TypedDict
+from typing import List, Optional, TypedDict, Dict, Any
 
 import toml
 
@@ -9,27 +9,35 @@ from type_hints import RecDataset, RecModel
 
 default_config_path = "configs/config.toml"
 
+
 class DebugConfig(TypedDict):
     debug: int
     profile: bool
-    
+
+
 class SettingsConfig(TypedDict):
     model: str
     dataset: str
     determinism: bool
     train_batch_size: int
     test_batch_size: int
+    topk: int
+
 
 class GenerationConfig(TypedDict):
     strategy: str
+    similarity_threshold: float
+
 
 class AutomataConfig(TypedDict):
     include_sink: bool
+
 
 class MutationConfig(TypedDict):
     num_replaces: int
     num_additions: int
     num_deletions: int
+
 
 class EvolutionConfig(TypedDict):
     generations: int
@@ -38,6 +46,9 @@ class EvolutionConfig(TypedDict):
     fitness_alpha: float
     mutations: MutationConfig
     allowed_mutations: List[str]
+    mut_prob: float
+    crossover_prob: float
+
 
 class ConfigDict(TypedDict):
     debug: DebugConfig
@@ -45,6 +56,26 @@ class ConfigDict(TypedDict):
     settings: SettingsConfig
     automata: AutomataConfig
     evolution: EvolutionConfig
+
+def deep_update(config: dict, override: dict):
+    """
+    Recursively updates the `config` dictionary with values from `override`.
+    If a key in `override` points to a dictionary, it updates the corresponding
+    dictionary in `config` recursively.
+
+    Args:
+        config (dict): The original configuration dictionary.
+        override (dict): The dictionary with the values to update.
+
+    Returns:
+        dict: The updated configuration dictionary.
+    """
+    for key, value in override.items():
+        if isinstance(value, dict) and key in config and isinstance(config[key], dict):
+            deep_update(config[key], value)  # Recurse into the sub-dictionary
+        else:
+            config[key] = value  # Directly update the key in config
+    return config
 
 class ConfigParams:
     _instance = None  # Singleton instance
@@ -63,7 +94,7 @@ class ConfigParams:
         return cls._instance
 
     @classmethod
-    def _parse_config(cls, _dict: Optional[ConfigDict]=None):
+    def _parse_config(cls, _dict: Optional[ConfigDict] = None):
         """Load configuration and set class attributes."""
         if not cls._config_loaded:
             config = toml.load(cls._config_path) if not _dict else _dict
@@ -80,16 +111,20 @@ class ConfigParams:
             cls.DATASET = RecDataset[config["settings"]["dataset"]]
             cls.TRAIN_BATCH_SIZE = config["settings"]["train_batch_size"]
             cls.TEST_BATCH_SIZE = config["settings"]["test_batch_size"]
+            cls.TOPK = config["settings"]["topk"]
 
             cls.INCLUDE_SINK = config["automata"]["include_sink"]
 
             cls.GENERATION_STRATEGY = config["generation"]["strategy"]
+            cls.THRESHOLD = config["generation"]["similarity_threshold"]
 
             cls.GENERATIONS = config["evolution"]["generations"]
             cls.POP_SIZE = config["evolution"]["pop_size"]
             cls.HALLOFFAME_RATIO = config["evolution"]["halloffame_ratio"]
             cls.ALLOWED_MUTATIONS = config["evolution"]["allowed_mutations"]
             cls.FITNESS_ALPHA = config["evolution"]["fitness_alpha"]
+            cls.MUT_PROB = config["evolution"]["mut_prob"]
+            cls.CROSSOVER_PROB = config["evolution"]["crossover_prob"]
 
             cls.NUM_REPLACES = config["evolution"]["mutations"]["num_replaces"]
             cls.NUM_ADDITIONS = config["evolution"]["mutations"]["num_additions"]
@@ -111,8 +146,10 @@ class ConfigParams:
     def reload(cls, path: Optional[str]):
         """Allow setting a custom config file path."""
         if not cls._reloadable:
-            raise ValueError("Config path is no longer reloadable because .fix() has been called.")
-        
+            raise ValueError(
+                "Config path is no longer reloadable because .fix() has been called."
+            )
+
         new_path = path if path else default_config_path
         if new_path == cls._config_path:
             return
@@ -122,11 +159,21 @@ class ConfigParams:
         print(f"Config reloaded from {cls._config_path}")
 
     @classmethod
+    def override_params(cls, override: ConfigDict):
+        config = toml.load(
+            cls._config_path if cls._config_path else default_config_path
+        )
+        config = deep_update(config, override)
+        cls.reload_from_dict(_dict=config)  # type: ignore
+
+    @classmethod
     def reload_from_dict(cls, _dict: ConfigDict):
         """Allow setting a custom config file path."""
         if not cls._reloadable:
-            raise ValueError("Config path is no longer reloadable because .fix() has been called.")
-        
+            raise ValueError(
+                "Config path is no longer reloadable because .fix() has been called."
+            )
+
         cls._config_path = None
         cls._config_loaded = False  # Reset loaded flag to reload the config
         cls._parse_config(_dict=_dict)
@@ -139,30 +186,42 @@ class ConfigParams:
 
     @classmethod
     def get_default_config(cls) -> ConfigDict:
-        return toml.load(default_config_path) #type: ignore
+        return toml.load(default_config_path)  # type: ignore
 
     @classmethod
     def configs_dict(cls, length=1):
         return {
-                "determinism": [ConfigParams.DETERMINISM] * length,
-                "model": [ConfigParams.MODEL.value] * length,
-                "dataset": [ConfigParams.DATASET.value] * length,
-                "pop_size": [ConfigParams.POP_SIZE] * length,
-                "generations": [ConfigParams.GENERATIONS] * length,
-                "halloffame_ratio": [ConfigParams.HALLOFFAME_RATIO] * length,
-                "fitness_alpha": [ConfigParams.FITNESS_ALPHA] * length,
-                "allowed_mutations": [tuple(ConfigParams.ALLOWED_MUTATIONS)] * length,
-                "include_sink": [ConfigParams.INCLUDE_SINK] * length,
-                "mutation_params": [(ConfigParams.NUM_REPLACES, ConfigParams.NUM_ADDITIONS, ConfigParams.NUM_DELETIONS)] * length,
-                "generation_strategy": [ConfigParams.GENERATION_STRATEGY] * length,
-                "timestamp": [ConfigParams.TIMESTAMP] * length}
+            "determinism": [ConfigParams.DETERMINISM] * length,
+            "model": [ConfigParams.MODEL.value] * length,
+            "dataset": [ConfigParams.DATASET.value] * length,
+            "pop_size": [ConfigParams.POP_SIZE] * length,
+            "generations": [ConfigParams.GENERATIONS] * length,
+            "halloffame_ratio": [ConfigParams.HALLOFFAME_RATIO] * length,
+            "fitness_alpha": [ConfigParams.FITNESS_ALPHA] * length,
+            "allowed_mutations": [tuple(ConfigParams.ALLOWED_MUTATIONS)] * length,
+            "include_sink": [ConfigParams.INCLUDE_SINK] * length,
+            "mut_prob": [ConfigParams.MUT_PROB] * length,
+            "crossover_prob": [ConfigParams.CROSSOVER_PROB] * length,
+            "mutation_params": [
+                (
+                    ConfigParams.NUM_REPLACES,
+                    ConfigParams.NUM_ADDITIONS,
+                    ConfigParams.NUM_DELETIONS,
+                )
+            ]
+            * length,
+            "generation_strategy": [ConfigParams.GENERATION_STRATEGY] * length,
+            "jaccard_threshold": [ConfigParams.THRESHOLD] * length,
+            "timestamp": [ConfigParams.TIMESTAMP] * length,
+        }
 
     @classmethod
-    def print_config(cls, indent: Optional[int]=None):
+    def print_config(cls, indent: Optional[int] = None):
         config_dict = cls.configs_dict()
         if indent:
             config_dict = json.dumps(config_dict, indent=indent)
         print(config_dict)
+
 
 # Load default configs
 ConfigParams()

@@ -1,13 +1,13 @@
 import os
 from typing import List, Tuple, Union
 
-from aalpy.automata.Dfa import Dfa, DfaState
+from aalpy.automata.Dfa import Dfa
 from aalpy.learning_algs import run_RPNI
 from torch import Tensor
 
 from alignment.alignment import augment_constraint_automata
 from automata_learning.utils import load_automata
-from genetic.dataset.utils import load_dataset
+from generation.dataset.utils import load_dataset
 from type_hints import GoodBadDataset
 
 
@@ -41,9 +41,7 @@ def _generate_automata(
         print_info=True,
         input_completeness="sink_state",
     )
-    if dfa is None:
-        return
-    return dfa #type: ignore
+    return dfa  # type: ignore
 
 
 def generate_automata_from_dataset(

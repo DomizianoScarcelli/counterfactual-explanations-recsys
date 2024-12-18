@@ -13,18 +13,19 @@ from automata_learning.learning import (generate_single_accepting_sequence_dfa,
 from automata_learning.utils import run_automata
 from config import ConfigParams
 from constants import MAX_LENGTH, MIN_LENGTH
-from genetic.dataset.generate import generate
-from genetic.extended_ea_algorithms import (eaSimpleBatched, indexedCxTwoPoint,
-                                            indexedSelTournament,
-                                            indexedVarAnd)
-from genetic.mutations import (AddMutation, DeleteMutation, ReplaceMutation,
-                               ReverseMutation, ShuffleMutation, SwapMutation,
-                               contains_mutation, remove_mutation)
-from genetic.utils import Items, clone, get_items
+from generation.dataset.generate import generate
+from generation.extended_ea_algorithms import (eaSimpleBatched,
+                                               indexedCxTwoPoint,
+                                               indexedSelTournament,
+                                               indexedVarAnd)
+from generation.mutations import (AddMutation, DeleteMutation, ReplaceMutation,
+                                  ReverseMutation, ShuffleMutation,
+                                  SwapMutation, contains_mutation,
+                                  remove_mutation)
+from generation.utils import Items, clone, get_items
 from models.config_utils import generate_model, get_config
 from models.model_funcs import model_predict
 from models.utils import pad, pad_batch, trim
-from utils import set_seed
 from utils_classes.distances import (cosine_distance, edit_distance,
                                      self_indicator)
 from utils_classes.generators import SequenceGenerator
@@ -76,7 +77,6 @@ def test_contains_exactly_one_source_sequence(model, sequences):
 class TestGeneticDeterminism:
     #TODO: while this passes each time, when asserting determinism with the `test_mapping` dictionary in the real funciton, it doesn't passes.
     def init_vars(self):
-        set_seed()
         config = get_config(dataset=ConfigParams.DATASET, model=ConfigParams.MODEL)
         sequences = SequenceGenerator(config)
         self.input_seq = trim(next(sequences).squeeze(0))
@@ -127,7 +127,6 @@ class TestGeneticDeterminism:
 
     def evaluate_fitness_batch(self, individuals: List[List[int]]) -> List[float]:
         #TODO: add a batch_size mechanism
-        set_seed()
         ALPHA1= 0.5
         ALPHA2 = 1 - ALPHA1
         candidate_seqs = pad_batch(individuals, MAX_LENGTH)
@@ -157,8 +156,7 @@ class TestGeneticDeterminism:
 
     def extracted_mutate(self, seq: List[int], index: int):
         #TODO: this is not the most elegant solution, since the real method is in GeneticGenerationStrategy, but I don't want to instantiate it. 
-        # a solution would be to extract the mutate  operation into the genetic/utils.py file, and then use it in the GeneticGenerationStrategy.mutate
-        set_seed(index)
+        # a solution would be to extract the mutate  operation into the generation/utils.py file, and then use it in the GeneticGenerationStrategy.mutate
         mutations = self.allowed_mutations.copy()
         if not len(seq) < MAX_LENGTH and contains_mutation(AddMutation, mutations):
             mutations = remove_mutation(AddMutation, mutations)
@@ -166,7 +164,6 @@ class TestGeneticDeterminism:
             mutations = remove_mutation(DeleteMutation, mutations)
         mutation = random.choice(mutations)
         result = mutation(deepcopy(seq), self.alphabet, index)
-        set_seed()
         return result
 
     def test_evaluate_fitness_batch_determinism(self):
@@ -214,7 +211,6 @@ class TestGeneticDeterminism:
         sequences.
         """
         self.init_vars()
-        set_seed()
         mutpb = 0.5
         n_gens = 10
 
@@ -237,7 +233,6 @@ class TestGeneticDeterminism:
 
     def test_eaSimpleBatched_determinism(self):
         self.init_vars()
-        set_seed()
         population1, _ = eaSimpleBatched(clone(self.pop1), 
                                         self.toolbox, 
                                         cxpb=0.7,
@@ -245,7 +240,6 @@ class TestGeneticDeterminism:
                                         ngen=self.n_gens,
                                         halloffame=None,
                                         verbose=False)
-        set_seed()
         population2, _ = eaSimpleBatched(clone(self.pop2), 
                                         self.toolbox2, 
                                         cxpb=0.7,
