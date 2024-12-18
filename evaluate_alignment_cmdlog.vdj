@@ -1,0 +1,10 @@
+#!vd -p
+{"sheet": null, "col": null, "row": null, "longname": "open-file", "input": "results/evaluate_alignment_new_conf.csv", "keystrokes": "o", "comment": null}
+{"sheet": "evaluate_alignment_new_conf", "col": "split", "row": "", "longname": "key-col", "input": "", "keystrokes": "!", "comment": "toggle current column as a key column"}
+{"sheet": "evaluate_alignment_new_conf", "col": "status", "row": "", "longname": "key-col", "input": "", "keystrokes": "!", "comment": "toggle current column as a key column"}
+{"sheet": "evaluate_alignment_new_conf", "col": "score", "row": "", "longname": "aggregate-col", "input": "count", "keystrokes": "+", "comment": "add aggregator to current column"}
+{"sheet": "evaluate_alignment_new_conf", "col": "score", "row": "", "longname": "aggregate-col", "input": "mean", "keystrokes": "+", "comment": "add aggregator to current column"}
+{"sheet": "evaluate_alignment_new_conf", "col": "score", "row": "", "longname": "type-float", "input": "", "keystrokes": "%", "comment": "set type of current column to float"}
+{"sheet": "evaluate_alignment_new_conf", "col": "score", "row": "", "longname": "aggregate-col", "input": "mean", "keystrokes": "+", "comment": "add aggregator to current column"}
+{"sheet": "evaluate_alignment_new_conf", "col": "cost", "row": "", "longname": "type-int", "input": "", "keystrokes": "#", "comment": "set type of current column to int"}
+{"sheet": "evaluate_alignment_new_conf", "col": "cost", "row": "", "longname": "aggregate-col", "input": "mean", "keystrokes": "+", "comment": "add aggregator to current column"}

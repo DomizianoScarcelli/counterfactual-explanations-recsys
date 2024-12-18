@@ -4,7 +4,7 @@ from cli import CLI
 
 # Example data structure
 data = CLI().stats(
-    what="alignment", log_path="results/temp_evaluate_alignment.csv"
+    what="alignment", log_path="results/evaluate_alignment_new_conf.csv"
 )
 data = [
     {

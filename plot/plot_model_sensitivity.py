@@ -1,13 +1,13 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 
-data = pd.read_csv("results/stats/sensitivity/edit_model_sensitivity_cat_new_columns.csv")
+data = pd.read_csv("results/stats/sensitivity/edit_model_sensitivity_cat.csv")
 
 
 # Filter relevant columns
 x = ["position"]
 # y = ['all_changes', 'any_changes', 'jaccards']
-y = ["ndcg", "not counterfactual", "jaccards"]
+y = ["ndcg", "not counterfactuals", "jaccards"]
 columns_to_use = x + y
 # Group data by 'k'
 k_values = data["k"].unique() if "k" in data else None

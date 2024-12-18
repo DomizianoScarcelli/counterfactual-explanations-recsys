@@ -130,18 +130,18 @@ def precision_at(k: int, a: Tensor, b: Tensor) -> float:
     intersection = len(a_top_k & b_set)
     return intersection / k if k > 0 else 0.0
 
-
+#TODO: cambia con https://lightning.ai/docs/torchmetrics/stable/retrieval/normalized_dcg.html
 def ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
     """
     Calculate the NDCG for a list of ground truth sets (a)
     and predicted sets (b).
     """
 
-    def dcg(relevance_scores: List[float] | List[int]) -> float:
+    def dcg(relevance_scores: List[float]) -> float:
         """Calculate Discounted Cumulative Gain (DCG)."""
         return sum(rel / math.log2(idx + 2) for idx, rel in enumerate(relevance_scores))
 
-    def ideal_dcg(relevance_scores: List[float] | List[int]) -> float:
+    def ideal_dcg(relevance_scores: List[float]) -> float:
         """Calculate Ideal DCG (IDCG)."""
         sorted_scores = sorted(relevance_scores, reverse=True)
         return dcg(sorted_scores)
@@ -152,9 +152,9 @@ def ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
     total_ndcg = 0.0
     num_queries = len(a)
 
-    for truth_set in a:
-        # The score between two category sets is the number of common elements
-        relevance_scores = [len(truth_set & predicted_set) for predicted_set in b]
+    for truth_set, predicted_set in zip(a, b):
+        # Compute relevance scores: 1 if an element of predicted_set is in truth_set, else 0
+        relevance_scores = [1 if item in truth_set else 0 for item in predicted_set]
 
         # DCG and IDCG
         actual_dcg = dcg(relevance_scores)

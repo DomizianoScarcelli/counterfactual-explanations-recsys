@@ -116,35 +116,6 @@ def model_sensitivity_category(
         - Supports only the MovieLens 1M dataset (`ML_1M`). Throws a `NotImplementedError` for other datasets.
 
     """
-
-    def cat_all_changes(gt: Set, new: Set):
-        """
-        Returns True if all the labels in gt are changed in new, False otherwise
-            gt: {Horror, Thriller}
-            new: {Drama}
-            changes: True
-
-            gt: {Horror, Thriller}
-            new: {Drama, Thriller}
-            changes: False
-        """
-        return not gt & new
-
-    def cat_at_least_changes(gt: Set, new: Set):
-        """
-        Returns True if at least one of the the labels in gt are changed in new, False otherwise
-            gt: [Horror, Triller]
-            new: [Drama]
-            changes: True
-
-            gt: [Horror, Triller]
-            new: [Drama, Triller]
-            changes: True
-        """
-        return len(gt - new) != 0
-
-    itemid2cat = get_category_map()
-
     seen_idx = set()
     prev_df = pd.DataFrame({})
     if log_path and os.path.exists(log_path):
@@ -163,7 +134,7 @@ def model_sensitivity_category(
     else:
         raise NotImplementedError(f"Dataset {ConfigParams.DATASET} not supported yet!")
     i = 0
-    start_i, end_i = 0, 200
+    start_i, end_i = 0, 130
     pbar = tqdm(
         total=end_i - start_i, desc=f"Testing model sensitivity on position {position}"
     )
@@ -177,14 +148,15 @@ def model_sensitivity_category(
 
         count += 1
 
-        future_df = pd.concat(
-            [prev_df, pd.DataFrame({"i": [i], "position": [position], "k": [k]})]
-        )
-        if pk_exists(
-            future_df, primary_key=["i", "position", "k"], consider_config=True
-        ):
-            print(f"Skipping i: {i} at pos: {position}...")
-            continue
+        if log_path:
+            future_df = pd.concat(
+                [prev_df, pd.DataFrame({"i": [i], "position": [position], "k": [k]})]
+            )
+            if pk_exists(
+                future_df, primary_key=["i", "position", "k"], consider_config=False
+            ):
+                print(f"Skipping i: {i} at pos: {position}...")
+                continue
 
         pbar.update(1)
 
@@ -203,7 +175,6 @@ def model_sensitivity_category(
             logits=out_primes, k=k, dim=-1, indices=True
         )  # [n_items, k]
 
-        # TODO: this and out_cat must be rivisited, is the content really what you need?
         out_primes_cat: List[List[CategorySet]] = [
             labels2cat(topk_out_prime) for topk_out_prime in topk_out_primes  # type: ignore
         ]  # [n_items, k]
@@ -218,7 +189,8 @@ def model_sensitivity_category(
             assert len(y) == len(y_prime) == k
 
             jaccard.append(pairwise_jaccard_sim(y, y_prime))
-            counterfactual.append(not equal_ys(y, y_prime))
+            equal = equal_ys(y, y_prime, return_score=False)
+            counterfactual.append(not equal)
             ndcg_v.append(ndcg(y, y_prime))
 
         i_list.append(i)
