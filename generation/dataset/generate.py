@@ -51,4 +51,14 @@ def generate(
         bad_strat.replace_alphabet(alphabet)
     good_examples = good_strat.generate()
     bad_examples = bad_strat.generate()
+    # print(
+    #     f"=================================GOOD DATASET================================="
+    # )
+    # for _, v in good_examples:
+    #     print(f"Good {v}")
+    # print(
+    #     f"=================================BAD DATASET================================="
+    # )
+    # for _, v in bad_examples:
+    #     print(f"Bad {v}")
     return good_examples, bad_examples

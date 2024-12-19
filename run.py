@@ -1,3 +1,4 @@
+from constants import cat2id
 from models.utils import pad
 from constants import MAX_LENGTH
 from generation.utils import labels2cat
@@ -173,18 +174,25 @@ CONFIG
         run_log["i"] = i
 
         source_sequence: List[Tensor] = preprocess_interaction(interaction)  # type: ignore
-        gt_preds = model(pad(source_sequence, MAX_LENGTH).unsqueeze(0))  # type: ignore
+        if ConfigParams.GENERATION_STRATEGY != "targeted":
+            gt_preds = model(pad(source_sequence, MAX_LENGTH).unsqueeze(0))  # type: ignore
 
-        source_gt = labels2cat(
-            topk(logits=gt_preds, k=k, dim=-1, indices=True).squeeze(0), encode=True
-        )
+            source_gt = labels2cat(
+                topk(logits=gt_preds, k=k, dim=-1, indices=True).squeeze(0), encode=True
+            )
+        else:
+            if not ConfigParams.TARGET_CAT:
+                raise ValueError("target must not be None if strategy is 'targeted'")
+            source_gt = [
+                {cat2id[cat] for cat in ConfigParams.TARGET_CAT} for _ in range(k)
+            ]
 
         # TODO: I don't  think this is useful now, test if run works with the not-categorized dataset
         # if isinstance(datasets.generator.good_strat, CategorizedGeneticStrategy):  # type: ignore
         #     source_gt = set(label2cat(source_gt, encode=True))  # type: ignore
 
         run_log["source"] = seq_tostr(source_sequence)
-        run_log["gt"] = source_gt if isinstance(source_gt, int) else str(source_gt)
+        run_log["gt"] = str(source_gt)
         for split in splits:
             run_log["split"] = str(split)
             split = split.parse_nan(source_sequence)
@@ -217,11 +225,11 @@ CONFIG
                 encode=True,
             )
 
-            run_log["aligned_gt"] = (
-                aligned_gt if isinstance(aligned_gt, int) else str(aligned_gt)
-            )
+            run_log["aligned_gt"] = str(aligned_gt)
 
             is_good, score = equal_ys(source_gt, aligned_gt, return_score=True)  # type: ignore
+            if ConfigParams.GENERATION_STRATEGY == "targeted":
+                is_good = not is_good
             run_log["score"] = score
             if is_good:
                 run_log["status"] = "bad"

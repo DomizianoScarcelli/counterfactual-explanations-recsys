@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Set, Tuple, TypeAlias
+from typing import List, Set, Tuple, TypeAlias, Literal
 
 from aalpy.automata.Dfa import DfaState
 from torch import Tensor
@@ -24,6 +24,10 @@ PathInfo: TypeAlias = Tuple[
 PathsQueue: TypeAlias = List[PathInfo]
 
 
+StrategyStr: TypeAlias = Literal[
+    "genetic", "brute_force", "targeted", "genetic_categorized"
+]
+
 class RecDataset(Enum):
     ML_1M = "ml-1m"
 
@@ -31,3 +35,5 @@ class RecDataset(Enum):
 class RecModel(Enum):
     BERT4Rec = "BERT4Rec"
     SASRec = "SASRec"
+
+

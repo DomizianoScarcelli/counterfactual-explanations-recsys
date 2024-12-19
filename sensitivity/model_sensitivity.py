@@ -21,7 +21,7 @@ from utils import seq_tostr
 from utils_classes.distances import (
     jaccard_sim,
     DEPRECATED_ndng_at,
-    ndcg,
+    intersection_weighted_ndcg,
     pairwise_jaccard_sim,
     precision_at,
 )
@@ -191,7 +191,7 @@ def model_sensitivity_category(
             jaccard.append(pairwise_jaccard_sim(y, y_prime))
             equal = equal_ys(y, y_prime, return_score=False)
             counterfactual.append(not equal)
-            ndcg_v.append(ndcg(y, y_prime))
+            ndcg_v.append(intersection_weighted_ndcg(y, y_prime))
 
         i_list.append(i)
         jaccards.append(mean(jaccard))

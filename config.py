@@ -5,7 +5,7 @@ from typing import List, Optional, TypedDict, Dict, Any
 
 import toml
 
-from type_hints import RecDataset, RecModel
+from type_hints import RecDataset, RecModel, StrategyStr
 
 default_config_path = "configs/config.toml"
 
@@ -41,6 +41,7 @@ class MutationConfig(TypedDict):
 
 class EvolutionConfig(TypedDict):
     generations: int
+    target_cat: List[str]
     pop_size: int
     halloffame_ratio: float
     fitness_alpha: float
@@ -56,6 +57,7 @@ class ConfigDict(TypedDict):
     settings: SettingsConfig
     automata: AutomataConfig
     evolution: EvolutionConfig
+
 
 def deep_update(config: dict, override: dict):
     """
@@ -76,6 +78,7 @@ def deep_update(config: dict, override: dict):
         else:
             config[key] = value  # Directly update the key in config
     return config
+
 
 class ConfigParams:
     _instance = None  # Singleton instance
@@ -119,6 +122,11 @@ class ConfigParams:
             cls.THRESHOLD = config["generation"]["similarity_threshold"]
 
             cls.GENERATIONS = config["evolution"]["generations"]
+            cls.TARGET_CAT = (
+                config["evolution"]["target_cat"]
+                if "target_cat" in config["evolution"]
+                else None
+            )
             cls.POP_SIZE = config["evolution"]["pop_size"]
             cls.HALLOFFAME_RATIO = config["evolution"]["halloffame_ratio"]
             cls.ALLOWED_MUTATIONS = config["evolution"]["allowed_mutations"]
@@ -194,6 +202,7 @@ class ConfigParams:
             "determinism": [ConfigParams.DETERMINISM] * length,
             "model": [ConfigParams.MODEL.value] * length,
             "dataset": [ConfigParams.DATASET.value] * length,
+            "target_cat": [ConfigParams.TARGET_CAT] * length,
             "pop_size": [ConfigParams.POP_SIZE] * length,
             "generations": [ConfigParams.GENERATIONS] * length,
             "halloffame_ratio": [ConfigParams.HALLOFFAME_RATIO] * length,

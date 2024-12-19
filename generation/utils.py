@@ -1,4 +1,4 @@
-from utils_classes.distances import ndcg
+from utils_classes.distances import intersection_weighted_ndcg
 import json
 import os
 import pickle
@@ -52,7 +52,7 @@ def _compare_set_ys(
     if isinstance(y2, set):
         y2 = [y2]
 
-    score = ndcg(y1, y2)
+    score = intersection_weighted_ndcg(y1, y2)
     equal = score >= ConfigParams.THRESHOLD
     if return_score:
         return equal, score

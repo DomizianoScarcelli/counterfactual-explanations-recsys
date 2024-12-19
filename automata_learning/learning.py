@@ -80,6 +80,13 @@ def learning_pipeline(source: List[Tensor] | List[int], dataset: GoodBadDataset)
     assert isinstance(source[0], int)
     a_dfa = generate_automata_from_dataset(dataset, load_if_exists=False)
     a_dfa_aug = augment_constraint_automata(a_dfa, source)  # type: ignore
+
+    # NOTE: debug info about what the automata is doing
+    good_label = dataset[0][0][1]
+    bad_label = dataset[1][0][1]
+    print(
+        f"[DEBUG INFO] Once inverted, the automata will accept traces with the label similar to {bad_label} (target), and reject labels similar to {good_label} (starting point)"
+    )
     return a_dfa_aug
 
 

@@ -1,12 +1,14 @@
 from typing import Set, List
 from statistics import mean
 import math
+from torchmetrics.retrieval import RetrievalNormalizedDCG
 
 import Levenshtein
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 
+from config import ConfigParams
 from type_hints import CategorySet
 
 
@@ -130,14 +132,15 @@ def precision_at(k: int, a: Tensor, b: Tensor) -> float:
     intersection = len(a_top_k & b_set)
     return intersection / k if k > 0 else 0.0
 
-#TODO: cambia con https://lightning.ai/docs/torchmetrics/stable/retrieval/normalized_dcg.html
-def ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
+
+# TODO: cambia con https://lightning.ai/docs/torchmetrics/stable/retrieval/normalized_dcg.html
+def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
     """
     Calculate the NDCG for a list of ground truth sets (a)
     and predicted sets (b).
     """
 
-    def dcg(relevance_scores: List[float]) -> float:
+    def dcg(relevance_scores: List[float] | List[int]) -> float:
         """Calculate Discounted Cumulative Gain (DCG)."""
         return sum(rel / math.log2(idx + 2) for idx, rel in enumerate(relevance_scores))
 
@@ -146,25 +149,25 @@ def ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
         sorted_scores = sorted(relevance_scores, reverse=True)
         return dcg(sorted_scores)
 
+    def rel(truth_set: Set[int], preds_set: Set[int]) -> float:
+        intersection = len(truth_set & preds_set)
+        if ConfigParams.GENERATION_STRATEGY == "targeted":
+            return intersection >= 1
+        return intersection
+
+
     if len(a) != len(b):
         raise ValueError("Ground truth and prediction lists must have the same length.")
 
-    total_ndcg = 0.0
-    num_queries = len(a)
+    # Compute relevance scores: 1 if an element of predicted_set is in truth_set, else 0
+    relevance_scores = [rel(truth, pred) for truth, pred in zip(a, b)]
+    ideal_relevance_score = [max(len(truth), len(pred)) for truth, pred in zip(a, b)]
 
-    for truth_set, predicted_set in zip(a, b):
-        # Compute relevance scores: 1 if an element of predicted_set is in truth_set, else 0
-        relevance_scores = [1 if item in truth_set else 0 for item in predicted_set]
-
-        # DCG and IDCG
-        actual_dcg = dcg(relevance_scores)
-        max_dcg = ideal_dcg(relevance_scores)
-
-        # NDCG
-        ndcg = actual_dcg / max_dcg if max_dcg > 0 else 0.0
-        total_ndcg += ndcg
-
-    return total_ndcg / num_queries if num_queries > 0 else 0.0
+    actual_dcg = dcg(relevance_scores)
+    ideal_dcg = dcg(ideal_relevance_score)
+    return actual_dcg / ideal_dcg if ideal_dcg > 0 else 0.0
+    # print(f"Rels for {a} and {b}", relevance_scores, max_dcg, actual_dcg, ndcg)
+    # return ndcg
 
 
 def DEPRECATED_ndng_at(k: int, a: Tensor, b: Tensor) -> float:
@@ -179,6 +182,7 @@ def DEPRECATED_ndng_at(k: int, a: Tensor, b: Tensor) -> float:
     Returns:
         float: NDCG@k score.
     """
+    raise DeprecationWarning()
     b_set = set(b.tolist())
     gains = torch.tensor(
         [1.0 if a[i].item() in b_set else 0.0 for i in range(min(k, len(a)))]

@@ -178,7 +178,7 @@ class CLI:
         config_path: Optional[str] = None,
         config_dict: Optional[ConfigDict] = None,
         k: Optional[int] = None,
-        target: Optional[Literal["item", "category"]] = None,
+        label_type: Optional[Literal["item", "category"]] = None,
         use_cache: bool = True,
         range_i: Tuple[int, Optional[int]] = (0, None),
         log_path: Optional[str] = None,
@@ -233,12 +233,12 @@ class CLI:
                 range_i=range_i, splits=splits, use_cache=use_cache, save_path=save_path
             )
         if what == "sensitivity":
-            if not k or not target:
+            if not k or not label_type:
                 raise ValueError("k and target must not be None")
             evaluate_sensitivity(
                 log_path=log_path,
                 k=k,
-                target=target,
+                target=label_type,
                 mode="evaluate",
             )
         if what == "generation":

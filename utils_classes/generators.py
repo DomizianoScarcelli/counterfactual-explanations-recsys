@@ -11,18 +11,22 @@ from torch import Tensor
 
 from config import ConfigParams
 from generation.dataset.generate import generate
-from generation.dataset.utils import (get_dataloaders, interaction_to_tensor,
-                                      load_dataset, save_dataset)
+from generation.dataset.utils import (
+    get_dataloaders,
+    interaction_to_tensor,
+    load_dataset,
+    save_dataset,
+)
 from generation.mutations import parse_mutations
 from generation.strategies.abstract_strategy import GenerationStrategy
 from generation.strategies.exhaustive import ExhaustiveStrategy
 from generation.strategies.genetic import GeneticStrategy
-from generation.strategies.genetic_categorized import \
-    CategorizedGeneticStrategy
+from generation.strategies.targeted import TargetedGeneticStrategy
+from generation.strategies.genetic_categorized import CategorizedGeneticStrategy
 from generation.utils import get_items
 from models.config_utils import generate_model, get_config
 from models.model_funcs import model_predict
-from type_hints import GoodBadDataset
+from type_hints import GoodBadDataset, StrategyStr
 
 
 class SkippableGenerator(ABC):
@@ -179,7 +183,8 @@ class DatasetGenerator(SkippableGenerator):
     def __init__(
         self,
         config: Optional[Config] = None,
-        strategy: str = ConfigParams.GENERATION_STRATEGY,
+        strategy: StrategyStr = ConfigParams.GENERATION_STRATEGY,  # type: ignore
+        target: Optional[List[str]] = ConfigParams.TARGET_CAT,
         use_cache: bool = False,
         return_interaction: bool = False,
         alphabet: Optional[List[int]] = None,
@@ -194,6 +199,7 @@ class DatasetGenerator(SkippableGenerator):
         self.return_interaction = return_interaction
         self.strategy = strategy
         self.alphabet = alphabet if alphabet else list(get_items())
+        self.target = target
 
     def skip(self):
         super().skip()
@@ -202,7 +208,7 @@ class DatasetGenerator(SkippableGenerator):
     def instantiate_strategy(
         self, seq
     ) -> Tuple[GenerationStrategy, GenerationStrategy]:
-        if self.strategy == "generation":
+        if self.strategy == "genetic":
             sequence = seq.squeeze(0)
             assert len(sequence.shape) == 1, f"Sequence dim must be 1: {sequence.shape}"
             allowed_mutations = parse_mutations(ConfigParams.ALLOWED_MUTATIONS)
@@ -254,7 +260,41 @@ class DatasetGenerator(SkippableGenerator):
                 alphabet=self.alphabet,
             )
             return self.good_strat, self.bad_strat
-        elif self.strategy == "exhaustive":
+        elif self.strategy == "targeted":
+            if self.target is None:
+                raise ValueError("target must not be None if strategy is 'targeted'")
+            sequence = seq.squeeze(0)
+            assert len(sequence.shape) == 1, f"Sequence dim must be 1: {sequence.shape}"
+            allowed_mutations = parse_mutations(ConfigParams.ALLOWED_MUTATIONS)
+
+            self.good_strat = TargetedGeneticStrategy(
+                input_seq=sequence,
+                target=set(self.target),
+                model=lambda x: model_predict(seq=x, model=self.model, prob=True),
+                allowed_mutations=allowed_mutations,
+                pop_size=ConfigParams.POP_SIZE,
+                good_examples=True,
+                generations=ConfigParams.GENERATIONS,
+                halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
+                alphabet=self.alphabet,
+            )
+            self.bad_strat = TargetedGeneticStrategy(
+                input_seq=sequence,
+                target=set(self.target),
+                model=lambda x: model_predict(seq=x, model=self.model, prob=True),
+                allowed_mutations=allowed_mutations,
+                pop_size=ConfigParams.POP_SIZE,
+                good_examples=False,
+                generations=ConfigParams.GENERATIONS,
+                halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
+                alphabet=self.alphabet,
+            )
+            return (
+                self.bad_strat,
+                self.good_strat,
+            )  # invert the good and the bad since I want to obtain points similar to the target (the label in good)
+
+        elif self.strategy == "brute_force":
             self.good_strat = ExhaustiveStrategy(
                 input_seq=seq,
                 model=self.model,
@@ -378,7 +418,19 @@ class TimedGenerator:
 
 
 if __name__ == "__main__":
-    config = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
-    datasets = DatasetGenerator(config, use_cache=False, strategy="genetic_categorized")
+    confg = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
+    datasets = DatasetGenerator(confg, use_cache=False, strategy="targeted")
     for dataset in datasets:
         print(f"Finished dataset, next one")
+        good, bad = dataset
+        print(
+            f"=================================GOOD DATASET================================="
+        )
+        for t, v in good:
+            print(f"Good {t}      {v}\n")
+        print(
+            f"=================================BAD DATASET================================="
+        )
+        for t, v in bad:
+            print(f"Bad {t}      {v}\n")
+        break

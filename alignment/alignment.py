@@ -5,8 +5,7 @@ from aalpy.automata.Dfa import Dfa, DfaState
 from torch import Tensor
 
 from alignment.a_star import faster_a_star
-from alignment.actions import (Action, decode_action, encode_action,
-                               print_action)
+from alignment.actions import Action, decode_action, encode_action, print_action
 from automata_learning.utils import invert_automata, run_automata
 from config import ConfigParams
 from exceptions import CounterfactualNotFound
@@ -164,7 +163,10 @@ def compute_alignment_cost(alignment: Tuple[int]) -> int:
         action_type, _ = decode_action(encoded_e)
         if action_type in {Action.ADD, Action.DEL}:
             # If the current action pairs with the previous action (ADD-DEL or DEL-ADD), skip increment
-            if prev_action_type in {Action.ADD, Action.DEL} and action_type != prev_action_type:
+            if (
+                prev_action_type in {Action.ADD, Action.DEL}
+                and action_type != prev_action_type
+            ):
                 prev_action_type = None  # Reset to avoid counting overlapping pairs
                 continue
             cost += 1
@@ -183,20 +185,23 @@ def trace_alignment(a_dfa_aug: Dfa, trace_split: Union[Trace, TraceSplit]):
 
     if not (isinstance(trace_split, tuple) and len(trace_split) == 3):
         trace_split = ([], trace_split, [])
-    safe_trace_split: TraceSplit = tuple([int(c.item()) if isinstance(
-        c, Tensor) else c for c in trace] for trace in trace_split)
+
+    safe_trace_split: TraceSplit = tuple(
+        [int(c.item()) if isinstance(c, Tensor) else c for c in trace]
+        for trace in trace_split
+    )
 
     a_dfa_aug.reset_to_initial()
 
     min_length = len(safe_trace_split[0] + safe_trace_split[1])
     max_length = min_length
 
-    alignment = faster_a_star(dfa=a_dfa_aug,
-                              trace_split=safe_trace_split,
-                              min_alignment_length=min_length,
-                              max_alignment_length=max_length)
-
-
+    alignment = faster_a_star(
+        dfa=a_dfa_aug,
+        trace_split=safe_trace_split,
+        min_alignment_length=min_length,
+        max_alignment_length=max_length,
+    )
 
     if alignment is None:
         raise CounterfactualNotFound("No best path found")
@@ -214,7 +219,7 @@ def trace_alignment(a_dfa_aug: Dfa, trace_split: Union[Trace, TraceSplit]):
 def trace_disalignment(a_dfa_aug: Dfa, trace_split: Union[Trace, TraceSplit]):
     """
     It finds the changes with minimum cost to do to a trace accepted by the automata in order for it to not be
-    accepted anymore. 
+    accepted anymore.
     """
     a_dfa_aug = deepcopy(a_dfa_aug)
     invert_automata(a_dfa_aug)
