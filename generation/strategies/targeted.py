@@ -102,11 +102,19 @@ class TargetedGeneticStrategy(GeneticStrategy):
                     self.input_seq, candidate_seq, normalized=True
                 )  # [0,MAX_LENGTH] if not normalized, [0,1] if normalized
                 cat_dist_from_gt = 1 - intersection_weighted_ndcg(ys, y_primes[n_i])
-                cat_dist_from_target = 1 - intersection_weighted_ndcg(target_ys, y_primes[n_i])
+                cat_dist_from_target = 1 - intersection_weighted_ndcg(
+                    target_ys, y_primes[n_i]
+                )
 
                 cat_dist = cat_dist_from_target
 
                 # 0 if different, inf if equal
+                assert (
+                    self.input_seq.dim() == 1
+                ), f"input seq wrong shape: {self.input_seq.shape}"
+                assert (
+                    candidate_seq.dim() == 1
+                ), f"candidate seq wrong shape: {candidate_seq.shape}"
                 self_ind = self_indicator(self.input_seq, candidate_seq)
                 if not self.good_examples:
                     cat_dist = mean([(1 - cat_dist), (1 - cat_dist_from_gt)])
@@ -191,34 +199,32 @@ class TargetedGeneticStrategy(GeneticStrategy):
         clean_pop = self._clean(population)
         label_eval, seq_eval = self.evaluate_generation(clean_pop)
 
-        gt_cats = [self.target for _ in range(self.k)]
-        source_point = (self.input_seq, gt_cats)
-
         # Remove any copy of the source point from the good or bad dataset.
         new_pop = [
             (ind, label)
             for ind, label in clean_pop
-            if ind.tolist() != source_point[0].tolist()
+            if ind.tolist() != self.input_seq.tolist()
         ]
         if len(new_pop) < len(clean_pop):
             self.print(
                 f"Source point was in the dataset {len(clean_pop) - len(new_pop)} times!, removing it"
             )
         clean_pop = new_pop
-
-        # If source point is not in good datset, add just one instance back
-        if (
-            self.good_examples
-            and len(
-                [
-                    ind
-                    for ind, _ in clean_pop
-                    if ind.tolist() == source_point[0].tolist()
-                ]
-            )
-            == 0
-        ):
-            clean_pop.append(source_point)
+        
+        #NOTE: I don't think this is needed
+        # # If source point is not in good datset, add just one instance back
+        # if (
+        #     self.good_examples
+        #     and len(
+        #         [
+        #             ind
+        #             for ind, _ in clean_pop
+        #             if ind.tolist() == source_point[0].tolist()
+        #         ]
+        #     )
+        #     == 0
+        # ):
+        #     clean_pop.append(source_point)
 
         label_eval, seq_eval = self.evaluate_generation(clean_pop)
         self.print(

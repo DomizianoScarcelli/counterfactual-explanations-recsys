@@ -247,7 +247,10 @@ def _evaluate_categorized_generation(
     for seq, _ in dataset:
         distances_norm.append(edit_distance(input_seq, seq))
         distances_nnorm.append(edit_distance(input_seq, seq, normalized=False))
-    return (equal_cats / len(dataset)), (
-        mean(distances_norm),
-        mean(distances_nnorm),
-    )
+    if len(dataset) == 0:
+        # TODO: is it correct to raise this exception?
+        raise RuntimeError(
+            "Generated dataset has length 0, change the dataset generation parameters to be more loose"
+        )
+    means = (mean(distances_norm), mean(distances_nnorm))
+    return (equal_cats / len(dataset)), (means)

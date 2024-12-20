@@ -9,6 +9,7 @@ import torch.nn.functional as F
 from torch import Tensor, nn
 
 from config import ConfigParams
+from constants import PADDING_CHAR
 from type_hints import CategorySet
 
 
@@ -57,6 +58,9 @@ def self_indicator(seq1: Tensor, seq2: Tensor):
     assert (
         len(seq2.shape) == 1
     ), f"Tensor should have a single dimension, shape is: {seq2.shape}"
+    assert (
+        PADDING_CHAR not in seq1 and PADDING_CHAR not in seq2
+    ), "Sequences should not be padded when compared with self_indicator"
     if len(seq1) != len(seq2):
         return 0
     return float("inf") if torch.all(seq1 == seq2).all() else 0
@@ -154,7 +158,6 @@ def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
         if ConfigParams.GENERATION_STRATEGY == "targeted":
             return intersection >= 1
         return intersection
-
 
     if len(a) != len(b):
         raise ValueError("Ground truth and prediction lists must have the same length.")

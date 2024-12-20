@@ -1,7 +1,7 @@
 from models.utils import trim
 from utils_classes.distances import edit_distance
 from generation.dataset.utils import interaction_to_tensor
-from constants import cat2id
+from constants import PADDING_CHAR, cat2id
 from models.utils import pad
 from constants import MAX_LENGTH
 from generation.utils import labels2cat
@@ -101,8 +101,8 @@ def run_genetic(
 
         # Obtain source categories
         source_sequence = interaction_to_tensor(interaction)  # type: ignore
-        source_sequence = trim(source_sequence.squeeze(0))
         gt_preds = model(source_sequence)  # type: ignore
+        source_sequence = trim(source_sequence.squeeze(0))
         source_gt = labels2cat(
             topk(logits=gt_preds, k=k, dim=-1, indices=True).squeeze(0), encode=True
         )
@@ -123,11 +123,14 @@ def run_genetic(
 
         # NOTE: for now I take just the counterfactual which is the most similar to the source sequence, but since they are all counterfactuals,
         # we can also generate a list of different counterfactuals.
-        counterfactual, clabel = max(
+        counterfactual, _ = max(
             counterfactuals,
             key=lambda x: -edit_distance(x[0].squeeze(), source_sequence),
         )
-        print(counterfactual, clabel)
+        cpreds = model(pad(counterfactual, MAX_LENGTH).unsqueeze(0))
+        clabel = labels2cat(
+            topk(logits=cpreds, k=k, dim=-1, indices=True).squeeze(0), encode=True
+        )
         if not ConfigParams.GENERATION_STRATEGY == "targeted":
             _, score = equal_ys(source_gt, clabel, return_score=True)  # type: ignore
             run_log["score"] = score

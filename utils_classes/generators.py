@@ -183,6 +183,7 @@ class DatasetGenerator(SkippableGenerator):
     def __init__(
         self,
         config: Optional[Config] = None,
+        limit_generatin_to: Optional[Literal["good", "bad"]] = None,
         strategy: StrategyStr = ConfigParams.GENERATION_STRATEGY,  # type: ignore
         target: Optional[List[str]] = ConfigParams.TARGET_CAT,
         use_cache: bool = False,

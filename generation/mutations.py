@@ -34,6 +34,7 @@ class ReplaceMutation(Mutation):
         for _ in range(self.num_replaces):
             i = random.sample(range(1, len(seq)), 1)[0]
             new_value = random.choice(alphabet)
+            # avoid repetitions
             while new_value in seq:
                 new_value = random.choice(alphabet)
             seq[i] = new_value
@@ -86,6 +87,7 @@ class AddMutation(Mutation):
     def _apply(self, seq: list[int], alphabet: list[int]) -> list[int]:
         for _ in range(self.num_additions):
             random_item = random.choice(alphabet)
+            # avoid repetition
             while random_item in seq:
                 random_item = random.choice(alphabet)
             i = random.sample(range(1, len(seq)), 1)[0]
