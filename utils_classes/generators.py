@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import time
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple, Literal
 
 from recbole.config import Config
 from recbole.trainer import Interaction
@@ -183,7 +183,7 @@ class DatasetGenerator(SkippableGenerator):
     def __init__(
         self,
         config: Optional[Config] = None,
-        limit_generatin_to: Optional[Literal["good", "bad"]] = None,
+        limit_generation_to: Optional[Literal["good", "bad"]] = None,
         strategy: StrategyStr = ConfigParams.GENERATION_STRATEGY,  # type: ignore
         target: Optional[List[str]] = ConfigParams.TARGET_CAT,
         use_cache: bool = False,
@@ -201,6 +201,7 @@ class DatasetGenerator(SkippableGenerator):
         self.strategy = strategy
         self.alphabet = alphabet if alphabet else list(get_items())
         self.target = target
+        self.limit_generation_to = limit_generation_to
 
     def skip(self):
         super().skip()
@@ -208,7 +209,7 @@ class DatasetGenerator(SkippableGenerator):
 
     def instantiate_strategy(
         self, seq
-    ) -> Tuple[GenerationStrategy, GenerationStrategy]:
+    ) -> Tuple[Optional[GenerationStrategy], Optional[GenerationStrategy]]:
         if self.strategy == "genetic":
             sequence = seq.squeeze(0)
             assert len(sequence.shape) == 1, f"Sequence dim must be 1: {sequence.shape}"
@@ -233,7 +234,6 @@ class DatasetGenerator(SkippableGenerator):
                 halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
                 alphabet=self.alphabet,
             )
-            return self.good_strat, self.bad_strat
 
         elif self.strategy == "genetic_categorized":
             sequence = seq.squeeze(0)
@@ -260,7 +260,6 @@ class DatasetGenerator(SkippableGenerator):
                 halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
                 alphabet=self.alphabet,
             )
-            return self.good_strat, self.bad_strat
         elif self.strategy == "targeted":
             if self.target is None:
                 raise ValueError("target must not be None if strategy is 'targeted'")
@@ -274,7 +273,7 @@ class DatasetGenerator(SkippableGenerator):
                 model=lambda x: model_predict(seq=x, model=self.model, prob=True),
                 allowed_mutations=allowed_mutations,
                 pop_size=ConfigParams.POP_SIZE,
-                good_examples=True,
+                good_examples=False,  # inverted on purpose
                 generations=ConfigParams.GENERATIONS,
                 halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
                 alphabet=self.alphabet,
@@ -285,15 +284,11 @@ class DatasetGenerator(SkippableGenerator):
                 model=lambda x: model_predict(seq=x, model=self.model, prob=True),
                 allowed_mutations=allowed_mutations,
                 pop_size=ConfigParams.POP_SIZE,
-                good_examples=False,
+                good_examples=True,  # inverted on purpose
                 generations=ConfigParams.GENERATIONS,
                 halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
                 alphabet=self.alphabet,
             )
-            return (
-                self.bad_strat,
-                self.good_strat,
-            )  # invert the good and the bad since I want to obtain points similar to the target (the label in good)
 
         elif self.strategy == "brute_force":
             self.good_strat = ExhaustiveStrategy(
@@ -308,11 +303,15 @@ class DatasetGenerator(SkippableGenerator):
                 alphabet=self.alphabet,
                 good_examples=False,
             )
-            return self.good_strat, self.bad_strat
         else:
             raise NotImplementedError(
                 f"Generations strategy '{self.strategy}' not implemented, choose between 'generation' and 'exhaustive'"
             )
+        if self.limit_generation_to == "bad":
+            self.good_strat = None
+        if self.limit_generation_to == "good":
+            self.bad_strat = None
+        return self.good_strat, self.bad_strat
 
     def next(self) -> GoodBadDataset | Tuple[GoodBadDataset, Interaction]:
         assert (

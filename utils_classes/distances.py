@@ -144,6 +144,9 @@ def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
     and predicted sets (b).
     """
 
+    def perfect_rel(truth: set, pred: set) -> int:
+        return max(len(truth), len(pred))
+
     def dcg(relevance_scores: List[float] | List[int]) -> float:
         """Calculate Discounted Cumulative Gain (DCG)."""
         return sum(rel / math.log2(idx + 2) for idx, rel in enumerate(relevance_scores))
@@ -156,7 +159,8 @@ def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
     def rel(truth_set: Set[int], preds_set: Set[int]) -> float:
         intersection = len(truth_set & preds_set)
         if ConfigParams.GENERATION_STRATEGY == "targeted":
-            return intersection >= 1
+            if intersection >= 1:
+                return perfect_rel(truth_set, preds_set)
         return intersection
 
     if len(a) != len(b):
@@ -164,7 +168,7 @@ def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
 
     # Compute relevance scores: 1 if an element of predicted_set is in truth_set, else 0
     relevance_scores = [rel(truth, pred) for truth, pred in zip(a, b)]
-    ideal_relevance_score = [max(len(truth), len(pred)) for truth, pred in zip(a, b)]
+    ideal_relevance_score = [perfect_rel(truth, pred) for truth, pred in zip(a, b)]
 
     actual_dcg = dcg(relevance_scores)
     ideal_dcg = dcg(ideal_relevance_score)

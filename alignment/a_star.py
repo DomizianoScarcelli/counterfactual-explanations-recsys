@@ -5,8 +5,13 @@ from typing import Callable, List, Optional, Sequence, Set, Tuple, TypeAlias
 from aalpy.automata.Dfa import Dfa, DfaState
 from line_profiler import profile
 
-from alignment.actions import (Action, decode_action, encode_action_str,
-                               is_legal, print_action)
+from alignment.actions import (
+    Action,
+    decode_action,
+    encode_action_str,
+    is_legal,
+    print_action,
+)
 from alignment.utils import alignment_length, prune_paths_by_length
 from config import ConfigParams
 from exceptions import NoTargetStatesError
@@ -15,10 +20,11 @@ from type_hints import PathInfo, PathsQueue, TraceSplit
 from utils import printd
 
 
-def get_accepting_states(dfa: Dfa, include_sink: bool=True) -> Set[DfaState]:
+def get_accepting_states(dfa: Dfa, include_sink: bool = True) -> Set[DfaState]:
     if include_sink:
         return {s for s in dfa.states if s.is_accepting}
     return {s for s in dfa.states if s.is_accepting and s.state_id != "sink"}
+
 
 def get_target_states(dfa: Dfa, leftover_trace: Sequence[int]):
     """
@@ -51,6 +57,7 @@ def get_target_states(dfa: Dfa, leftover_trace: Sequence[int]):
             final_states.add(state)
         # print(f"[DEBUG] state {state.state_id} reached {curr_state.state_id} after trace {leftover_trace}")
     return final_states
+
 
 def faster_a_star(
     dfa: Dfa,
@@ -94,16 +101,22 @@ def faster_a_star(
     """
     printd("-----FAST-A*------")
 
-    accepting_states = get_accepting_states(dfa, include_sink=ConfigParams.INCLUDE_SINK) 
+    accepting_states = get_accepting_states(dfa, include_sink=ConfigParams.INCLUDE_SINK)
     executed_t, alignable_t, leftover_t = trace_split
 
     # Checks
     if len(executed_t) > 0:
-        assert isinstance(executed_t[0], int), f"Executed trace isn't a sequence of int, but {isinstance(executed_t[0], int)}"
+        assert isinstance(
+            executed_t[0], int
+        ), f"Executed trace isn't a sequence of int, but {isinstance(executed_t[0], int)}"
     if len(alignable_t) > 0:
-        assert isinstance(alignable_t[0], int), f"Alignable trace isn't a sequence of int, but {isinstance(alignable_t[0], int)}"
+        assert isinstance(
+            alignable_t[0], int
+        ), f"Alignable trace isn't a sequence of int, but {isinstance(alignable_t[0], int)}"
     if len(leftover_t) > 0:
-        assert isinstance(leftover_t[0], int), f"Leftover trace isn't a sequence of int, but {isinstance(leftover_t[0], int)}"
+        assert isinstance(
+            leftover_t[0], int
+        ), f"Leftover trace isn't a sequence of int, but {isinstance(leftover_t[0], int)}"
 
     # Execute the "executed_t" trace
     initial_alignment = []
@@ -116,8 +129,9 @@ def faster_a_star(
 
     if len(target_states) == 0:
         raise NoTargetStatesError()
-    
-    printd(f"""
+
+    printd(
+        f"""
           ---DEBUG---
           Original trace: {executed_t + alignable_t + leftover_t}
           Executed trace: {executed_t}
@@ -130,7 +144,8 @@ def faster_a_star(
           Target states: {[s.state_id for s in target_states]}
           ---
           (Min, Max) Alignment Length: ({min_alignment_length}, {max_alignment_length})
-          """)
+          """
+    )
 
     remaining_alignment = a_star(
         dfa=dfa,
@@ -148,6 +163,7 @@ def faster_a_star(
             encode_action_str(action) for action in [f"sync_{c}" for c in leftover_t]
         )
     return None
+
 
 def a_star(
     dfa: Dfa,
@@ -201,15 +217,15 @@ def a_star(
         - Prints debug information every 1,000 iterations, including steps, number of paths, trace indices, and path costs.
 
     Details:
-        1. **Heuristic Function:** 
+        1. **Heuristic Function:**
            The heuristic estimates the cost to reach the nearest target state. Defaults to the number of hops if no `heuristic_fn` is provided.
-        2. **Neighbours Generation:** 
+        2. **Neighbours Generation:**
            Neighbours are filtered based on constraints, legality of actions, and their cost (e.g., `sync` has zero cost).
-        3. **Path Management:** 
+        3. **Path Management:**
            Uses a priority queue (heap) to explore paths with the lowest cost plus heuristic first.
-        4. **Visited States:** 
+        4. **Visited States:**
            Tracks visited states to avoid redundant exploration of the same state-action combinations.
-        5. **Pruning:** 
+        5. **Pruning:**
            Periodically prunes paths to limit memory usage and improve efficiency.
 
     Implementation Notes:
@@ -226,10 +242,12 @@ def a_star(
         return hops(curr_state, remaining_trace, target_states)
 
     @profile
-    def get_constrained_neighbours(state, curr_char: Optional[int]) -> List[Tuple[DfaState, int, int]]:
+    def get_constrained_neighbours(
+        state, curr_char: Optional[int]
+    ) -> List[Tuple[DfaState, int, int]]:
         neighbours = []
         inputs_set = set(inputs)
-        candidate_states: Set[int] = set(state.transitions) 
+        candidate_states: Set[int] = set(state.transitions)
         if (state.state_id, curr_char) in visited:
             candidate_states -= visited[(state.state_id, curr_char)]
         # print(f"All transitions: {len(state.transitions.items())}, pruned: {len(candidate_states)}")
@@ -245,13 +263,13 @@ def a_star(
                 if curr_char == e:
                     cost = 1
                     # if the previous action is an ADD, we have a DEL-ADD combo, which is a REPLACE with cost 1
-                    if decode_action(inputs[-1])[0] == Action.ADD:
+                    if len(inputs) > 0 and decode_action(inputs[-1])[0] == Action.ADD:
                         cost = 0
                     neighbours.append((target, cost, action))  # del_e cost = 1
             elif action_type == Action.ADD:
                 cost = 1
                 # if the previous action is a DEL, we have a ADD-DEL combo, which is a REPLACE with cost 1
-                if decode_action(inputs[-1])[0] == Action.DEL:
+                if len(inputs) > 0 and decode_action(inputs[-1])[0] == Action.DEL:
                     cost = 0
                 neighbours.append((target, cost, action))  # add_e cost = 1
 
@@ -264,48 +282,50 @@ def a_star(
 
     paths: PathsQueue = []
     heap_counter = 0
-    visited = {} #{(state_id, current_char): action (int)}
+    visited = {}  # {(state_id, current_char): action (int)}
 
     if initial_alignment:
         heapq.heappush(
-                paths,
-                (
-                    0,
-                    0,
-                    heap_counter,
-                    origin_state,
-                    (origin_state,),
-                    initial_alignment,
-                    remaining_trace_idx,
-                    ),
-                )
+            paths,
+            (
+                0,
+                0,
+                heap_counter,
+                origin_state,
+                (origin_state,),
+                initial_alignment,
+                remaining_trace_idx,
+            ),
+        )
     else:
         heapq.heappush(
-                paths,
-                (
-                    0,
-                    0,
-                    heap_counter,
-                    origin_state,
-                    (origin_state,),
-                    (),
-                    remaining_trace_idx,
-                    ),
-                )
+            paths,
+            (
+                0,
+                0,
+                heap_counter,
+                origin_state,
+                (origin_state,),
+                (),
+                remaining_trace_idx,
+            ),
+        )
 
     pbar_counter = 0
     while paths:
         pbar_counter += 1
-        if pbar_counter % 1000 == 0 :
+        if pbar_counter % 1000 == 0:
             paths = prune_paths_by_length(paths, max_paths=1_000_000)
             printd(f"Steps: {pbar_counter}", level=2)
             printd(f"Num paths: {len(paths)}", level=2)
             printd(f"Remaining trace idx: {remaining_trace_idx}", level=2)
             printd(f"Paths head (20) costs {[p[0] for p in paths[:20]]}", level=2)
             printd(f"Paths tail (20) costs {[p[0] for p in paths[-20:]]}", level=2)
-        
+
         popped: PathInfo = heapq.heappop(paths)
-        cost, heuristic_value, _, current_state, path, inputs, remaining_trace_idx = popped
+        cost, heuristic_value, _, current_state, path, inputs, remaining_trace_idx = (
+            popped
+        )
 
         curr_alignment_length = alignment_length(inputs)
         if current_state in target_states and remaining_trace_idx == 0:
@@ -318,15 +338,23 @@ def a_star(
             ):
                 return tuple(inputs)
 
-        curr_char = remaining_trace[-remaining_trace_idx] if remaining_trace_idx > 0 else None
+        curr_char = (
+            remaining_trace[-remaining_trace_idx] if remaining_trace_idx > 0 else None
+        )
         neighbours = get_constrained_neighbours(current_state, curr_char)
 
         for neighbour, action_cost, action in neighbours:
             if action in set(inputs):
                 continue
 
-            current_visited_key, current_visited_value = (current_state.state_id, curr_char), action
-            if current_visited_key in visited and current_visited_value in visited[current_visited_key]:
+            current_visited_key, current_visited_value = (
+                current_state.state_id,
+                curr_char,
+            ), action
+            if (
+                current_visited_key in visited
+                and current_visited_value in visited[current_visited_key]
+            ):
                 continue
             if current_visited_key in visited:
                 visited[current_visited_key].add(current_visited_value)
@@ -338,7 +366,11 @@ def a_star(
             new_inputs = inputs + (action,)
 
             action_type, _ = decode_action(action)
-            new_remaining_trace_idx = remaining_trace_idx - 1 if action_type in (Action.SYNC, Action.DEL) else remaining_trace_idx
+            new_remaining_trace_idx = (
+                remaining_trace_idx - 1
+                if action_type in (Action.SYNC, Action.DEL)
+                else remaining_trace_idx
+            )
 
             heap_counter += 1
             heuristic_value = heuristic(current_state, new_inputs)

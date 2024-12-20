@@ -87,7 +87,9 @@ def run_genetic(
         "use_cache": use_cache,
     }
     datasets = TimedGenerator(
-        DatasetGenerator(use_cache=use_cache, return_interaction=True)
+        DatasetGenerator(
+            use_cache=use_cache, return_interaction=True, limit_generation_to="bad"
+        )
     )
     model = datasets.generator.model  # type: ignore
     i = 0
@@ -133,10 +135,9 @@ def run_genetic(
         )
         if not ConfigParams.GENERATION_STRATEGY == "targeted":
             _, score = equal_ys(source_gt, clabel, return_score=True)  # type: ignore
-            run_log["score"] = score
         else:
             _, score = equal_ys(target_ys, clabel, return_score=True)  # type: ignore
-            run_log["score"] = 1 - score
+        run_log["score"] = score #if targeted higher is better, otherwise lower is better
         run_log["cost"] = edit_distance(
             counterfactual.squeeze(),
             source_sequence,
