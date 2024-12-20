@@ -116,8 +116,7 @@ def log_run(
             new_df = new_df.drop(columns=["_merge"])
         else:
             return prev_df
-
-    prev_df = pd.concat([prev_df, new_df], ignore_index=True).drop_duplicates()
+    prev_df = pd.concat([prev_df, new_df], ignore_index=True)
     prev_df.to_csv(save_path, index=False)
     return prev_df
 

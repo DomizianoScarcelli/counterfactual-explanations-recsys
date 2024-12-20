@@ -8,7 +8,7 @@ import fire
 
 from config import ConfigParams
 from performance_evaluation import alignment
-from run import run as og_run
+from run import run_full as og_run
 from sensitivity.model_sensitivity import main as evaluate_sensitivity
 from type_hints import RecDataset, RecModel
 
@@ -175,6 +175,7 @@ class CLI:
         what: Optional[
             Literal["alignment", "generation", "automata_learning", "sensitivity"]
         ] = None,
+        mode: Literal["full", "genetic"] = "full",
         config_path: Optional[str] = None,
         config_dict: Optional[ConfigDict] = None,
         k: Optional[int] = None,
@@ -230,7 +231,11 @@ class CLI:
 
         if what == "alignment":
             alignment.evaluate.evaluate_trace_disalignment(
-                range_i=range_i, splits=splits, use_cache=use_cache, save_path=save_path
+                range_i=range_i,
+                splits=splits,
+                use_cache=use_cache,
+                save_path=save_path,
+                mode=mode,
             )
         if what == "sensitivity":
             if not k or not label_type:

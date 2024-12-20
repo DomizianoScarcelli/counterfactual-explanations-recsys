@@ -1,3 +1,6 @@
+from models.utils import trim
+from utils_classes.distances import edit_distance
+from generation.dataset.utils import interaction_to_tensor
 from constants import cat2id
 from models.utils import pad
 from constants import MAX_LENGTH
@@ -13,7 +16,7 @@ from alignment.actions import print_action
 from alignment.alignment import trace_disalignment
 from alignment.utils import postprocess_alignment
 from automata_learning.learning import learning_pipeline
-from config import ConfigDict, ConfigParams
+from config import ConfigParams
 from exceptions import (
     CounterfactualNotFound,
     DfaNotAccepting,
@@ -21,8 +24,7 @@ from exceptions import (
     NoTargetStatesError,
     SplitNotCoherent,
 )
-from generation.strategies.genetic_categorized import CategorizedGeneticStrategy
-from generation.utils import equal_ys, label2cat
+from generation.utils import equal_ys
 from performance_evaluation.alignment.utils import preprocess_interaction
 from type_hints import GoodBadDataset, RecDataset, RecModel, SplitTuple
 from utils import TimedFunction, seq_tostr
@@ -64,14 +66,93 @@ def single_run(
     return aligned, cost, alignment
 
 
-def run(
+def run_genetic(
+    start_i: int = 0,
+    end_i: Optional[int] = None,
+    k: int = ConfigParams.TOPK,
+    use_cache: bool = False,
+):
+    run_log = {
+        "i": None,
+        "strategy": ConfigParams.GENERATION_STRATEGY,
+        "status": None,
+        "score": None,
+        "source": None,
+        "aligned": None,
+        "alignment": None,
+        "cost": None,
+        "gt": None,
+        "aligned_gt": None,
+        "dataset_time": None,
+        "use_cache": use_cache,
+    }
+    datasets = TimedGenerator(
+        DatasetGenerator(use_cache=use_cache, return_interaction=True)
+    )
+    model = datasets.generator.model  # type: ignore
+    i = 0
+    if not end_i:
+        end_i = start_i + 1
+    for _ in range(start_i):
+        i += 1
+        datasets.skip()
+    while i < end_i:
+        dataset, interaction = next(datasets)
+
+        # Obtain source categories
+        source_sequence = interaction_to_tensor(interaction)  # type: ignore
+        source_sequence = trim(source_sequence.squeeze(0))
+        gt_preds = model(source_sequence)  # type: ignore
+        source_gt = labels2cat(
+            topk(logits=gt_preds, k=k, dim=-1, indices=True).squeeze(0), encode=True
+        )
+        run_log["gt"] = seq_tostr(source_gt)
+        if ConfigParams.GENERATION_STRATEGY == "targeted":
+            target = {cat2id[t] for t in ConfigParams.TARGET_CAT}  # type: ignore
+            target_ys = [target for _ in range(k)]
+            run_log["target_y"] = seq_tostr(target_ys)
+
+        run_log["dataset_time"] = datasets.get_times()[i]
+        run_log["i"] = i
+        run_log["source"] = seq_tostr(source_sequence)
+
+        # if ConfigParams.GENERATION_STRATEGY == "targeted":
+        _, counterfactuals = dataset
+        # else:
+        #     counterfactuals, _ = dataset
+
+        # NOTE: for now I take just the counterfactual which is the most similar to the source sequence, but since they are all counterfactuals,
+        # we can also generate a list of different counterfactuals.
+        counterfactual, clabel = max(
+            counterfactuals,
+            key=lambda x: -edit_distance(x[0].squeeze(), source_sequence),
+        )
+        print(counterfactual, clabel)
+        if not ConfigParams.GENERATION_STRATEGY == "targeted":
+            _, score = equal_ys(source_gt, clabel, return_score=True)  # type: ignore
+            run_log["score"] = score
+        else:
+            _, score = equal_ys(target_ys, clabel, return_score=True)  # type: ignore
+            run_log["score"] = 1 - score
+        run_log["cost"] = edit_distance(
+            counterfactual.squeeze(),
+            source_sequence,
+            normalized=False,
+        )
+        run_log["aligned"] = seq_tostr(trim(counterfactual.squeeze()))
+        run_log["aligned_gt"] = seq_tostr(clabel)
+        print(json.dumps(run_log, indent=2))
+        yield run_log
+
+
+def run_full(
     dataset_type: RecDataset = ConfigParams.DATASET,
     model_type: RecModel = ConfigParams.MODEL,
     start_i: int = 0,
     end_i: Optional[int] = None,
     splits: Optional[List[int]] = None,  # type: ignore
     k: int = ConfigParams.TOPK,
-    use_cache: bool = True,
+    use_cache: bool = False,
 ) -> Generator:
 
     params = (
@@ -192,7 +273,7 @@ CONFIG
         #     source_gt = set(label2cat(source_gt, encode=True))  # type: ignore
 
         run_log["source"] = seq_tostr(source_sequence)
-        run_log["gt"] = str(source_gt)
+        run_log["gt"] = seq_tostr(source_gt)
         for split in splits:
             run_log["split"] = str(split)
             split = split.parse_nan(source_sequence)
@@ -225,7 +306,7 @@ CONFIG
                 encode=True,
             )
 
-            run_log["aligned_gt"] = str(aligned_gt)
+            run_log["aligned_gt"] = seq_tostr(aligned_gt)
 
             is_good, score = equal_ys(source_gt, aligned_gt, return_score=True)  # type: ignore
             if ConfigParams.GENERATION_STRATEGY == "targeted":

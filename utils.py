@@ -1,6 +1,6 @@
 import random
 import time
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List, Optional, Set
 from functools import wraps
 
 import numpy as np
@@ -59,12 +59,13 @@ class SeedSetter:
 
 
 
-def seq_tostr(seq: Tensor | List) -> str:
+def seq_tostr(seq: Tensor | List | Set) -> str:
     if isinstance(seq, Tensor):
         assert (
             seq.dim() == 1
         ), f"Sequence should be 1-dimensional, its shape is: {seq.shape}"
         seq = seq.tolist()
+
 
     return ",".join(str(x) for x in seq)
 

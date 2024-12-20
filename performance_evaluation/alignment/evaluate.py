@@ -1,20 +1,20 @@
-import json
 import os
-from typing import Any, Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple, Literal
 
-import fire
 import pandas as pd
 from pandas import DataFrame
 
-from config import ConfigParams
-from performance_evaluation.alignment.utils import get_log_stats, log_run
-from run import run
+from performance_evaluation.alignment.utils import log_run
+from run import run_full, run_genetic
 
 
-def evaluate_trace_disalignment(range_i: Tuple[int, Optional[int]],
-                                splits: Optional[List[int]],
-                                use_cache: bool,
-                                save_path: Optional[str]=None):
+def evaluate_trace_disalignment(
+    range_i: Tuple[int, Optional[int]],
+    splits: Optional[List[int]],
+    use_cache: bool,
+    mode: Literal["full", "genetic"] = "full",
+    save_path: Optional[str] = None,
+):
     """
     Evaluates the disalignment of traces for a given range and set of splits.
     Optionally saves the results to a CSV file.
@@ -28,29 +28,38 @@ def evaluate_trace_disalignment(range_i: Tuple[int, Optional[int]],
     Returns:
         None
     """
-    log: DataFrame  = DataFrame({})
+    log: DataFrame = DataFrame({})
     if save_path and os.path.exists(save_path):
         log = pd.read_csv(save_path)
 
-    run_logs = run(start_i=range_i[0], 
-                   end_i=range_i[1],
-                   splits=splits,
-                   use_cache=use_cache)
+    if mode == "full":
+        run_logs = run_full(
+            start_i=range_i[0], end_i=range_i[1], splits=splits, use_cache=use_cache
+        )
+    elif mode == "genetic":
+        run_logs = run_genetic(
+            start_i=range_i[0], end_i=range_i[1], use_cache=use_cache
+        )
+    else:
+        raise ValueError(f"Mode '{mode}' not supported")
 
     for run_log in run_logs:
         # TODO: you can make Run a SkippableGenerator, which skips when the
         # source sequence, split and config combination already exists in the
         # log
         if save_path:
-            log = log_run(prev_df=log, 
-                          log=run_log, 
-                          save_path=save_path,
-                          primary_key=["source", "split"])  
+            log = log_run(
+                prev_df=log,
+                log=run_log,
+                save_path=save_path,
+                primary_key=["source", "split"],
+            )
 
-#def main(
+
+# def main(
 #        config_path: Optional[str]=None,
-#        mode: str = "evaluate", 
-#        use_cache: bool = True, 
+#        mode: str = "evaluate",
+#        use_cache: bool = True,
 #        range_i: Tuple[int, Optional[int]] = (0, None),
 #        log_path: Optional[str] = None,
 #        stats_save_path: Optional[str] = None,
@@ -80,7 +89,7 @@ def evaluate_trace_disalignment(range_i: Tuple[int, Optional[int]],
 #    if mode == "evaluate":
 #        evaluate_trace_disalignment(
 #                range_i=range_i,
-#                splits=splits, 
+#                splits=splits,
 #                use_cache=use_cache,
 #                save_path=log_path)
 #    elif mode == "stats":
@@ -105,7 +114,5 @@ def evaluate_trace_disalignment(range_i: Tuple[int, Optional[int]],
 #        raise ValueError(f"Mode {mode} not supported, choose between [evaluate, stats]")
 
 
-
-#if __name__ == "__main__":
+# if __name__ == "__main__":
 #    fire.Fire(main)
-    
