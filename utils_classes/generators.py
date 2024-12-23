@@ -172,6 +172,7 @@ class InteractionGenerator(SkippableGenerator):
 
 class SequenceGenerator(InteractionGenerator):
     def __init__(self, config: Config):
+        self.config = config
         super().__init__(config)
 
     def next(self) -> Tensor:  # type: ignore

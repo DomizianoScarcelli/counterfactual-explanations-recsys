@@ -1,3 +1,6 @@
+from models.config_utils import generate_model
+from utils_classes.generators import SequenceGenerator
+from models.config_utils import get_config
 from config import ConfigDict
 from utils import SeedSetter
 import json
@@ -9,7 +12,10 @@ import fire
 from config import ConfigParams
 from performance_evaluation import alignment
 from run import run_full as og_run
-from sensitivity.model_sensitivity import main as evaluate_sensitivity
+from sensitivity.model_sensitivity import (
+    main as evaluate_sensitivity,
+    run_on_all_positions,
+)
 from type_hints import RecDataset, RecModel
 
 
@@ -179,7 +185,7 @@ class CLI:
         config_path: Optional[str] = None,
         config_dict: Optional[ConfigDict] = None,
         k: Optional[int] = None,
-        label_type: Optional[Literal["item", "category"]] = None,
+        label_type: Optional[Literal["item", "category", "target"]] = None,
         use_cache: bool = True,
         range_i: Tuple[int, Optional[int]] = (0, None),
         log_path: Optional[str] = None,
@@ -240,12 +246,9 @@ class CLI:
         if what == "sensitivity":
             if not k or not label_type:
                 raise ValueError("k and target must not be None")
-            evaluate_sensitivity(
-                log_path=log_path,
-                k=k,
-                target=label_type,
-                mode="evaluate",
-            )
+
+            return run_on_all_positions(label_type=label_type, log_path=log_path, k=k)
+            # both ends included
         if what == "generation":
             # TODO: implement
             raise NotImplementedError()

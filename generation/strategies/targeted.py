@@ -1,3 +1,4 @@
+from utils_classes.distances import intersection_weighted_ndcg
 from statistics import mean
 from constants import cat2id
 from generation.utils import labels2cat
@@ -210,8 +211,8 @@ class TargetedGeneticStrategy(GeneticStrategy):
                 f"Source point was in the dataset {len(clean_pop) - len(new_pop)} times!, removing it"
             )
         clean_pop = new_pop
-        
-        #NOTE: I don't think this is needed
+
+        # NOTE: I don't think this is needed
         # # If source point is not in good datset, add just one instance back
         # if (
         #     self.good_examples

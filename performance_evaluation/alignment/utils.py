@@ -100,6 +100,14 @@ def log_run(
     new_df = pd.DataFrame(data)
     # Remove the fields in primary key that do not exist in prev_df, otherwise key error
     primary_key = [field for field in primary_key if field in prev_df.columns]
+    # Convert to string to avoid type errors
+    print(f"New df: {new_df.head()}")
+    print(f"New df info: {new_df.info()}")
+    print(f"Prev df: {prev_df.head()}")
+    print(f"Prev df info: {prev_df.info()}")
+    new_df[primary_key] = new_df[primary_key].astype(str)
+    prev_df[primary_key] = prev_df[primary_key].astype(str)
+
     # Check for duplicates based on primary_key
     if not prev_df.empty:
         # find records in `new_df` that are not already in `prev_df` based on primary_key

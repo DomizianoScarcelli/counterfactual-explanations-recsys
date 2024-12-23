@@ -137,7 +137,6 @@ def precision_at(k: int, a: Tensor, b: Tensor) -> float:
     return intersection / k if k > 0 else 0.0
 
 
-# TODO: cambia con https://lightning.ai/docs/torchmetrics/stable/retrieval/normalized_dcg.html
 def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
     """
     Calculate the NDCG for a list of ground truth sets (a)
@@ -159,8 +158,13 @@ def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
     def rel(truth_set: Set[int], preds_set: Set[int]) -> float:
         intersection = len(truth_set & preds_set)
         if ConfigParams.GENERATION_STRATEGY == "targeted":
+            # When we are in the targeted setting, we just want the target category to be part of the output categories.
+            # E.g. if target is 10, then rel({10}, {10, 12}) should yield a perfect score since the target is in the preds set.
+            # TODO: this can be extended to be more flexible, allowing a more strict requiremenet like perfect score only if intersection is perfect.
             if intersection >= 1:
                 return perfect_rel(truth_set, preds_set)
+        # When we are NOT in the targeted setting, then we want the preds set to be as similar as possible to the truth set, hence we take the
+        # intersection as a measure of similarity.
         return intersection
 
     if len(a) != len(b):
@@ -172,32 +176,8 @@ def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
 
     actual_dcg = dcg(relevance_scores)
     ideal_dcg = dcg(ideal_relevance_score)
-    return actual_dcg / ideal_dcg if ideal_dcg > 0 else 0.0
+    ndcg = actual_dcg / ideal_dcg if ideal_dcg > 0 else 0.0
+    assert 0.0 <= ndcg <= 1.0
+    return ndcg
     # print(f"Rels for {a} and {b}", relevance_scores, max_dcg, actual_dcg, ndcg)
     # return ndcg
-
-
-def DEPRECATED_ndng_at(k: int, a: Tensor, b: Tensor) -> float:
-    """
-    Computes the Normalized Discounted Cumulative Gain (NDCG) at k.
-
-    Args:
-        k: Number of top items to consider.
-        a: Tensor containing the ranked list of indices.
-        b: Tensor containing the ground truth set of relevant indices.
-
-    Returns:
-        float: NDCG@k score.
-    """
-    raise DeprecationWarning()
-    b_set = set(b.tolist())
-    gains = torch.tensor(
-        [1.0 if a[i].item() in b_set else 0.0 for i in range(min(k, len(a)))]
-    )
-    discounts = 1 / torch.log2(torch.arange(2, k + 2).float())
-    dcg = (gains[:k] * discounts).sum().item()
-
-    ideal_gains = torch.tensor([1.0 for _ in range(min(k, len(b_set)))])
-    ideal_dcg = (ideal_gains[:k] * discounts).sum().item()
-
-    return dcg / ideal_dcg if ideal_dcg > 0 else 0.0
