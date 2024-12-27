@@ -1,3 +1,5 @@
+from typing import Optional
+from utils_classes.Split import Split
 from generation.utils import labels2cat
 from utils_classes.distances import intersection_weighted_ndcg
 from models.utils import topk
@@ -45,6 +47,7 @@ class CategorizedGeneticStrategy(GeneticStrategy):
         good_examples: bool = True,
         halloffame_ratio: float = 0.1,
         verbose: bool = True,
+        split: Optional[Split] = None,
     ):
         """
         Initializes the CategorizedGeneticStrategy.
@@ -73,6 +76,7 @@ class CategorizedGeneticStrategy(GeneticStrategy):
             good_examples=good_examples,
             halloffame_ratio=halloffame_ratio,
             verbose=verbose,
+            split=split,
         )
         self.category_map = get_category_map()
         self.k = k

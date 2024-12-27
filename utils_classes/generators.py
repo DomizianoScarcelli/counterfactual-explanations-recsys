@@ -4,6 +4,7 @@ import os
 import time
 from abc import ABC, abstractmethod
 from typing import Any, List, Optional, Tuple, Literal
+from utils_classes.Split import Split
 
 from recbole.config import Config
 from recbole.trainer import Interaction
@@ -185,6 +186,7 @@ class DatasetGenerator(SkippableGenerator):
         self,
         config: Optional[Config] = None,
         limit_generation_to: Optional[Literal["good", "bad"]] = None,
+        genetic_split: Optional[Split] = None,
         strategy: StrategyStr = ConfigParams.GENERATION_STRATEGY,  # type: ignore
         target: Optional[List[str]] = ConfigParams.TARGET_CAT,
         use_cache: bool = False,
@@ -203,6 +205,7 @@ class DatasetGenerator(SkippableGenerator):
         self.alphabet = alphabet if alphabet else list(get_items())
         self.target = target
         self.limit_generation_to = limit_generation_to
+        self.genetic_split = genetic_split
 
     def skip(self):
         super().skip()
@@ -224,6 +227,7 @@ class DatasetGenerator(SkippableGenerator):
                 generations=ConfigParams.GENERATIONS,
                 halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
                 alphabet=self.alphabet,
+                split=self.genetic_split,
             )
             self.bad_strat = GeneticStrategy(
                 input_seq=sequence,
@@ -234,6 +238,7 @@ class DatasetGenerator(SkippableGenerator):
                 generations=ConfigParams.GENERATIONS,
                 halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
                 alphabet=self.alphabet,
+                split=self.genetic_split,
             )
 
         elif self.strategy == "genetic_categorized":
@@ -250,6 +255,7 @@ class DatasetGenerator(SkippableGenerator):
                 generations=ConfigParams.GENERATIONS,
                 halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
                 alphabet=self.alphabet,
+                split=self.genetic_split,
             )
             self.bad_strat = CategorizedGeneticStrategy(
                 input_seq=sequence,
@@ -260,6 +266,7 @@ class DatasetGenerator(SkippableGenerator):
                 generations=ConfigParams.GENERATIONS,
                 halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
                 alphabet=self.alphabet,
+                split=self.genetic_split,
             )
         elif self.strategy == "targeted":
             if self.target is None:
@@ -278,6 +285,7 @@ class DatasetGenerator(SkippableGenerator):
                 generations=ConfigParams.GENERATIONS,
                 halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
                 alphabet=self.alphabet,
+                split=self.genetic_split,
             )
             self.bad_strat = TargetedGeneticStrategy(
                 input_seq=sequence,
@@ -289,6 +297,7 @@ class DatasetGenerator(SkippableGenerator):
                 generations=ConfigParams.GENERATIONS,
                 halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
                 alphabet=self.alphabet,
+                split=self.genetic_split,
             )
 
         elif self.strategy == "brute_force":

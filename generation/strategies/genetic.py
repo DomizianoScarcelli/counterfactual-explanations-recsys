@@ -1,4 +1,5 @@
-from utils import modulo_div
+from typing import Optional
+from utils_classes.Split import Split
 import math
 import random
 from typing import Any, Callable, List
@@ -46,6 +47,7 @@ class GeneticStrategy(GenerationStrategy):
         good_examples: bool = True,
         halloffame_ratio: float = 0.1,
         verbose: bool = True,
+        split: Optional[Split] = None,
     ):
         super().__init__(
             input_seq=trim(input_seq),
@@ -59,6 +61,10 @@ class GeneticStrategy(GenerationStrategy):
         self.generations = generations
         self.halloffame_ratio = halloffame_ratio
         self.allowed_mutations = allowed_mutations
+        self.split = split
+        if self.split:
+            for mutation in self.allowed_mutations:
+                mutation.set_split(self.split)
         # Define the evaluation function
         creator.create("fitness", base.Fitness, weights=(-1.0,))  # Minimize fitness
         creator.create("individual", list, fitness=creator.fitness)
@@ -97,7 +103,7 @@ class GeneticStrategy(GenerationStrategy):
         assert (
             PADDING_CHAR not in seq
         ), f"Seq must not contain padding char {PADDING_CHAR}: {seq}"
-        mutations = self.allowed_mutations.copy()
+        mutations = self.allowed_mutations
         # If after NUM_ADDITIONS additions the seq is longer than the MAX_LENGTH, don't allow add mutations
         if len(seq) > MAX_LENGTH - ConfigParams.NUM_ADDITIONS and contains_mutation(
             AddMutation, mutations

@@ -1,3 +1,5 @@
+from typing import Optional
+from utils_classes.Split import Split
 from utils_classes.distances import intersection_weighted_ndcg
 from statistics import mean
 from constants import cat2id
@@ -41,6 +43,7 @@ class TargetedGeneticStrategy(GeneticStrategy):
         good_examples: bool = True,
         halloffame_ratio: float = 0.1,
         verbose: bool = True,
+        split: Optional[Split] = None,
     ):
 
         super().__init__(
@@ -53,6 +56,7 @@ class TargetedGeneticStrategy(GeneticStrategy):
             good_examples=good_examples,
             halloffame_ratio=halloffame_ratio,
             verbose=verbose,
+            split=split,
         )
         self.category_map = get_category_map()
         self.k = k

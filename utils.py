@@ -20,12 +20,6 @@ def printd(statement, level=1):
         print(statement)
 
 
-def modulo_div(x: int, max_value: int):
-    while x > max_value:
-        x //= max_value
-    return x
-
-
 class SeedSetter:
     # Class-level attribute to hold the single instance
     _instance = None
@@ -58,14 +52,12 @@ class SeedSetter:
         cls.previous_seed = seed
 
 
-
 def seq_tostr(seq: Tensor | List | Set) -> str:
     if isinstance(seq, Tensor):
         assert (
             seq.dim() == 1
         ), f"Sequence should be 1-dimensional, its shape is: {seq.shape}"
         seq = seq.tolist()
-
 
     return ",".join(str(x) for x in seq)
 

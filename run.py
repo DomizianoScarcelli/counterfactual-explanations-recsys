@@ -48,6 +48,27 @@ error_messages = {
 }
 
 
+def parse_splits(splits: Optional[List[tuple]] = None):  # type: ignore
+    """Parse splits from list of ints to Split object)"""
+    if splits:
+        splits: SplitTuple = tuple(splits)  # type: ignore
+        if isinstance(splits[0], tuple):
+            splits: List[Split] = [Split(*s) for s in splits]  # type: ignore
+        elif (
+            isinstance(splits[0], int)
+            or isinstance(splits[0], float)
+            or splits[0] is None
+        ):
+            splits: List[Split] = [Split(*splits)]  # type: ignore
+
+        assert isinstance(splits, list) and isinstance(
+            splits[0], Split
+        ), f"Malformed splits: {splits}"
+    else:
+        splits = [Split(0, None, 0)]
+    return splits
+
+
 def single_run(
     source_sequence: List[int], _dataset: GoodBadDataset, split: Optional[Split] = None
 ):
@@ -72,6 +93,7 @@ def run_genetic(
     start_i: int = 0,
     end_i: Optional[int] = None,
     k: int = ConfigParams.TOPK,
+    split: Optional[List[tuple]] = None,  # type: ignore
     use_cache: bool = False,
 ):
     run_log = {
@@ -88,17 +110,25 @@ def run_genetic(
         "dataset_time": None,
         "use_cache": use_cache,
     }
+
+    split = parse_splits([split])  # type: ignore
+
     datasets = TimedGenerator(
         DatasetGenerator(
-            use_cache=use_cache, return_interaction=True, limit_generation_to="bad"
+            use_cache=use_cache,
+            return_interaction=True,
+            limit_generation_to="bad",
+            genetic_split=split,
         )
     )
     model = datasets.generator.model  # type: ignore
     i = 0
+
     if not end_i:
         end_i = start_i + 1
     for _ in range(start_i):
         datasets.skip()
+
     for i in range(start_i, end_i):
         try:
             dataset, interaction = next(datasets)
@@ -167,7 +197,7 @@ def run_full(
     model_type: RecModel = ConfigParams.MODEL,
     start_i: int = 0,
     end_i: Optional[int] = None,
-    splits: Optional[List[int]] = None,  # type: ignore
+    splits: Optional[List[tuple]] = None,  # type: ignore
     k: int = ConfigParams.TOPK,
     use_cache: bool = False,
 ) -> Generator:
@@ -210,22 +240,7 @@ CONFIG
     model = datasets.generator.model  # type: ignore
 
     # Parse args
-    if splits:
-        splits: SplitTuple = tuple(splits)  # type: ignore
-        if isinstance(splits[0], tuple):
-            splits: List[Split] = [Split(*s) for s in splits]  # type: ignore
-        elif (
-            isinstance(splits[0], int)
-            or isinstance(splits[0], float)
-            or splits[0] is None
-        ):
-            splits: List[Split] = [Split(*splits)]  # type: ignore
-
-        assert isinstance(splits, list) and isinstance(
-            splits[0], Split
-        ), f"Malformed splits: {splits}"
-    else:
-        splits = [Split(0, None, 0)]
+    splits = parse_splits(splits)  # type: ignore
 
     if end_i is None:
         end_i = start_i + 1

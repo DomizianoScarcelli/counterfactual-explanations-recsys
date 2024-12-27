@@ -1,4 +1,6 @@
-from utils import modulo_div
+from typing import Optional
+from type_hints import TraceSplit
+from utils_classes.Split import Split
 import random
 from abc import ABC, abstractmethod
 from typing import List, Tuple
@@ -11,14 +13,26 @@ from generation.utils import random_points_with_offset
 class Mutation(ABC):
     def __init__(self):
         self.name: str
+        self._split: Optional[Split] = None
 
     def __call__(
         self, seq: List[int], alphabet: List[int], index: int
     ) -> Tuple[List[int]]:
+        # TODO: junk, remove index
+
         # Change the seed according to the index of the mutated sequence
         assert PADDING_CHAR not in seq, f"Padding char {PADDING_CHAR} is in seq: {seq}"
         result = (self._apply(seq, alphabet),)
         return result
+
+    def set_split(self, split: Split):
+        self._split = split
+
+    def safe_split(self, seq: List[int]) -> TraceSplit:
+        if not self._split:
+            return ([], seq, [])
+        else:
+            return self._split.apply(seq)
 
     @abstractmethod
     def _apply(self, seq: List[int], alphabet: List[int]) -> List[int]:
@@ -31,6 +45,8 @@ class ReplaceMutation(Mutation):
         self.name = "replace"
 
     def _apply(self, seq: List[int], alphabet: List[int]) -> List[int]:
+        start, middle, end = self.safe_split(seq)
+        seq = middle
         for _ in range(self.num_replaces):
             i = random.sample(range(1, len(seq)), 1)[0]
             new_value = random.choice(alphabet)
@@ -38,7 +54,7 @@ class ReplaceMutation(Mutation):
             while new_value in seq:
                 new_value = random.choice(alphabet)
             seq[i] = new_value
-        return seq
+        return start + seq + end
 
 
 class SwapMutation(Mutation):
@@ -47,10 +63,12 @@ class SwapMutation(Mutation):
         self.name = "swap"
 
     def _apply(self, seq: List[int], alphabet: List[int]) -> List[int]:
+        start, middle, end = self.safe_split(seq)
+        seq = middle
         max_offset = round(len(seq) * self.offset_ratio)
         i, j = random_points_with_offset(len(seq) - 1, max_offset)
         seq[i], seq[j] = seq[j], seq[i]
-        return seq
+        return start + seq + end
 
 
 class ReverseMutation(Mutation):
@@ -59,10 +77,12 @@ class ReverseMutation(Mutation):
         self.name = "reverse"
 
     def _apply(self, seq: List[int], alphabet: List[int]) -> List[int]:
+        start, middle, end = self.safe_split(seq)
+        seq = middle
         max_offset = round(len(seq) * self.offset_ratio)
         i, j = random_points_with_offset(len(seq) - 1, max_offset)
         seq[i : j + 1] = seq[i : j + 1][::-1]
-        return seq
+        return start + seq + end
 
 
 class ShuffleMutation(Mutation):
@@ -71,12 +91,14 @@ class ShuffleMutation(Mutation):
         self.name = "shuffle"
 
     def _apply(self, seq: List[int], alphabet: List[int]) -> List[int]:
+        start, middle, end = self.safe_split(seq)
+        seq = middle
         max_offset = round(len(seq) * self.offset_ratio)
         i, j = random_points_with_offset(len(seq) - 1, max_offset)
         subseq = seq[i : j + 1]
         random.shuffle(subseq)
         seq[i : j + 1] = subseq
-        return seq
+        return start + seq + end
 
 
 class AddMutation(Mutation):
@@ -85,6 +107,8 @@ class AddMutation(Mutation):
         self.num_additions = num_additions
 
     def _apply(self, seq: list[int], alphabet: list[int]) -> list[int]:
+        start, middle, end = self.safe_split(seq)
+        seq = middle
         for _ in range(self.num_additions):
             random_item = random.choice(alphabet)
             # avoid repetition
@@ -92,7 +116,7 @@ class AddMutation(Mutation):
                 random_item = random.choice(alphabet)
             i = random.sample(range(1, len(seq)), 1)[0]
             seq.insert(i, random_item)
-        return seq
+        return start + seq + end
 
 
 class DeleteMutation(Mutation):
@@ -101,10 +125,12 @@ class DeleteMutation(Mutation):
         self.num_deletions = num_deletions
 
     def _apply(self, seq: list[int], alphabet: list[int]) -> list[int]:
+        start, middle, end = self.safe_split(seq)
+        seq = middle
         for _ in range(self.num_deletions):
             i = random.sample(range(len(seq)), 1)[0]
             seq.remove(seq[i])
-        return seq
+        return start + seq + end
 
 
 def contains_mutation(mutation_type: type, mutations_list: List[Mutation]) -> bool:
