@@ -16,3 +16,6 @@ class NoTargetStatesError(Exception):
 
 class SplitNotCoherent(Exception):
     pass
+
+class EmptyDatasetError(Exception):
+    pass

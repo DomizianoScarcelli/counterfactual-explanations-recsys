@@ -1,9 +1,11 @@
+from constants import cat2id
 import os
 from typing import List, Optional, Tuple, Literal
 
 import pandas as pd
 from pandas import DataFrame
 
+from config import ConfigParams
 from performance_evaluation.alignment.utils import log_run
 from run import run_full, run_genetic
 

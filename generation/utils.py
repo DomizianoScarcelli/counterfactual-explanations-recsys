@@ -1,3 +1,4 @@
+from exceptions import EmptyDatasetError
 from utils_classes.distances import intersection_weighted_ndcg
 import json
 import os
@@ -249,7 +250,7 @@ def _evaluate_categorized_generation(
         distances_nnorm.append(edit_distance(input_seq, seq, normalized=False))
     if len(dataset) == 0:
         # TODO: is it correct to raise this exception?
-        raise RuntimeError(
+        raise EmptyDatasetError(
             "Generated dataset has length 0, change the dataset generation parameters to be more loose"
         )
     means = (mean(distances_norm), mean(distances_nnorm))

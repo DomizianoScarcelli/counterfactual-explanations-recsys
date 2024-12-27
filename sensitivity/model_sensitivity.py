@@ -268,18 +268,9 @@ def model_sensitivity_category_targeted(
         - Supports only the MovieLens 1M dataset (`ML_1M`). Throws a `NotImplementedError` for other datasets.
 
     """
-    seen_idx = set()
     prev_df = pd.DataFrame({})
     if log_path and os.path.exists(log_path):
         prev_df = pd.read_csv(log_path)
-        filtered_df = prev_df[prev_df["k"] == k]
-        seen_idx = set(filtered_df["position"].tolist())
-
-    print(f"[DEBUG] seen_idx: {seen_idx}")
-
-    if position in seen_idx:
-        print(f"[DEBUG] skipping position {position}")
-        return
 
     if ConfigParams.DATASET == RecDataset.ML_1M:
         alphabet = torch.tensor(list(get_items()))
@@ -291,29 +282,39 @@ def model_sensitivity_category_targeted(
     )
 
     PRIMARY_KEY = ["i", "position", "k", "target"]
-
     targets = cat2id.keys()
-
     if not ConfigParams.GENERATION_STRATEGY == "targeted":
         raise ValueError(
             "Before running `model_sensitivity_category_targeted`, set generation_strategy to 'targeted'"
         )
+    data = {
+        "i": [],
+        "target": [],
+        "target_gt": [],
+        "position": [],
+        "k": [],
+        "ndcg": [],  # the higher, the more similar
+        "min_ndcg": [],
+        "max_ndcg": [],
+        "counterfactuals": [],
+        "alphabet_len": [],
+        "sequence": [],
+        "model": [],
+        "dataset": [],
+    }
 
-    sequences.reset()
-    count = 0
     for _ in range(start_i):
         sequences.skip()
     for i in range(start_i, end_i):
-        i_list, sequence_list, counterfactuals, ndcgs = [], [], [], []
         sequence = next(sequences)
 
         out = model(sequence)
         topk_out = topk(logits=out, k=k, dim=-1, indices=True).squeeze(0)  # [k]
         target_gt: List[CategorySet] = labels2cat(topk_out, encode=False)  # type: ignore
 
+        pbar.update(1)
         for target_str in targets:
             target = {cat2id[target_str]}
-            count += 1
             if log_path:
                 future_df = pd.concat(
                     [
@@ -338,8 +339,6 @@ def model_sensitivity_category_targeted(
                     )
                     continue
 
-            pbar.update(1)
-
             sequence = trim(sequence.squeeze(0)).unsqueeze(0)
             x_primes = generate_sequence_variants(sequence, position, alphabet)
             if x_primes is None:
@@ -355,7 +354,7 @@ def model_sensitivity_category_targeted(
                 labels2cat(topk_out_prime) for topk_out_prime in topk_out_primes  # type: ignore
             ]  # [n_items, k]
 
-            counterfactual, ndcg_v = [], []
+            counterfactuals, ndcgs = [], []
             n_items = len(out_primes_cat)
             for n_i in range(n_items):
                 y = [target for _ in range(k)]
@@ -364,38 +363,40 @@ def model_sensitivity_category_targeted(
                 assert len(y) == len(y_prime) == k
 
                 equal = equal_ys(y, y_prime, return_score=False)
-                counterfactual.append(equal)
-                ndcg_v.append(intersection_weighted_ndcg(y, y_prime))
+                counterfactuals.append(equal)
+                ndcgs.append(intersection_weighted_ndcg(y, y_prime))
 
-            # TODO: modify this. What do you want? Stats aggregated for target category, position, or sequence?
-            # Anyway, I should drop this mean and log each sequence + target combination as a separate row
+            # TODO: replicate this logging logic also to the other model sensitivities
+            counterfactuals = mean(counterfactuals) * 100
+            min_ndcg, max_ndcg = min(ndcgs), max(ndcgs)
+            ndcgs = mean(ndcgs)
 
-            data = {
-                "i": i_list,
-                "target": [target_str] * len(i_list),
-                "target_gt": [target_gt] * len(i_list),
-                "position": [position] * len(i_list),
-                "count": [count] * len(i_list),
-                "k": [k] * len(i_list),
-                "ndcg": [v * 100 for v in ndcgs],  # the higher, the more similar
-                "counterfactuals": [v * 100 for v in counterfactuals],
-                "alphabet_len": [len(alphabet)] * len(i_list),
-                "sequence": [seq_tostr(x) for x in sequence_list],
-                "model": [ConfigParams.MODEL.value] * len(i_list),
-                "dataset": [ConfigParams.DATASET.value] * len(i_list),
-            }
-            # for key, value in data.items():
-            #     print(f"{key}, {len(value)}")
-            if log_path:
-                prev_df = log_run(
-                    prev_df=prev_df,
-                    log=data,
-                    save_path=log_path,
-                    add_config=True,
-                    primary_key=PRIMARY_KEY,
-                )
-            else:
-                print(pd.DataFrame(data))
+            data["i"].append(i)
+            data["target"].append(target_str)
+            data["target_gt"].append(seq_tostr(target_gt))
+            data["position"].append(position)
+            data["k"].append(k)
+            data["ndcg"].append(ndcgs)
+            data["min_ndcg"].append(min_ndcg)
+            data["max_ndcg"].append(max_ndcg)
+            data["counterfactuals"].append(counterfactuals)
+            data["alphabet_len"].append(len(alphabet))
+            data["sequence"].append(seq_tostr(sequence.squeeze()))
+            data["model"].append(ConfigParams.MODEL.value)
+            data["dataset"].append(ConfigParams.DATASET.value)
+
+        if log_path:
+            prev_df = log_run(
+                prev_df=prev_df,
+                log=data,
+                save_path=log_path,
+                add_config=False,
+                primary_key=PRIMARY_KEY,
+            )
+            # Reset data
+            data = {key: [] for key in data}
+        else:
+            print(pd.DataFrame(data))
 
 
 # TODO: This method doesn't work right now, since it has to be edited to reflect the changes
@@ -420,18 +421,9 @@ def model_sensitivity_simple(
         model: the sequential recommender model we want to test the sensitivity on
         dataset: the dataset used to train the sequential recommender, which will be used to take the alphabet.
     """
-    seen_idx = set()
     prev_df = pd.DataFrame({})
     if log_path and os.path.exists(log_path):
         prev_df = pd.read_csv(log_path)
-        filtered_df = prev_df[prev_df["k"] == k]
-        seen_idx = set(filtered_df["position"].tolist())
-
-    print(f"[DEBUG] seen_idx: {seen_idx}")
-
-    if position in seen_idx:
-        print(f"[DEBUG] skipping position {position}")
-        return
 
     if ConfigParams.DATASET == RecDataset.ML_1M:
         alphabet = torch.tensor(list(get_items()))
@@ -518,10 +510,12 @@ def run_on_all_positions(
     config = get_config(dataset=ConfigParams.DATASET, model=ConfigParams.MODEL)
     sequences = SequenceGenerator(config)
     model = generate_model(config)
-    start_i, end_i = 49, 48
+    start_i, end_i = 49, 0
     for i in tqdm(
         range(start_i, end_i - 1, -1), "Testing model sensitivity on all positions"
     ):
+        # This is very important in order to evaluate different positions on the same sequences
+        sequences.reset()
         if label_type == "item":
             model_sensitivity_simple(
                 model=model, sequences=sequences, position=i, log_path=log_path, k=k

@@ -100,13 +100,6 @@ def log_run(
     new_df = pd.DataFrame(data)
     # Remove the fields in primary key that do not exist in prev_df, otherwise key error
     primary_key = [field for field in primary_key if field in prev_df.columns]
-    # Convert to string to avoid type errors
-    print(f"New df: {new_df.head()}")
-    print(f"New df info: {new_df.info()}")
-    print(f"Prev df: {prev_df.head()}")
-    print(f"Prev df info: {prev_df.info()}")
-    new_df[primary_key] = new_df[primary_key].astype(str)
-    prev_df[primary_key] = prev_df[primary_key].astype(str)
 
     # Check for duplicates based on primary_key
     if not prev_df.empty:
@@ -124,6 +117,9 @@ def log_run(
             new_df = new_df.drop(columns=["_merge"])
         else:
             return prev_df
+    # if not prev_df.empty:
+    #     print(f"Prev_df:", prev_df.iloc[0])
+    # print(f"New_df:", new_df.iloc[0])
     prev_df = pd.concat([prev_df, new_df], ignore_index=True)
     prev_df.to_csv(save_path, index=False)
     return prev_df

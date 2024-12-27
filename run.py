@@ -1,7 +1,7 @@
 from models.utils import trim
 from utils_classes.distances import edit_distance
 from generation.dataset.utils import interaction_to_tensor
-from constants import PADDING_CHAR, cat2id
+from constants import cat2id
 from models.utils import pad
 from constants import MAX_LENGTH
 from generation.utils import labels2cat
@@ -21,6 +21,7 @@ from exceptions import (
     CounterfactualNotFound,
     DfaNotAccepting,
     DfaNotRejecting,
+    EmptyDatasetError,
     NoTargetStatesError,
     SplitNotCoherent,
 )
@@ -43,6 +44,7 @@ error_messages = {
     NoTargetStatesError: "NoTargetStatesError",
     CounterfactualNotFound: "CounterfactualNotFound",
     SplitNotCoherent: "SplitNotCoherent",
+    EmptyDatasetError: "EmptyDatasetError",
 }
 
 
@@ -96,10 +98,15 @@ def run_genetic(
     if not end_i:
         end_i = start_i + 1
     for _ in range(start_i):
-        i += 1
         datasets.skip()
-    while i < end_i:
-        dataset, interaction = next(datasets)
+    for i in range(start_i, end_i):
+        try:
+            dataset, interaction = next(datasets)
+        except EmptyDatasetError as e:
+            print(f"Raised {type(e)}")
+            run_log["status"] = error_messages[type(e)]
+            yield run_log
+            continue
 
         # Obtain source categories
         source_sequence = interaction_to_tensor(interaction)  # type: ignore
@@ -137,12 +144,18 @@ def run_genetic(
             _, score = equal_ys(source_gt, clabel, return_score=True)  # type: ignore
         else:
             _, score = equal_ys(target_ys, clabel, return_score=True)  # type: ignore
-        run_log["score"] = score #if targeted higher is better, otherwise lower is better
+        run_log["score"] = (
+            score  # if targeted higher is better, otherwise lower is better
+        )
         run_log["cost"] = edit_distance(
             counterfactual.squeeze(),
             source_sequence,
             normalized=False,
         )
+        if score >= ConfigParams.THRESHOLD:
+            run_log["status"] = "good"
+        else:
+            run_log["status"] = "bad"
         run_log["aligned"] = seq_tostr(trim(counterfactual.squeeze()))
         run_log["aligned_gt"] = seq_tostr(clabel)
         print(json.dumps(run_log, indent=2))
@@ -291,6 +304,7 @@ CONFIG
                 NoTargetStatesError,
                 CounterfactualNotFound,
                 SplitNotCoherent,
+                EmptyDatasetError,
             ) as e:
                 print(f"Raised {type(e)}")
                 run_log["status"] = error_messages[type(e)]
