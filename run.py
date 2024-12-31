@@ -48,7 +48,7 @@ error_messages = {
 }
 
 
-def parse_splits(splits: Optional[List[tuple]] = None):  # type: ignore
+def parse_splits(splits: Optional[List[tuple]] = None) -> List[Split]:  # type: ignore
     """Parse splits from list of ints to Split object)"""
     if splits:
         splits: SplitTuple = tuple(splits)  # type: ignore
@@ -93,7 +93,7 @@ def run_genetic(
     start_i: int = 0,
     end_i: Optional[int] = None,
     k: int = ConfigParams.TOPK,
-    split: Optional[List[tuple]] = None,  # type: ignore
+    split: Optional[tuple] = None,  # type: ignore
     use_cache: bool = False,
 ):
     run_log = {
@@ -111,7 +111,7 @@ def run_genetic(
         "use_cache": use_cache,
     }
 
-    split = parse_splits([split])  # type: ignore
+    split: Split = parse_splits([split])[0]  # type: ignore
 
     datasets = TimedGenerator(
         DatasetGenerator(

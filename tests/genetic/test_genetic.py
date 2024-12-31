@@ -16,8 +16,8 @@ from constants import MAX_LENGTH, MIN_LENGTH
 from generation.dataset.generate import generate
 from generation.extended_ea_algorithms import (eaSimpleBatched,
                                                indexedCxTwoPoint,
-                                               indexedSelTournament,
-                                               indexedVarAnd)
+                                               customSelTournament,
+                                               customVarAnd)
 from generation.mutations import (AddMutation, DeleteMutation, ReplaceMutation,
                                   ReverseMutation, ShuffleMutation,
                                   SwapMutation, contains_mutation,
@@ -93,7 +93,7 @@ class TestGeneticDeterminism:
         self.toolbox.register("population", tools.initRepeat, list, self.toolbox.individual, n=self.pop_size)
         self.toolbox.register("clone", clone)
         self.toolbox.register("evaluate", self.evaluate_fitness_batch)
-        self.toolbox.register("select", indexedSelTournament, tournsize=3)  # Tournament selection
+        self.toolbox.register("select", customSelTournament, tournsize=3)  # Tournament selection
         self.toolbox.register("mate", indexedCxTwoPoint)  # Use two-point crossover
         self.toolbox.register("mutate", self.extracted_mutate)
 
@@ -103,7 +103,7 @@ class TestGeneticDeterminism:
         self.toolbox2.register("population", tools.initRepeat, list, self.toolbox.individual, n=self.pop_size)
         self.toolbox2.register("clone", clone)
         self.toolbox2.register("evaluate", self.evaluate_fitness_batch)
-        self.toolbox2.register("select", indexedSelTournament, tournsize=3)  # Tournament selection
+        self.toolbox2.register("select", customSelTournament, tournsize=3)  # Tournament selection
         self.toolbox2.register("mate", indexedCxTwoPoint)  # Use two-point crossover
         self.toolbox2.register("mutate", self.extracted_mutate)
 
@@ -180,15 +180,15 @@ class TestGeneticDeterminism:
         self.init_vars()
         cxpb = 0.5
         mutpb = 0.5
-        offspring1 = indexedVarAnd(self.pop1, self.toolbox, cxpb, mutpb)
-        offspring2 = indexedVarAnd(self.pop1, self.toolbox, cxpb, mutpb)
-        offspring3 = indexedVarAnd(self.pop2, self.toolbox, cxpb, mutpb)
+        offspring1 = customVarAnd(self.pop1, self.toolbox, cxpb, mutpb)
+        offspring2 = customVarAnd(self.pop1, self.toolbox, cxpb, mutpb)
+        offspring3 = customVarAnd(self.pop2, self.toolbox, cxpb, mutpb)
         assert offspring1 == offspring2 == offspring3
     
     def test_selTorunament_determinism(self):
         self.init_vars()
-        chosen1 = indexedSelTournament(self.pop1, self.pop_size // 2, 3)
-        chosen2 = indexedSelTournament(self.pop2, self.pop_size // 2, 3)
+        chosen1 = customSelTournament(self.pop1, self.pop_size // 2, 3)
+        chosen2 = customSelTournament(self.pop2, self.pop_size // 2, 3)
         assert chosen1 == chosen2
 
     def test_indexedCxTwoPoint_determinims(self):

@@ -142,7 +142,7 @@ class CLI:
         model_type: RecModel = ConfigParams.MODEL,
         start_i: int = 0,
         end_i: Optional[int] = None,
-        splits: Optional[List[int]] = None,  # type: ignore
+        splits: Optional[List[tuple]] = None,  # type: ignore
         use_cache: bool = True,
     ):
         """

@@ -149,6 +149,7 @@ class TargetedGeneticStrategy(GeneticStrategy):
             halloffame=halloffame if self.halloffame_ratio != 0 else None,
             verbose=False,
             pbar=self.verbose,
+            split=self.split,
         )
         preds = self.model(pad_batch(population, MAX_LENGTH))
         preds = topk(logits=preds, dim=-1, k=self.k, indices=True)  # [pop_size, k]
