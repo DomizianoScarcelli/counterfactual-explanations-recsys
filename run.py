@@ -135,6 +135,14 @@ def run_genetic(
         except EmptyDatasetError as e:
             print(f"Raised {type(e)}")
             run_log["status"] = error_messages[type(e)]
+            datasets.skip()
+            # Because of the EmptyDatasetError, there may be a mismatch between the dataset indices.
+            if datasets.generator.interactions.index != datasets.generator.index:
+                _max = max(
+                    datasets.generator.interactions.index, datasets.generator.index
+                )
+                datasets.generator.interactions.index = _max
+                datasets.generator.index = _max
             yield run_log
             continue
 

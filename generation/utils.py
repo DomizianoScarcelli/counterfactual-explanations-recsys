@@ -217,6 +217,8 @@ def clone(x):
 
 
 def random_points_with_offset(max_value: int, max_offset: int):
+    if max_value <= 2:
+        return (1, 1)
     i = random.randint(1, max_value - 1)
     j = random.randint(max(0, i - max_offset), min(max_value - 1, i + max_offset))
     # Sort i and j to ensure i <= j

@@ -56,6 +56,7 @@ class GeneticStrategy(GenerationStrategy):
             good_examples=good_examples,
             verbose=verbose,
         )
+        self.og_input_length = len(self.input_seq)
         self.pop_size = pop_size
         self.gt = self.model(input_seq.unsqueeze(0)).squeeze()
         self.generations = generations
@@ -98,7 +99,6 @@ class GeneticStrategy(GenerationStrategy):
             print(s)
 
     def mutate(self, seq: List[int], og_seq_len: int):
-        print(f"[DEBUG] og_seq_len", og_seq_len)
         # Set seed according to the index in order to always choose a different mutation
 
         # TODO: remove the assertion for efficiency
@@ -107,16 +107,21 @@ class GeneticStrategy(GenerationStrategy):
         ), f"Seq must not contain padding char {PADDING_CHAR}: {seq}"
 
         mutations = self.allowed_mutations
-        # If after NUM_ADDITIONS additions the seq is longer than the MAX_LENGTH, don't allow add mutations
-        #TODO: this is still not correct when split is used
-        if MAX_LENGTH - og_seq_len < ConfigParams.NUM_ADDITIONS and contains_mutation(
-            AddMutation, mutations
+        # og_seq_len is the length of the unsplitted sequence.
+        # To this we add the difference between the source sequence length (og_input_length) and the current sequence length (seq)
+        # to count for the added or removed elements in previous mutations
+        current_seq_length = og_seq_len + abs(len(seq) - self.og_input_length)
+        # TODO: this is still not correct when split is used
+        if (
+            MAX_LENGTH - current_seq_length < ConfigParams.NUM_ADDITIONS
+            and contains_mutation(AddMutation, mutations)
         ):
             mutations = remove_mutation(AddMutation, mutations)
         # If after NUM_DELETIONS deletions the seq is shorter than the MIN_LENGTh, don't allow delete mutations
-        if len(seq) < MIN_LENGTH - (
-            og_seq_len - len(seq)
-        ) + ConfigParams.NUM_DELETIONS and contains_mutation(DeleteMutation, mutations):
+        if (
+            MIN_LENGTH + current_seq_length < ConfigParams.NUM_ADDITIONS
+            and contains_mutation(AddMutation, mutations)
+        ) or (len(seq) <= 2): #or if the splitted sequence is too small
             mutations = remove_mutation(DeleteMutation, mutations)
 
         mutation = random.choice(mutations)

@@ -98,9 +98,9 @@ def eaSimpleBatched(
         disable=not pbar,
         leave=False,
     ):
-        print(f"Length before split: {[len(ind) for ind in population]}")
+        # print(f"Length before split: {[len(ind) for ind in population]}")
         og_lengths = split_population(population, split)
-        print(f"Length after split: {[len(ind) for ind in population]}")
+        # print(f"Length after split: {[len(ind) for ind in population]}")
         # print(f"Ind len:", [len(ind) for ind in population])
         # Select and vary the next generation individuals
         offspring = toolbox.select(population, len(population))
@@ -184,7 +184,7 @@ def customSelTournament(individuals, k, tournsize, fit_attr="fitness"):
 def indexedCxTwoPoint(ind1, ind2, return_indices: bool = False):
     size = min(len(ind1), len(ind2))
     cxpoint1 = random.randint(1, size)
-    cxpoint2 = random.randint(1, size - 1)
+    cxpoint2 = random.randint(1, size - 1) if size > 2 else 1
     if cxpoint2 >= cxpoint1:
         cxpoint2 += 1
     else:  # Swap the two cx points
