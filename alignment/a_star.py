@@ -1,12 +1,19 @@
 import heapq
 import warnings
-from typing import Callable, List, Optional, Sequence, Set, Tuple, TypeAlias
+from typing import Callable, List, Optional, Sequence, Set, Tuple
 
 from aalpy.automata.Dfa import Dfa, DfaState
-from line_profiler import profile
+import os
 
-from alignment.actions import (Action, decode_action, encode_action_str,
-                               is_legal, print_action)
+if os.environ["LINE_PROFILE"] == "1":
+    from line_profiler import profile
+
+from alignment.actions import (
+    Action,
+    decode_action,
+    encode_action_str,
+    is_legal,
+)
 from alignment.utils import alignment_length, prune_paths_by_length
 from config import ConfigParams
 from exceptions import NoTargetStatesError
@@ -236,7 +243,6 @@ def a_star(
 
         return hops(curr_state, remaining_trace, target_states)
 
-    @profile
     def get_constrained_neighbours(
         state, curr_char: Optional[int]
     ) -> List[Tuple[DfaState, int, int]]:
