@@ -1,6 +1,3 @@
-from constants import cat2id
-from performance_evaluation.alignment.utils import pk_exists
-from generation.utils import labels2cat
 import os
 from statistics import mean
 from typing import List, Literal, Optional
@@ -13,18 +10,16 @@ from torch import Tensor
 from tqdm import tqdm
 
 from config import ConfigParams
-from generation.utils import equal_ys, get_items
+from constants import cat2id
+from generation.utils import equal_ys, get_items, labels2cat
 from models.config_utils import generate_model, get_config
 from models.utils import topk, trim
-from performance_evaluation.alignment.utils import get_log_stats, log_run, stats_to_df
+from performance_evaluation.alignment.utils import (get_log_stats, log_run,
+                                                    pk_exists, stats_to_df)
 from type_hints import CategorySet, RecDataset
 from utils import seq_tostr
-from utils_classes.distances import (
-    jaccard_sim,
-    intersection_weighted_ndcg,
-    pairwise_jaccard_sim,
-    precision_at,
-)
+from utils_classes.distances import (intersection_weighted_ndcg, jaccard_sim,
+                                     pairwise_jaccard_sim, precision_at)
 from utils_classes.generators import SequenceGenerator, SkippableGenerator
 
 

@@ -1,13 +1,6 @@
-from typing import Optional
-from utils_classes.Split import Split
-from utils_classes.distances import intersection_weighted_ndcg
-from statistics import mean
-from constants import cat2id
-from generation.utils import labels2cat
-from utils_classes.distances import intersection_weighted_ndcg
-from models.utils import topk
 import math
-from typing import Callable, List, Set
+from statistics import mean
+from typing import Callable, List, Optional, Set
 
 import numpy as np
 import torch
@@ -15,18 +8,17 @@ from deap import tools
 from torch import Tensor
 
 from config import ConfigParams
-from constants import MAX_LENGTH
+from constants import MAX_LENGTH, cat2id
 from generation.extended_ea_algorithms import eaSimpleBatched
 from generation.mutations import ALL_MUTATIONS, Mutation
 from generation.strategies.genetic import GeneticStrategy
-from generation.utils import (
-    _evaluate_categorized_generation,
-    equal_ys,
-    get_category_map,
-)
-from models.utils import pad_batch, trim
+from generation.utils import (_evaluate_categorized_generation, equal_ys,
+                              get_category_map, labels2cat)
+from models.utils import pad_batch, topk, trim
 from type_hints import CategorizedDataset
-from utils_classes.distances import edit_distance, self_indicator
+from utils_classes.distances import (edit_distance, intersection_weighted_ndcg,
+                                     self_indicator)
+from utils_classes.Split import Split
 
 
 class TargetedGeneticStrategy(GeneticStrategy):

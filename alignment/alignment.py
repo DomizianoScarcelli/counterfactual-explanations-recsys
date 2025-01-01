@@ -5,7 +5,8 @@ from aalpy.automata.Dfa import Dfa, DfaState
 from torch import Tensor
 
 from alignment.a_star import faster_a_star
-from alignment.actions import Action, decode_action, encode_action, print_action
+from alignment.actions import (Action, decode_action, encode_action,
+                               print_action)
 from automata_learning.utils import invert_automata, run_automata
 from config import ConfigParams
 from exceptions import CounterfactualNotFound

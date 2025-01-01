@@ -1,23 +1,19 @@
-from utils_classes.Split import Split
-from models.config_utils import generate_model
-from utils_classes.generators import SequenceGenerator
-from models.config_utils import get_config
-from config import ConfigDict
-from utils import SeedSetter
 import json
 import os
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import fire
 
-from config import ConfigParams
+from config import ConfigDict, ConfigParams
+from models.config_utils import generate_model, get_config
 from performance_evaluation import alignment
 from run import run_full as og_run
-from sensitivity.model_sensitivity import (
-    main as evaluate_sensitivity,
-    run_on_all_positions,
-)
+from sensitivity.model_sensitivity import main as evaluate_sensitivity
+from sensitivity.model_sensitivity import run_on_all_positions
 from type_hints import RecDataset, RecModel
+from utils import SeedSetter
+from utils_classes.generators import SequenceGenerator
+from utils_classes.Split import Split
 
 
 class CLI:

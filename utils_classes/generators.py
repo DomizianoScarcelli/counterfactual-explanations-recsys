@@ -3,8 +3,7 @@ from __future__ import annotations
 import os
 import time
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Tuple, Literal
-from utils_classes.Split import Split
+from typing import Any, List, Literal, Optional, Tuple
 
 from recbole.config import Config
 from recbole.trainer import Interaction
@@ -12,22 +11,20 @@ from torch import Tensor
 
 from config import ConfigParams
 from generation.dataset.generate import generate
-from generation.dataset.utils import (
-    get_dataloaders,
-    interaction_to_tensor,
-    load_dataset,
-    save_dataset,
-)
+from generation.dataset.utils import (get_dataloaders, interaction_to_tensor,
+                                      load_dataset, save_dataset)
 from generation.mutations import parse_mutations
 from generation.strategies.abstract_strategy import GenerationStrategy
 from generation.strategies.exhaustive import ExhaustiveStrategy
 from generation.strategies.genetic import GeneticStrategy
+from generation.strategies.genetic_categorized import \
+    CategorizedGeneticStrategy
 from generation.strategies.targeted import TargetedGeneticStrategy
-from generation.strategies.genetic_categorized import CategorizedGeneticStrategy
 from generation.utils import get_items
 from models.config_utils import generate_model, get_config
 from models.model_funcs import model_predict
 from type_hints import GoodBadDataset, StrategyStr
+from utils_classes.Split import Split
 
 
 class SkippableGenerator(ABC):

@@ -1,4 +1,3 @@
-from models.config_utils import get_config
 import json
 import os
 
@@ -6,6 +5,7 @@ import pandas as pd
 
 from config import ConfigParams
 from generation.utils import token2id
+from models.config_utils import get_config
 from type_hints import RecDataset
 
 

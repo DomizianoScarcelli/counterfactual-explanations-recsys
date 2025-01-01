@@ -33,7 +33,7 @@ def generate_model(config: Config) -> SequentialRecommender:
         checkpoint = torch.load(checkpoint_file, map_location=config["device"])
         model.load_state_dict(checkpoint["state_dict"])
         model.load_other_parameter(checkpoint.get("other_parameter"))
-    return model
+    return model.to(ConfigParams.DEVICE)
 
 
 def get_config(
@@ -53,6 +53,7 @@ def get_config(
         },
         "save_dataset": save_dataset,
         "train_batch_size": ConfigParams.TRAIN_BATCH_SIZE,
+        "device": ConfigParams.DEVICE,
         # "n_heads": 1,
     }
     return Config(

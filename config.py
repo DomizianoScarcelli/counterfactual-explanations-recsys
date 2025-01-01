@@ -4,6 +4,7 @@ import time
 from typing import List, Optional, TypedDict
 
 import toml
+import torch
 
 from type_hints import RecDataset, RecModel
 
@@ -16,6 +17,7 @@ class DebugConfig(TypedDict):
 
 
 class SettingsConfig(TypedDict):
+    device: str
     model: str
     dataset: str
     determinism: bool
@@ -110,6 +112,7 @@ class ConfigParams:
             # Set parameters directly as class attributes
             cls.DEBUG = config["debug"]["debug"]
             cls.DETERMINISM = config["settings"]["determinism"]
+            cls.DEVICE = torch.device(config["settings"]["device"])
             cls.MODEL = RecModel[config["settings"]["model"]]
             cls.DATASET = RecDataset[config["settings"]["dataset"]]
             cls.TRAIN_BATCH_SIZE = config["settings"]["train_batch_size"]

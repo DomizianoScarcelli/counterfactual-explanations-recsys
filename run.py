@@ -1,11 +1,3 @@
-from models.utils import trim
-from utils_classes.distances import edit_distance
-from generation.dataset.utils import interaction_to_tensor
-from constants import cat2id
-from models.utils import pad
-from constants import MAX_LENGTH
-from generation.utils import labels2cat
-from models.utils import topk
 import json
 import warnings
 from typing import Generator, List, Optional
@@ -17,18 +9,17 @@ from alignment.alignment import trace_disalignment
 from alignment.utils import postprocess_alignment
 from automata_learning.learning import learning_pipeline
 from config import ConfigParams
-from exceptions import (
-    CounterfactualNotFound,
-    DfaNotAccepting,
-    DfaNotRejecting,
-    EmptyDatasetError,
-    NoTargetStatesError,
-    SplitNotCoherent,
-)
-from generation.utils import equal_ys
+from constants import MAX_LENGTH, cat2id
+from exceptions import (CounterfactualNotFound, DfaNotAccepting,
+                        DfaNotRejecting, EmptyDatasetError,
+                        NoTargetStatesError, SplitNotCoherent)
+from generation.dataset.utils import interaction_to_tensor
+from generation.utils import equal_ys, labels2cat
+from models.utils import pad, topk, trim
 from performance_evaluation.alignment.utils import preprocess_interaction
 from type_hints import GoodBadDataset, RecDataset, RecModel, SplitTuple
 from utils import TimedFunction, seq_tostr
+from utils_classes.distances import edit_distance
 from utils_classes.generators import DatasetGenerator, TimedGenerator
 from utils_classes.Split import Split
 

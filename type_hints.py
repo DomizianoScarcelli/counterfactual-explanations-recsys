@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Set, Tuple, TypeAlias, Literal
+from typing import List, Literal, Set, Tuple, TypeAlias
 
 from aalpy.automata.Dfa import DfaState
 from torch import Tensor

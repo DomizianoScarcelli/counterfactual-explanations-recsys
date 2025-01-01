@@ -1,23 +1,22 @@
-from recbole.config import Config
-from exceptions import EmptyDatasetError
-from utils_classes.distances import intersection_weighted_ndcg
 import json
 import os
 import pickle
 import random
 from enum import Enum
 from statistics import mean
-from typing import List, Set, Tuple, TypedDict, Dict, overload, Literal
+from typing import Dict, List, Literal, Set, Tuple, TypedDict, overload
 
 import _pickle as cPickle
+from recbole.config import Config
 from recbole.data.dataset.sequential_dataset import SequentialDataset
 from torch import Tensor, Value
 
 from config import ConfigParams
 from constants import PADDING_CHAR, cat2id
+from exceptions import EmptyDatasetError
 from type_hints import CategorizedDataset, CategorySet, Dataset, RecDataset
 from utils_classes.Cached import Cached
-from utils_classes.distances import edit_distance
+from utils_classes.distances import edit_distance, intersection_weighted_ndcg
 
 
 class ItemInfo(TypedDict):

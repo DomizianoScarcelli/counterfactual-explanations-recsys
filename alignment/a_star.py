@@ -5,13 +5,8 @@ from typing import Callable, List, Optional, Sequence, Set, Tuple, TypeAlias
 from aalpy.automata.Dfa import Dfa, DfaState
 from line_profiler import profile
 
-from alignment.actions import (
-    Action,
-    decode_action,
-    encode_action_str,
-    is_legal,
-    print_action,
-)
+from alignment.actions import (Action, decode_action, encode_action_str,
+                               is_legal, print_action)
 from alignment.utils import alignment_length, prune_paths_by_length
 from config import ConfigParams
 from exceptions import NoTargetStatesError

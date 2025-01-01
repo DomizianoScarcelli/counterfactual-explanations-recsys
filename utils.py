@@ -1,13 +1,13 @@
 import random
 import time
-from typing import Any, Callable, List, Optional, Set
+import zlib
 from functools import wraps
+from typing import Any, Callable, List, Optional, Set
 
 import numpy as np
 import torch
 from torch import Tensor
 
-import zlib
 from config import ConfigParams
 
 

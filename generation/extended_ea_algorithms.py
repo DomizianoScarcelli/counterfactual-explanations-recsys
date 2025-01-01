@@ -1,16 +1,15 @@
-from typing import List
-from typing import Optional
-
-from deap.tools.support import deepcopy
-from numpy._core.multiarray import MAY_SHARE_EXACT
-from constants import MAX_LENGTH, MIN_LENGTH
-from utils_classes.Split import Split
 import random
 from operator import attrgetter
+from typing import List, Optional
 
 from deap.algorithms import tools
+from deap.tools.support import deepcopy
+from numpy._core.multiarray import MAY_SHARE_EXACT
 from tqdm import tqdm
+
+from constants import MAX_LENGTH, MIN_LENGTH
 from generation.utils import clone
+from utils_classes.Split import Split
 
 
 def split_population(population: list, split: Optional[Split]) -> List[int]:

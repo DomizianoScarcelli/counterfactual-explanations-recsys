@@ -1,12 +1,12 @@
-from typing import Set, List
-from statistics import mean
 import math
-from torchmetrics.retrieval import RetrievalNormalizedDCG
+from statistics import mean
+from typing import List, Set
 
 import Levenshtein
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
+from torchmetrics.retrieval import RetrievalNormalizedDCG
 
 from config import ConfigParams
 from constants import PADDING_CHAR

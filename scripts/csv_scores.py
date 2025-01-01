@@ -1,9 +1,8 @@
-from utils_classes.generators import SequenceGenerator
+import json
 import os
 import warnings
 from statistics import mean
 from typing import List, Optional, Tuple
-import json
 
 import fire
 import pandas as pd
@@ -14,13 +13,11 @@ from config import ConfigParams
 from generation.utils import get_items
 from models.config_utils import get_config
 from models.utils import trim
-from sensitivity.utils import (
-    compute_scores,
-    counterfactual_scores_deltas,
-    print_topk_info,
-)
+from sensitivity.utils import (compute_scores, counterfactual_scores_deltas,
+                               print_topk_info)
 from type_hints import RecDataset
 from utils import seq_tostr
+from utils_classes.generators import SequenceGenerator
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
