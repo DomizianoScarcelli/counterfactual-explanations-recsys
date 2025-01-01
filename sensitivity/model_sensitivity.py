@@ -129,7 +129,7 @@ def model_sensitivity_category(
         print(f"[DEBUG] skipping position {position}")
         return
 
-    if ConfigParams.DATASET == RecDataset.ML_1M:
+    if ConfigParams.DATASET in [RecDataset.ML_1M, RecDataset.ML_100K]:
         alphabet = torch.tensor(list(get_items()))
     else:
         raise NotImplementedError(f"Dataset {ConfigParams.DATASET} not supported yet!")
@@ -272,7 +272,7 @@ def model_sensitivity_category_targeted(
     if log_path and os.path.exists(log_path):
         prev_df = pd.read_csv(log_path)
 
-    if ConfigParams.DATASET == RecDataset.ML_1M:
+    if ConfigParams.DATASET in [RecDataset.ML_1M, RecDataset.ML_100K]:
         alphabet = torch.tensor(list(get_items()))
     else:
         raise NotImplementedError(f"Dataset {ConfigParams.DATASET} not supported yet!")
@@ -425,7 +425,7 @@ def model_sensitivity_simple(
     if log_path and os.path.exists(log_path):
         prev_df = pd.read_csv(log_path)
 
-    if ConfigParams.DATASET == RecDataset.ML_1M:
+    if ConfigParams.DATASET in [RecDataset.ML_1M, RecDataset.ML_100K]:
         alphabet = torch.tensor(list(get_items()))
     else:
         raise NotImplementedError(f"Dataset {ConfigParams.DATASET} not supported yet!")

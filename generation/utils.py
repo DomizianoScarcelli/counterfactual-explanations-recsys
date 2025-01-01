@@ -1,3 +1,4 @@
+from recbole.config import Config
 from exceptions import EmptyDatasetError
 from utils_classes.distances import intersection_weighted_ndcg
 import json
@@ -16,7 +17,7 @@ from config import ConfigParams
 from constants import PADDING_CHAR, cat2id
 from type_hints import CategorizedDataset, CategorySet, Dataset, RecDataset
 from utils_classes.Cached import Cached
-from utils_classes.distances import edit_distance, pairwise_jaccard_sim
+from utils_classes.distances import edit_distance
 
 
 class ItemInfo(TypedDict):
@@ -36,7 +37,8 @@ class Items(Enum):
 
 
 class Category(Enum):
-    ML_1M = os.path.join("data", "category_map.json")
+    ML_1M = os.path.join("data", "category_map_ml-1m.json")
+    ML_100K = os.path.join("data", "category_map_ml-100k.json")
 
 
 def _compare_int_ys(y1: int, y2: int):
@@ -78,30 +80,10 @@ def equal_ys(
 
 
 def get_items(dataset: RecDataset = ConfigParams.DATASET) -> Set[int]:
-    # TODO: You remove this an take the alphabet from the category map, or from the id2token keys
-    # in this way you can remove the universe.txt files, which are not so much elegant.
-    def load_items(path):
-        with open(path, "r") as f:
-            return f.read()
-
-    if dataset == RecDataset.ML_1M:
-        items = Items.ML_1M
-
-    if isinstance(items, Items):
-        value = items.value
-    else:
-        value = items
-
-    # Use Data class to handle file caching
-    data = Cached(value, load_fn=load_items).get_data()
-    item_set = set(
-        int(x) for x in data.replace("{", "").replace("}", "").split(",")
-    ) - {PADDING_CHAR}
-    # category_map_keys = set(get_category_map(ConfigParams.DATASET).keys())
-
-    # print(f"Item set length: {len(item_set)}\n Category map length: {len(category_map_keys)}\n Intersection length: {len(item_set & category_map_keys)}")
-    # return item_set & category_map_keys
-    return item_set
+    category_map = get_category_map(dataset)
+    items = set(int(x) for x in category_map.keys())
+    print(f"Items are: {items}, length: {len(items)}")
+    return items
 
 
 def get_category_map(dataset: RecDataset = ConfigParams.DATASET) -> Dict[int, str]:
@@ -116,14 +98,14 @@ def get_category_map(dataset: RecDataset = ConfigParams.DATASET) -> Dict[int, st
 
         return {int(key): value for key, value in data.items()}
 
-    if dataset == RecDataset.ML_1M:
-        category = Category.ML_1M
+    if dataset in [RecDataset.ML_1M, RecDataset.ML_100K]:
+        category = os.path.join("data", f"category_map_{dataset.value}.json")
     else:
         raise NotImplementedError(
             f"get_category_map not implemented for dataset {dataset}"
         )
 
-    return Cached(category.value, load_fn=load_json).get_data()
+    return Cached(category, load_fn=load_json).get_data()
 
 
 @overload
@@ -177,7 +159,7 @@ def get_remapped_dataset(dataset: RecDataset) -> SequentialDataset:
         with open(path, "rb") as f:
             return pickle.load(f)
 
-    if dataset == RecDataset.ML_1M:
+    if dataset in [RecDataset.ML_1M, RecDataset.ML_100K]:
         path = os.path.join("data", "ml-1m-SequentialDataset.pth")
     else:
         raise NotImplementedError(

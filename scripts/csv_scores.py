@@ -125,7 +125,7 @@ def counterfactual_scores_from_csv(
     og_df = pd.read_csv(csv_path)
     # just keep the first occurrence of the sequence
     df = og_df.drop_duplicates(subset=["i"], keep="first")
-    if ConfigParams.DATASET == RecDataset.ML_1M:
+    if ConfigParams.DATASET in [RecDataset.ML_1M, RecDataset.ML_100K]:
         alphabet = torch.tensor(list(get_items()))
     else:
         raise NotImplementedError(f"Dataset {ConfigParams.DATASET} not supported yet!")

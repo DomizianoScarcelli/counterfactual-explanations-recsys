@@ -18,7 +18,7 @@ def test_ModelSensitivity_YieldsCorrectMetrics_WhenSequencesAreAllEqual():
     sequences = SequenceGenerator(config)
     model = generate_model(config)
     
-    if ConfigParams.DATASET == RecDataset.ML_1M:
+    if ConfigParams.DATASET in [RecDataset.ML_1M, RecDataset.ML_100K]:
         alphabet = torch.tensor(list(get_items()))
     else:
         raise NotImplementedError(f"Dataset {ConfigParams.DATASET} not supported yet!")

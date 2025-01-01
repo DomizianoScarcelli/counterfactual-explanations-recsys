@@ -18,7 +18,7 @@ def test_RangeOfItemsIsCorrect():
     items = set()
 
     correct_set = {}
-    if ConfigParams.DATASET == RecDataset.ML_1M:
+    if ConfigParams.DATASET in [RecDataset.ML_1M, RecDataset.ML_100K]:
         correct_set = set(range(1, NumItems.ML_1M.value)) | {PADDING_CHAR}
     else:
         raise NotImplementedError(f"Test not implemented for dataset {ConfigParams.DATASET}")

@@ -19,10 +19,9 @@ def generate_model(config: Config) -> SequentialRecommender:
         The model.
     """
     train_data, _, _ = get_dataloaders(config)
-    checkpoint_map = {
-        RecModel.BERT4Rec.value: "saved/Bert4Rec_ml1m.pth",
-        RecModel.SASRec.value: "saved/SASRec_ml1m.pth",
-    }
+    checkpoint_file = (
+        f"saved/{ConfigParams.MODEL.value}_{ConfigParams.DATASET.value}.pth"
+    )
 
     if config.model == RecModel.BERT4Rec.value:
         model = ExtendedBERT4Rec(config, train_data.dataset)
@@ -30,7 +29,6 @@ def generate_model(config: Config) -> SequentialRecommender:
         model = ExtendedSASRec(config, train_data.dataset)
     else:
         raise ValueError(f"Model {config.model} not supported")
-    checkpoint_file = checkpoint_map[config.model]
     if checkpoint_file:
         checkpoint = torch.load(checkpoint_file, map_location=config["device"])
         model.load_state_dict(checkpoint["state_dict"])
@@ -38,7 +36,11 @@ def generate_model(config: Config) -> SequentialRecommender:
     return model
 
 
-def get_config(dataset: RecDataset, model: RecModel) -> Config:
+def get_config(
+    dataset: RecDataset, model: RecModel, save_dataset: bool = False
+) -> Config:
+    print(f"Loaded dataset: {dataset}")
+
     parameter_dict_ml1m = {
         "load_col": {"inter": ["user_id", "item_id", "rating", "timestamp"]},
         "train_neg_sample_args": None,
@@ -49,7 +51,7 @@ def get_config(dataset: RecDataset, model: RecModel) -> Config:
             "order": "TO",
             # "mode": "uni100",
         },
-        "save_dataset": True,
+        "save_dataset": save_dataset,
         "train_batch_size": ConfigParams.TRAIN_BATCH_SIZE,
         # "n_heads": 1,
     }
