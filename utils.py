@@ -1,13 +1,13 @@
 import random
 import time
-from typing import Any, Callable, List, Optional
+import zlib
 from functools import wraps
+from typing import Any, Callable, List, Optional, Set
 
 import numpy as np
 import torch
 from torch import Tensor
 
-import zlib
 from config import ConfigParams
 
 
@@ -18,12 +18,6 @@ def printd(statement, level=1):
     """
     if ConfigParams.DEBUG and level <= ConfigParams.DEBUG:
         print(statement)
-
-
-def modulo_div(x: int, max_value: int):
-    while x > max_value:
-        x //= max_value
-    return x
 
 
 class SeedSetter:
@@ -58,8 +52,7 @@ class SeedSetter:
         cls.previous_seed = seed
 
 
-
-def seq_tostr(seq: Tensor | List) -> str:
+def seq_tostr(seq: Tensor | List | Set) -> str:
     if isinstance(seq, Tensor):
         assert (
             seq.dim() == 1

@@ -7,7 +7,6 @@ from recbole.trainer import Interaction
 from torch import Tensor
 
 
-
 def predict(model: SequentialRecommender, seq: Tensor, argmax: bool=True) -> torch.Tensor:
     """Returns the prediction of the model on the interaction.
 
@@ -20,7 +19,7 @@ def predict(model: SequentialRecommender, seq: Tensor, argmax: bool=True) -> tor
     Returns:
         raw logits if argmax is False, label otherwise
     """
-    preds = model.full_sort_predict(seq)
+    preds = model(seq)
     if argmax:
         preds = preds.argmax(dim=1)
     return preds
@@ -37,7 +36,7 @@ def batch_predict(model: SequentialRecommender, seq: Tensor, argmax: bool=True) 
     Returns:
         raw logits if argmax is False, label otherwise
     """
-    preds = model.full_sort_predict(seq)
+    preds = model(seq)
     if argmax:
         preds = preds.argmax(dim=1)
     return preds

@@ -1,9 +1,10 @@
 import json
 import os
 import time
-from typing import List, Optional, TypedDict, Dict, Any
+from typing import List, Optional, TypedDict
 
 import toml
+import torch
 
 from type_hints import RecDataset, RecModel
 
@@ -16,6 +17,7 @@ class DebugConfig(TypedDict):
 
 
 class SettingsConfig(TypedDict):
+    device: str
     model: str
     dataset: str
     determinism: bool
@@ -41,6 +43,7 @@ class MutationConfig(TypedDict):
 
 class EvolutionConfig(TypedDict):
     generations: int
+    target_cat: List[str] | List[List[str]]
     pop_size: int
     halloffame_ratio: float
     fitness_alpha: float
@@ -56,6 +59,7 @@ class ConfigDict(TypedDict):
     settings: SettingsConfig
     automata: AutomataConfig
     evolution: EvolutionConfig
+
 
 def deep_update(config: dict, override: dict):
     """
@@ -76,6 +80,7 @@ def deep_update(config: dict, override: dict):
         else:
             config[key] = value  # Directly update the key in config
     return config
+
 
 class ConfigParams:
     _instance = None  # Singleton instance
@@ -107,6 +112,7 @@ class ConfigParams:
             # Set parameters directly as class attributes
             cls.DEBUG = config["debug"]["debug"]
             cls.DETERMINISM = config["settings"]["determinism"]
+            cls.DEVICE = torch.device(config["settings"]["device"])
             cls.MODEL = RecModel[config["settings"]["model"]]
             cls.DATASET = RecDataset[config["settings"]["dataset"]]
             cls.TRAIN_BATCH_SIZE = config["settings"]["train_batch_size"]
@@ -119,6 +125,7 @@ class ConfigParams:
             cls.THRESHOLD = config["generation"]["similarity_threshold"]
 
             cls.GENERATIONS = config["evolution"]["generations"]
+            cls.TARGET_CAT = config["evolution"]["target_cat"]
             cls.POP_SIZE = config["evolution"]["pop_size"]
             cls.HALLOFFAME_RATIO = config["evolution"]["halloffame_ratio"]
             cls.ALLOWED_MUTATIONS = config["evolution"]["allowed_mutations"]
@@ -194,6 +201,7 @@ class ConfigParams:
             "determinism": [ConfigParams.DETERMINISM] * length,
             "model": [ConfigParams.MODEL.value] * length,
             "dataset": [ConfigParams.DATASET.value] * length,
+            "target_cat": [str(ConfigParams.TARGET_CAT)] * length,
             "pop_size": [ConfigParams.POP_SIZE] * length,
             "generations": [ConfigParams.GENERATIONS] * length,
             "halloffame_ratio": [ConfigParams.HALLOFFAME_RATIO] * length,

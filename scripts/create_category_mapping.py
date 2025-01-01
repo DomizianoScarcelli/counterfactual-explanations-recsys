@@ -3,7 +3,9 @@ import os
 
 import pandas as pd
 
+from config import ConfigParams
 from generation.utils import token2id
+from models.config_utils import get_config
 from type_hints import RecDataset
 
 
@@ -14,9 +16,18 @@ def create_category_mapping():
 
     The json file is used by `generation.utils.get_category_map()`
     """
-    dataset_path = "dataset/ml-1m"
-    item_info_path = os.path.join(dataset_path, "ml-1m.item")
+    dataset_path = f"dataset/{ConfigParams.DATASET.value}"
+    get_config(
+        dataset=ConfigParams.DATASET, model=ConfigParams.MODEL, save_dataset=True
+    )
+    if not os.path.exists(dataset_path):
+        # Generate the dataset
+        print(f"")
+        raise ValueError(
+            f"Dataset {ConfigParams.DATASET.value} not found, make sure to download the .zip from https://drive.google.com/drive/folders/1ahiLmzU7cGRPXf5qGMqtAChte2eYp9gI and unzip it in the dataset/ directory"
+        )
 
+    item_info_path = os.path.join(dataset_path, f"{ConfigParams.DATASET.value}.item")
     df = pd.read_csv(item_info_path, delimiter="\t")
 
     # maps interals ids to categories
@@ -24,12 +35,19 @@ def create_category_mapping():
     for _, row in df.iterrows():
         token = str(row["item_id:token"])
         try:
-            id = token2id(RecDataset.ML_1M, token)
-            category_map[id] = row["genre:token_seq"].split(" ")
+            id = token2id(ConfigParams.DATASET, token)
+            if ConfigParams.DATASET == RecDataset.ML_1M:
+                genre_key = "genre:token_seq"
+            elif ConfigParams.DATASET == RecDataset.ML_100K:
+                genre_key = "class:token_seq"
+            else:
+                raise ValueError(f"Dataset {ConfigParams.DATASET} is not supported")
+            category_map[id] = row[genre_key].split(" ")  # type: ignore
         except ValueError:
+            print(f"Value error on {token}")
             continue
 
-    with open("data/category_map.json", "w") as f:
+    with open(f"data/category_map_{ConfigParams.DATASET.value}.json", "w") as f:
         json.dump(category_map, f, indent=2)
 
 

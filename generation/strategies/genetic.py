@@ -1,7 +1,6 @@
-from utils import modulo_div
 import math
 import random
-from typing import Any, Callable, List
+from typing import Any, Callable, List, Optional
 
 import numpy as np
 import torch
@@ -10,28 +9,18 @@ from torch import Tensor
 
 from config import ConfigParams
 from constants import MAX_LENGTH, MIN_LENGTH, PADDING_CHAR
-from generation.extended_ea_algorithms import (
-    eaSimpleBatched,
-    indexedCxTwoPoint,
-    indexedSelTournament,
-)
-from generation.mutations import (
-    ALL_MUTATIONS,
-    AddMutation,
-    DeleteMutation,
-    Mutation,
-    contains_mutation,
-    remove_mutation,
-)
+from generation.extended_ea_algorithms import (customSelTournament,
+                                               eaSimpleBatched,
+                                               indexedCxTwoPoint)
+from generation.mutations import (ALL_MUTATIONS, AddMutation, DeleteMutation,
+                                  Mutation, contains_mutation, remove_mutation)
 from generation.strategies.abstract_strategy import GenerationStrategy
 from generation.utils import _evaluate_generation, clone
 from models.utils import pad_batch, trim
 from type_hints import Dataset
-from utils_classes.distances import (
-    edit_distance,
-    jensen_shannon_divergence,
-    self_indicator,
-)
+from utils_classes.distances import (edit_distance, jensen_shannon_divergence,
+                                     self_indicator)
+from utils_classes.Split import Split
 
 
 class GeneticStrategy(GenerationStrategy):
@@ -46,6 +35,7 @@ class GeneticStrategy(GenerationStrategy):
         good_examples: bool = True,
         halloffame_ratio: float = 0.1,
         verbose: bool = True,
+        split: Optional[Split] = None,
     ):
         super().__init__(
             input_seq=trim(input_seq),
@@ -54,11 +44,16 @@ class GeneticStrategy(GenerationStrategy):
             good_examples=good_examples,
             verbose=verbose,
         )
+        self.og_input_length = len(self.input_seq)
         self.pop_size = pop_size
         self.gt = self.model(input_seq.unsqueeze(0)).squeeze()
         self.generations = generations
         self.halloffame_ratio = halloffame_ratio
         self.allowed_mutations = allowed_mutations
+        self.split = split
+        # if self.split is not None:
+        #     for mutation in self.allowed_mutations:
+        #         mutation.set_split(self.split)
         # Define the evaluation function
         creator.create("fitness", base.Fitness, weights=(-1.0,))  # Minimize fitness
         creator.create("individual", list, fitness=creator.fitness)
@@ -84,32 +79,41 @@ class GeneticStrategy(GenerationStrategy):
         self.toolbox.register("mate", indexedCxTwoPoint)  # Use two-point crossover
         self.toolbox.register("mutate", self.mutate)
         self.toolbox.register(
-            "select", indexedSelTournament, tournsize=3
+            "select", customSelTournament, tournsize=3
         )  # Tournament selection
 
     def print(self, s):
         if self.verbose:
             print(s)
 
-    def mutate(self, seq: List[int], index: int):
+    def mutate(self, seq: List[int], og_seq_len: int):
         # Set seed according to the index in order to always choose a different mutation
-        # TODO: remove for efficiency
+
+        # TODO: remove the assertion for efficiency
         assert (
             PADDING_CHAR not in seq
         ), f"Seq must not contain padding char {PADDING_CHAR}: {seq}"
-        mutations = self.allowed_mutations.copy()
-        # If after NUM_ADDITIONS additions the seq is longer than the MAX_LENGTH, don't allow add mutations
-        if len(seq) > MAX_LENGTH - ConfigParams.NUM_ADDITIONS and contains_mutation(
-            AddMutation, mutations
+
+        mutations = self.allowed_mutations
+        # og_seq_len is the length of the unsplitted sequence.
+        # To this we add the difference between the source sequence length (og_input_length) and the current sequence length (seq)
+        # to count for the added or removed elements in previous mutations
+        current_seq_length = og_seq_len + abs(len(seq) - self.og_input_length)
+        # TODO: this is still not correct when split is used
+        if (
+            MAX_LENGTH - current_seq_length < ConfigParams.NUM_ADDITIONS
+            and contains_mutation(AddMutation, mutations)
         ):
             mutations = remove_mutation(AddMutation, mutations)
         # If after NUM_DELETIONS deletions the seq is shorter than the MIN_LENGTh, don't allow delete mutations
-        if len(seq) < MIN_LENGTH + ConfigParams.NUM_DELETIONS and contains_mutation(
-            DeleteMutation, mutations
-        ):
+        if (
+            MIN_LENGTH + current_seq_length < ConfigParams.NUM_ADDITIONS
+            and contains_mutation(AddMutation, mutations)
+        ) or (len(seq) <= 2): #or if the splitted sequence is too small
             mutations = remove_mutation(DeleteMutation, mutations)
+
         mutation = random.choice(mutations)
-        result = mutation(seq, self.alphabet, index)
+        result = mutation(seq, self.alphabet)
         return result
 
     def evaluate_fitness_batch(self, individuals: List[List[int]]) -> List[float]:
@@ -124,7 +128,7 @@ class GeneticStrategy(GenerationStrategy):
             batch_individuals = individuals[
                 batch_i * batch_size : (batch_i + 1) * batch_size
             ]
-            candidate_seqs = pad_batch(batch_individuals, MAX_LENGTH)
+            candidate_seqs = pad_batch(batch_individuals, MAX_LENGTH), MIN_LENGTH
             candidate_probs = self.model(candidate_seqs)
 
             # TODO: you can use this to remove the for loop. This still doesn't work
@@ -197,6 +201,7 @@ class GeneticStrategy(GenerationStrategy):
             halloffame=halloffame if self.halloffame_ratio != 0 else None,
             verbose=False,
             pbar=self.verbose,
+            split=self.split,
         )
         preds = self.model(pad_batch(population, MAX_LENGTH)).argmax(-1)
         new_population = [

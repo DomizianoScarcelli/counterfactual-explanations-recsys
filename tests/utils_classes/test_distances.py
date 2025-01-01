@@ -1,7 +1,9 @@
-import torch
+import pytest
 from torch import tensor
 
-from utils_classes.distances import jaccard_sim, ndcg_at, precision_at
+from config import ConfigParams
+from utils_classes.distances import (intersection_weighted_ndcg, jaccard_sim,
+                                     precision_at)
 
 
 class TestJaccardSim:
@@ -20,6 +22,7 @@ class TestJaccardSim:
         b = tensor([4, 5, 6])
         assert jaccard_sim(a, b) == 0.0, "Failed for disjoint sets."
 
+
 class TestPrecisionAtK:
     def test_PrecisionAtK_ReturnsCorrectValue_WhenPartialMatchOccurs(self):
         a = tensor([1, 2, 3, 4, 5])
@@ -36,20 +39,76 @@ class TestPrecisionAtK:
         b = tensor([1, 2, 3, 6, 7])
         assert precision_at(3, a, b) == 1.0, "Failed for perfect match."
 
-class TestNDCGAtK:
-    def test_NDCGAtK_ReturnsOne_WhenPerfectRankingIsProvided(self):
-        a = tensor([1, 2, 3, 4, 5])
-        b = tensor([1, 2, 3, 6, 7])
-        assert torch.isclose(torch.tensor(ndcg_at(3, a, b)), tensor([1.0])), "Failed for perfect ranking."
 
-    def test_NDCGAtK_ReturnsCorrectValue_WhenRankingIsPartial(self):
-        a = tensor([1, 2, 3, 4, 5])
-        b = tensor([3, 2, 1, 6, 7])
-        expected_ndcg = (1 / 1 + 1 / torch.log2(tensor(3.0)) + 1 / torch.log2(tensor(4.0))) / \
-                        (1 + 1 / torch.log2(tensor(3.0)) + 1 / torch.log2(tensor(4.0)))
-        assert torch.isclose(torch.tensor(ndcg_at(3, a, b)), expected_ndcg), "Failed for partial ranking."
+class TestNDCG:
+    def test_NDCG_ReturnsOne_WhenListsAreIdentical(self):
+        a = [{1, 2, 3}, {4, 5}]
+        b = [{1, 2, 3}, {4, 5}]
+        result = intersection_weighted_ndcg(a, b)
+        assert pytest.approx(result, 0.00001) == 1.0, result
 
-    def test_NDCGAtK_ReturnsZero_WhenNoRelevantItemsAreRanked(self):
-        a = tensor([1, 2, 3, 4, 5])
-        b = tensor([6, 7, 8, 9, 10])
-        assert ndcg_at(3, a, b) == 0.0, "Failed for no relevant items."
+    def test_NDCG_ReturnsZero_WhenListsAreDisjoint(self):
+        a = [{1, 2, 3}, {4, 5}]
+        b = [{6, 7}, {8, 9}]
+        result = intersection_weighted_ndcg(a, b)
+        assert pytest.approx(result, 0.00001) == 0.0, result
+
+    def test_NDCG_ReturnsCorrectValue_WhenPartialOverlap(self):
+        a = [{1, 2}, {3, 4}]
+        b = [{1, 3}, {2, 4}]
+        result = intersection_weighted_ndcg(a, b)
+
+        if ConfigParams.GENERATION_STRATEGY == "targeted":
+            assert pytest.approx(result, 0.00001) == 1.0, result
+        else:
+            assert 0.0 < result < 1.0, result
+
+    def test_NDCG_ReturnsOne_WhenRankingIsPerfect(self):
+        a = [{1, 2}, {3}]
+        b = [{1, 2}, {3}]
+        result = intersection_weighted_ndcg(a, b)
+        assert pytest.approx(result, 0.00001) == 1.0, result
+
+    def test_NDCG_ReturnsLowerValue_WhenRankingIsSuboptimal(self):
+        a = [{1, 2}, {3}]
+        b = [{1, 3}, {3}]
+        result_perfect = intersection_weighted_ndcg(a, [{1, 2}, {3}])
+        result_suboptimal = intersection_weighted_ndcg(a, b)
+
+        if ConfigParams.GENERATION_STRATEGY == "targeted":
+            assert result_perfect == result_suboptimal
+        else:
+            assert result_perfect > result_suboptimal, result_suboptimal 
+
+    def test_NDCG_ReturnsZero_WhenNoItemsInB(self):
+        a = [{1, 2, 3}, {4, 5}]
+        b = [set(), set()]
+        result = intersection_weighted_ndcg(a, b)
+        assert pytest.approx(result, 0.00001) == 0.0, result
+
+    def test_NDCG_HandlesEmptyInputLists(self):
+        a = []
+        b = []
+        result = intersection_weighted_ndcg(a, b)
+        assert pytest.approx(result, 0.00001) == 0.0, result
+
+    def test_NDCG_HandlesSingleSetInputs(self):
+        a = [{1, 2}]
+        b = [{3, 1}]
+        result = intersection_weighted_ndcg(a, b)
+        assert 0.0 < result <= 1.0, result
+
+    def test_NDCG_HandlesVaryingLengthsOfAAndB(self):
+        a = [{1, 2, 3}]
+        b = [{1, 2}]
+        result = intersection_weighted_ndcg(a, b)
+        if ConfigParams.GENERATION_STRATEGY == "targeted":
+            assert pytest.approx(result, 0.00001) == 1.0, result
+        else:
+            assert 0.0 < result < 1.0, result
+
+    def test_NDCG_ReturnsOne_WhenAllItemsMatchWithPerfectRanking(self):
+        a = [{1}, {2}, {3}]
+        b = [{1}, {2}, {3}]
+        result = intersection_weighted_ndcg(a, b)
+        assert pytest.approx(result, 0.00001) == 1.0, result

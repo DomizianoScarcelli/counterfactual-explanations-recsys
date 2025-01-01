@@ -1,9 +1,8 @@
-from utils_classes.generators import SequenceGenerator
+import json
 import os
 import warnings
 from statistics import mean
 from typing import List, Optional, Tuple
-import json
 
 import fire
 import pandas as pd
@@ -14,13 +13,11 @@ from config import ConfigParams
 from generation.utils import get_items
 from models.config_utils import get_config
 from models.utils import trim
-from sensitivity.utils import (
-    compute_scores,
-    counterfactual_scores_deltas,
-    print_topk_info,
-)
+from sensitivity.utils import (compute_scores, counterfactual_scores_deltas,
+                               print_topk_info)
 from type_hints import RecDataset
 from utils import seq_tostr
+from utils_classes.generators import SequenceGenerator
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
@@ -125,7 +122,7 @@ def counterfactual_scores_from_csv(
     og_df = pd.read_csv(csv_path)
     # just keep the first occurrence of the sequence
     df = og_df.drop_duplicates(subset=["i"], keep="first")
-    if ConfigParams.DATASET == RecDataset.ML_1M:
+    if ConfigParams.DATASET in [RecDataset.ML_1M, RecDataset.ML_100K]:
         alphabet = torch.tensor(list(get_items()))
     else:
         raise NotImplementedError(f"Dataset {ConfigParams.DATASET} not supported yet!")

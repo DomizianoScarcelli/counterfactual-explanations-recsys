@@ -1,19 +1,21 @@
-from typing import Optional, Set
+from typing import Set
+import os
 
-from line_profiler import profile
+if os.environ["LINE_PROFILE"] == "1":
+    from line_profiler import profile
 
 
 # Store actions as raw bits for memory efficiency
 class Action:
     SYNC = 0b00  # 0
-    DEL = 0b01   # 1
-    ADD = 0b10   # 2
+    DEL = 0b01  # 1
+    ADD = 0b10  # 2
 
-@profile
+
 def encode_action(action_type: int, number: int) -> int:
     return (action_type << 13) | number  # 2 bits for action type, 13 bits for number
 
-@profile
+
 def encode_action_str(action: str) -> int:
     action_type = None
     number = None
@@ -26,17 +28,18 @@ def encode_action_str(action: str) -> int:
     elif "add" in action:
         action_type = Action.ADD
         number = int(action.replace("add_", ""))
-    
+
     assert action_type is not None, f"Action '{action}' not supported"
     assert number is not None, f"Number not extracted from action '{action}'"
-    
+
     return encode_action(action_type, number)  # Use the encode_action function
 
-@profile
+
 def decode_action(encoded_action: int):
     action_type = (encoded_action >> 13) & 0b11  # Extract the action type (2 bits)
     number = encoded_action & 0x1FFF  # Extract the number (13 bits)
     return action_type, number
+
 
 def act_str(action: int):
     if action == Action.SYNC:
@@ -46,15 +49,13 @@ def act_str(action: int):
     if action == Action.DEL:
         return "del"
 
-@profile
+
 def print_action(encoded_action: int):
     action_type, e = decode_action(encoded_action)
     return f"{act_str(action_type)}_{e}"
 
-@profile
-def is_legal(action: int, 
-             prev_actions: Set[int], 
-             illegal_symbols: Set[int]) -> bool:
+
+def is_legal(action: int, prev_actions: Set[int], illegal_symbols: Set[int]) -> bool:
     _, e = decode_action(action)
 
     if e in illegal_symbols:

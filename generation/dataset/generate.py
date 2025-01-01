@@ -13,8 +13,8 @@ warnings.simplefilter(action="ignore", category=FutureWarning)
 
 def generate(
     interaction: Union[Interaction, Tensor],
-    good_strat: GenerationStrategy,
-    bad_strat: GenerationStrategy,
+    good_strat: Optional[GenerationStrategy],
+    bad_strat: Optional[GenerationStrategy],
     alphabet: Optional[List[int]] = None,
 ) -> GoodBadDataset:
     """
@@ -47,8 +47,28 @@ def generate(
         sequence.size(0) == 1
     ), f"Only batch size of 1 is supported, sequence shape is: {sequence.shape}"
     if alphabet:
-        good_strat.replace_alphabet(alphabet)
-        bad_strat.replace_alphabet(alphabet)
-    good_examples = good_strat.generate()
-    bad_examples = bad_strat.generate()
+        if good_strat:
+            good_strat.replace_alphabet(alphabet)
+        if bad_strat:
+            bad_strat.replace_alphabet(alphabet)
+
+    good_examples, bad_examples = [], []
+    if good_strat:
+        good_examples = good_strat.generate()
+    if bad_strat:
+        bad_examples = bad_strat.generate()
+
+    assert (
+        good_strat is not None or bad_strat is not None
+    ), "Unexpected error, good strat OR bad strat should be not None"
+    # print(
+    #     f"=================================GOOD DATASET================================="
+    # )
+    # for _, v in good_examples:
+    #     print(f"Good {v}")
+    # print(
+    #     f"=================================BAD DATASET================================="
+    # )
+    # for _, v in bad_examples:
+    #     print(f"Bad {v}")
     return good_examples, bad_examples

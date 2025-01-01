@@ -1,5 +1,7 @@
 from enum import Enum
 
+from type_hints import RecDataset
+
 
 class InputLength(Enum):
     Bert4Rec = (10, 50)
@@ -29,6 +31,9 @@ cat2id = {
     "Thriller": 15,
     "War": 16,
     "Western": 17,
+    "unknown": 18,  # MAJOR TODO: How should I treat this?
 }
 
 id2cat = {value: key for key, value in cat2id.items()}
+
+SUPPORTED_DATASETS = [RecDataset.ML_1M, RecDataset.ML_100K]

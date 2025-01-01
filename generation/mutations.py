@@ -1,4 +1,3 @@
-from utils import modulo_div
 import random
 from abc import ABC, abstractmethod
 from typing import List, Tuple
@@ -12,9 +11,9 @@ class Mutation(ABC):
     def __init__(self):
         self.name: str
 
-    def __call__(
-        self, seq: List[int], alphabet: List[int], index: int
-    ) -> Tuple[List[int]]:
+    def __call__(self, seq: List[int], alphabet: List[int]) -> Tuple[List[int]]:
+        # TODO: junk, remove index
+
         # Change the seed according to the index of the mutated sequence
         assert PADDING_CHAR not in seq, f"Padding char {PADDING_CHAR} is in seq: {seq}"
         result = (self._apply(seq, alphabet),)
@@ -27,6 +26,7 @@ class Mutation(ABC):
 
 class ReplaceMutation(Mutation):
     def __init__(self, num_replaces: int = 1):
+        super().__init__()
         self.num_replaces = num_replaces
         self.name = "replace"
 
@@ -34,6 +34,7 @@ class ReplaceMutation(Mutation):
         for _ in range(self.num_replaces):
             i = random.sample(range(1, len(seq)), 1)[0]
             new_value = random.choice(alphabet)
+            # avoid repetitions
             while new_value in seq:
                 new_value = random.choice(alphabet)
             seq[i] = new_value
@@ -42,6 +43,7 @@ class ReplaceMutation(Mutation):
 
 class SwapMutation(Mutation):
     def __init__(self, offset_ratio: float = 0.5):
+        super().__init__()
         self.offset_ratio = offset_ratio
         self.name = "swap"
 
@@ -54,6 +56,7 @@ class SwapMutation(Mutation):
 
 class ReverseMutation(Mutation):
     def __init__(self, offset_ratio: float = 0.5):
+        super().__init__()
         self.offset_ratio = offset_ratio
         self.name = "reverse"
 
@@ -66,6 +69,7 @@ class ReverseMutation(Mutation):
 
 class ShuffleMutation(Mutation):
     def __init__(self, offset_ratio: float = 0.5):
+        super().__init__()
         self.offset_ratio = offset_ratio
         self.name = "shuffle"
 
@@ -80,12 +84,14 @@ class ShuffleMutation(Mutation):
 
 class AddMutation(Mutation):
     def __init__(self, num_additions: int = 1):
+        super().__init__()
         self.name = "add"
         self.num_additions = num_additions
 
     def _apply(self, seq: list[int], alphabet: list[int]) -> list[int]:
         for _ in range(self.num_additions):
             random_item = random.choice(alphabet)
+            # avoid repetition
             while random_item in seq:
                 random_item = random.choice(alphabet)
             i = random.sample(range(1, len(seq)), 1)[0]
@@ -95,6 +101,7 @@ class AddMutation(Mutation):
 
 class DeleteMutation(Mutation):
     def __init__(self, num_deletions: int = 1):
+        super().__init__()
         self.name = "delete"
         self.num_deletions = num_deletions
 

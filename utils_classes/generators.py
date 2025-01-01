@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import time
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Literal, Optional, Tuple
 
 from recbole.config import Config
 from recbole.trainer import Interaction
@@ -19,10 +19,12 @@ from generation.strategies.exhaustive import ExhaustiveStrategy
 from generation.strategies.genetic import GeneticStrategy
 from generation.strategies.genetic_categorized import \
     CategorizedGeneticStrategy
+from generation.strategies.targeted import TargetedGeneticStrategy
 from generation.utils import get_items
 from models.config_utils import generate_model, get_config
 from models.model_funcs import model_predict
-from type_hints import GoodBadDataset
+from type_hints import GoodBadDataset, StrategyStr
+from utils_classes.Split import Split
 
 
 class SkippableGenerator(ABC):
@@ -168,6 +170,7 @@ class InteractionGenerator(SkippableGenerator):
 
 class SequenceGenerator(InteractionGenerator):
     def __init__(self, config: Config):
+        self.config = config
         super().__init__(config)
 
     def next(self) -> Tensor:  # type: ignore
@@ -179,7 +182,10 @@ class DatasetGenerator(SkippableGenerator):
     def __init__(
         self,
         config: Optional[Config] = None,
-        strategy: str = ConfigParams.GENERATION_STRATEGY,
+        limit_generation_to: Optional[Literal["good", "bad"]] = None,
+        genetic_split: Optional[Split] = None,
+        strategy: StrategyStr = ConfigParams.GENERATION_STRATEGY,  # type: ignore
+        target: Optional[List[str]] = ConfigParams.TARGET_CAT,
         use_cache: bool = False,
         return_interaction: bool = False,
         alphabet: Optional[List[int]] = None,
@@ -194,6 +200,9 @@ class DatasetGenerator(SkippableGenerator):
         self.return_interaction = return_interaction
         self.strategy = strategy
         self.alphabet = alphabet if alphabet else list(get_items())
+        self.target = target
+        self.limit_generation_to = limit_generation_to
+        self.genetic_split = genetic_split
 
     def skip(self):
         super().skip()
@@ -201,8 +210,8 @@ class DatasetGenerator(SkippableGenerator):
 
     def instantiate_strategy(
         self, seq
-    ) -> Tuple[GenerationStrategy, GenerationStrategy]:
-        if self.strategy == "generation":
+    ) -> Tuple[Optional[GenerationStrategy], Optional[GenerationStrategy]]:
+        if self.strategy == "genetic":
             sequence = seq.squeeze(0)
             assert len(sequence.shape) == 1, f"Sequence dim must be 1: {sequence.shape}"
             allowed_mutations = parse_mutations(ConfigParams.ALLOWED_MUTATIONS)
@@ -215,6 +224,7 @@ class DatasetGenerator(SkippableGenerator):
                 generations=ConfigParams.GENERATIONS,
                 halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
                 alphabet=self.alphabet,
+                split=self.genetic_split,
             )
             self.bad_strat = GeneticStrategy(
                 input_seq=sequence,
@@ -225,8 +235,8 @@ class DatasetGenerator(SkippableGenerator):
                 generations=ConfigParams.GENERATIONS,
                 halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
                 alphabet=self.alphabet,
+                split=self.genetic_split,
             )
-            return self.good_strat, self.bad_strat
 
         elif self.strategy == "genetic_categorized":
             sequence = seq.squeeze(0)
@@ -242,6 +252,7 @@ class DatasetGenerator(SkippableGenerator):
                 generations=ConfigParams.GENERATIONS,
                 halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
                 alphabet=self.alphabet,
+                split=self.genetic_split,
             )
             self.bad_strat = CategorizedGeneticStrategy(
                 input_seq=sequence,
@@ -252,9 +263,41 @@ class DatasetGenerator(SkippableGenerator):
                 generations=ConfigParams.GENERATIONS,
                 halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
                 alphabet=self.alphabet,
+                split=self.genetic_split,
             )
-            return self.good_strat, self.bad_strat
-        elif self.strategy == "exhaustive":
+        elif self.strategy == "targeted":
+            if self.target is None:
+                raise ValueError("target must not be None if strategy is 'targeted'")
+            sequence = seq.squeeze(0)
+            assert len(sequence.shape) == 1, f"Sequence dim must be 1: {sequence.shape}"
+            allowed_mutations = parse_mutations(ConfigParams.ALLOWED_MUTATIONS)
+
+            self.good_strat = TargetedGeneticStrategy(
+                input_seq=sequence,
+                target=set(self.target),
+                model=lambda x: model_predict(seq=x, model=self.model, prob=True),
+                allowed_mutations=allowed_mutations,
+                pop_size=ConfigParams.POP_SIZE,
+                good_examples=False,  # inverted on purpose
+                generations=ConfigParams.GENERATIONS,
+                halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
+                alphabet=self.alphabet,
+                split=self.genetic_split,
+            )
+            self.bad_strat = TargetedGeneticStrategy(
+                input_seq=sequence,
+                target=set(self.target),
+                model=lambda x: model_predict(seq=x, model=self.model, prob=True),
+                allowed_mutations=allowed_mutations,
+                pop_size=ConfigParams.POP_SIZE,
+                good_examples=True,  # inverted on purpose
+                generations=ConfigParams.GENERATIONS,
+                halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
+                alphabet=self.alphabet,
+                split=self.genetic_split,
+            )
+
+        elif self.strategy == "brute_force":
             self.good_strat = ExhaustiveStrategy(
                 input_seq=seq,
                 model=self.model,
@@ -267,11 +310,15 @@ class DatasetGenerator(SkippableGenerator):
                 alphabet=self.alphabet,
                 good_examples=False,
             )
-            return self.good_strat, self.bad_strat
         else:
             raise NotImplementedError(
                 f"Generations strategy '{self.strategy}' not implemented, choose between 'generation' and 'exhaustive'"
             )
+        if self.limit_generation_to == "bad":
+            self.good_strat = None
+        if self.limit_generation_to == "good":
+            self.bad_strat = None
+        return self.good_strat, self.bad_strat
 
     def next(self) -> GoodBadDataset | Tuple[GoodBadDataset, Interaction]:
         assert (
@@ -378,7 +425,19 @@ class TimedGenerator:
 
 
 if __name__ == "__main__":
-    config = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
-    datasets = DatasetGenerator(config, use_cache=False, strategy="genetic_categorized")
+    confg = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
+    datasets = DatasetGenerator(confg, use_cache=False, strategy="targeted")
     for dataset in datasets:
         print(f"Finished dataset, next one")
+        good, bad = dataset
+        print(
+            f"=================================GOOD DATASET================================="
+        )
+        for t, v in good:
+            print(f"Good {t}      {v}\n")
+        print(
+            f"=================================BAD DATASET================================="
+        )
+        for t, v in bad:
+            print(f"Bad {t}      {v}\n")
+        break

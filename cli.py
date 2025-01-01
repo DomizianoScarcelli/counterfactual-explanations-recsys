@@ -1,16 +1,19 @@
-from config import ConfigDict
-from utils import SeedSetter
 import json
 import os
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import fire
 
-from config import ConfigParams
+from config import ConfigDict, ConfigParams
+from models.config_utils import generate_model, get_config
 from performance_evaluation import alignment
-from run import run as og_run
+from run import run_full as og_run
 from sensitivity.model_sensitivity import main as evaluate_sensitivity
+from sensitivity.model_sensitivity import run_on_all_positions
 from type_hints import RecDataset, RecModel
+from utils import SeedSetter
+from utils_classes.generators import SequenceGenerator
+from utils_classes.Split import Split
 
 
 class CLI:
@@ -136,7 +139,7 @@ class CLI:
         model_type: RecModel = ConfigParams.MODEL,
         start_i: int = 0,
         end_i: Optional[int] = None,
-        splits: Optional[List[int]] = None,  # type: ignore
+        splits: Optional[List[tuple]] = None,  # type: ignore
         use_cache: bool = True,
     ):
         """
@@ -175,10 +178,11 @@ class CLI:
         what: Optional[
             Literal["alignment", "generation", "automata_learning", "sensitivity"]
         ] = None,
+        mode: Literal["full", "genetic"] = "full",
         config_path: Optional[str] = None,
         config_dict: Optional[ConfigDict] = None,
         k: Optional[int] = None,
-        target: Optional[Literal["item", "category"]] = None,
+        label_type: Optional[Literal["item", "category", "target"]] = None,
         use_cache: bool = True,
         range_i: Tuple[int, Optional[int]] = (0, None),
         log_path: Optional[str] = None,
@@ -230,17 +234,18 @@ class CLI:
 
         if what == "alignment":
             alignment.evaluate.evaluate_trace_disalignment(
-                range_i=range_i, splits=splits, use_cache=use_cache, save_path=save_path
+                range_i=range_i,
+                splits=splits,
+                use_cache=use_cache,
+                save_path=save_path,
+                mode=mode,
             )
         if what == "sensitivity":
-            if not k or not target:
+            if not k or not label_type:
                 raise ValueError("k and target must not be None")
-            evaluate_sensitivity(
-                log_path=log_path,
-                k=k,
-                target=target,
-                mode="evaluate",
-            )
+
+            return run_on_all_positions(label_type=label_type, log_path=log_path, k=k)
+            # both ends included
         if what == "generation":
             # TODO: implement
             raise NotImplementedError()
