@@ -1,3 +1,4 @@
+from utils_classes.Split import Split
 from models.config_utils import generate_model
 from utils_classes.generators import SequenceGenerator
 from models.config_utils import get_config

@@ -20,7 +20,7 @@ similarity_threshold = 0.5             # threshold of similarity (between set of
 
 # Settings for the evolutionary algorithm
 [evolution]
-generations = 20            # Number of generations in the evolutionary process
+generations = 30            # Number of generations in the evolutionary process
 target_cat = ["Animation"]     # Target category
 pop_size = 1024             # Population size for the algorithm
 halloffame_ratio = 0.0      # Ratio of the population to keep in the Hall of Fame

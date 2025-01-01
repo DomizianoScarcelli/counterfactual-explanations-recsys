@@ -82,7 +82,6 @@ def equal_ys(
 def get_items(dataset: RecDataset = ConfigParams.DATASET) -> Set[int]:
     category_map = get_category_map(dataset)
     items = set(int(x) for x in category_map.keys())
-    print(f"Items are: {items}, length: {len(items)}")
     return items
 
 
@@ -135,11 +134,6 @@ def labels2cat(
     if isinstance(ys, Tensor):
         ys = ys.tolist()
     if encode:
-        # for y in ys:
-        #     assert isinstance(
-        #         itemid2cat[y], list
-        #     ), f"itemid2cat of y = {y} is not a list: {itemid2cat[y]}"
-        # assert isinstance(ys, list), f"ys is not a list: {ys}"
         return [set(cat2id[cat] for cat in itemid2cat[y]) for y in ys]  # type: ignore
     return [set(itemid2cat[y]) for y in ys]
 
@@ -160,7 +154,9 @@ def get_remapped_dataset(dataset: RecDataset) -> SequentialDataset:
             return pickle.load(f)
 
     if dataset in [RecDataset.ML_1M, RecDataset.ML_100K]:
-        path = os.path.join("data", "ml-1m-SequentialDataset.pth")
+        path = os.path.join(
+            "data", f"{ConfigParams.DATASET.value}-SequentialDataset.pth"
+        )
     else:
         raise NotImplementedError(
             f"get_category_map not implemented for dataset {dataset}"
@@ -170,25 +166,19 @@ def get_remapped_dataset(dataset: RecDataset) -> SequentialDataset:
 
 
 def id2token(dataset: RecDataset, id: int) -> int:
-    """
-    Maps interal item ids to external tokens
-    """
+    """Maps interal item ids to external tokens"""
     remapped_dataset = get_remapped_dataset(dataset)
     return int(remapped_dataset.id2token("item_id", ids=id))
 
 
 def token2id(dataset: RecDataset, token: str) -> int:
-    """
-    Maps external item tokens to internal ids.
-    """
+    """Maps external item tokens to internal ids."""
     remapped_dataset: SequentialDataset = get_remapped_dataset(dataset)
     return int(remapped_dataset.token2id("item_id", tokens=token))
 
 
 def get_item_info(datset: RecDataset, id: int) -> ItemInfo:
-    """
-    Returns the information about a certain item in the dataset
-    """
+    """Returns the information about a certain item in the dataset"""
     # TODO:implement
     info = {"name": "", "category": []}
     return info

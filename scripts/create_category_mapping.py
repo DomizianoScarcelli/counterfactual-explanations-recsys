@@ -44,6 +44,7 @@ def create_category_mapping():
                 raise ValueError(f"Dataset {ConfigParams.DATASET} is not supported")
             category_map[id] = row[genre_key].split(" ")  # type: ignore
         except ValueError:
+            print(f"Value error on {token}")
             continue
 
     with open(f"data/category_map_{ConfigParams.DATASET.value}.json", "w") as f:

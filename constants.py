@@ -31,6 +31,7 @@ cat2id = {
     "Thriller": 15,
     "War": 16,
     "Western": 17,
+    "unknown": 18,  # MAJOR TODO: How should I treat this?
 }
 
 id2cat = {value: key for key, value in cat2id.items()}

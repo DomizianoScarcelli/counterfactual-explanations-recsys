@@ -111,7 +111,7 @@ def run_genetic(
         "use_cache": use_cache,
     }
 
-    split: Split = parse_splits([split])[0]  # type: ignore
+    split: Split = parse_splits([split] if split else None)[0]  # type: ignore
 
     datasets = TimedGenerator(
         DatasetGenerator(
