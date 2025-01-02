@@ -1,9 +1,6 @@
 import json
 import warnings
-from sys import exception
-from typing import Generator, List, Optional
-
-import toml
+from typing import Generator, List, Optional, Dict
 
 from alignment.actions import print_action
 from alignment.alignment import trace_disalignment
@@ -11,14 +8,19 @@ from alignment.utils import postprocess_alignment
 from automata_learning.learning import learning_pipeline
 from config import ConfigParams
 from constants import MAX_LENGTH, cat2id
-from exceptions import (CounterfactualNotFound, DfaNotAccepting,
-                        DfaNotRejecting, EmptyDatasetError,
-                        NoTargetStatesError, SplitNotCoherent)
+from exceptions import (
+    CounterfactualNotFound,
+    DfaNotAccepting,
+    DfaNotRejecting,
+    EmptyDatasetError,
+    NoTargetStatesError,
+    SplitNotCoherent,
+)
 from generation.dataset.utils import interaction_to_tensor
 from generation.utils import equal_ys, labels2cat
 from models.utils import pad, topk, trim
 from performance_evaluation.alignment.utils import preprocess_interaction
-from type_hints import GoodBadDataset, RecDataset, RecModel, SplitTuple
+from type_hints import GoodBadDataset, RecDataset, RecModel, SplitTuple, CategorySet
 from utils import TimedFunction, seq_tostr
 from utils_classes.distances import edit_distance
 from utils_classes.generators import DatasetGenerator, TimedGenerator
@@ -84,10 +86,19 @@ def single_run(
 def run_genetic(
     start_i: int = 0,
     end_i: Optional[int] = None,
-    k: int = ConfigParams.TOPK,
+    ks: List[int] = ConfigParams.TOPK,
     split: Optional[tuple] = None,  # type: ignore
     use_cache: bool = False,
 ):
+    log_at_ks = [
+        {
+            f"status@{k}": None,
+            f"aligned_gt@{k}": None,
+            f"gt@{k}": None,
+            f"target_y@{k}": None,
+        }
+        for k in ks
+    ]
     run_log = {
         "i": None,
         "strategy": ConfigParams.GENERATION_STRATEGY,
@@ -102,6 +113,9 @@ def run_genetic(
         "dataset_time": None,
         "use_cache": use_cache,
     }
+
+    for log_at_k in log_at_ks:
+        run_log = {**run_log, **log_at_k}
 
     split: Split = parse_splits([split] if split else None)[0]  # type: ignore
 
@@ -144,14 +158,20 @@ def run_genetic(
         source_sequence = interaction_to_tensor(interaction)  # type: ignore
         gt_preds = model(source_sequence)  # type: ignore
         source_sequence = trim(source_sequence.squeeze(0))
-        source_gt = labels2cat(
-            topk(logits=gt_preds, k=k, dim=-1, indices=True).squeeze(0), encode=True
-        )
-        run_log["gt"] = seq_tostr(source_gt)
+        source_gt = {
+            k: labels2cat(
+                topk(logits=gt_preds, k=k, dim=-1, indices=True).squeeze(0), encode=True
+            )
+            for k in ks
+        }
+        for k in ks:
+            run_log[f"gt@{k}"] = seq_tostr(source_gt[k])
+
         if ConfigParams.GENERATION_STRATEGY == "targeted":
             target = {cat2id[t] for t in ConfigParams.TARGET_CAT}  # type: ignore
-            target_ys = [target for _ in range(k)]
-            run_log["target_y"] = seq_tostr(target_ys)
+            target_ys = {k: [target for _ in range(k)] for k in ks}
+            for k in ks:
+                run_log[f"target_y@{k}"] = seq_tostr(target_ys[k])
 
         run_log["dataset_time"] = datasets.get_times()[i]
         run_log["i"] = i
@@ -169,27 +189,33 @@ def run_genetic(
             key=lambda x: -edit_distance(x[0].squeeze(), source_sequence),
         )
         cpreds = model(pad(counterfactual, MAX_LENGTH).unsqueeze(0))
-        clabel = labels2cat(
-            topk(logits=cpreds, k=k, dim=-1, indices=True).squeeze(0), encode=True
-        )
-        if not ConfigParams.GENERATION_STRATEGY == "targeted":
-            _, score = equal_ys(source_gt, clabel, return_score=True)  # type: ignore
-        else:
-            _, score = equal_ys(target_ys, clabel, return_score=True)  # type: ignore
-        run_log["score"] = (
-            score  # if targeted higher is better, otherwise lower is better
-        )
+        clabel = {
+            k: labels2cat(
+                topk(logits=cpreds, k=k, dim=-1, indices=True).squeeze(0), encode=True
+            )
+            for k in ks
+        }
+
+        for k in ks:
+            if not ConfigParams.GENERATION_STRATEGY == "targeted":
+                _, score = equal_ys(source_gt[k], clabel[k], return_score=True)  # type: ignore
+            else:
+                _, score = equal_ys(target_ys[k], clabel[k], return_score=True)  # type: ignore
+            run_log[f"score@{k}"] = (
+                score  # if targeted higher is better, otherwise lower is better
+            )
+            if score >= ConfigParams.THRESHOLD:
+                run_log[f"status@{k}"] = "good"
+            else:
+                run_log[f"status@{k}"] = "bad"
+            run_log[f"aligned_gt@{k}"] = seq_tostr(clabel[k])
+
+        run_log["aligned"] = seq_tostr(trim(counterfactual.squeeze()))
         run_log["cost"] = edit_distance(
             counterfactual.squeeze(),
             source_sequence,
             normalized=False,
         )
-        if score >= ConfigParams.THRESHOLD:
-            run_log["status"] = "good"
-        else:
-            run_log["status"] = "bad"
-        run_log["aligned"] = seq_tostr(trim(counterfactual.squeeze()))
-        run_log["aligned_gt"] = seq_tostr(clabel)
         print(json.dumps(run_log, indent=2))
         yield run_log
 
@@ -200,7 +226,7 @@ def run_full(
     start_i: int = 0,
     end_i: Optional[int] = None,
     splits: Optional[List[tuple]] = None,  # type: ignore
-    k: int = ConfigParams.TOPK,
+    ks: List[int] = ConfigParams.TOPK,
     use_cache: bool = False,
 ) -> Generator:
 
@@ -230,7 +256,7 @@ CONFIG
 ---Inputs---
 {json.dumps(params, indent=2)}
 ---Config.toml---
-{json.dumps(toml.load(ConfigParams._config_path), indent=2)}
+{ConfigParams.configs_dict()}
 -----------------------
 """
     )
@@ -244,6 +270,8 @@ CONFIG
     # Parse args
     splits = parse_splits(splits)  # type: ignore
 
+    assert splits is not None
+
     if end_i is None:
         end_i = 10_000
     assert (
@@ -251,6 +279,15 @@ CONFIG
     ), f"Start index must be strictly less than end index: {start_i} < {end_i}"
 
     # Running loop
+    log_at_ks = [
+        {
+            f"status@{k}": None,
+            f"aligned_gt@{k}": None,
+            f"gt@{k}": None,
+        }
+        for k in ks
+    ]
+
     run_log = {
         "i": None,
         "split": None,
@@ -267,6 +304,9 @@ CONFIG
         "automata_learning_time": None,
         "use_cache": use_cache,
     }
+
+    for log_at_k in log_at_ks:
+        run_log = {**run_log, **log_at_k}
     i = 0
     while i < end_i:
         # Execute only the loops where start_i <= i < end_i
@@ -295,22 +335,28 @@ CONFIG
         if ConfigParams.GENERATION_STRATEGY != "targeted":
             gt_preds = model(pad(source_sequence, MAX_LENGTH).unsqueeze(0))  # type: ignore
 
-            source_gt = labels2cat(
-                topk(logits=gt_preds, k=k, dim=-1, indices=True).squeeze(0), encode=True
-            )
+            source_gt: Dict[int, List[CategorySet]] = {
+                k: labels2cat(
+                    topk(logits=gt_preds, k=k, dim=-1, indices=True).squeeze(0),
+                    encode=True,
+                )
+                for k in ks
+            }
         else:
             if not ConfigParams.TARGET_CAT:
                 raise ValueError("target must not be None if strategy is 'targeted'")
-            source_gt = [
-                {cat2id[cat] for cat in ConfigParams.TARGET_CAT} for _ in range(k)
-            ]
+            source_gt: Dict[int, List[CategorySet]] = {
+                k: [{cat2id[cat] for cat in ConfigParams.TARGET_CAT} for _ in range(k)]
+                for k in ks
+            }
 
         # TODO: I don't  think this is useful now, test if run works with the not-categorized dataset
         # if isinstance(datasets.generator.good_strat, CategorizedGeneticStrategy):  # type: ignore
         #     source_gt = set(label2cat(source_gt, encode=True))  # type: ignore
 
         run_log["source"] = seq_tostr(source_sequence)
-        run_log["gt"] = seq_tostr(source_gt)
+        for k in ks:
+            run_log[f"gt@{k}"] = seq_tostr(source_gt[k])
         for split in splits:
             run_log["split"] = str(split)
             split = split.parse_nan(source_sequence)
@@ -339,28 +385,34 @@ CONFIG
             run_log["align_time"] = timed_trace_disalignment.get_last_time()
             run_log["automata_learning_time"] = timed_learning_pipeline.get_last_time()
 
-            aligned_gt = labels2cat(
-                topk(logits=model(aligned), k=k, dim=-1, indices=True).squeeze(0),
-                encode=True,
-            )
-
-            run_log["aligned_gt"] = seq_tostr(aligned_gt)
-
-            is_good, score = equal_ys(source_gt, aligned_gt, return_score=True)  # type: ignore
-            if ConfigParams.GENERATION_STRATEGY == "targeted":
-                is_good = not is_good
-            run_log["score"] = score
-            if is_good:
-                run_log["status"] = "bad"
-                print(
-                    f"[{i}] Bad counterfactual! {source_gt} == {aligned_gt}, score is {score}"
+            aligned_gt: Dict[int, List[CategorySet]] = {
+                k: labels2cat(
+                    topk(logits=model(aligned), k=k, dim=-1, indices=True).squeeze(0),
+                    encode=True,
                 )
-            else:
-                run_log["status"] = "good"
-                print(
-                    f"[{i}] Good counterfactual! {source_gt} != {aligned_gt}, score is {score}"
-                )
-            print("--------------------")
+                for k in ks
+            }
+
+            for k in ks:
+                run_log[f"aligned_gt@{k}"] = seq_tostr(aligned_gt[k])
+
+                is_good, score = equal_ys(source_gt[k], aligned_gt[k], return_score=True)  # type: ignore
+
+                if ConfigParams.GENERATION_STRATEGY == "targeted":
+                    is_good = not is_good
+
+                run_log[f"score@{k}"] = score
+                if is_good:
+                    run_log[f"status@{k}"] = "bad"
+                    print(
+                        f"[{i}] Bad counterfactual! {source_gt} == {aligned_gt}, score is {score}"
+                    )
+                else:
+                    run_log[f"status@{k}"] = "good"
+                    print(
+                        f"[{i}] Good counterfactual! {source_gt} != {aligned_gt}, score is {score}"
+                    )
+                print("--------------------")
 
             print(json.dumps(run_log, indent=2))
             yield run_log

@@ -1,6 +1,4 @@
 from enum import Enum
-from pathlib import Path
-
 from type_hints import RecDataset
 
 

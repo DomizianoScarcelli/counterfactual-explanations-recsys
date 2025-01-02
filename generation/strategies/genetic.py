@@ -5,21 +5,32 @@ from typing import Any, Callable, List, Optional
 import numpy as np
 import torch
 from deap import base, creator, tools
-from torch import Tensor
+from torch import Tensor, max_pool1d_with_indices
 
 from config import ConfigParams
 from constants import MAX_LENGTH, MIN_LENGTH, PADDING_CHAR
-from generation.extended_ea_algorithms import (customSelTournament,
-                                               eaSimpleBatched,
-                                               indexedCxTwoPoint)
-from generation.mutations import (ALL_MUTATIONS, AddMutation, DeleteMutation,
-                                  Mutation, contains_mutation, remove_mutation)
+from generation.extended_ea_algorithms import (
+    customSelTournament,
+    eaSimpleBatched,
+    indexedCxTwoPoint,
+)
+from generation.mutations import (
+    ALL_MUTATIONS,
+    AddMutation,
+    DeleteMutation,
+    Mutation,
+    contains_mutation,
+    remove_mutation,
+)
 from generation.strategies.abstract_strategy import GenerationStrategy
 from generation.utils import _evaluate_generation, clone
 from models.utils import pad_batch, trim
 from type_hints import Dataset
-from utils_classes.distances import (edit_distance, jensen_shannon_divergence,
-                                     self_indicator)
+from utils_classes.distances import (
+    edit_distance,
+    jensen_shannon_divergence,
+    self_indicator,
+)
 from utils_classes.Split import Split
 
 
@@ -90,30 +101,37 @@ class GeneticStrategy(GenerationStrategy):
         # Set seed according to the index in order to always choose a different mutation
 
         # TODO: remove the assertion for efficiency
-        assert (
-            PADDING_CHAR not in seq
-        ), f"Seq must not contain padding char {PADDING_CHAR}: {seq}"
+        # assert (
+        #     PADDING_CHAR not in seq
+        # ), f"Seq must not contain padding char {PADDING_CHAR}: {seq}"
 
         mutations = self.allowed_mutations
         # og_seq_len is the length of the unsplitted sequence.
         # To this we add the difference between the source sequence length (og_input_length) and the current sequence length (seq)
         # to count for the added or removed elements in previous mutations
         current_seq_length = og_seq_len + abs(len(seq) - self.og_input_length)
-        # TODO: this is still not correct when split is used
         if (
             MAX_LENGTH - current_seq_length < ConfigParams.NUM_ADDITIONS
             and contains_mutation(AddMutation, mutations)
         ):
             mutations = remove_mutation(AddMutation, mutations)
+
         # If after NUM_DELETIONS deletions the seq is shorter than the MIN_LENGTh, don't allow delete mutations
         if (
-            MIN_LENGTH + current_seq_length < ConfigParams.NUM_ADDITIONS
-            and contains_mutation(AddMutation, mutations)
-        ) or (len(seq) <= 2): #or if the splitted sequence is too small
+            MIN_LENGTH + current_seq_length < ConfigParams.NUM_DELETIONS
+            and contains_mutation(DeleteMutation, mutations)
+        ) or (
+            len(seq) <= 2
+        ):  # or if the splitted sequence is too small
             mutations = remove_mutation(DeleteMutation, mutations)
 
         mutation = random.choice(mutations)
         result = mutation(seq, self.alphabet)
+
+        seq_length = og_seq_len + abs(len(result[0]) - self.og_input_length)
+        assert (
+            MIN_LENGTH <= seq_length <= MAX_LENGTH
+        ), f"Sequence is not in the allowed length! {MIN_LENGTH} <= {seq_length} <= {MAX_LENGTH}. [DEBUG]: current_seq_length: {current_seq_length}"
         return result
 
     def evaluate_fitness_batch(self, individuals: List[List[int]]) -> List[float]:

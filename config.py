@@ -23,7 +23,7 @@ class SettingsConfig(TypedDict):
     determinism: bool
     train_batch_size: int
     test_batch_size: int
-    topk: int
+    topk: List[int]
 
 
 class GenerationConfig(TypedDict):
