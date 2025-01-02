@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Callable
 
 
@@ -29,7 +30,7 @@ class Cached:
 
     _instances = {}  # Class-level dictionary to store instances by path
 
-    def __new__(cls, path: str, load_fn: Callable):
+    def __new__(cls, path: Path, load_fn: Callable):
         """
         Ensures a singleton-like behavior for instances based on unique file paths.
 

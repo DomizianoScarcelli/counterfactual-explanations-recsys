@@ -1,4 +1,5 @@
 import warnings
+from pathlib import Path
 
 from recbole.config import Config
 from recbole.data import create_dataset, data_preparation
@@ -43,7 +44,7 @@ model = get_model(config["model"])(config, train_data.dataset).to(config["device
 
 # Perform inference
 trainer = Trainer(config, model)
-latest_checkpoint = "saved/BERT4Rec_ml1m.pth"
+latest_checkpoint = Path("saved/BERT4Rec_ml1m.pth")
 trainer.resume_checkpoint(latest_checkpoint)
 # NOTE: uncomment this to perform the training, otherwise just the evaluation part will be performed
 # results = trainer.fit(train_data, show_progress=True)

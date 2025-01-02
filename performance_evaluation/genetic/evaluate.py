@@ -1,6 +1,6 @@
-import os
 import warnings
 from itertools import product
+from pathlib import Path
 
 import pandas as pd
 from torch import Tensor
@@ -47,9 +47,9 @@ def evaluate_dataset(sequence: Tensor, examples: Dataset, label: int):
             }
      
 def evaluate_config(sequence: Tensor, model, alphabet, seq_index: int):
-    log_save_path = "results/genetic_evaluation.csv"
+    log_save_path = Path("results/genetic_evaluation.csv")
     prev_df = pd.DataFrame({})
-    if os.path.exists(log_save_path):
+    if log_save_path.exists():
         prev_df = pd.read_csv(log_save_path)
 
     allowed_mutations = parse_mutations(ConfigParams.ALLOWED_MUTATIONS)

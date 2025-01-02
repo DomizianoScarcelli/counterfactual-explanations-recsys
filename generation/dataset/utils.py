@@ -1,4 +1,5 @@
 import pickle
+from pathlib import Path
 from typing import Set, Tuple
 
 import torch
@@ -10,11 +11,11 @@ from torch import Tensor
 from torch.utils.data import DataLoader
 
 from constants import MAX_LENGTH, PADDING_CHAR
-from models.utils import pad, replace_padding
+from models.utils import replace_padding
 from type_hints import Dataset, GoodBadDataset
 
 
-def save_dataset(dataset: GoodBadDataset, save_path: str):
+def save_dataset(dataset: GoodBadDataset, save_path: str | Path):
     """
     Saves the dataset as a .pickle file
 
@@ -27,7 +28,7 @@ def save_dataset(dataset: GoodBadDataset, save_path: str):
         pickle.dump(dataset, f)
 
 
-def load_dataset(load_path: str) -> GoodBadDataset:
+def load_dataset(load_path: str | Path) -> GoodBadDataset:
     """
     Loads the dataset from disk.
 
@@ -50,7 +51,7 @@ def get_dataloaders(config: Config) -> Tuple[DataLoader, DataLoader, DataLoader]
     Returns:
         The train, val, test torch Dataloaders.
     """
-    init_seed(config['seed'], config['reproducibility'])
+    init_seed(config["seed"], config["reproducibility"])
     dataset = create_dataset(config)
     train_data, valid_data, test_data = data_preparation(config, dataset)
     return train_data, valid_data, test_data
@@ -72,8 +73,10 @@ def make_deterministic(dataset: Tuple[Dataset, Dataset]) -> Tuple[Dataset, Datas
         new_b.append((p, l))
         ids.add(tuple(p.tolist()))
     dataset = (new_g, new_b)
-    print(f"Dataset len after making it deterministic: {
-          len(new_g)}, {len(new_b)}")
+    print(
+        f"Dataset len after making it deterministic: {
+          len(new_g)}, {len(new_b)}"
+    )
     return dataset
 
 
@@ -87,10 +90,14 @@ def interaction_to_tensor(interaction: Interaction) -> Tensor:
     if sequence.dim() == 1 and sequence.size(0) == MAX_LENGTH:
         sequence = sequence.unsqueeze(0)
     batch_size = sequence.size(0)
-    
-    assert sequence.shape == (batch_size, MAX_LENGTH), f"Seq has incorrect shape: {sequence.shape} != {(batch_size, MAX_LENGTH)}"
+
+    assert sequence.shape == (
+        batch_size,
+        MAX_LENGTH,
+    ), f"Seq has incorrect shape: {sequence.shape} != {(batch_size, MAX_LENGTH)}"
 
     return replace_padding(sequence, 0, PADDING_CHAR)
+
 
 def get_dataset_alphabet(dataset: GoodBadDataset) -> Set[int]:
     alphabet = set()
@@ -98,6 +105,7 @@ def get_dataset_alphabet(dataset: GoodBadDataset) -> Set[int]:
     for example in good + bad:
         alphabet |= set(example[0].tolist())
     return alphabet
+
 
 def dataset_difference(dataset: Dataset, other: Dataset) -> Dataset:
     """
@@ -119,8 +127,11 @@ def dataset_difference(dataset: Dataset, other: Dataset) -> Dataset:
 
     difference_keys = dataset_keys - other_keys
 
-    difference_dataset = [(torch.tensor(key).unsqueeze(0), dataset_map[key]) for key in difference_keys]
+    difference_dataset = [
+        (torch.tensor(key).unsqueeze(0), dataset_map[key]) for key in difference_keys
+    ]
     return difference_dataset
+
 
 def are_dataset_equal(dataset: Dataset, other: Dataset) -> bool:
     dataset_map = {tuple(row.squeeze(0).tolist()): label for (row, label) in dataset}
@@ -129,5 +140,3 @@ def are_dataset_equal(dataset: Dataset, other: Dataset) -> bool:
     dataset_keys = set(dataset_map.keys())
     other_keys = set(other_map.keys())
     return dataset_keys == other_keys
-
-

@@ -8,6 +8,7 @@ by computing true/false positive/negatives on the good and bad points.
 
 import json
 import warnings
+from pathlib import Path
 from typing import Optional
 
 import fire
@@ -92,13 +93,13 @@ def evaluate_all(
     datasets: DatasetGenerator,
     oracle: SequentialRecommender,
     end_i: int,
-    log_path: Optional[str] = None,
+    log_path: Optional[Path] = None,
 ):
 
     prev_df = pd.DataFrame({})
 
     primary_key = ["source_sequence"]
-    if log_path and os.path.exists(log_path):
+    if log_path and log_path.exists():
         prev_df = pd.read_csv(log_path)
 
     assert not prev_df.duplicated().any()
@@ -181,7 +182,7 @@ def main(
     config_path: Optional[str] = None,
     config_dict: Optional[ConfigDict] = None,
     end_i: int = 30,
-    save_path: Optional[str] = None,
+    save_path: Optional[Path] = None,
 ):
     SeedSetter.set_seed()
     if config_path and config_dict:
@@ -194,7 +195,7 @@ def main(
         ConfigParams.override_params(config_dict)
     ConfigParams.fix()
 
-    if save_path and os.path.exists(save_path):
+    if save_path and save_path.exists():
         prev_df = pd.read_csv(save_path)
         future_df = pd.DataFrame(ConfigParams.configs_dict())
         df = pd.concat([prev_df, future_df], ignore_index=True)

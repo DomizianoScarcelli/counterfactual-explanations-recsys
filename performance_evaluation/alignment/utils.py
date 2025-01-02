@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
@@ -57,7 +58,7 @@ def pk_exists(
 def log_run(
     prev_df: DataFrame,
     log: Dict,
-    save_path: str,
+    save_path: Path | str,
     primary_key: List[str] = [],
     add_config: bool = True,
 ) -> DataFrame:
@@ -79,6 +80,8 @@ def log_run(
         The updated pandas.Dataframe
     """
 
+    if isinstance(save_path, str):
+        save_path = Path(save_path)
     # Create a dictionary with input parameters as columns
     data = {}
     length = 1

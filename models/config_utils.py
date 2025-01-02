@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import torch
 from recbole.config import Config
 from recbole.model.abstract_recommender import SequentialRecommender
@@ -20,7 +22,7 @@ def generate_model(config: Config) -> SequentialRecommender:
     """
     train_data, _, _ = get_dataloaders(config)
     checkpoint_file = (
-        f"saved/{ConfigParams.MODEL.value}_{ConfigParams.DATASET.value}.pth"
+        Path(f"saved/{ConfigParams.MODEL.value}_{ConfigParams.DATASET.value}.pth")
     )
 
     if config.model == RecModel.BERT4Rec.value:

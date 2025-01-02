@@ -1,5 +1,6 @@
 import json
 import warnings
+from sys import exception
 from typing import Generator, List, Optional
 
 import toml
@@ -116,7 +117,7 @@ def run_genetic(
     i = 0
 
     if not end_i:
-        end_i = start_i + 1
+        end_i = 10_000
     for _ in range(start_i):
         datasets.skip()
 
@@ -136,6 +137,8 @@ def run_genetic(
                 datasets.generator.index = _max
             yield run_log
             continue
+        except StopIteration:
+            return
 
         # Obtain source categories
         source_sequence = interaction_to_tensor(interaction)  # type: ignore
@@ -242,7 +245,7 @@ CONFIG
     splits = parse_splits(splits)  # type: ignore
 
     if end_i is None:
-        end_i = start_i + 1
+        end_i = 10_000
     assert (
         start_i < end_i
     ), f"Start index must be strictly less than end index: {start_i} < {end_i}"
@@ -276,7 +279,10 @@ CONFIG
         assert datasets.index == i, f"{datasets.index} != {i}"
         assert len(datasets.get_times()) == i, f"{len(datasets.get_times())} != {i}"
 
-        dataset, interaction = next(datasets)
+        try:
+            dataset, interaction = next(datasets)
+        except StopIteration:
+            return
 
         assert (
             len(datasets.get_times()) == i + 1

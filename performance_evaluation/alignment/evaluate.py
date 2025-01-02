@@ -1,11 +1,10 @@
 import os
+from pathlib import Path
 from typing import List, Literal, Optional, Tuple
 
 import pandas as pd
 from pandas import DataFrame
 
-from config import ConfigParams
-from constants import cat2id
 from performance_evaluation.alignment.utils import log_run
 from run import run_full, run_genetic
 
@@ -15,7 +14,7 @@ def evaluate_trace_disalignment(
     splits: Optional[List[int]],
     use_cache: bool,
     mode: Literal["full", "genetic"] = "full",
-    save_path: Optional[str] = None,
+    save_path: Optional[Path] = None,
 ):
     """
     Evaluates the disalignment of traces for a given range and set of splits.
@@ -31,7 +30,7 @@ def evaluate_trace_disalignment(
         None
     """
     log: DataFrame = DataFrame({})
-    if save_path and os.path.exists(save_path):
+    if save_path and save_path.exists():
         log = pd.read_csv(save_path)
 
     if mode == "full":

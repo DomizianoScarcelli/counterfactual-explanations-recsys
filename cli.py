@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import fire
@@ -19,6 +20,9 @@ from utils_classes.Split import Split
 class CLI:
     def __init__(self):
         SeedSetter.set_seed()
+
+    def _absolute_paths(self, *paths: Optional[str]) -> tuple:
+        return tuple(Path(path) if path is not None else None for path in paths)
 
     def stats(
         self,
@@ -64,6 +68,9 @@ class CLI:
             3. Generate general statistics for a CSV file:
                 python -m cli stats --log_path="path/to/file.csv" --group_by=["column1"] --metrics=["metric1", "metric2"]
         """
+        save_path, config_path, log_path = self._absolute_paths(
+            save_path, config_path, log_path
+        )
 
         if config_path and config_dict:
             raise ValueError(
@@ -167,6 +174,8 @@ class CLI:
             3. Run counterfactual generation for splits 0 and 1:
                 python -m cli run --splits=[0,1]
         """
+        config_path = self._absolute_paths(config_path)[0]
+
         ConfigParams.reload(config_path)
         ConfigParams.fix()
         # trick because run is a generator
@@ -222,6 +231,9 @@ class CLI:
             3. Evaluate generation analysis (not implemented yet):
                 python -m cli evaluate generation
         """
+        save_path, config_path, log_path = self._absolute_paths(
+            save_path, config_path, log_path
+        )
         if config_path and config_dict:
             raise ValueError(
                 "Only one between config_path and config_dict must be set, not both"

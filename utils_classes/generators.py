@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import time
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any, List, Literal, Optional, Tuple
 
 from recbole.config import Config
@@ -325,11 +326,11 @@ class DatasetGenerator(SkippableGenerator):
             self.interactions.index == self.index
         ), f"{self.interactions.index} != {self.index} at the start of the method"
         interaction = self.interactions.next()
-        cache_path = os.path.join(
+        cache_path = Path(
             f".dataset_cache/interaction_{self.index}_dataset.pickle"
         )
         # TODO: make cache path aware of the strategy
-        if os.path.exists(cache_path) and self.use_cache:
+        if cache_path.exists() and self.use_cache:
             if self.strategy != "generation":
                 raise NotImplementedError(
                     "Cache not implemented for dataset not generated with the 'generation' strategy"

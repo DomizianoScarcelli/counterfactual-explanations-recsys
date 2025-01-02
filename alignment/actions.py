@@ -1,5 +1,5 @@
-from typing import Set
 import os
+from typing import Set
 
 if os.environ["LINE_PROFILE"] == "1":
     from line_profiler import profile

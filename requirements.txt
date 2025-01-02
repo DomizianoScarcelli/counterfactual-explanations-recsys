@@ -6,7 +6,8 @@ Levenshtein==0.26.0
 lightning-utilities==0.11.9
 matplotlib==3.9.3
 networkx==3.3
-numpy==2.1.1
+# numpy==2.1.1
+numpy<2
 pandas==2.2.3
 pillow==11.0.0
 plotly==5.24.1

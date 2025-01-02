@@ -1,6 +1,7 @@
 import os
 import pickle
 from collections import deque
+from pathlib import Path
 from typing import List
 
 from aalpy.automata.Dfa import Dfa
@@ -8,13 +9,15 @@ from torch import Tensor
 
 
 def save_automata(automata, save_path):
-    with open(os.path.join("saved_automatas", save_path), "wb") as f:
+    with open(Path(f"saved_automatas/{save_path}"), "wb") as f:
         pickle.dump(automata, f)
         print(f"Automata saved at {save_path}")
 
+
 def load_automata(load_path):
-    with open(os.path.join("saved_automatas", load_path), "rb") as f:
+    with open(Path(f"saved_automatas/{load_path}"), "rb") as f:
         return pickle.load(f)
+
 
 def has_path_to_accepting_state(automaton: Dfa, seq: List[int]):
     """
@@ -59,14 +62,14 @@ def run_automata(automata: Dfa, input: list, final_reset: bool = True):
         # try:
         result = automata.step(char)
         # except KeyError:
-            #TODO: see how to handle this case
-            # continue
-            # print(f"Unknown character: {char}, self looping...")
-            # continue
-            
-            # pass
-            # equivalent to go in sink state and early return
-            # return False
+        # TODO: see how to handle this case
+        # continue
+        # print(f"Unknown character: {char}, self looping...")
+        # continue
+
+        # pass
+        # equivalent to go in sink state and early return
+        # return False
     if final_reset:
         automata.reset_to_initial()
     return result
