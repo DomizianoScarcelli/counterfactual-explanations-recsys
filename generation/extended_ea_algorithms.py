@@ -4,7 +4,6 @@ from typing import List, Optional
 
 from deap.algorithms import tools
 from deap.tools.support import deepcopy
-from numpy._core.multiarray import MAY_SHARE_EXACT
 from tqdm import tqdm
 
 from constants import MAX_LENGTH, MIN_LENGTH
@@ -27,8 +26,8 @@ def split_population(population: list, split: Optional[Split]) -> List[int]:
         # Modify the individual in place by trimming it to the desired range
         del ind[:start]
         del ind[middle:]
+
     return og_lengths
-    # print(f"After split fitnesses", [ind.fitness.values for ind in population])
 
 
 def reconstruct_population(
@@ -46,8 +45,7 @@ def reconstruct_population(
 
         assert isinstance(start, int)
         assert isinstance(middle, int)
-
-        og_ind[start : start + middle] = ind
+        og_ind[start : start + len(ind)] = ind
     population[:] = og_population
 
 
@@ -76,6 +74,9 @@ def eaSimpleBatched(
 
     # Evaluate the individuals with an invalid fitness
     invalid_ind = [ind for ind in population if not ind.fitness.valid]
+    assert all(
+        len(ind) <= MAX_LENGTH for ind in population
+    ), f"There are individuals with length > max: {[len(ind) for ind in population if len(ind) > MAX_LENGTH ]}"
     fitnesses = toolbox.evaluate(invalid_ind)
     for i, ind in enumerate(invalid_ind):
         ind.fitness.values = fitnesses[i]
@@ -98,6 +99,10 @@ def eaSimpleBatched(
         leave=False,
     ):
         # print(f"Length before split: {[len(ind) for ind in population]}")
+
+        assert all(
+            len(ind) <= MAX_LENGTH for ind in population
+        ), f"At gen {gen} there are individuals with length > max: {[len(ind) for ind in population if len(ind) > MAX_LENGTH ]}"
         og_lengths = split_population(population, split)
         # print(f"Length after split: {[len(ind) for ind in population]}")
         # print(f"Ind len:", [len(ind) for ind in population])
@@ -180,7 +185,7 @@ def customSelTournament(individuals, k, tournsize, fit_attr="fitness"):
     return chosen
 
 
-def indexedCxTwoPoint(ind1, ind2, return_indices: bool = False):
+def customCxTwoPoint(ind1, ind2, return_indices: bool = False):
     size = min(len(ind1), len(ind2))
     cxpoint1 = random.randint(1, size)
     cxpoint2 = random.randint(1, size - 1) if size > 2 else 1

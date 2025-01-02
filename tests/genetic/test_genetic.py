@@ -16,7 +16,7 @@ from constants import MAX_LENGTH, MIN_LENGTH
 from generation.dataset.generate import generate
 from generation.extended_ea_algorithms import (customSelTournament,
                                                customVarAnd, eaSimpleBatched,
-                                               indexedCxTwoPoint)
+                                               customCxTwoPoint)
 from generation.mutations import (AddMutation, DeleteMutation, ReplaceMutation,
                                   ReverseMutation, ShuffleMutation,
                                   SwapMutation, contains_mutation,
@@ -93,7 +93,7 @@ class TestGeneticDeterminism:
         self.toolbox.register("clone", clone)
         self.toolbox.register("evaluate", self.evaluate_fitness_batch)
         self.toolbox.register("select", customSelTournament, tournsize=3)  # Tournament selection
-        self.toolbox.register("mate", indexedCxTwoPoint)  # Use two-point crossover
+        self.toolbox.register("mate", customCxTwoPoint)  # Use two-point crossover
         self.toolbox.register("mutate", self.extracted_mutate)
 
         self.toolbox2: Any = base.Toolbox()
@@ -103,7 +103,7 @@ class TestGeneticDeterminism:
         self.toolbox2.register("clone", clone)
         self.toolbox2.register("evaluate", self.evaluate_fitness_batch)
         self.toolbox2.register("select", customSelTournament, tournsize=3)  # Tournament selection
-        self.toolbox2.register("mate", indexedCxTwoPoint)  # Use two-point crossover
+        self.toolbox2.register("mate", customCxTwoPoint)  # Use two-point crossover
         self.toolbox2.register("mutate", self.extracted_mutate)
 
         self.allowed_mutations =  [ReplaceMutation(),
@@ -197,9 +197,9 @@ class TestGeneticDeterminism:
             ind1 = self.extracted_mutate(ind1, i)[0]
         ind2 = self.pop1[1]
         assert ind1 != ind2
-        _, indices1 = indexedCxTwoPoint(clone(ind1), clone(ind2), 1, return_indices=True)
-        _, indices2 = indexedCxTwoPoint(clone(ind1), clone(ind2), 1, return_indices=True)
-        _, indices3 = indexedCxTwoPoint(clone(ind1), clone(ind2), 2, return_indices=True)
+        _, indices1 = customCxTwoPoint(clone(ind1), clone(ind2), 1, return_indices=True)
+        _, indices2 = customCxTwoPoint(clone(ind1), clone(ind2), 1, return_indices=True)
+        _, indices3 = customCxTwoPoint(clone(ind1), clone(ind2), 2, return_indices=True)
         assert indices1 == indices2
         assert indices1 != indices3
 

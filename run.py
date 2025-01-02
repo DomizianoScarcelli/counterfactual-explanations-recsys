@@ -1,6 +1,8 @@
 import json
 import warnings
 from typing import Generator, List, Optional, Dict
+from torch import empty_strided
+from tqdm import tqdm
 
 from alignment.actions import print_action
 from alignment.alignment import trace_disalignment
@@ -144,11 +146,11 @@ def run_genetic(
             datasets.skip()
             # Because of the EmptyDatasetError, there may be a mismatch between the dataset indices.
             if datasets.generator.interactions.index != datasets.generator.index:
-                _max = max(
+                _min = min(
                     datasets.generator.interactions.index, datasets.generator.index
                 )
-                datasets.generator.interactions.index = _max
-                datasets.generator.index = _max
+                datasets.generator.interactions.index = _min
+                datasets.generator.index = _min
             yield run_log
             continue
         except StopIteration:
@@ -235,7 +237,7 @@ def run_full(
             "parameters": {
                 "use_cache": use_cache,
                 "start_i": start_i,
-                "end_i": start_i + 1 if end_i is None else end_i,
+                "end_i": end_i,
                 "splits": (
                     "(0, None, 0)"
                     if not splits
@@ -261,14 +263,18 @@ CONFIG
 """
     )
 
-    # Init config
-    datasets = TimedGenerator(
-        DatasetGenerator(use_cache=use_cache, return_interaction=True)
-    )
-    model = datasets.generator.model  # type: ignore
-
     # Parse args
     splits = parse_splits(splits)  # type: ignore
+
+    # Init config
+    datasets = TimedGenerator(
+        DatasetGenerator(
+            use_cache=use_cache,
+            return_interaction=True,
+            genetic_split=splits[0],
+        )
+    )
+    model = datasets.generator.model  # type: ignore
 
     assert splits is not None
 
@@ -307,14 +313,11 @@ CONFIG
 
     for log_at_k in log_at_ks:
         run_log = {**run_log, **log_at_k}
-    i = 0
-    while i < end_i:
-        # Execute only the loops where start_i <= i < end_i
-        if i < start_i:
-            print(f"Skipping i = {i}")
-            datasets.skip()
-            i += 1
-            continue
+    for i in range(start_i):
+        print(f"Skipping i = {i}")
+        datasets.skip()
+        continue
+    for i in tqdm(range(start_i, end_i)):
 
         assert datasets.index == i, f"{datasets.index} != {i}"
         assert len(datasets.get_times()) == i, f"{len(datasets.get_times())} != {i}"
@@ -322,7 +325,21 @@ CONFIG
         try:
             dataset, interaction = next(datasets)
         except StopIteration:
+            print(f"STOP ITERATION RAISED")
             return
+        except EmptyDatasetError as e:
+            print(f"Raised {type(e)}")
+            run_log["status"] = error_messages[type(e)]
+            datasets.skip()
+            # Because of the EmptyDatasetError, there may be a mismatch between the dataset indices.
+            if datasets.generator.interactions.index != datasets.generator.index:
+                _min = min(
+                    datasets.generator.interactions.index, datasets.generator.index
+                )
+                datasets.generator.interactions.index = _min
+                datasets.generator.index = _min
+            yield run_log
+            continue
 
         assert (
             len(datasets.get_times()) == i + 1
@@ -361,7 +378,7 @@ CONFIG
             run_log["split"] = str(split)
             split = split.parse_nan(source_sequence)
             print(f"----RUN DEBUG-----")
-            print(f"Current Split: {split}")
+            print(f"Current Split: {split}, for seq of len: {len(source_sequence)}")
             try:
                 aligned, cost, alignment = single_run(source_sequence, dataset, split)
             except (
@@ -370,7 +387,6 @@ CONFIG
                 NoTargetStatesError,
                 CounterfactualNotFound,
                 SplitNotCoherent,
-                EmptyDatasetError,
             ) as e:
                 print(f"Raised {type(e)}")
                 run_log["status"] = error_messages[type(e)]
@@ -416,5 +432,3 @@ CONFIG
 
             print(json.dumps(run_log, indent=2))
             yield run_log
-
-        i += 1

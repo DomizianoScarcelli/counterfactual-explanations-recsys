@@ -12,8 +12,6 @@ class Mutation(ABC):
         self.name: str
 
     def __call__(self, seq: List[int], alphabet: List[int]) -> Tuple[List[int]]:
-        # TODO: junk, remove index
-
         # Change the seed according to the index of the mutated sequence
         assert PADDING_CHAR not in seq, f"Padding char {PADDING_CHAR} is in seq: {seq}"
         result = (self._apply(seq, alphabet),)
