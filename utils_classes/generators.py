@@ -12,14 +12,17 @@ from torch import Tensor
 
 from config import ConfigParams
 from generation.dataset.generate import generate
-from generation.dataset.utils import (get_dataloaders, interaction_to_tensor,
-                                      load_dataset, save_dataset)
+from generation.dataset.utils import (
+    get_dataloaders,
+    interaction_to_tensor,
+    load_dataset,
+    save_dataset,
+)
 from generation.mutations import parse_mutations
 from generation.strategies.abstract_strategy import GenerationStrategy
 from generation.strategies.exhaustive import ExhaustiveStrategy
 from generation.strategies.genetic import GeneticStrategy
-from generation.strategies.genetic_categorized import \
-    CategorizedGeneticStrategy
+from generation.strategies.genetic_categorized import CategorizedGeneticStrategy
 from generation.strategies.targeted import TargetedGeneticStrategy
 from generation.utils import get_items
 from models.config_utils import generate_model, get_config
@@ -105,13 +108,18 @@ class InteractionGenerator(SkippableGenerator):
     """
 
     def __init__(
-        self, config: Config, split: str = "test", whole_interaction: bool = False
+        self,
+        config: Optional[Config] = None,
+        split: str = "test",
+        whole_interaction: bool = False,
     ):
         super().__init__()
-        self.config = config
+        self.config = (
+            config if config else get_config(ConfigParams.DATASET, ConfigParams.MODEL)
+        )
         self.whole_interaction = whole_interaction
 
-        train_data, eval_data, test_data = get_dataloaders(config)
+        train_data, eval_data, test_data = get_dataloaders(self.config)
 
         if split == "train":
             self.data = train_data  # [1,2,3] -> 4
@@ -326,9 +334,7 @@ class DatasetGenerator(SkippableGenerator):
             self.interactions.index == self.index
         ), f"{self.interactions.index} != {self.index} at the start of the method"
         interaction = self.interactions.next()
-        cache_path = Path(
-            f".dataset_cache/interaction_{self.index}_dataset.pickle"
-        )
+        cache_path = Path(f".dataset_cache/interaction_{self.index}_dataset.pickle")
         # TODO: make cache path aware of the strategy
         if cache_path.exists() and self.use_cache:
             if self.strategy != "generation":
@@ -427,18 +433,8 @@ class TimedGenerator:
 
 if __name__ == "__main__":
     confg = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
-    datasets = DatasetGenerator(confg, use_cache=False, strategy="targeted")
-    for dataset in datasets:
-        print(f"Finished dataset, next one")
-        good, bad = dataset
-        print(
-            f"=================================GOOD DATASET================================="
-        )
-        for t, v in good:
-            print(f"Good {t}      {v}\n")
-        print(
-            f"=================================BAD DATASET================================="
-        )
-        for t, v in bad:
-            print(f"Bad {t}      {v}\n")
-        break
+    ints = InteractionGenerator(confg)
+    count = 0
+    for i in ints:
+        count += 1
+    print(f"There are {count} sequences")

@@ -1,6 +1,7 @@
 import json
 import warnings
 from typing import Generator, List, Optional, Dict
+from recbole.data.interaction import Interaction
 from torch import empty_strided
 from tqdm import tqdm
 
@@ -25,7 +26,11 @@ from performance_evaluation.alignment.utils import preprocess_interaction
 from type_hints import GoodBadDataset, RecDataset, RecModel, SplitTuple, CategorySet
 from utils import TimedFunction, seq_tostr
 from utils_classes.distances import edit_distance
-from utils_classes.generators import DatasetGenerator, TimedGenerator
+from utils_classes.generators import (
+    DatasetGenerator,
+    InteractionGenerator,
+    TimedGenerator,
+)
 from utils_classes.Split import Split
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
@@ -42,6 +47,9 @@ error_messages = {
     SplitNotCoherent: "SplitNotCoherent",
     EmptyDatasetError: "EmptyDatasetError",
 }
+
+def reset_run_log(log: dict):
+    return {key: None for key in log}
 
 
 def parse_splits(splits: Optional[List[tuple]] = None) -> List[Split]:  # type: ignore
@@ -133,15 +141,17 @@ def run_genetic(
     i = 0
 
     if not end_i:
-        end_i = 10_000
+        temp_int = InteractionGenerator()
+        end_i = sum(1 for _ in temp_int)
     for _ in range(start_i):
         datasets.skip()
 
     for i in range(start_i, end_i):
+        run_log = reset_run_log(run_log)
         try:
             dataset, interaction = next(datasets)
         except EmptyDatasetError as e:
-            print(f"Raised {type(e)}")
+            print(f"run_genetic: Raised {type(e)}")
             run_log["status"] = error_messages[type(e)]
             datasets.skip()
             # Because of the EmptyDatasetError, there may be a mismatch between the dataset indices.
@@ -179,10 +189,7 @@ def run_genetic(
         run_log["i"] = i
         run_log["source"] = seq_tostr(source_sequence)
 
-        # if ConfigParams.GENERATION_STRATEGY == "targeted":
         _, counterfactuals = dataset
-        # else:
-        #     counterfactuals, _ = dataset
 
         # NOTE: for now I take just the counterfactual which is the most similar to the source sequence, but since they are all counterfactuals,
         # we can also generate a list of different counterfactuals.
@@ -212,12 +219,12 @@ def run_genetic(
                 run_log[f"status@{k}"] = "bad"
             run_log[f"aligned_gt@{k}"] = seq_tostr(clabel[k])
 
-        run_log["aligned"] = seq_tostr(trim(counterfactual.squeeze()))
-        run_log["cost"] = edit_distance(
-            counterfactual.squeeze(),
-            source_sequence,
-            normalized=False,
-        )
+            run_log["aligned"] = seq_tostr(trim(counterfactual.squeeze()))
+            run_log["cost"] = edit_distance(
+                counterfactual.squeeze(),
+                source_sequence,
+                normalized=False,
+            )
         print(json.dumps(run_log, indent=2))
         yield run_log
 
@@ -279,7 +286,8 @@ CONFIG
     assert splits is not None
 
     if end_i is None:
-        end_i = 10_000
+        temp_int = InteractionGenerator()
+        end_i = sum(1 for _ in temp_int)
     assert (
         start_i < end_i
     ), f"Start index must be strictly less than end index: {start_i} < {end_i}"
@@ -290,6 +298,7 @@ CONFIG
             f"status@{k}": None,
             f"aligned_gt@{k}": None,
             f"gt@{k}": None,
+            f"preds_gt@{k}": None,
         }
         for k in ks
     ]
@@ -313,11 +322,14 @@ CONFIG
 
     for log_at_k in log_at_ks:
         run_log = {**run_log, **log_at_k}
+
     for i in range(start_i):
         print(f"Skipping i = {i}")
         datasets.skip()
         continue
     for i in tqdm(range(start_i, end_i)):
+        run_log = reset_run_log(run_log)
+        run_log["i"] = i
 
         assert datasets.index == i, f"{datasets.index} != {i}"
         assert len(datasets.get_times()) == i, f"{len(datasets.get_times())} != {i}"
@@ -328,7 +340,7 @@ CONFIG
             print(f"STOP ITERATION RAISED")
             return
         except EmptyDatasetError as e:
-            print(f"Raised {type(e)}")
+            print(f"run_full: Raised {type(e)}")
             run_log["status"] = error_messages[type(e)]
             datasets.skip()
             # Because of the EmptyDatasetError, there may be a mismatch between the dataset indices.
@@ -346,9 +358,9 @@ CONFIG
         ), f"{len(datasets.get_times())} != {i+1}"
 
         run_log["dataset_time"] = datasets.get_times()[i]
-        run_log["i"] = i
 
         source_sequence: List[Tensor] = preprocess_interaction(interaction)  # type: ignore
+        preds_gt = None
         if ConfigParams.GENERATION_STRATEGY != "targeted":
             gt_preds = model(pad(source_sequence, MAX_LENGTH).unsqueeze(0))  # type: ignore
 
@@ -366,6 +378,15 @@ CONFIG
                 k: [{cat2id[cat] for cat in ConfigParams.TARGET_CAT} for _ in range(k)]
                 for k in ks
             }
+            gt_preds = model(pad(source_sequence, MAX_LENGTH).unsqueeze(0))  # type: ignore
+
+            preds_gt = {
+                k: labels2cat(
+                    topk(logits=gt_preds, k=k, dim=-1, indices=True).squeeze(0),
+                    encode=True,
+                )
+                for k in ks
+            }
 
         # TODO: I don't  think this is useful now, test if run works with the not-categorized dataset
         # if isinstance(datasets.generator.good_strat, CategorizedGeneticStrategy):  # type: ignore
@@ -374,6 +395,8 @@ CONFIG
         run_log["source"] = seq_tostr(source_sequence)
         for k in ks:
             run_log[f"gt@{k}"] = seq_tostr(source_gt[k])
+            if preds_gt:
+                run_log[f"preds_gt@{k}"] = seq_tostr(preds_gt[k])
         for split in splits:
             run_log["split"] = str(split)
             split = split.parse_nan(source_sequence)
@@ -388,9 +411,11 @@ CONFIG
                 CounterfactualNotFound,
                 SplitNotCoherent,
             ) as e:
-                print(f"Raised {type(e)}")
+                print(f"run_full: Raised {type(e)}")
                 run_log["status"] = error_messages[type(e)]
                 yield run_log
+
+            if run_log["status"] is not None:
                 continue
 
             run_log["aligned"] = seq_tostr(aligned.squeeze(0).tolist())

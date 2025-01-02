@@ -39,7 +39,10 @@ def evaluate_trace_disalignment(
         )
     elif mode == "genetic":
         run_logs = run_genetic(
-            start_i=range_i[0], end_i=range_i[1], use_cache=use_cache, split=splits[0] if splits else None
+            start_i=range_i[0],
+            end_i=range_i[1],
+            use_cache=use_cache,
+            split=splits[0] if splits else None,
         )
     else:
         raise ValueError(f"Mode '{mode}' not supported")
@@ -53,7 +56,7 @@ def evaluate_trace_disalignment(
                 prev_df=log,
                 log=run_log,
                 save_path=save_path,
-                primary_key=["source", "split"],
+                primary_key=["i", "source", "split"],
             )
 
 
