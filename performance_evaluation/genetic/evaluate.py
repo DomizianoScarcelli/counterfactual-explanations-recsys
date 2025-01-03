@@ -109,10 +109,7 @@ def evaluate_genetic(
 
     # Compute dataset metrics
     if ConfigParams.GENERATION_STRATEGY in ["targeted", "genetic_categorized"]:
-        if ConfigParams.GENERATION_STRATEGY == "targeted":
-            bad, good = dataset
-        else:
-            good, bad = dataset
+        good, bad = dataset
         bad_perc = len(bad) / ConfigParams.POP_SIZE
         good_perc = len(good) / ConfigParams.POP_SIZE
         target_cats = [set(cat2id[cat] for cat in target_cat) for _ in range(min(ks))]
