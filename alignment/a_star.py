@@ -5,7 +5,7 @@ from typing import Callable, List, Optional, Sequence, Set, Tuple
 
 from aalpy.automata.Dfa import Dfa, DfaState
 
-if os.environ["LINE_PROFILE"] == "1":
+if os.environ.get("LINE_PROFILE") == "1":
     from line_profiler import profile
 
 from alignment.actions import (Action, decode_action, encode_action_str,

@@ -1,122 +1,172 @@
-import os
-from pathlib import Path
-from typing import List, Literal, Optional, Tuple
-
-import pandas as pd
-from pandas import DataFrame
-
-from performance_evaluation.alignment.utils import log_run
-from run import run_full, run_genetic
+from recbole.model.abstract_recommender import SequentialRecommender
+from typing import List, Any, Dict, Optional
+from torch import Tensor
+from constants import error_messages
 
 
-def evaluate_trace_disalignment(
-    range_i: Tuple[int, Optional[int]],
-    splits: Optional[List[int]],
-    use_cache: bool,
-    mode: Literal["full", "genetic"] = "full",
-    save_path: Optional[Path] = None,
+from typing import Generator, List, Dict
+
+from alignment.actions import print_action
+from config import ConfigParams
+from constants import cat2id
+from exceptions import (
+    CounterfactualNotFound,
+    DfaNotAccepting,
+    DfaNotRejecting,
+    NoTargetStatesError,
+    SplitNotCoherent,
+)
+from generation.utils import equal_ys, labels2cat
+from models.utils import topk, trim
+from type_hints import GoodBadDataset, CategorySet
+from utils import TimedFunction, seq_tostr
+from utils_classes.Split import Split
+from alignment.utils import postprocess_alignment
+from automata_learning.learning import learning_pipeline
+from alignment.alignment import trace_disalignment
+
+timed_learning_pipeline = TimedFunction(learning_pipeline)
+timed_trace_disalignment = TimedFunction(trace_disalignment)
+
+
+def single_run(
+    source_sequence: List[int],
+    _dataset: GoodBadDataset,
+    split: Optional[Split] = None,
 ):
-    """
-    Evaluates the disalignment of traces for a given range and set of splits.
-    Optionally saves the results to a CSV file.
+    assert isinstance(
+        source_sequence, list
+    ), f"Source sequence is not a list, but a {type(source_sequence)}"
+    assert isinstance(
+        source_sequence[0], int
+    ), f"Elements of the source sequences are not ints, but {type(source_sequence[0])}"
 
-    Args:
-        range_i: The range of indices to evaluate (start, end).
-        splits: List of split indices to evaluate. If None, evaluates all splits.
-        use_cache: Whether to use cached results.
-        save_path: Path to save the results to a CSV file. If None, results are not saved.
+    dfa = timed_learning_pipeline(source=source_sequence, dataset=_dataset)
 
-    Returns:
-        None
-    """
-    log: DataFrame = DataFrame({})
-    if save_path and save_path.exists():
-        log = pd.read_csv(save_path)
+    if split:
+        source_sequence = split.apply(source_sequence)  # type: ignore
 
-    if mode == "full":
-        run_logs = run_full(
-            start_i=range_i[0], end_i=range_i[1], splits=splits, use_cache=use_cache
+    aligned, cost, alignment = timed_trace_disalignment(dfa, source_sequence)
+    aligned = postprocess_alignment(aligned)
+    return aligned, cost, alignment
+
+
+def _init_log(ks: List[int]) -> Dict[str, Any]:
+    log_at_ks = [
+        {
+            f"aligned_gt@{k}": None,
+            f"gt@{k}": None,
+            f"preds_gt@{k}": None,
+        }
+        for k in ks
+    ]
+    run_log = {
+        "i": None,
+        "split": None,
+        "status": None,
+        "score": None,
+        "source": None,
+        "aligned": None,
+        "alignment": None,
+        "cost": None,
+        "gt": None,
+        "aligned_gt": None,
+        "dataset_time": None,
+        "align_time": None,
+        "automata_learning_time": None,
+    }
+
+    for log_at_k in log_at_ks:
+        run_log = {**run_log, **log_at_k}
+    return run_log
+
+
+def log_error(error: str, ks: List[int]) -> Dict[str, Any]:
+    log = _init_log(ks)
+    log["error"] = error
+    return log
+
+
+def evaluate_targeted(
+    i: int,
+    dataset: GoodBadDataset,
+    source: Tensor,
+    model: SequentialRecommender,
+    ks: List[int],
+    split: Split,
+) -> Generator[Dict[str, Any], None, None]:
+    log = _init_log(ks)
+    log["i"] = i
+    # NOTE: this part is for the non-targeted version, skipped for now
+    # if ConfigParams.GENERATION_STRATEGY != "targeted":
+    #     gt_preds = model(pad(source_sequence, MAX_LENGTH).unsqueeze(0))  # type: ignore
+
+    #     source_gt: Dict[int, List[CategorySet]] = {
+    #         k: labels2cat(
+    #             topk(logits=gt_preds, k=k, dim=-1, indices=True).squeeze(0),
+    #             encode=True,
+    #         )
+    #         for k in ks
+    #     }
+    # else:
+
+    source_logits = model(source)
+    trimmed_source = trim(source.squeeze()).tolist()
+    source_preds = {
+        k: labels2cat(
+            topk(logits=source_logits, k=k, dim=-1, indices=True).squeeze(0),
+            encode=True,
         )
-    elif mode == "genetic":
-        run_logs = run_genetic(
-            start_i=range_i[0],
-            end_i=range_i[1],
-            use_cache=use_cache,
-            split=splits[0] if splits else None,
-        )
-    else:
-        raise ValueError(f"Mode '{mode}' not supported")
+        for k in ks
+    }
+    target_categories = {cat2id[t] for t in ConfigParams.TARGET_CAT}  # type: ignore
+    target_preds = {k: [target_categories for _ in range(k)] for k in ks}
 
-    for run_log in run_logs:
-        # TODO: you can make Run a SkippableGenerator, which skips when the
-        # source sequence, split and config combination already exists in the
-        # log
-        if save_path:
-            log = log_run(
-                prev_df=log,
-                log=run_log,
-                save_path=save_path,
-                primary_key=["i", "source", "split"],
+    split = split.parse_nan(trimmed_source)
+
+    print(f"----RUN DEBUG-----")
+    print(f"Current Split: {split}")
+    try:
+        aligned, cost, alignment = single_run(trimmed_source, dataset, split)
+
+        log["aligned"] = seq_tostr(aligned.squeeze(0).tolist())
+        log["alignment"] = seq_tostr([print_action(a) for a in alignment])
+        log["cost"] = cost
+
+        log["align_time"] = timed_trace_disalignment.get_last_time()
+
+        counterfactual_logits = model(aligned)
+        counterfactual_preds: Dict[int, List[CategorySet]] = {
+            k: labels2cat(
+                topk(logits=counterfactual_logits, k=k, dim=-1, indices=True).squeeze(
+                    0
+                ),
+                encode=True,
             )
+            for k in ks
+        }
 
+        for k in ks:
+            log[f"gt@{k}"] = seq_tostr(source_preds[k])
+            log[f"aligned_gt@{k}"] = seq_tostr(counterfactual_preds[k])
 
-# def main(
-#        config_path: Optional[str]=None,
-#        mode: str = "evaluate",
-#        use_cache: bool = True,
-#        range_i: Tuple[int, Optional[int]] = (0, None),
-#        log_path: Optional[str] = None,
-#        stats_save_path: Optional[str] = None,
-#        splits: Optional[List[int]] = None,
-#        stat_filter: Optional[Dict[str, Any]]=None):
-#    """
-#    Main entry point to run either the trace disalignment evaluation or log statistics generation.
+            # NOTE: this is needed if we want to evaluate the genetic algorithm not on the targeted part.
+            # if not ConfigParams.GENERATION_STRATEGY == "targeted":
+            # _, score = equal_ys(source_gt[k], counterfactual_preds[k], return_score=True)  # type: ignore
+            # else:
+            _, score = equal_ys(target_preds[k], counterfactual_preds[k], return_score=True)  # type: ignore
 
-#    Args:
-#        config_path: Path to the configuration file. If None, defaults will be used.
-#        mode: Mode of operation. Can be "evaluate" (to evaluate traces) or "stats" (to generate statistics).
-#        use_cache: Whether to use cached results when evaluating traces.
-#        range_i: Tuple of indices (start, end) defining the range of evaluation.
-#        log_path: Path to the log file for statistics. Required if mode is "stats".
-#        stats_save_path: Path to save the generated statistics in JSON format. If None, not saved.
-#        splits: List of splits to evaluate. If None, evaluates all splits.
-#        stat_filter: Filter for statistics generation.
+            log[f"score@{k}"] = score
 
-#    Returns:
-#        None
-#    """
-#    set_seed()
-
-#    ConfigParams.reload(config_path)
-#    ConfigParams.fix()
-
-#    if mode == "evaluate":
-#        evaluate_trace_disalignment(
-#                range_i=range_i,
-#                splits=splits,
-#                use_cache=use_cache,
-#                save_path=log_path)
-#    elif mode == "stats":
-#        if not log_path:
-#            raise ValueError(f"Log path needed for stats")
-#        if not os.path.exists(log_path):
-#            raise FileNotFoundError(f"File {log_path} does not exists")
-
-#        stats_metrics = ["status", "dataset_time", "align_time", "automata_learning_time"]
-#        group_by = list(ConfigParams.configs_dict().keys()) + ["split"]
-#        group_by.remove("timestamp")
-#        #TODO: temp
-#        group_by.remove("include_sink")
-#        group_by.remove("mutation_params")
-#        group_by.remove("generation_strategy")
-#        group_by.remove("fitness_alpha")
-#        stats = get_log_stats(log_path=log_path, save_path=stats_save_path, group_by=group_by, metrics=stats_metrics, filter=stat_filter)
-#        print(json.dumps(stats, indent=2))
-#        return stats
-
-#    else:
-#        raise ValueError(f"Mode {mode} not supported, choose between [evaluate, stats]")
-
-
-# if __name__ == "__main__":
-#    fire.Fire(main)
+        log["source"] = seq_tostr(source)
+        log["split"] = str(split)
+    except (
+        DfaNotAccepting,
+        DfaNotRejecting,
+        NoTargetStatesError,
+        CounterfactualNotFound,
+        SplitNotCoherent,
+    ) as e:
+        print(f"run_full: Raised {type(e)}")
+        log = log_error(error=error_messages[type(e)], ks=ks)
+        yield log

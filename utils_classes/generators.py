@@ -363,6 +363,13 @@ class DatasetGenerator(SkippableGenerator):
         self.reset()
         return self
 
+    def match_indices(self):
+        # Because of the EmptyDatasetError, there may be a mismatch between the dataset indices.
+        if self.interactions.index != self.index:
+            _min = min(self.interactions.index, self.index)
+            self.interactions.index = _min
+            self.index = _min
+
     def reset(self):
         self.interactions.reset()
         self.index = 0

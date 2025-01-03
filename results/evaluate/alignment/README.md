@@ -1,0 +1,1 @@
+-`alignment_hyperopt.csv`: For each configuration of hyperparameters, it contains the evaluation metrics for the entire counterfactual generation pipeline. In particular, for each sequence it tells the score (similarity between the target categories and the counterfactual targets) at k=1,5,10,20.
