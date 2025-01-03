@@ -87,14 +87,12 @@ def run_genetic(
         # Obtain source categories
         source_sequence = interaction_to_tensor(interaction)  # type: ignore
 
-        _, counterfactuals = dataset
-
         log = evaluate_genetic(
             i=i,
             target_cat=target_cat,
             datasets=datasets,
             source=source_sequence,
-            counterfactuals=counterfactuals,
+            dataset=dataset,
             model=model,
             ks=ks,
         )
@@ -238,14 +236,12 @@ def run_all(
 
         source_sequence = interaction_to_tensor(interaction)  # type: ignore
 
-        _, counterfactuals = dataset
-
         genetic_log = evaluate_genetic(
             i=i,
             target_cat=target_cat,
             datasets=datasets,
+            dataset=dataset,
             source=source_sequence,
-            counterfactuals=counterfactuals,
             model=model,
             ks=ks,
         )

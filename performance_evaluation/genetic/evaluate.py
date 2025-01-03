@@ -1,3 +1,4 @@
+from generation.utils import _evaluate_categorized_generation
 import warnings
 from typing import Any, Dict, List
 
@@ -18,7 +19,8 @@ from exceptions import (
 )
 from generation.utils import equal_ys, labels2cat
 from models.utils import pad, topk, trim
-from type_hints import Dataset
+from performance_evaluation.genetic.old_evaluate import evaluate_dataset
+from type_hints import CategorizedDataset, GoodBadDataset
 from utils import TimedFunction, seq_tostr
 from utils_classes.distances import edit_distance
 from utils_classes.generators import TimedGenerator
@@ -80,8 +82,8 @@ def log_error(error: str, ks: List[int]) -> Dict[str, Any]:
 def evaluate_genetic(
     i: int,
     datasets: TimedGenerator,
+    dataset: GoodBadDataset,
     source: Tensor,
-    counterfactuals: Dataset,
     model: SequentialRecommender,
     target_cat: List[str],
     ks: List[int],
@@ -105,8 +107,29 @@ def evaluate_genetic(
     target_categories = {cat2id[t] for t in target_cat}  # type: ignore
     target_preds = {k: [target_categories for _ in range(k)] for k in ks}
 
+    # Compute dataset metrics
+    if ConfigParams.GENERATION_STRATEGY in ["targeted", "genetic_categorized"]:
+        if ConfigParams.GENERATION_STRATEGY == "targeted":
+            bad, good = dataset
+        else:
+            good, bad = dataset
+        bad_perc = len(bad) / ConfigParams.POP_SIZE
+        good_perc = len(good) / ConfigParams.POP_SIZE
+        target_cats = [set(cat2id[cat] for cat in target_cat) for _ in range(min(ks))]
+        _, (_, bad_mean_dist) = _evaluate_categorized_generation(
+            trimmed_source, bad, target_cats  # type: ignore
+        )
+        _, (_, good_mean_dist) = _evaluate_categorized_generation(
+            trimmed_source, good, target_cats  # type: ignore
+        )
+        log["gen_good_points_percentage"] = good_perc * 100
+        log["gen_bad_points_percentage"] = bad_perc * 100
+        log["gen_good_points_edit_distance"] = good_mean_dist
+        log["gen_bad_points_edit_distance"] = bad_mean_dist
     # NOTE: for now I take just the counterfactual which is the most similar to the source sequence, but since they are all counterfactuals,
     # we can also generate a list of different counterfactuals.
+
+    _, counterfactuals = dataset
     best_counterfactual, _ = max(
         counterfactuals,
         key=lambda x: -edit_distance(trim(x[0]).squeeze(), trimmed_source),
