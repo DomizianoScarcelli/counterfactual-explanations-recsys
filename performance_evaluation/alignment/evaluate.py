@@ -9,8 +9,13 @@ from alignment.utils import postprocess_alignment
 from automata_learning.learning import learning_pipeline
 from config import ConfigParams
 from constants import cat2id, error_messages
-from exceptions import (CounterfactualNotFound, DfaNotAccepting,
-                        DfaNotRejecting, NoTargetStatesError, SplitNotCoherent)
+from exceptions import (
+    CounterfactualNotFound,
+    DfaNotAccepting,
+    DfaNotRejecting,
+    NoTargetStatesError,
+    SplitNotCoherent,
+)
 from generation.utils import equal_ys, labels2cat
 from models.utils import topk, trim
 from type_hints import CategorySet, GoodBadDataset
@@ -79,28 +84,22 @@ def log_error(error: str, ks: List[int]) -> Dict[str, Any]:
     return log
 
 
-def evaluate_targeted(
+def evaluate_alignment(
     i: int,
     dataset: GoodBadDataset,
     source: Tensor,
     model: SequentialRecommender,
     ks: List[int],
+    target_cat: List[str],
     split: Split,
-) -> Generator[Dict[str, Any], None, None]:
+) -> Dict[str, Any]:
     log = _init_log(ks)
     log["i"] = i
-    # NOTE: this part is for the non-targeted version, skipped for now
-    # if ConfigParams.GENERATION_STRATEGY != "targeted":
-    #     gt_preds = model(pad(source_sequence, MAX_LENGTH).unsqueeze(0))  # type: ignore
 
-    #     source_gt: Dict[int, List[CategorySet]] = {
-    #         k: labels2cat(
-    #             topk(logits=gt_preds, k=k, dim=-1, indices=True).squeeze(0),
-    #             encode=True,
-    #         )
-    #         for k in ks
-    #     }
-    # else:
+    if not ConfigParams.GENERATION_STRATEGY == "targeted":
+        raise ValueError(
+            f"You are using the `evaluate_targeted` evaluation function but the generation strategy is set to '{ConfigParams.GENERATION_STRATEGY}', change it to 'targeted' or use a different evaluation function"
+        )
 
     source_logits = model(source)
     trimmed_source = trim(source.squeeze()).tolist()
@@ -111,7 +110,7 @@ def evaluate_targeted(
         )
         for k in ks
     }
-    target_categories = {cat2id[t] for t in ConfigParams.TARGET_CAT}  # type: ignore
+    target_categories = {cat2id[t] for t in target_cat}  # type: ignore
     target_preds = {k: [target_categories for _ in range(k)] for k in ks}
 
     split = split.parse_nan(trimmed_source)
@@ -142,15 +141,19 @@ def evaluate_targeted(
             log[f"gt@{k}"] = seq_tostr(source_preds[k])
             log[f"aligned_gt@{k}"] = seq_tostr(counterfactual_preds[k])
 
-            # NOTE: this is needed if we want to evaluate the genetic algorithm not on the targeted part.
-            # if not ConfigParams.GENERATION_STRATEGY == "targeted":
-            # _, score = equal_ys(source_gt[k], counterfactual_preds[k], return_score=True)  # type: ignore
-            # else:
-            _, score = equal_ys(target_preds[k], counterfactual_preds[k], return_score=True)  # type: ignore
+            # TODO: is this correct?
+            if ConfigParams.GENERATION_STRATEGY != "targeted":
+                _, score = equal_ys(
+                    source_preds[k], counterfactual_preds[k], return_score=True
+                )
+            else:
+                _, score = equal_ys(
+                    target_preds[k], counterfactual_preds[k], return_score=True
+                )
 
             log[f"score@{k}"] = score
 
-        log["source"] = seq_tostr(source)
+        log["source"] = seq_tostr(trimmed_source)
         log["split"] = str(split)
     except (
         DfaNotAccepting,
@@ -161,4 +164,4 @@ def evaluate_targeted(
     ) as e:
         print(f"run_full: Raised {type(e)}")
         log = log_error(error=error_messages[type(e)], ks=ks)
-        yield log
+    return log

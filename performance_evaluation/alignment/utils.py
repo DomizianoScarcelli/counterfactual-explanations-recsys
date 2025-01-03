@@ -107,6 +107,8 @@ def log_run(
     # Check for duplicates based on primary_key
     if not prev_df.empty:
         # find records in `new_df` that are not already in `prev_df` based on primary_key
+        new_df = new_df.astype(str)
+        prev_df = prev_df.astype(str)
         combined = pd.merge(new_df, prev_df, on=primary_key, how="left", indicator=True)
         new_records = combined[combined["_merge"] == "left_only"]
         if not new_records.empty:

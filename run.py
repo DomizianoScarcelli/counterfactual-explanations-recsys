@@ -1,4 +1,3 @@
-import json
 import warnings
 from typing import Any, Dict, Generator, List, Optional
 
@@ -8,17 +7,16 @@ from config import ConfigParams
 from constants import error_messages
 from exceptions import EmptyDatasetError
 from generation.dataset.utils import interaction_to_tensor
-from performance_evaluation.alignment.evaluate import \
-    evaluate_targeted as evaluate_targeted_alignment
-from performance_evaluation.alignment.evaluate import \
-    log_error as log_alignment_error
-from performance_evaluation.genetic.evaluate import \
-    evaluate_targeted as evaluate_targeted_genetic
-from performance_evaluation.genetic.evaluate import \
-    log_error as log_genetic_error
+from performance_evaluation.alignment.evaluate import evaluate_alignment
+from performance_evaluation.alignment.evaluate import log_error as log_alignment_error
+from performance_evaluation.genetic.evaluate import evaluate_genetic
+from performance_evaluation.genetic.evaluate import log_error as log_genetic_error
 from type_hints import SplitTuple
-from utils_classes.generators import (DatasetGenerator, InteractionGenerator,
-                                      TimedGenerator)
+from utils_classes.generators import (
+    DatasetGenerator,
+    InteractionGenerator,
+    TimedGenerator,
+)
 from utils_classes.Split import Split
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
@@ -47,6 +45,7 @@ def parse_splits(splits: Optional[List[tuple]] = None) -> List[Split]:  # type: 
 
 
 def run_genetic(
+    target_cat: List[str],
     start_i: int = 0,
     end_i: Optional[int] = None,
     ks: List[int] = ConfigParams.TOPK,
@@ -60,6 +59,7 @@ def run_genetic(
             return_interaction=True,
             limit_generation_to="bad",
             genetic_split=split,
+            target=target_cat,
         )
     )
     model = datasets.generator.model  # type: ignore
@@ -88,8 +88,9 @@ def run_genetic(
 
         _, counterfactuals = dataset
 
-        log = evaluate_targeted_genetic(
+        log = evaluate_genetic(
             i=i,
+            target_cat=target_cat,
             datasets=datasets,
             source=source_sequence,
             counterfactuals=counterfactuals,
@@ -97,11 +98,11 @@ def run_genetic(
             ks=ks,
         )
 
-        print(json.dumps(log, indent=2))
         yield log
 
 
 def run_alignment(
+    target_cat: List[str],
     start_i: int = 0,
     end_i: Optional[int] = None,
     splits: Optional[List[tuple]] = None,  # type: ignore
@@ -118,6 +119,7 @@ def run_alignment(
             use_cache=use_cache,
             return_interaction=True,
             genetic_split=splits[0],
+            target=target_cat,
         )
     )
     model = datasets.generator.model  # type: ignore
@@ -158,9 +160,11 @@ def run_alignment(
 
         source_sequence = interaction_to_tensor(interaction)  # type: ignore
 
+        alignment_logs = []
         for split in splits:
-            log = evaluate_targeted_alignment(
+            alignment_log = evaluate_alignment(
                 i=i,
+                target_cat=target_cat,
                 dataset=dataset,
                 source=source_sequence,
                 model=model,
@@ -168,11 +172,13 @@ def run_alignment(
                 split=split,  # type: ignore
             )
 
-            print(json.dumps(log, indent=2))
-            yield log
+            alignment_logs.append(alignment_log)
+
+        yield alignment_logs
 
 
 def run_all(
+    target_cat: List[str],
     start_i: int = 0,
     end_i: Optional[int] = None,
     splits: Optional[List[tuple]] = None,  # type: ignore
@@ -189,6 +195,7 @@ def run_all(
             use_cache=use_cache,
             return_interaction=True,
             genetic_split=splits[0],
+            target=target_cat,
         )
     )
     model = datasets.generator.model  # type: ignore
@@ -232,8 +239,9 @@ def run_all(
 
         _, counterfactuals = dataset
 
-        genetic_log = evaluate_targeted_genetic(
+        genetic_log = evaluate_genetic(
             i=i,
+            target_cat=target_cat,
             datasets=datasets,
             source=source_sequence,
             counterfactuals=counterfactuals,
@@ -243,16 +251,16 @@ def run_all(
 
         alignment_logs = []
         for split in splits:
-            alignment_log = evaluate_targeted_alignment(
+            alignment_log = evaluate_alignment(
                 i=i,
                 dataset=dataset,
+                target_cat=target_cat,
                 source=source_sequence,
                 model=model,
                 ks=ks,
                 split=split,  # type: ignore
             )
 
-            print(json.dumps(alignment_log, indent=2))
             alignment_logs.append(alignment_log)
 
         logs = []

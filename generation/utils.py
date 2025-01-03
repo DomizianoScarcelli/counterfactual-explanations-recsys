@@ -123,6 +123,7 @@ def labels2cat(
     itemid2cat = get_category_map(dataset)
     if isinstance(ys, Tensor):
         ys = ys.tolist()
+
     if encode:
         return [set(cat2id[cat] for cat in itemid2cat[y]) for y in ys]  # type: ignore
     return [set(itemid2cat[y]) for y in ys]

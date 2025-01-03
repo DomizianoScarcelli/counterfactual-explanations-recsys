@@ -1,6 +1,8 @@
+from constants import cat2id
 from typing import TypeAlias
 import json
 import os
+from tqdm import tqdm
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
@@ -41,49 +43,61 @@ def run_switcher(
     Returns:
         None
     """
-    log: DataFrame = DataFrame({})
-    if save_path and save_path.exists():
-        log = pd.read_csv(save_path)
+    targets: List[List[str]] = (
+        ConfigParams.TARGET_CAT
+        if ConfigParams.TARGET_CAT
+        else [[cat] for cat in cat2id if cat != "unknown"]
+    )  # type: ignore
+    for target in tqdm(targets, desc=f"Evaluating on targets"):
+        log: DataFrame = DataFrame({})
+        if save_path and save_path.exists():
+            log = pd.read_csv(save_path)
 
-    if mode == "alignment":
-        run_logs = run_alignment(
-            start_i=range_i[0],
-            end_i=range_i[1],
-            splits=splits,
-            use_cache=use_cache,
-            ks=ConfigParams.TOPK,
-        )
-    elif mode == "genetic":
-        run_logs = run_genetic(
-            start_i=range_i[0],
-            end_i=range_i[1],
-            split=splits[0] if splits else None,
-        )
-    elif mode == "all":
-        run_logs = run_all(
-            start_i=range_i[0],
-            end_i=range_i[1],
-            splits=splits,
-            use_cache=use_cache,
-            ks=ConfigParams.TOPK,
-        )
-    else:
-        raise ValueError(f"Mode '{mode}' not supported")
+        if mode == "alignment":
+            run_generator = run_alignment(
+                target_cat=target,
+                start_i=range_i[0],
+                end_i=range_i[1],
+                splits=splits,
+                use_cache=use_cache,
+                ks=ConfigParams.TOPK,
+            )
+        elif mode == "genetic":
+            run_generator = run_genetic(
+                target_cat=target,
+                start_i=range_i[0],
+                end_i=range_i[1],
+                split=splits[0] if splits else None,
+            )
+        elif mode == "all":
+            run_generator = run_all(
+                target_cat=target,
+                start_i=range_i[0],
+                end_i=range_i[1],
+                splits=splits,
+                use_cache=use_cache,
+                ks=ConfigParams.TOPK,
+            )
+        else:
+            raise ValueError(f"Mode '{mode}' not supported")
 
-    for run_log in run_logs:
-        # TODO: you can make Run a SkippableGenerator, which skips when the
-        # source sequence, split and config combination already exists in the
-        # log
-        if not isinstance(run_log, list):
-            run_log = [run_log]
-        if save_path:
-            for run_log_instance in run_log:
-                log = log_run(
-                    prev_df=log,
-                    log=run_log_instance,
-                    save_path=save_path,
-                    primary_key=["i", "source", "split"],
-                )
+        for runs in run_generator:
+            # TODO: you can make Run a SkippableGenerator, which skips when the
+            # source sequence, split and config combination already exists in the
+            # log
+            if not isinstance(runs, list):
+                runs = [runs]
+            for run in runs:
+                print(f"[DEBUG] Run is:", run)
+                if save_path:
+                    log = log_run(
+                        prev_df=log,
+                        log=run,
+                        save_path=save_path,
+                        primary_key=["i", "source", "split"],
+                    )
+                else:
+                    print(json.dumps(run, indent=2))
 
 
 class CLI:

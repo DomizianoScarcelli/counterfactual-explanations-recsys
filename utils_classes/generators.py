@@ -191,7 +191,7 @@ class DatasetGenerator(SkippableGenerator):
         limit_generation_to: Optional[Literal["good", "bad"]] = None,
         genetic_split: Optional[Split] = None,
         strategy: StrategyStr = ConfigParams.GENERATION_STRATEGY,  # type: ignore
-        target: Optional[List[str]] = ConfigParams.TARGET_CAT,
+        target: Optional[List[str]] = None,
         use_cache: bool = False,
         return_interaction: bool = False,
         alphabet: Optional[List[int]] = None,
