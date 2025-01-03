@@ -73,7 +73,7 @@ def _init_log(ks: List[int]) -> Dict[str, Any]:
 
 def log_error(error: str, ks: List[int]) -> Dict[str, Any]:
     log = _init_log(ks)
-    log["error"] = error
+    log["gen_error"] = error
     return log
 
 

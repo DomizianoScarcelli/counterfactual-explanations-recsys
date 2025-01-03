@@ -1,5 +1,5 @@
 import warnings
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Callable, Dict, Generator, List, Optional
 
 from tqdm import tqdm
 
@@ -15,6 +15,7 @@ from type_hints import SplitTuple
 from utils_classes.generators import (
     DatasetGenerator,
     InteractionGenerator,
+    SkippableGenerator,
     TimedGenerator,
 )
 from utils_classes.Split import Split
@@ -268,3 +269,17 @@ def run_all(
             logs.append({**genetic_log, **alignment_log})
 
         yield logs
+
+
+class SkippableRunner(SkippableGenerator):
+    def __init__(self, runner_fn: Callable):
+        self.runner_fn = runner_fn
+
+    def next(self) -> Any:
+        """
+        Generates the next element.
+
+        Returns:
+            The next generated element.
+        """
+        return self.runner_fn(self.index)
