@@ -1,7 +1,11 @@
+from constants import cat2id
+from performance_evaluation.alignment.utils import pk_exists
 import warnings
 from typing import Any, Callable, Dict, Generator, List, Optional
 
 from tqdm import tqdm
+import pandas as pd
+from pandas import DataFrame
 
 from config import ConfigParams
 from constants import error_messages
@@ -22,6 +26,32 @@ from utils_classes.Split import Split
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 warnings.simplefilter(action="ignore", category=RuntimeWarning)
+
+
+def skip_sequence(i: int, target_cat: List[str], prev_df: Optional[DataFrame]):
+    if prev_df is not None:
+        future_df = pd.concat(
+            [
+                prev_df,
+                pd.DataFrame(
+                    {
+                        "i": [i],
+                        "gen_target_y@1": str({cat2id[cat] for cat in target_cat}),
+                        **ConfigParams.configs_dict(),
+                    }
+                ),
+            ]
+        )
+        if pk_exists(
+            future_df,
+            primary_key=["i", "gen_target_y@1"],
+            consider_config=True,
+        ):
+            print(
+                f"Skipping i: {i} with target {target_cat} because already in the log..."
+            )
+            return True
+    return False
 
 
 def parse_splits(splits: Optional[List[tuple]] = None) -> List[Split]:  # type: ignore
@@ -51,6 +81,7 @@ def run_genetic(
     end_i: Optional[int] = None,
     ks: List[int] = ConfigParams.TOPK,
     split: Optional[tuple] = None,  # type: ignore
+    prev_df: Optional[DataFrame] = None,
 ):
     split: Split = parse_splits([split] if split else None)[0]  # type: ignore
 
@@ -72,6 +103,9 @@ def run_genetic(
         datasets.skip()
 
     for i in range(start_i, end_i):
+        if skip_sequence(i, target_cat, prev_df):
+            datasets.skip()
+            continue
         try:
             dataset, interaction = next(datasets)
         except EmptyDatasetError as e:
@@ -107,6 +141,7 @@ def run_alignment(
     splits: Optional[List[tuple]] = None,  # type: ignore
     ks: List[int] = ConfigParams.TOPK,
     use_cache: bool = False,
+    prev_df: Optional[DataFrame] = None,
 ) -> Generator:
 
     # Parse args
@@ -137,6 +172,9 @@ def run_alignment(
         datasets.skip()
         continue
     for i in tqdm(range(start_i, end_i)):
+        if skip_sequence(i, target_cat, prev_df):
+            datasets.skip()
+            continue
         assert datasets.index == i, f"{datasets.index} != {i}"
         assert len(datasets.get_times()) == i, f"{len(datasets.get_times())} != {i}"
 
@@ -183,6 +221,7 @@ def run_all(
     splits: Optional[List[tuple]] = None,  # type: ignore
     ks: List[int] = ConfigParams.TOPK,
     use_cache: bool = False,
+    prev_df: Optional[DataFrame] = None,
 ) -> Generator[List[Dict[str, Any]], None, None]:
 
     # Parse args
@@ -214,6 +253,9 @@ def run_all(
         datasets.skip()
 
     for i in tqdm(range(start_i, end_i)):
+        if skip_sequence(i, target_cat, prev_df):
+            datasets.skip()
+            continue
         assert datasets.index == i, f"{datasets.index} != {i}"
         assert len(datasets.get_times()) == i, f"{len(datasets.get_times())} != {i}"
 

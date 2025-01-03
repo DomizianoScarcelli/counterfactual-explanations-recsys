@@ -58,33 +58,33 @@ def run_switcher(
                 target_cat=target,
                 start_i=range_i[0],
                 end_i=range_i[1],
-                splits=splits,
+                splits=splits,  # type: ignore
                 use_cache=use_cache,
                 ks=ConfigParams.TOPK,
+                prev_df= log,
             )
         elif mode == "genetic":
             run_generator = run_genetic(
                 target_cat=target,
                 start_i=range_i[0],
                 end_i=range_i[1],
-                split=splits[0] if splits else None,
+                split=splits[0] if splits else None,  # type: ignore
+                prev_df= log,
             )
         elif mode == "all":
             run_generator = run_all(
                 target_cat=target,
                 start_i=range_i[0],
                 end_i=range_i[1],
-                splits=splits,
+                splits=splits,  # type: ignore
                 use_cache=use_cache,
                 ks=ConfigParams.TOPK,
+                prev_df= log,
             )
         else:
             raise ValueError(f"Mode '{mode}' not supported")
 
         for runs in run_generator:
-            # TODO: you can make Run a SkippableGenerator, which skips when the
-            # source sequence, split and config combination already exists in the
-            # log
             if not isinstance(runs, list):
                 runs = [runs]
             for run in runs:

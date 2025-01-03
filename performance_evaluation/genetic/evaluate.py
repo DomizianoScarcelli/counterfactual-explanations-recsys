@@ -1,3 +1,4 @@
+from pandas.errors import EmptyDataError
 from generation.utils import _evaluate_categorized_generation
 import warnings
 from typing import Any, Dict, List
@@ -113,16 +114,19 @@ def evaluate_genetic(
         bad_perc = len(bad) / ConfigParams.POP_SIZE
         good_perc = len(good) / ConfigParams.POP_SIZE
         target_cats = [set(cat2id[cat] for cat in target_cat) for _ in range(min(ks))]
-        _, (_, bad_mean_dist) = _evaluate_categorized_generation(
-            trimmed_source, bad, target_cats  # type: ignore
-        )
-        _, (_, good_mean_dist) = _evaluate_categorized_generation(
-            trimmed_source, good, target_cats  # type: ignore
-        )
+        if len(bad) != 0:
+            _, (_, bad_mean_dist) = _evaluate_categorized_generation(
+                trimmed_source, bad, target_cats  # type: ignore
+            )
+            log["gen_bad_points_edit_distance"] = bad_mean_dist
+        if len(good) != 0:
+            _, (_, good_mean_dist) = _evaluate_categorized_generation(
+                trimmed_source, good, target_cats  # type: ignore
+            )
+            log["gen_good_points_edit_distance"] = good_mean_dist
+
         log["gen_good_points_percentage"] = good_perc * 100
         log["gen_bad_points_percentage"] = bad_perc * 100
-        log["gen_good_points_edit_distance"] = good_mean_dist
-        log["gen_bad_points_edit_distance"] = bad_mean_dist
     # NOTE: for now I take just the counterfactual which is the most similar to the source sequence, but since they are all counterfactuals,
     # we can also generate a list of different counterfactuals.
 
