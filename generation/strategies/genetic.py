@@ -6,12 +6,13 @@ import numpy as np
 import torch
 from deap import base, creator, tools
 from torch import Tensor
+from torch._prims_common import compute_required_storage_length
 
 from config import ConfigParams
-from constants import MAX_LENGTH, MIN_LENGTH, PADDING_CHAR
-from generation.extended_ea_algorithms import (customSelTournament,
-                                               eaSimpleBatched,
-                                               indexedCxTwoPoint)
+from constants import MAX_LENGTH, MIN_LENGTH
+from generation.extended_ea_algorithms import (customCxTwoPoint,
+                                               customSelTournament,
+                                               eaSimpleBatched)
 from generation.mutations import (ALL_MUTATIONS, AddMutation, DeleteMutation,
                                   Mutation, contains_mutation, remove_mutation)
 from generation.strategies.abstract_strategy import GenerationStrategy
@@ -51,10 +52,6 @@ class GeneticStrategy(GenerationStrategy):
         self.halloffame_ratio = halloffame_ratio
         self.allowed_mutations = allowed_mutations
         self.split = split
-        # if self.split is not None:
-        #     for mutation in self.allowed_mutations:
-        #         mutation.set_split(self.split)
-        # Define the evaluation function
         creator.create("fitness", base.Fitness, weights=(-1.0,))  # Minimize fitness
         creator.create("individual", list, fitness=creator.fitness)
 
@@ -76,7 +73,7 @@ class GeneticStrategy(GenerationStrategy):
         self.toolbox.register("clone", clone)
 
         self.toolbox.register("evaluate", self.evaluate_fitness_batch)
-        self.toolbox.register("mate", indexedCxTwoPoint)  # Use two-point crossover
+        self.toolbox.register("mate", customCxTwoPoint)  # Use two-point crossover
         self.toolbox.register("mutate", self.mutate)
         self.toolbox.register(
             "select", customSelTournament, tournsize=3
@@ -90,30 +87,45 @@ class GeneticStrategy(GenerationStrategy):
         # Set seed according to the index in order to always choose a different mutation
 
         # TODO: remove the assertion for efficiency
-        assert (
-            PADDING_CHAR not in seq
-        ), f"Seq must not contain padding char {PADDING_CHAR}: {seq}"
+        # assert (
+        #     PADDING_CHAR not in seq
+        # ), f"Seq must not contain padding char {PADDING_CHAR}: {seq}"
 
         mutations = self.allowed_mutations
         # og_seq_len is the length of the unsplitted sequence.
         # To this we add the difference between the source sequence length (og_input_length) and the current sequence length (seq)
         # to count for the added or removed elements in previous mutations
-        current_seq_length = og_seq_len + abs(len(seq) - self.og_input_length)
-        # TODO: this is still not correct when split is used
+        current_seq_length = og_seq_len + (len(seq) - self.og_input_length)
+        assert (
+            MIN_LENGTH <= current_seq_length <= MAX_LENGTH
+        ), f"Sequence BEFORE MUTATIONS is not in the allowed length! {MIN_LENGTH} <= {current_seq_length} <= {MAX_LENGTH}"
         if (
-            MAX_LENGTH - current_seq_length < ConfigParams.NUM_ADDITIONS
-            and contains_mutation(AddMutation, mutations)
-        ):
+            MAX_LENGTH - current_seq_length
+        ) < ConfigParams.NUM_ADDITIONS and contains_mutation(AddMutation, mutations):
             mutations = remove_mutation(AddMutation, mutations)
+
         # If after NUM_DELETIONS deletions the seq is shorter than the MIN_LENGTh, don't allow delete mutations
         if (
-            MIN_LENGTH + current_seq_length < ConfigParams.NUM_ADDITIONS
-            and contains_mutation(AddMutation, mutations)
-        ) or (len(seq) <= 2): #or if the splitted sequence is too small
+            MIN_LENGTH + current_seq_length <= ConfigParams.NUM_DELETIONS
+            and contains_mutation(DeleteMutation, mutations)
+        ) or (
+            len(seq) <= 2
+        ):  # or if the splitted sequence is too small
             mutations = remove_mutation(DeleteMutation, mutations)
-
         mutation = random.choice(mutations)
         result = mutation(seq, self.alphabet)
+
+        seq_length = og_seq_len + (len(result[0]) - self.og_input_length)
+        # print("_" * 20)
+        # print(f"[DEBUG] length (result): {len(result[0])}")
+        # print(f"[DEBUG] length (seq): {len(seq)}")
+        # print(f"[DEBUG] length (og seq): {og_seq_len}")
+        # print(f"[DEBUG] length (rest): {len(result[0]) - self.og_input_length}")
+        # print(f"[DEBUG] length (seq length): {seq_length}")
+        # print("_" * 20)
+        assert (
+            MIN_LENGTH <= seq_length <= MAX_LENGTH
+        ), f"Sequence is not in the allowed length! {MIN_LENGTH} <= {seq_length} <= {MAX_LENGTH}. [DEBUG]: current_seq_length: {current_seq_length}"
         return result
 
     def evaluate_fitness_batch(self, individuals: List[List[int]]) -> List[float]:
@@ -155,24 +167,6 @@ class GeneticStrategy(GenerationStrategy):
                 self_ind = self_indicator(
                     self.input_seq, candidate_seq
                 )  # 0 if different, inf if equal
-                # if self.gt.argmax(-1).item() != candidate_prob.argmax(-1).item():
-                #     print(f"""
-                #           [DEBUG]
-                #           seq_dist: {seq_dist}
-                #           label_dist: {label_dist}
-                #           self_ind: {self_ind}
-                #           ---
-                #           input_seq: {self.input_seq}
-                #           candidate_seq: {candidate_seq}
-                #           ---
-                #           gt shape: {self.gt.shape}
-                #           candidate_prob shape: {candidate_prob.shape}
-                #           gt: {self.gt}
-                #           candidate_prob : {candidate_prob}
-                #           ---
-                #           gt.item(): {self.gt.argmax(-1).item()}
-                #           candidate_prob.item(): {candidate_prob.argmax(-1).item()}
-                #           """)
                 if not self.good_examples:
                     # label_dist = 0 if label_dist == float("inf") else float("inf")
                     label_dist = 1 - label_dist

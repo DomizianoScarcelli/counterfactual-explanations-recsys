@@ -3,6 +3,7 @@ import os
 import pickle
 import random
 from enum import Enum
+from pathlib import Path
 from statistics import mean
 from typing import Dict, List, Literal, Set, Tuple, TypedDict, overload
 
@@ -28,16 +29,6 @@ class NumItems(Enum):
     ML_100K = 1682
     ML_1M = 3703
     MOCK = 6
-
-
-class Items(Enum):
-    MOCK = set(range(1, 7))
-    ML_1M = os.path.join("data", "universe.txt")
-
-
-class Category(Enum):
-    ML_1M = os.path.join("data", "category_map_ml-1m.json")
-    ML_100K = os.path.join("data", "category_map_ml-100k.json")
 
 
 def _compare_int_ys(y1: int, y2: int):
@@ -86,8 +77,8 @@ def get_items(dataset: RecDataset = ConfigParams.DATASET) -> Set[int]:
 
 def get_category_map(dataset: RecDataset = ConfigParams.DATASET) -> Dict[int, str]:
 
-    def load_json(path):
-        if not os.path.exists(path):
+    def load_json(path: Path):
+        if not path.exists():
             raise FileNotFoundError(
                 "Category map has not been found, generate it with `python -m scripts.create_category_mapping`"
             )
@@ -97,7 +88,7 @@ def get_category_map(dataset: RecDataset = ConfigParams.DATASET) -> Dict[int, st
         return {int(key): value for key, value in data.items()}
 
     if dataset in [RecDataset.ML_1M, RecDataset.ML_100K]:
-        category = os.path.join("data", f"category_map_{dataset.value}.json")
+        category = Path(f"data/category_map_{dataset.value}.json")
     else:
         raise NotImplementedError(
             f"get_category_map not implemented for dataset {dataset}"
@@ -132,6 +123,7 @@ def labels2cat(
     itemid2cat = get_category_map(dataset)
     if isinstance(ys, Tensor):
         ys = ys.tolist()
+
     if encode:
         return [set(cat2id[cat] for cat in itemid2cat[y]) for y in ys]  # type: ignore
     return [set(itemid2cat[y]) for y in ys]
@@ -148,14 +140,12 @@ def label2cat(
 
 
 def get_remapped_dataset(dataset: RecDataset) -> SequentialDataset:
-    def load_pickle(path):
+    def load_pickle(path: Path):
         with open(path, "rb") as f:
             return pickle.load(f)
 
     if dataset in [RecDataset.ML_1M, RecDataset.ML_100K]:
-        path = os.path.join(
-            "data", f"{ConfigParams.DATASET.value}-SequentialDataset.pth"
-        )
+        path = Path(f"data/{ConfigParams.DATASET.value}-SequentialDataset.pth")
     else:
         raise NotImplementedError(
             f"get_category_map not implemented for dataset {dataset}"

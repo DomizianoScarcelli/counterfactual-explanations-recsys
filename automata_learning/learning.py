@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import List, Tuple, Union
 
 from aalpy.automata.Dfa import Dfa
@@ -28,7 +29,7 @@ def _generate_automata(
     Returns:
         The learned DFA which accepts good points and rejects bad points.
     """
-    if os.path.exists(os.path.join("saved_automatas", save_path)) and load_if_exists:
+    if Path(f"saved/saved_automatas/{save_path}").exists() and load_if_exists:
         print("[INFO] Loaded existing automata")
         dfa = load_automata(save_path)
         return dfa
@@ -94,7 +95,7 @@ if __name__ == "__main__":
     print("Generating automata from saved dataset")
 
     # Remove non-determinism
-    dataset = load_dataset(load_path="saved/counterfactual_dataset.pickle")
+    dataset = load_dataset(load_path=Path("saved/counterfactual_dataset.pickle"))
     # dataset = make_deterministic(dataset)
 
     dfa = generate_automata_from_dataset(dataset, load_if_exists=False)

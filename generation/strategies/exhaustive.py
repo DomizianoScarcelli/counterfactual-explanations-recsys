@@ -78,7 +78,7 @@ class ExhaustiveStrategy(GenerationStrategy):
 #     model = generate_model(conf)
 #     sequences = SequenceGenerator(conf)
 #     seq = next(sequences)
-#     alphabet = list(get_items(Items.ML_1M))
+#     alphabet = list(get_items())
 #     strat = ExhaustiveGenerationStrategy(
 #             input_seq = seq,
 #             model = model,

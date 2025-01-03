@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import Path
 
 import pandas as pd
 
@@ -16,18 +17,18 @@ def create_category_mapping():
 
     The json file is used by `generation.utils.get_category_map()`
     """
-    dataset_path = f"dataset/{ConfigParams.DATASET.value}"
+    dataset_path = Path(f"dataset/{ConfigParams.DATASET.value}")
     get_config(
         dataset=ConfigParams.DATASET, model=ConfigParams.MODEL, save_dataset=True
     )
-    if not os.path.exists(dataset_path):
+    if not dataset_path.exists():
         # Generate the dataset
         print(f"")
         raise ValueError(
             f"Dataset {ConfigParams.DATASET.value} not found, make sure to download the .zip from https://drive.google.com/drive/folders/1ahiLmzU7cGRPXf5qGMqtAChte2eYp9gI and unzip it in the dataset/ directory"
         )
 
-    item_info_path = os.path.join(dataset_path, f"{ConfigParams.DATASET.value}.item")
+    item_info_path = dataset_path / Path(f"{ConfigParams.DATASET.value}.item")
     df = pd.read_csv(item_info_path, delimiter="\t")
 
     # maps interals ids to categories

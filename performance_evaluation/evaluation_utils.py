@@ -1,4 +1,4 @@
-from typing import Dict, Tuple
+from typing import Any, Dict, Tuple
 
 
 def compute_metrics(tp: int, fp: int, tn: int, fn: int) -> Tuple[float, float, float]:
@@ -7,13 +7,19 @@ def compute_metrics(tp: int, fp: int, tn: int, fn: int) -> Tuple[float, float, f
     recall = tp / (tp + fn) if (tp + fn) > 0 else 0
     return precision, accuracy, recall
 
+
 def print_confusion_matrix(tp: int, fp: int, tn: int, fn: int) -> None:
-    print(f"""
+    print(
+        f"""
     Confusion matrix:
     ---------------
     | TP: {tp}  | FP: {fp} |
     ---------------
     | FN: {fn}  | TN: {tn} |
     ---------------
-    """)
+    """
+    )
 
+
+def _reset_log(log: Dict[str, Any]) -> Dict[str, Any]:
+    return {key: None for key in log}

@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import time
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any, List, Literal, Optional, Tuple
 
 from recbole.config import Config
@@ -104,13 +105,18 @@ class InteractionGenerator(SkippableGenerator):
     """
 
     def __init__(
-        self, config: Config, split: str = "test", whole_interaction: bool = False
+        self,
+        config: Optional[Config] = None,
+        split: str = "test",
+        whole_interaction: bool = False,
     ):
         super().__init__()
-        self.config = config
+        self.config = (
+            config if config else get_config(ConfigParams.DATASET, ConfigParams.MODEL)
+        )
         self.whole_interaction = whole_interaction
 
-        train_data, eval_data, test_data = get_dataloaders(config)
+        train_data, eval_data, test_data = get_dataloaders(self.config)
 
         if split == "train":
             self.data = train_data  # [1,2,3] -> 4
@@ -185,7 +191,7 @@ class DatasetGenerator(SkippableGenerator):
         limit_generation_to: Optional[Literal["good", "bad"]] = None,
         genetic_split: Optional[Split] = None,
         strategy: StrategyStr = ConfigParams.GENERATION_STRATEGY,  # type: ignore
-        target: Optional[List[str]] = ConfigParams.TARGET_CAT,
+        target: Optional[List[str]] = None,
         use_cache: bool = False,
         return_interaction: bool = False,
         alphabet: Optional[List[int]] = None,
@@ -325,11 +331,9 @@ class DatasetGenerator(SkippableGenerator):
             self.interactions.index == self.index
         ), f"{self.interactions.index} != {self.index} at the start of the method"
         interaction = self.interactions.next()
-        cache_path = os.path.join(
-            f".dataset_cache/interaction_{self.index}_dataset.pickle"
-        )
+        cache_path = Path(f".dataset_cache/interaction_{self.index}_dataset.pickle")
         # TODO: make cache path aware of the strategy
-        if os.path.exists(cache_path) and self.use_cache:
+        if cache_path.exists() and self.use_cache:
             if self.strategy != "generation":
                 raise NotImplementedError(
                     "Cache not implemented for dataset not generated with the 'generation' strategy"
@@ -355,6 +359,13 @@ class DatasetGenerator(SkippableGenerator):
     def __iter__(self) -> DatasetGenerator:
         self.reset()
         return self
+
+    def match_indices(self):
+        # Because of the EmptyDatasetError, there may be a mismatch between the dataset indices.
+        if self.interactions.index != self.index:
+            _min = min(self.interactions.index, self.index)
+            self.interactions.index = _min
+            self.index = _min
 
     def reset(self):
         self.interactions.reset()
@@ -426,18 +437,8 @@ class TimedGenerator:
 
 if __name__ == "__main__":
     confg = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
-    datasets = DatasetGenerator(confg, use_cache=False, strategy="targeted")
-    for dataset in datasets:
-        print(f"Finished dataset, next one")
-        good, bad = dataset
-        print(
-            f"=================================GOOD DATASET================================="
-        )
-        for t, v in good:
-            print(f"Good {t}      {v}\n")
-        print(
-            f"=================================BAD DATASET================================="
-        )
-        for t, v in bad:
-            print(f"Bad {t}      {v}\n")
-        break
+    ints = InteractionGenerator(confg)
+    count = 0
+    for i in ints:
+        count += 1
+    print(f"There are {count} sequences")

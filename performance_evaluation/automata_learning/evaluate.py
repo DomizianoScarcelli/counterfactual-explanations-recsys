@@ -8,6 +8,7 @@ by computing true/false positive/negatives on the good and bad points.
 
 import json
 import warnings
+from pathlib import Path
 from typing import Optional
 
 import fire
@@ -26,10 +27,15 @@ from generation.dataset.generate import generate
 from generation.dataset.utils import dataset_difference
 from models.config_utils import generate_model, get_config
 from models.utils import trim
-from performance_evaluation.alignment.utils import (log_run, pk_exists,
-                                                    preprocess_interaction)
-from performance_evaluation.evaluation_utils import (compute_metrics,
-                                                     print_confusion_matrix)
+from performance_evaluation.alignment.utils import (
+    log_run,
+    pk_exists,
+    preprocess_interaction,
+)
+from performance_evaluation.evaluation_utils import (
+    compute_metrics,
+    print_confusion_matrix,
+)
 from type_hints import GoodBadDataset
 from utils import SeedSetter, seq_tostr
 from utils_classes.generators import DatasetGenerator
@@ -92,13 +98,13 @@ def evaluate_all(
     datasets: DatasetGenerator,
     oracle: SequentialRecommender,
     end_i: int,
-    log_path: Optional[str] = None,
+    log_path: Optional[Path] = None,
 ):
 
     prev_df = pd.DataFrame({})
 
     primary_key = ["source_sequence"]
-    if log_path and os.path.exists(log_path):
+    if log_path and log_path.exists():
         prev_df = pd.read_csv(log_path)
 
     assert not prev_df.duplicated().any()
@@ -173,15 +179,17 @@ def evaluate_all(
                 )
             i += 1
 
+
 def get_log_stats():
     pass
+
 
 def main(
     use_cache: bool = False,
     config_path: Optional[str] = None,
     config_dict: Optional[ConfigDict] = None,
     end_i: int = 30,
-    save_path: Optional[str] = None,
+    save_path: Optional[Path] = None,
 ):
     SeedSetter.set_seed()
     if config_path and config_dict:
@@ -194,7 +202,7 @@ def main(
         ConfigParams.override_params(config_dict)
     ConfigParams.fix()
 
-    if save_path and os.path.exists(save_path):
+    if save_path and save_path.exists():
         prev_df = pd.read_csv(save_path)
         future_df = pd.DataFrame(ConfigParams.configs_dict())
         df = pd.concat([prev_df, future_df], ignore_index=True)
@@ -226,7 +234,9 @@ def main(
     config = get_config(dataset=ConfigParams().DATASET, model=ConfigParams().MODEL)
     oracle: SequentialRecommender = generate_model(config)
     datasets = DatasetGenerator(
-        config=config, use_cache=use_cache, return_interaction=True
+        config=config,
+        use_cache=use_cache,
+        return_interaction=True,
     )
 
     evaluate_all(datasets=datasets, oracle=oracle, end_i=end_i, log_path=save_path)

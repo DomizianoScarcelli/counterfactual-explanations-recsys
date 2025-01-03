@@ -1,4 +1,3 @@
-from config import ConfigParams
 from typing import Union
 
 import torch
@@ -6,6 +5,7 @@ from recbole.model.sequential_recommender import BERT4Rec
 from recbole.trainer import Interaction
 from torch import Tensor
 
+from config import ConfigParams
 from constants import PADDING_CHAR
 from models.utils import replace_padding
 

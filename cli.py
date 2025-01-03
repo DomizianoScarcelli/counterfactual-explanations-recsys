@@ -1,24 +1,111 @@
+from constants import cat2id
+from typing import TypeAlias
 import json
 import os
+from tqdm import tqdm
+from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import fire
+import pandas as pd
+from pandas import DataFrame
 
 from config import ConfigDict, ConfigParams
-from models.config_utils import generate_model, get_config
 from performance_evaluation import alignment
-from run import run_full as og_run
+from performance_evaluation.alignment.utils import log_run
+from run import run_alignment, run_all
+from run import run_alignment as run_alignment
+from run import run_genetic
 from sensitivity.model_sensitivity import main as evaluate_sensitivity
 from sensitivity.model_sensitivity import run_on_all_positions
-from type_hints import RecDataset, RecModel
 from utils import SeedSetter
-from utils_classes.generators import SequenceGenerator
-from utils_classes.Split import Split
+
+RunModes: TypeAlias = Literal["alignment", "genetic", "automata_learning", "all"]
+
+
+def run_switcher(
+    range_i: Tuple[int, Optional[int]],
+    splits: Optional[List[int]],
+    use_cache: bool,
+    mode: RunModes = "all",
+    save_path: Optional[Path] = None,
+):
+    """
+    Evaluates the disalignment of traces for a given range and set of splits.
+    Optionally saves the results to a CSV file.
+
+    Args:
+        range_i: The range of indices to evaluate (start, end).
+        splits: List of split indices to evaluate. If None, evaluates all splits.
+        use_cache: Whether to use cached results.
+        save_path: Path to save the results to a CSV file. If None, results are not saved.
+
+    Returns:
+        None
+    """
+    targets: List[List[str]] = (
+        ConfigParams.TARGET_CAT
+        if ConfigParams.TARGET_CAT
+        else [[cat] for cat in cat2id if cat != "unknown"]
+    )  # type: ignore
+    for target in tqdm(targets, desc=f"Evaluating on targets"):
+        log: DataFrame = DataFrame({})
+        if save_path and save_path.exists():
+            log = pd.read_csv(save_path)
+
+        if mode == "alignment":
+            run_generator = run_alignment(
+                target_cat=target,
+                start_i=range_i[0],
+                end_i=range_i[1],
+                splits=splits,
+                use_cache=use_cache,
+                ks=ConfigParams.TOPK,
+            )
+        elif mode == "genetic":
+            run_generator = run_genetic(
+                target_cat=target,
+                start_i=range_i[0],
+                end_i=range_i[1],
+                split=splits[0] if splits else None,
+            )
+        elif mode == "all":
+            run_generator = run_all(
+                target_cat=target,
+                start_i=range_i[0],
+                end_i=range_i[1],
+                splits=splits,
+                use_cache=use_cache,
+                ks=ConfigParams.TOPK,
+            )
+        else:
+            raise ValueError(f"Mode '{mode}' not supported")
+
+        for runs in run_generator:
+            # TODO: you can make Run a SkippableGenerator, which skips when the
+            # source sequence, split and config combination already exists in the
+            # log
+            if not isinstance(runs, list):
+                runs = [runs]
+            for run in runs:
+                print(f"[DEBUG] Run is:", run)
+                if save_path:
+                    log = log_run(
+                        prev_df=log,
+                        log=run,
+                        save_path=save_path,
+                        primary_key=["i", "source", "split"],
+                    )
+                else:
+                    print(json.dumps(run, indent=2))
 
 
 class CLI:
     def __init__(self):
         SeedSetter.set_seed()
+
+    def _absolute_paths(self, *paths: Optional[str]) -> tuple:
+        return tuple(Path(path) if path is not None else None for path in paths)
 
     def stats(
         self,
@@ -64,6 +151,9 @@ class CLI:
             3. Generate general statistics for a CSV file:
                 python -m cli stats --log_path="path/to/file.csv" --group_by=["column1"] --metrics=["metric1", "metric2"]
         """
+        save_path, config_path, log_path = self._absolute_paths(
+            save_path, config_path, log_path
+        )
 
         if config_path and config_dict:
             raise ValueError(
@@ -135,8 +225,6 @@ class CLI:
     def run(
         self,
         config_path: Optional[str] = None,
-        dataset_type: RecDataset = ConfigParams.DATASET,
-        model_type: RecModel = ConfigParams.MODEL,
         start_i: int = 0,
         end_i: Optional[int] = None,
         splits: Optional[List[tuple]] = None,  # type: ignore
@@ -167,10 +255,18 @@ class CLI:
             3. Run counterfactual generation for splits 0 and 1:
                 python -m cli run --splits=[0,1]
         """
+        config_path = self._absolute_paths(config_path)[0]
+
         ConfigParams.reload(config_path)
         ConfigParams.fix()
         # trick because run is a generator
-        for _ in og_run(dataset_type, model_type, start_i, end_i, splits, use_cache):
+        for _ in run_alignment(
+            start_i=start_i,
+            end_i=end_i,
+            splits=splits,
+            ks=ConfigParams.TOPK,
+            use_cache=use_cache,
+        ):
             pass
 
     def evaluate(
@@ -178,7 +274,7 @@ class CLI:
         what: Optional[
             Literal["alignment", "generation", "automata_learning", "sensitivity"]
         ] = None,
-        mode: Literal["full", "genetic"] = "full",
+        mode: RunModes = "all",
         config_path: Optional[str] = None,
         config_dict: Optional[ConfigDict] = None,
         k: Optional[int] = None,
@@ -222,6 +318,9 @@ class CLI:
             3. Evaluate generation analysis (not implemented yet):
                 python -m cli evaluate generation
         """
+        save_path, config_path, log_path = self._absolute_paths(
+            save_path, config_path, log_path
+        )
         if config_path and config_dict:
             raise ValueError(
                 "Only one between config_path and config_dict must be set, not both"
@@ -233,7 +332,7 @@ class CLI:
         ConfigParams.fix()
 
         if what == "alignment":
-            alignment.evaluate.evaluate_trace_disalignment(
+            run_switcher(
                 range_i=range_i,
                 splits=splits,
                 use_cache=use_cache,

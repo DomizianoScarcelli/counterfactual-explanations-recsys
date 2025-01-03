@@ -1,6 +1,11 @@
 # TRACE - Trace-based Automata-driven Counterfactual Examples
 
 ## Installation
+It's recommended to use `conda` as virtual environemnt for python. To create and activate the environment with all the requirements, execute the command
+``` 
+conda env create -f environment.yaml
+conda activate recsys
+```
 
 ## Documentation
 

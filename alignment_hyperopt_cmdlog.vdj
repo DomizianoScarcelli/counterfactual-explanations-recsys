@@ -1,0 +1,15 @@
+#!vd -p
+{"sheet": null, "col": null, "row": null, "longname": "open-file", "input": "results/evaluate/alignment/alignment_hyperopt.csv", "keystrokes": "o", "comment": null}
+{"sheet": "alignment_hyperopt", "col": "score@10", "row": "", "longname": "aggregate-col", "input": "mean", "keystrokes": "+", "comment": "add aggregator to current column"}
+{"sheet": "alignment_hyperopt", "col": "score@10", "row": "", "longname": "type-float", "input": "", "keystrokes": "%", "comment": "set type of current column to float"}
+{"sheet": "alignment_hyperopt", "col": "pop_size", "row": "", "longname": "key-col", "input": "", "keystrokes": "!", "comment": "toggle current column as a key column"}
+{"sheet": "alignment_hyperopt", "col": "generations", "row": "", "longname": "key-col", "input": "", "keystrokes": "!", "comment": "toggle current column as a key column"}
+{"sheet": "alignment_hyperopt", "col": "fitness_alpha", "row": "", "longname": "key-col", "input": "", "keystrokes": "!", "comment": "toggle current column as a key column"}
+{"sheet": "alignment_hyperopt", "col": "mut_prob", "row": "", "longname": "key-col", "input": "", "keystrokes": "!", "comment": "toggle current column as a key column"}
+{"sheet": "alignment_hyperopt", "col": "crossover_prob", "row": "", "longname": "key-col", "input": "", "keystrokes": "!", "comment": "toggle current column as a key column"}
+{"sheet": "alignment_hyperopt", "col": "jaccard_threshold", "row": "", "longname": "key-col", "input": "", "keystrokes": "!", "comment": "toggle current column as a key column"}
+{"sheet": "alignment_hyperopt", "col": "score@20", "row": "", "longname": "type-float", "input": "", "keystrokes": "%", "comment": "set type of current column to float"}
+{"sheet": "alignment_hyperopt", "col": "score@20", "row": "", "longname": "resize-col-max", "input": "", "keystrokes": "_", "comment": "toggle width of current column between full and default width"}
+{"sheet": "alignment_hyperopt", "col": "score@20", "row": "", "longname": "aggregate-col", "input": "mean", "keystrokes": "+", "comment": "add aggregator to current column"}
+{"sheet": "alignment_hyperopt", "col": "score@5", "row": "", "longname": "type-float", "input": "", "keystrokes": "%", "comment": "set type of current column to float"}
+{"sheet": "alignment_hyperopt", "col": "score@5", "row": "", "longname": "aggregate-col", "input": "mean", "keystrokes": "+", "comment": "add aggregator to current column"}

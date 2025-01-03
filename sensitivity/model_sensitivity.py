@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from statistics import mean
 from typing import List, Literal, Optional
 
@@ -75,7 +76,7 @@ def model_sensitivity_category(
     model: SequentialRecommender,
     position: int,
     k: int,
-    log_path: Optional[str] = None,
+    log_path: Optional[Path] = None,
 ):
     """
     Analyze the sensitivity of a sequential recommender model to changes in category predictions
@@ -113,7 +114,7 @@ def model_sensitivity_category(
     """
     seen_idx = set()
     prev_df = pd.DataFrame({})
-    if log_path and os.path.exists(log_path):
+    if log_path and log_path.exists():
         prev_df = pd.read_csv(log_path)
         filtered_df = prev_df[prev_df["k"] == k]
         seen_idx = set(filtered_df["position"].tolist())
@@ -227,7 +228,7 @@ def model_sensitivity_category_targeted(
     model: SequentialRecommender,
     position: int,
     k: int,
-    log_path: Optional[str] = None,
+    log_path: Optional[Path] = None,
 ):
     """
     Analyze the sensitivity of a sequential recommender model to changes in category predictions
@@ -264,7 +265,7 @@ def model_sensitivity_category_targeted(
 
     """
     prev_df = pd.DataFrame({})
-    if log_path and os.path.exists(log_path):
+    if log_path and log_path.exists():
         prev_df = pd.read_csv(log_path)
 
     if ConfigParams.DATASET in [RecDataset.ML_1M, RecDataset.ML_100K]:
@@ -401,7 +402,7 @@ def model_sensitivity_simple(
     model: SequentialRecommender,
     position: int,
     k: int = 1,
-    log_path: Optional[str] = None,
+    log_path: Optional[Path] = None,
 ):
     """
     The sensitivity consists in taking a source sequence `x` with a label `y`, result of `model(x)`.
@@ -417,7 +418,7 @@ def model_sensitivity_simple(
         dataset: the dataset used to train the sequential recommender, which will be used to take the alphabet.
     """
     prev_df = pd.DataFrame({})
-    if log_path and os.path.exists(log_path):
+    if log_path and log_path.exists():
         prev_df = pd.read_csv(log_path)
 
     if ConfigParams.DATASET in [RecDataset.ML_1M, RecDataset.ML_100K]:

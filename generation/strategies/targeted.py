@@ -12,12 +12,19 @@ from constants import MAX_LENGTH, cat2id
 from generation.extended_ea_algorithms import eaSimpleBatched
 from generation.mutations import ALL_MUTATIONS, Mutation
 from generation.strategies.genetic import GeneticStrategy
-from generation.utils import (_evaluate_categorized_generation, equal_ys,
-                              get_category_map, labels2cat)
+from generation.utils import (
+    _evaluate_categorized_generation,
+    equal_ys,
+    get_category_map,
+    labels2cat,
+)
 from models.utils import pad_batch, topk, trim
 from type_hints import CategorizedDataset
-from utils_classes.distances import (edit_distance, intersection_weighted_ndcg,
-                                     self_indicator)
+from utils_classes.distances import (
+    edit_distance,
+    intersection_weighted_ndcg,
+    self_indicator,
+)
 from utils_classes.Split import Split
 
 
@@ -31,7 +38,7 @@ class TargetedGeneticStrategy(GeneticStrategy):
         allowed_mutations: List[Mutation] = ALL_MUTATIONS,
         pop_size: int = ConfigParams.POP_SIZE,
         generations: int = ConfigParams.GENERATIONS,
-        k: int = ConfigParams.TOPK,
+        k: int = min(ConfigParams.TOPK),  # NOTE: if this is 1, the results are better.
         good_examples: bool = True,
         halloffame_ratio: float = 0.1,
         verbose: bool = True,
@@ -85,9 +92,7 @@ class TargetedGeneticStrategy(GeneticStrategy):
                 labels2cat(y_prime, encode=True) for y_prime in y_primes
             ]  # [num_seqs, k]
 
-            topk_ys = topk(logits=self.gt, dim=-1, k=self.k, indices=True).squeeze(
-                0
-            )  # shape [k]
+            topk_ys = topk(logits=self.gt, dim=-1, k=self.k, indices=True)  # shape [k]
             ys = labels2cat(topk_ys, encode=True)  # shape [k]
 
             target_ys = [self.target for _ in range(self.k)]  # [k]
@@ -176,6 +181,7 @@ class TargetedGeneticStrategy(GeneticStrategy):
         return self._postprocess(new_augmented)
 
     def _clean(self, examples: CategorizedDataset) -> CategorizedDataset:  # type: ignore
+        """Removes the bad points from the good points and vice versa."""
         target_cats = [self.target for _ in range(self.k)]
         if self.good_examples:
             clean: CategorizedDataset = [
