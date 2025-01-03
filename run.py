@@ -140,7 +140,7 @@ def run_genetic(
     model = datasets.generator.model  # type: ignore
     i = 0
 
-    if not end_i:
+    if end_i is None:
         temp_int = InteractionGenerator()
         end_i = sum(1 for _ in temp_int)
     for _ in range(start_i):

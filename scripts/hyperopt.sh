@@ -20,11 +20,14 @@
 #
 
 # Define the possible values for each parameter
-crossover_prob_options=(0.2 0.5 0.7)
-mutation_prob_options=(0.2 0.5 0.7)
-fitness_alpha_options=(0.2 0.5 0.7)
-generations_options=(10 20 40)
-pop_size_options=(1024 2048 4096 8192 16384)
+# crossover_prob_options=(0.2 0.5 0.7)
+# mutation_prob_options=(0.2 0.5 0.7)
+# fitness_alpha_options=(0.2 0.5 0.7)
+crossover_prob_options=(0.7)
+mutation_prob_options=(0.5)
+fitness_alpha_options=(0.5 0.7)
+generations_options=(20 40)
+pop_size_options=(2048 4096 8192 16384)
 similarity_threshold_options=(0.5)
 
 # Calculate the total number of iterations
@@ -73,7 +76,7 @@ EOF
                             --save-path="results/evaluate/alignment/alignment_hyperopt.csv" \
                             --config_dict="$config_json" \
                             --mode="full" \
-                            --end-i=1
+                            --range-i="(0, 100)"
                     done
                 done
             done
