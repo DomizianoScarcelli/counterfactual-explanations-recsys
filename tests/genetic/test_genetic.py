@@ -14,9 +14,9 @@ from automata_learning.utils import run_automata
 from config import ConfigParams
 from constants import MAX_LENGTH, MIN_LENGTH
 from generation.dataset.generate import generate
-from generation.extended_ea_algorithms import (customSelTournament,
-                                               customVarAnd, eaSimpleBatched,
-                                               customCxTwoPoint)
+from generation.extended_ea_algorithms import (customCxTwoPoint,
+                                               customSelTournament,
+                                               customVarAnd, eaSimpleBatched)
 from generation.mutations import (AddMutation, DeleteMutation, ReplaceMutation,
                                   ReverseMutation, ShuffleMutation,
                                   SwapMutation, contains_mutation,

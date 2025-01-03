@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, Any
+from typing import Any, Dict, Tuple
 
 
 def compute_metrics(tp: int, fp: int, tn: int, fn: int) -> Tuple[float, float, float]:

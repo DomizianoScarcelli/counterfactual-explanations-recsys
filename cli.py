@@ -1,27 +1,31 @@
-from performance_evaluation.alignment.utils import log_run
+from typing import TypeAlias
 import json
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import fire
-from pandas import DataFrame
 import pandas as pd
-from run import run_genetic, run_alignment
+from pandas import DataFrame
 
 from config import ConfigDict, ConfigParams
 from performance_evaluation import alignment
+from performance_evaluation.alignment.utils import log_run
+from run import run_alignment, run_all
 from run import run_alignment as run_alignment
+from run import run_genetic
 from sensitivity.model_sensitivity import main as evaluate_sensitivity
 from sensitivity.model_sensitivity import run_on_all_positions
 from utils import SeedSetter
+
+RunModes: TypeAlias = Literal["alignment", "genetic", "automata_learning", "all"]
 
 
 def run_switcher(
     range_i: Tuple[int, Optional[int]],
     splits: Optional[List[int]],
     use_cache: bool,
-    mode: Literal["full", "genetic"] = "full",
+    mode: RunModes = "all",
     save_path: Optional[Path] = None,
 ):
     """
@@ -41,7 +45,7 @@ def run_switcher(
     if save_path and save_path.exists():
         log = pd.read_csv(save_path)
 
-    if mode == "full":
+    if mode == "alignment":
         run_logs = run_alignment(
             start_i=range_i[0],
             end_i=range_i[1],
@@ -55,6 +59,14 @@ def run_switcher(
             end_i=range_i[1],
             split=splits[0] if splits else None,
         )
+    elif mode == "all":
+        run_logs = run_all(
+            start_i=range_i[0],
+            end_i=range_i[1],
+            splits=splits,
+            use_cache=use_cache,
+            ks=ConfigParams.TOPK,
+        )
     else:
         raise ValueError(f"Mode '{mode}' not supported")
 
@@ -62,13 +74,16 @@ def run_switcher(
         # TODO: you can make Run a SkippableGenerator, which skips when the
         # source sequence, split and config combination already exists in the
         # log
+        if not isinstance(run_log, list):
+            run_log = [run_log]
         if save_path:
-            log = log_run(
-                prev_df=log,
-                log=run_log,
-                save_path=save_path,
-                primary_key=["i", "source", "split"],
-            )
+            for run_log_instance in run_log:
+                log = log_run(
+                    prev_df=log,
+                    log=run_log_instance,
+                    save_path=save_path,
+                    primary_key=["i", "source", "split"],
+                )
 
 
 class CLI:
@@ -245,7 +260,7 @@ class CLI:
         what: Optional[
             Literal["alignment", "generation", "automata_learning", "sensitivity"]
         ] = None,
-        mode: Literal["full", "genetic"] = "full",
+        mode: RunModes = "all",
         config_path: Optional[str] = None,
         config_dict: Optional[ConfigDict] = None,
         k: Optional[int] = None,

@@ -1,29 +1,21 @@
+from typing import Any, Dict, Generator, List, Optional
+
 from recbole.model.abstract_recommender import SequentialRecommender
-from typing import List, Any, Dict, Optional
 from torch import Tensor
-from constants import error_messages
-
-
-from typing import Generator, List, Dict
 
 from alignment.actions import print_action
-from config import ConfigParams
-from constants import cat2id
-from exceptions import (
-    CounterfactualNotFound,
-    DfaNotAccepting,
-    DfaNotRejecting,
-    NoTargetStatesError,
-    SplitNotCoherent,
-)
-from generation.utils import equal_ys, labels2cat
-from models.utils import topk, trim
-from type_hints import GoodBadDataset, CategorySet
-from utils import TimedFunction, seq_tostr
-from utils_classes.Split import Split
+from alignment.alignment import trace_disalignment
 from alignment.utils import postprocess_alignment
 from automata_learning.learning import learning_pipeline
-from alignment.alignment import trace_disalignment
+from config import ConfigParams
+from constants import cat2id, error_messages
+from exceptions import (CounterfactualNotFound, DfaNotAccepting,
+                        DfaNotRejecting, NoTargetStatesError, SplitNotCoherent)
+from generation.utils import equal_ys, labels2cat
+from models.utils import topk, trim
+from type_hints import CategorySet, GoodBadDataset
+from utils import TimedFunction, seq_tostr
+from utils_classes.Split import Split
 
 timed_learning_pipeline = TimedFunction(learning_pipeline)
 timed_trace_disalignment = TimedFunction(trace_disalignment)

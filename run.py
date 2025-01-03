@@ -1,26 +1,24 @@
-from exceptions import EmptyDatasetError
-from constants import error_messages
-from performance_evaluation.genetic.evaluate import (
-    evaluate_targeted as evaluate_targeted_genetic,
-)
-from performance_evaluation.alignment.evaluate import (
-    evaluate_targeted as evaluate_targeted_alignment,
-)
-from performance_evaluation.alignment.evaluate import log_error as log_alignment_error
-from performance_evaluation.genetic.evaluate import log_error as log_genetic_error
 import json
 import warnings
-from typing import Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional
+
 from tqdm import tqdm
 
 from config import ConfigParams
+from constants import error_messages
+from exceptions import EmptyDatasetError
 from generation.dataset.utils import interaction_to_tensor
+from performance_evaluation.alignment.evaluate import \
+    evaluate_targeted as evaluate_targeted_alignment
+from performance_evaluation.alignment.evaluate import \
+    log_error as log_alignment_error
+from performance_evaluation.genetic.evaluate import \
+    evaluate_targeted as evaluate_targeted_genetic
+from performance_evaluation.genetic.evaluate import \
+    log_error as log_genetic_error
 from type_hints import SplitTuple
-from utils_classes.generators import (
-    DatasetGenerator,
-    InteractionGenerator,
-    TimedGenerator,
-)
+from utils_classes.generators import (DatasetGenerator, InteractionGenerator,
+                                      TimedGenerator)
 from utils_classes.Split import Split
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
@@ -65,7 +63,6 @@ def run_genetic(
         )
     )
     model = datasets.generator.model  # type: ignore
-    i = 0
 
     if end_i is None:
         temp_int = InteractionGenerator()
@@ -173,3 +170,93 @@ def run_alignment(
 
             print(json.dumps(log, indent=2))
             yield log
+
+
+def run_all(
+    start_i: int = 0,
+    end_i: Optional[int] = None,
+    splits: Optional[List[tuple]] = None,  # type: ignore
+    ks: List[int] = ConfigParams.TOPK,
+    use_cache: bool = False,
+) -> Generator[List[Dict[str, Any]], None, None]:
+
+    # Parse args
+    splits = parse_splits(splits)  # type: ignore
+
+    # Init config
+    datasets = TimedGenerator(
+        DatasetGenerator(
+            use_cache=use_cache,
+            return_interaction=True,
+            genetic_split=splits[0],
+        )
+    )
+    model = datasets.generator.model  # type: ignore
+
+    assert splits is not None
+
+    if end_i is None:
+        temp_int = InteractionGenerator()
+        end_i = sum(1 for _ in temp_int)
+
+    assert (
+        start_i < end_i
+    ), f"Start index must be strictly less than end index: {start_i} < {end_i}"
+
+    for i in range(start_i):
+        print(f"Skipping i = {i}")
+        datasets.skip()
+
+    for i in tqdm(range(start_i, end_i)):
+        assert datasets.index == i, f"{datasets.index} != {i}"
+        assert len(datasets.get_times()) == i, f"{len(datasets.get_times())} != {i}"
+
+        try:
+            dataset, interaction = next(datasets)
+        except EmptyDatasetError as e:
+            print(f"run_full: Raised {type(e)}")
+            alignment_log = log_alignment_error(error=error_messages[type(e)], ks=ks)
+            datasets.skip()
+            datasets.generator.match_indices()  # type: ignore
+            yield alignment_log
+            continue
+        except StopIteration:
+            print(f"STOP ITERATION RAISED")
+            return
+
+        assert (
+            len(datasets.get_times()) == i + 1
+        ), f"{len(datasets.get_times())} != {i+1}"
+
+        source_sequence = interaction_to_tensor(interaction)  # type: ignore
+
+        _, counterfactuals = dataset
+
+        genetic_log = evaluate_targeted_genetic(
+            i=i,
+            datasets=datasets,
+            source=source_sequence,
+            counterfactuals=counterfactuals,
+            model=model,
+            ks=ks,
+        )
+
+        alignment_logs = []
+        for split in splits:
+            alignment_log = evaluate_targeted_alignment(
+                i=i,
+                dataset=dataset,
+                source=source_sequence,
+                model=model,
+                ks=ks,
+                split=split,  # type: ignore
+            )
+
+            print(json.dumps(alignment_log, indent=2))
+            alignment_logs.append(alignment_log)
+
+        logs = []
+        for alignment_log in alignment_logs:
+            logs.append({**genetic_log, **alignment_log})
+
+        yield logs

@@ -1,13 +1,9 @@
 from enum import Enum
+
+from exceptions import (CounterfactualNotFound, DfaNotAccepting,
+                        DfaNotRejecting, EmptyDatasetError,
+                        NoTargetStatesError, SplitNotCoherent)
 from type_hints import RecDataset
-from exceptions import (
-    CounterfactualNotFound,
-    DfaNotAccepting,
-    DfaNotRejecting,
-    EmptyDatasetError,
-    NoTargetStatesError,
-    SplitNotCoherent,
-)
 
 
 class InputLength(Enum):

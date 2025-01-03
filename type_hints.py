@@ -28,12 +28,13 @@ StrategyStr: TypeAlias = Literal[
     "genetic", "brute_force", "targeted", "genetic_categorized"
 ]
 
+
+
 class RecDataset(Enum):
     ML_1M = "ml-1m"
     ML_100K = "ml-100k"
 
+
 class RecModel(Enum):
     BERT4Rec = "BERT4Rec"
     SASRec = "SASRec"
-
-
