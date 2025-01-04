@@ -29,7 +29,9 @@ warnings.simplefilter(action="ignore", category=FutureWarning)
 warnings.simplefilter(action="ignore", category=RuntimeWarning)
 
 
-def skip_sequence(i: int, target_cat: List[str], prev_df: Optional[DataFrame]):
+def skip_sequence(
+    i: int, target_cat: List[str], prev_df: Optional[DataFrame], split: tuple
+):
     if prev_df is not None:
         future_df = pd.concat(
             [
@@ -38,6 +40,7 @@ def skip_sequence(i: int, target_cat: List[str], prev_df: Optional[DataFrame]):
                     {
                         "i": [i],
                         "gen_target_y@1": str({cat2id[cat] for cat in target_cat}),
+                        "split": str(split),
                         **ConfigParams.configs_dict(),
                     }
                 ),
@@ -45,12 +48,9 @@ def skip_sequence(i: int, target_cat: List[str], prev_df: Optional[DataFrame]):
         )
         if pk_exists(
             future_df,
-            primary_key=["i", "gen_target_y@1"],
+            primary_key=["i", "gen_target_y@1", "split"],
             consider_config=True,
         ):
-            print(
-                f"Skipping i: {i} with target {target_cat} because already in the log..."
-            )
             # print(
             #     "[debug]", future_df[["i", "gen_target_y@1", "pop_size", "generations"]]
             # )
@@ -115,7 +115,10 @@ def run_genetic(
         datasets.skip()
 
     for i in range(start_i, end_i):
-        if skip_sequence(i, target_cat, prev_df):
+        if skip_sequence(i, target_cat, prev_df, split.split):
+            print(
+                f"Skipping i: {i} with target {target_cat} and split {split} because already in the log..."
+            )
             datasets.skip()
             continue
         try:
@@ -157,7 +160,7 @@ def run_alignment(
 ) -> Generator:
 
     # Parse args
-    splits = parse_splits(splits)  # type: ignore
+    splits: List[Split] = parse_splits(splits)
 
     # Init config
     datasets = TimedGenerator(
@@ -184,7 +187,15 @@ def run_alignment(
         datasets.skip()
         continue
     for i in tqdm(range(start_i, end_i)):
-        if skip_sequence(i, target_cat, prev_df):
+        new_splits = []
+        for split in splits:
+            if not skip_sequence(i, target_cat, prev_df, split.split):
+                new_splits.append(split)
+            else:
+                print(
+                    f"Skipping i: {i} with target {target_cat} and split {split} because already in the log..."
+                )
+        if len(new_splits) == 0:
             datasets.skip()
             continue
         assert datasets.index == i, f"{datasets.index} != {i}"
@@ -265,9 +276,18 @@ def run_all(
         datasets.skip()
 
     for i in tqdm(range(start_i, end_i)):
-        if skip_sequence(i, target_cat, prev_df):
+        new_splits = []
+        for split in splits:
+            if not skip_sequence(i, target_cat, prev_df, split):
+                new_splits.append(split)
+            else:
+                print(
+                    f"Skipping i: {i} with target {target_cat} and split {split} because already in the log..."
+                )
+        if len(new_splits) == 0:
             datasets.skip()
             continue
+
         assert datasets.index == i, f"{datasets.index} != {i}"
         assert len(datasets.get_times()) == i, f"{len(datasets.get_times())} != {i}"
 
