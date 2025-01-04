@@ -77,7 +77,7 @@ EOF
                             --config_dict="$config_json" \
                             --mode="all" \
                             --range-i="(0, 200)" \
-                            --splits="[(None, 1, 0), (None, 10, 0), (None, 1, 5), (None, 5, 5), (None, 10, 5)]"
+                            --splits="[(None, 5, 0), (None, 10, 0), (None, 5, 5), (None, 10, 5)]"
                     done
                 done
             done
