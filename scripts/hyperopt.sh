@@ -73,10 +73,11 @@ EOF
                         # Run the script with the JSON string as the --config-dict argument
                         python -m cli evaluate alignment \
                             --use-cache=False \
-                            --save-path="results/evaluate/alignment/alignment_hyperopt_all.csv" \
+                            --save-path="results/evaluate/alignment/alignment_hyperopt_all_with_splits.csv" \
                             --config_dict="$config_json" \
                             --mode="all" \
-                            --range-i="(0, 20)"
+                            --range-i="(0, 20)" \
+                            --splits="[(None, 1, 0), (None, 10, 0), (None, 1, 5), (None, 5, 5), (None, 10, 5)]"
                     done
                 done
             done

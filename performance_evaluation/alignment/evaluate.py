@@ -40,7 +40,7 @@ def single_run(
 
     dfa = timed_learning_pipeline(source=source_sequence, dataset=_dataset)
 
-    if split:
+    if split is not None:
         source_sequence = split.apply(source_sequence)  # type: ignore
 
     aligned, cost, alignment = timed_trace_disalignment(dfa, source_sequence)
@@ -113,8 +113,6 @@ def evaluate_alignment(
     }
     target_categories = {cat2id[t] for t in target_cat}  # type: ignore
     target_preds = {k: [target_categories for _ in range(k)] for k in ks}
-
-    split = split.parse_nan(trimmed_source)
 
     print(f"----RUN DEBUG-----")
     print(f"Current Split: {split}")

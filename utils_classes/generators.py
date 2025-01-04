@@ -12,14 +12,17 @@ from torch import Tensor
 
 from config import ConfigParams
 from generation.dataset.generate import generate
-from generation.dataset.utils import (get_dataloaders, interaction_to_tensor,
-                                      load_dataset, save_dataset)
+from generation.dataset.utils import (
+    get_dataloaders,
+    interaction_to_tensor,
+    load_dataset,
+    save_dataset,
+)
 from generation.mutations import parse_mutations
 from generation.strategies.abstract_strategy import GenerationStrategy
 from generation.strategies.exhaustive import ExhaustiveStrategy
 from generation.strategies.genetic import GeneticStrategy
-from generation.strategies.genetic_categorized import \
-    CategorizedGeneticStrategy
+from generation.strategies.genetic_categorized import CategorizedGeneticStrategy
 from generation.strategies.targeted import TargetedGeneticStrategy
 from generation.utils import get_items
 from models.config_utils import generate_model, get_config
@@ -208,7 +211,7 @@ class DatasetGenerator(SkippableGenerator):
         self.alphabet = alphabet if alphabet else list(get_items())
         self.target = target
         self.limit_generation_to = limit_generation_to
-        self.genetic_split = genetic_split
+        self.genetic_split = genetic_split 
 
     def skip(self):
         super().skip()

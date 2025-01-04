@@ -6,21 +6,31 @@ import numpy as np
 import torch
 from deap import base, creator, tools
 from torch import Tensor
-from torch._prims_common import compute_required_storage_length
 
 from config import ConfigParams
 from constants import MAX_LENGTH, MIN_LENGTH
-from generation.extended_ea_algorithms import (customCxTwoPoint,
-                                               customSelTournament,
-                                               eaSimpleBatched)
-from generation.mutations import (ALL_MUTATIONS, AddMutation, DeleteMutation,
-                                  Mutation, contains_mutation, remove_mutation)
+from generation.extended_ea_algorithms import (
+    customCxTwoPoint,
+    customSelTournament,
+    eaSimpleBatched,
+)
+from generation.mutations import (
+    ALL_MUTATIONS,
+    AddMutation,
+    DeleteMutation,
+    Mutation,
+    contains_mutation,
+    remove_mutation,
+)
 from generation.strategies.abstract_strategy import GenerationStrategy
 from generation.utils import _evaluate_generation, clone
 from models.utils import pad_batch, trim
 from type_hints import Dataset
-from utils_classes.distances import (edit_distance, jensen_shannon_divergence,
-                                     self_indicator)
+from utils_classes.distances import (
+    edit_distance,
+    jensen_shannon_divergence,
+    self_indicator,
+)
 from utils_classes.Split import Split
 
 
@@ -45,13 +55,18 @@ class GeneticStrategy(GenerationStrategy):
             good_examples=good_examples,
             verbose=verbose,
         )
-        self.og_input_length = len(self.input_seq)
         self.pop_size = pop_size
         self.gt = self.model(input_seq.unsqueeze(0)).squeeze()
         self.generations = generations
         self.halloffame_ratio = halloffame_ratio
         self.allowed_mutations = allowed_mutations
+
         self.split = split
+        self.og_input_length = len(self.input_seq)
+        if self.split is not None:
+            _, middle, _ = self.split.parse_nan(self.input_seq.tolist()).split
+            self.og_input_length = middle
+
         creator.create("fitness", base.Fitness, weights=(-1.0,))  # Minimize fitness
         creator.create("individual", list, fitness=creator.fitness)
 
@@ -99,14 +114,16 @@ class GeneticStrategy(GenerationStrategy):
         assert (
             MIN_LENGTH <= current_seq_length <= MAX_LENGTH
         ), f"Sequence BEFORE MUTATIONS is not in the allowed length! {MIN_LENGTH} <= {current_seq_length} <= {MAX_LENGTH}"
+
         if (
             MAX_LENGTH - current_seq_length
         ) < ConfigParams.NUM_ADDITIONS and contains_mutation(AddMutation, mutations):
             mutations = remove_mutation(AddMutation, mutations)
 
         # If after NUM_DELETIONS deletions the seq is shorter than the MIN_LENGTh, don't allow delete mutations
+        # TODO: this has to be revisited
         if (
-            MIN_LENGTH + current_seq_length <= ConfigParams.NUM_DELETIONS
+            current_seq_length - ConfigParams.NUM_DELETIONS <= MIN_LENGTH
             and contains_mutation(DeleteMutation, mutations)
         ) or (
             len(seq) <= 2

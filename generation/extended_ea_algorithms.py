@@ -6,7 +6,7 @@ from deap.algorithms import tools
 from deap.tools.support import deepcopy
 from tqdm import tqdm
 
-from constants import MAX_LENGTH, MIN_LENGTH
+from constants import MAX_LENGTH
 from generation.utils import clone
 from utils_classes.Split import Split
 
@@ -18,14 +18,22 @@ def split_population(population: list, split: Optional[Split]) -> List[int]:
         return og_lengths
 
     for ind in population:
-        split = split.parse_nan(ind)
-        start, middle, _ = split.split
+        parsed_split = split.parse_nan(ind)
+        start, middle, end = parsed_split.split
         assert isinstance(start, int)
         assert isinstance(middle, int)
+        assert isinstance(end, int)
 
         # Modify the individual in place by trimming it to the desired range
+        # print(f"[DEBUG] start and middle are: ", start, middle)
+        middle_clone = ind[start : start + middle].copy()
+        assert (
+            len(middle_clone) > 0
+        ), f"Wrong middle clone: {middle_clone} for seq: {ind} of length: {len(ind)}. {start, middle, end}"
         del ind[:start]
         del ind[middle:]
+        assert ind == middle_clone, f"Wrong split: {ind} != {middle_clone}"
+        assert len(ind) == middle, f"Wrong split: {len(ind)} != {middle}"
 
     return og_lengths
 
@@ -40,8 +48,8 @@ def reconstruct_population(
 
     og_population = clone(og_population)
     for ind, og_ind in zip(population, og_population):
-        split = split.parse_nan(og_ind)
-        start, middle, _ = split.split
+        parsed_split = split.parse_nan(og_ind)
+        start, middle, _ = parsed_split.split
 
         assert isinstance(start, int)
         assert isinstance(middle, int)
@@ -103,7 +111,13 @@ def eaSimpleBatched(
         assert all(
             len(ind) <= MAX_LENGTH for ind in population
         ), f"At gen {gen} there are individuals with length > max: {[len(ind) for ind in population if len(ind) > MAX_LENGTH ]}"
+
         og_lengths = split_population(population, split)
+
+        # assert all(
+        #     len(ind) > 0 for ind in population
+        # ), f"[DEBUG gen: {gen}] AFTER POP SPLIT: population must not contains empty sequences!"
+
         # print(f"Length after split: {[len(ind) for ind in population]}")
         # print(f"Ind len:", [len(ind) for ind in population])
         # Select and vary the next generation individuals
@@ -159,17 +173,34 @@ def customVarAnd(
     """
     offspring = [toolbox.clone(ind) for ind in population]
     # Apply crossover and mutation on the offspring
+    # assert all(
+    #     len(ind) > 0 for ind in offspring
+    # ), f"[DEBUG] BEFORE CROSSOVER: population must not contains empty sequences!"
+
     for i in range(1, len(offspring), 2):
         if random.random() < cxpb:
+            # print(
+            #     f"[DEBUG] Individuals chosen for crossover are: {offspring[i-1]} and {offspring[i]}"
+            # )
             offspring[i - 1], offspring[i] = toolbox.mate(
                 offspring[i - 1], offspring[i]
             )
             del offspring[i - 1].fitness.values, offspring[i].fitness.values
 
+    # assert all(
+    #     len(ind) > 0 for ind in offspring
+    # ), f"[DEBUG] BETWEEN CROSSOVER and MUTATIONS: population must not contains empty sequences!"
+
     for i in range(len(offspring)):
         if random.random() < mutpb:
+            # print(f"[DEBUG] i: {i}")
+            # print(f"[DEBUG] ind: {offspring[i]}")
             (offspring[i],) = toolbox.mutate(offspring[i], og_lengths[i])
             del offspring[i].fitness.values
+
+    # assert all(
+    #     len(ind) > 0 for ind in offspring
+    # ), f"[DEBUG] AFTER MUTATIONS: population must not contains empty sequences!"
 
     return offspring
 
@@ -187,17 +218,19 @@ def customSelTournament(individuals, k, tournsize, fit_attr="fitness"):
 
 def customCxTwoPoint(ind1, ind2, return_indices: bool = False):
     size = min(len(ind1), len(ind2))
-    cxpoint1 = random.randint(1, size)
-    cxpoint2 = random.randint(1, size - 1) if size > 2 else 1
-    if cxpoint2 >= cxpoint1:
+    cxpoint1 = random.randint(0, size)
+    cxpoint2 = random.randint(0, size - 1) if size > 2 else 0
+    if cxpoint2 >= cxpoint1 and not cxpoint1 == cxpoint2 == 0:
         cxpoint2 += 1
     else:  # Swap the two cx points
         cxpoint1, cxpoint2 = cxpoint2, cxpoint1
 
+    # print(f"[DEBUG] ind1, ind2 BEFORE CROSSOVER: {ind1, ind2}")
     ind1[cxpoint1:cxpoint2], ind2[cxpoint1:cxpoint2] = (
         ind2[cxpoint1:cxpoint2],
         ind1[cxpoint1:cxpoint2],
     )
+    # print(f"[DEBUG] ind1, ind2 AFTER CROSSOVER: {ind1, ind2}")
 
     if return_indices:
         return (ind1, ind2), (cxpoint1, cxpoint2)

@@ -68,9 +68,9 @@ def run_switcher(
                 target_cat=target,
                 start_i=range_i[0],
                 end_i=range_i[1],
-                split=splits[0] if splits else None,  # type: ignore
+                split=splits[0] if splits and len(splits) == 1 else None,  # type: ignore
                 prev_df=log,
-            )
+            )  # NOTE: splits can be used in the genetic only if just a single one is used, otherwise each split would require a different dataset generation
         elif mode == "all":
             run_generator = run_all(
                 target_cat=target,

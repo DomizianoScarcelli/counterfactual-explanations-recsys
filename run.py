@@ -244,7 +244,7 @@ def run_all(
         DatasetGenerator(
             use_cache=use_cache,
             return_interaction=True,
-            genetic_split=splits[0],
+            genetic_split=splits[0] if splits and len(splits) == 1 else None,
             target=target_cat,
         )
     )
