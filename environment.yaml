@@ -1,4 +1,4 @@
-name: recsys-test
+name: recsys
 dependencies:
   - python=3.12.4
   - pip
