@@ -30,7 +30,8 @@ class ReplaceMutation(Mutation):
 
     def _apply(self, seq: List[int], alphabet: List[int]) -> List[int]:
         for _ in range(self.num_replaces):
-            i = random.sample(range(1, len(seq)), 1)[0]
+            # print(f"[DEBUG] seq: {seq} of length: {len(seq)}")
+            i = random.sample(range(len(seq)), 1)[0]
             new_value = random.choice(alphabet)
             # avoid repetitions
             while new_value in seq:
@@ -40,7 +41,7 @@ class ReplaceMutation(Mutation):
 
 
 class SwapMutation(Mutation):
-    def __init__(self, offset_ratio: float = 0.5):
+    def __init__(self, offset_ratio: float = 1):
         super().__init__()
         self.offset_ratio = offset_ratio
         self.name = "swap"
@@ -53,7 +54,7 @@ class SwapMutation(Mutation):
 
 
 class ReverseMutation(Mutation):
-    def __init__(self, offset_ratio: float = 0.5):
+    def __init__(self, offset_ratio: float = 0.1):
         super().__init__()
         self.offset_ratio = offset_ratio
         self.name = "reverse"
@@ -66,7 +67,7 @@ class ReverseMutation(Mutation):
 
 
 class ShuffleMutation(Mutation):
-    def __init__(self, offset_ratio: float = 0.5):
+    def __init__(self, offset_ratio: float = 0.1):
         super().__init__()
         self.offset_ratio = offset_ratio
         self.name = "shuffle"
@@ -92,7 +93,7 @@ class AddMutation(Mutation):
             # avoid repetition
             while random_item in seq:
                 random_item = random.choice(alphabet)
-            i = random.sample(range(1, len(seq)), 1)[0]
+            i = random.sample(range(len(seq)), 1)[0]
             seq.insert(i, random_item)
         return seq
 
@@ -135,8 +136,8 @@ def parse_mutations(muts: List[str]):
 ALL_MUTATIONS: List[Mutation] = [
     SwapMutation(),
     ReplaceMutation(num_replaces=ConfigParams.NUM_REPLACES),
-    ShuffleMutation(),
-    ReverseMutation(),
+    # ShuffleMutation(),
+    # ReverseMutation(),
     AddMutation(num_additions=ConfigParams.NUM_ADDITIONS),
     DeleteMutation(num_deletions=ConfigParams.NUM_DELETIONS),
     ReplaceMutation(),

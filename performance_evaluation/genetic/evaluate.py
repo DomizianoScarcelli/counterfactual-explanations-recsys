@@ -1,4 +1,3 @@
-from generation.utils import _evaluate_categorized_generation
 import warnings
 from typing import Any, Dict, List
 
@@ -17,10 +16,9 @@ from exceptions import (
     NoTargetStatesError,
     SplitNotCoherent,
 )
-from generation.utils import equal_ys, labels2cat
+from generation.utils import _evaluate_categorized_generation, equal_ys, labels2cat
 from models.utils import pad, topk, trim
-from performance_evaluation.genetic.old_evaluate import evaluate_dataset
-from type_hints import CategorizedDataset, GoodBadDataset
+from type_hints import GoodBadDataset
 from utils import TimedFunction, seq_tostr
 from utils_classes.distances import edit_distance
 from utils_classes.generators import TimedGenerator
@@ -48,6 +46,7 @@ def _init_log(ks: List[int]) -> Dict[str, Any]:
             f"gen_gt@{k}": None,
             f"gen_target_y@{k}": None,
             f"gen_score@{k}": None,
+            f"gen_source_score@{k}": None,
         }
         for k in ks
     ]
@@ -73,8 +72,9 @@ def _init_log(ks: List[int]) -> Dict[str, Any]:
     return run_log
 
 
-def log_error(error: str, ks: List[int]) -> Dict[str, Any]:
+def log_error(i: int, error: str, ks: List[int]) -> Dict[str, Any]:
     log = _init_log(ks)
+    log["i"] = i
     log["gen_error"] = error
     return log
 
@@ -113,16 +113,19 @@ def evaluate_genetic(
         bad_perc = len(bad) / ConfigParams.POP_SIZE
         good_perc = len(good) / ConfigParams.POP_SIZE
         target_cats = [set(cat2id[cat] for cat in target_cat) for _ in range(min(ks))]
-        _, (_, bad_mean_dist) = _evaluate_categorized_generation(
-            trimmed_source, bad, target_cats  # type: ignore
-        )
-        _, (_, good_mean_dist) = _evaluate_categorized_generation(
-            trimmed_source, good, target_cats  # type: ignore
-        )
+        if len(bad) != 0:
+            _, (_, bad_mean_dist) = _evaluate_categorized_generation(
+                trimmed_source, bad, target_cats  # type: ignore
+            )
+            log["gen_bad_points_edit_distance"] = bad_mean_dist
+        if len(good) != 0:
+            _, (_, good_mean_dist) = _evaluate_categorized_generation(
+                trimmed_source, good, target_cats  # type: ignore
+            )
+            log["gen_good_points_edit_distance"] = good_mean_dist
+
         log["gen_good_points_percentage"] = good_perc * 100
         log["gen_bad_points_percentage"] = bad_perc * 100
-        log["gen_good_points_edit_distance"] = good_mean_dist
-        log["gen_bad_points_edit_distance"] = bad_mean_dist
     # NOTE: for now I take just the counterfactual which is the most similar to the source sequence, but since they are all counterfactuals,
     # we can also generate a list of different counterfactuals.
 
@@ -148,16 +151,15 @@ def evaluate_genetic(
         log["i"] = i
         log["gen_source"] = seq_tostr(trimmed_source)
         #
-        if ConfigParams.GENERATION_STRATEGY != "targeted":
-            _, score = equal_ys(
-                source_preds[k], counterfactual_preds[k], return_score=True
-            )
-        else:
-            _, score = equal_ys(
-                target_preds[k], counterfactual_preds[k], return_score=True
-            )
+        _, source_score = equal_ys(
+            source_preds[k], counterfactual_preds[k], return_score=True
+        )
+        _, counter_score = equal_ys(
+            target_preds[k], counterfactual_preds[k], return_score=True
+        )
         # if targeted higher is better, otherwise lower is better
-        log[f"gen_score@{k}"] = score
+        log[f"gen_score@{k}"] = counter_score
+        log[f"gen_source_score@{k}"] = source_score
         log[f"gen_aligned_gt@{k}"] = seq_tostr(counterfactual_preds[k])
 
     log["gen_aligned"] = seq_tostr(best_counterfactual)

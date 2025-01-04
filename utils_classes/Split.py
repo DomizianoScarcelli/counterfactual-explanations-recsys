@@ -97,17 +97,29 @@ class Split:
             A split coherent with the sequence where there aren't any None
             values.
         """
+        # print(
+        #     f"[DEBUG] split before nan parsing: {self.split}, seq length is: {len(seq)}"
+        # )
         # If None is present, it should appear in exactly two positions
         nans = [s for s in self.split if s is None]
         if len(nans) == 0:
             # print("Split doesn't contain any None values, returning it")
+            raise ValueError(f"Split doesn't contain any None values")
             return self
         if len(nans) == 1:
             self.parsed = True
-            return self._parse_single_nan(seq)
+            result = self._parse_single_nan(seq)
+            # print(
+            #     f"[DEBUG] split after nan parsing: {result}, seq length is: {len(seq)}"
+            # )
+            return result
         if len(nans) == 2:
             self.parsed = True
-            return self._parse_double_nan(seq)
+            result = self._parse_double_nan(seq)
+            # print(
+            #     f"[DEBUG] split after nan parsing: {result}, seq length is: {len(seq)}"
+            # )
+            return result
         else:
             raise ValueError(f"Cannot infer split with {len(nans)} None values")
 
@@ -143,18 +155,22 @@ class Split:
         return Split(*tuple(round(i * len(seq)) for i in self.split))  # type: ignore
 
     def apply(self, seq: List[int]) -> TraceSplit:
-        self = self.parse_nan(seq)
-        if not self.is_coherent(seq):
+        parsed_split = self.parse_nan(seq)
+        if not parsed_split.is_coherent(seq):
             raise SplitNotCoherent(
                 f"Sequence length is not coherent with split: {len(seq)} < {len(self)}"
             )
-        split = self.split
+        split = parsed_split.split
         if self.is_ratio:
-            split = self.to_abs(seq).split
-        start, middle, _ = split
+            split = parsed_split.to_abs(seq).split
+        start, middle, end = split
         executed = seq[:start]
         mutable = seq[start : start + middle]  # type: ignore
         fixed = seq[start + middle :]  # type: ignore
+        assert len(executed) == start
+        assert len(mutable) == middle
+        assert len(fixed) == end
+        # print(f"[DEBUG] executed, mutable and fixed: {executed, mutable, fixed}")
         return executed, mutable, fixed
 
     def __len__(self) -> int:

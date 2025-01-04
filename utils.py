@@ -1,8 +1,7 @@
 import random
 import time
-import zlib
 from functools import wraps
-from typing import Any, Callable, List, Optional, Set
+from typing import Any, Callable, List, Set
 
 import numpy as np
 import torch

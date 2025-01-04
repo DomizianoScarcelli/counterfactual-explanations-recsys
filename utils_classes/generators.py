@@ -208,7 +208,7 @@ class DatasetGenerator(SkippableGenerator):
         self.alphabet = alphabet if alphabet else list(get_items())
         self.target = target
         self.limit_generation_to = limit_generation_to
-        self.genetic_split = genetic_split
+        self.genetic_split = genetic_split 
 
     def skip(self):
         super().skip()

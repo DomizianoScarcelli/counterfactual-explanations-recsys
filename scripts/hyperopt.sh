@@ -1,37 +1,32 @@
 #!/bin/bash
 
-#
-# This script performs an exhaustive grid search over multiple parameter combinations
-# to evaluate the performance of the counterfactual generation algorithm. 
-#
-# Parameters:
-# - `crossover_prob_options`: Array of possible values for crossover probability.
-# - `mutation_prob_options`: Array of possible values for mutation probability.
-# - `fitness_alpha_options`: Array of possible values for fitness alpha.
-# - `generations_options`: Array of possible values for the number of generations.
-# - `pop_size_options`: Array of possible values for population size.
-# - `similarity_threshold_options`: Array of possible values for similarity threshold.
-#
-# The script calculates the total number of iterations and systematically iterates
-# through all possible parameter combinations. For each combination, it:
-# - Generates a JSON configuration with the chosen parameter values.
-# - Calls a Python script (`performance_evaluation.automata_learning.evaluate`) with
-#   the generated configuration as an argument.
-#
-
 # Define the possible values for each parameter
-# crossover_prob_options=(0.2 0.5 0.7)
-# mutation_prob_options=(0.2 0.5 0.7)
-# fitness_alpha_options=(0.2 0.5 0.7)
 crossover_prob_options=(0.7)
 mutation_prob_options=(0.5)
 fitness_alpha_options=(0.5 0.7)
-generations_options=(20 40)
+generations_options=(10 20 30)
 pop_size_options=(2048 4096 8192 16384)
 similarity_threshold_options=(0.5)
 
 # Calculate the total number of iterations
 total_iterations=$(( ${#crossover_prob_options[@]} * ${#mutation_prob_options[@]} * ${#fitness_alpha_options[@]} * ${#generations_options[@]} * ${#pop_size_options[@]} * ${#similarity_threshold_options[@]} ))
+
+# Check if an argument was provided
+filter=$1  # Accept the first argument as the filter
+if [[ -z "$filter" ]]; then
+    filter="all"
+elif [[ "$filter" != "odd" && "$filter" != "even" ]]; then
+    echo "Invalid argument: $filter. Use 'odd', 'even', or leave empty for all iterations."
+    exit 1
+fi
+
+# Determine the behavior based on the filter
+is_odd=-1  # Default: run all iterations
+if [[ "$filter" == "odd" ]]; then
+    is_odd=1
+elif [[ "$filter" == "even" ]]; then
+    is_odd=0
+fi
 
 # Initialize iteration counter
 iteration=0
@@ -46,10 +41,15 @@ for crossover_prob in "${crossover_prob_options[@]}"; do
                         # Increment the iteration counter
                         ((iteration++))
 
-                        # Print progress
-                        echo "Iteration $iteration of $total_iterations"
+                        # Skip iterations based on the filter
+                        if [[ "$is_odd" -ne -1 && $((iteration % 2)) -ne "$is_odd" ]]; then
+                            continue
+                        fi
 
-                        # Directly define the JSON configuration in a variable
+                        # Print progress
+                        echo "Iteration $iteration of $total_iterations (Executing $filter iterations)"
+
+                        # Define the JSON configuration in a variable
                         config_json=$(cat <<EOF
 {
   "evolution": {
@@ -57,11 +57,11 @@ for crossover_prob in "${crossover_prob_options[@]}"; do
     "fitness_alpha": $fitness_alpha,
     "generations": $generations,
     "mut_prob": $mutation_prob,
-    "pop_size": $pop_size,
+    "pop_size": $pop_size
   },
   "generation": {
     "similarity_threshold": $similarity_threshold
-},
+  }
 }
 EOF
 )
@@ -73,10 +73,11 @@ EOF
                         # Run the script with the JSON string as the --config-dict argument
                         python -m cli evaluate alignment \
                             --use-cache=False \
-                            --save-path="results/evaluate/alignment/alignment_hyperopt.csv" \
+                            --save-path="results/evaluate/alignment/alignment_hyperopt_$filter.csv" \
                             --config_dict="$config_json" \
-                            --mode="full" \
-                            --range-i="(0, 100)"
+                            --mode="all" \
+                            --range-i="(0, 200)" \
+                            --splits="[(None, 1, 0), (None, 10, 0), (None, 1, 5), (None, 5, 5), (None, 10, 5)]"
                     done
                 done
             done

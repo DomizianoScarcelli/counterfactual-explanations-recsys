@@ -1,21 +1,20 @@
-from constants import cat2id
-from typing import TypeAlias
 import json
 import os
-from tqdm import tqdm
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple, TypeAlias
 
 import fire
 import pandas as pd
 from pandas import DataFrame
+from tqdm import tqdm
 
 from config import ConfigDict, ConfigParams
+from constants import cat2id
 from performance_evaluation import alignment
 from performance_evaluation.alignment.utils import log_run
-from run import run_alignment, run_all
+from run import run_alignment
 from run import run_alignment as run_alignment
-from run import run_genetic
+from run import run_all, run_genetic
 from sensitivity.model_sensitivity import main as evaluate_sensitivity
 from sensitivity.model_sensitivity import run_on_all_positions
 from utils import SeedSetter
@@ -58,38 +57,40 @@ def run_switcher(
                 target_cat=target,
                 start_i=range_i[0],
                 end_i=range_i[1],
-                splits=splits,
+                splits=splits,  # type: ignore
                 use_cache=use_cache,
                 ks=ConfigParams.TOPK,
+                prev_df=log,
             )
         elif mode == "genetic":
             run_generator = run_genetic(
                 target_cat=target,
                 start_i=range_i[0],
                 end_i=range_i[1],
-                split=splits[0] if splits else None,
-            )
+                split=splits[0] if splits and len(splits) == 1 else None,  # type: ignore
+                prev_df=log,
+            )  # NOTE: splits can be used in the genetic only if just a single one is used, otherwise each split would require a different dataset generation
         elif mode == "all":
             run_generator = run_all(
                 target_cat=target,
                 start_i=range_i[0],
                 end_i=range_i[1],
-                splits=splits,
+                splits=splits,  # type: ignore
                 use_cache=use_cache,
                 ks=ConfigParams.TOPK,
+                prev_df=log,
             )
         else:
             raise ValueError(f"Mode '{mode}' not supported")
 
         for runs in run_generator:
-            # TODO: you can make Run a SkippableGenerator, which skips when the
-            # source sequence, split and config combination already exists in the
-            # log
             if not isinstance(runs, list):
                 runs = [runs]
             for run in runs:
                 print(f"[DEBUG] Run is:", run)
                 if save_path:
+                    if run["i"] is None:
+                        continue
                     log = log_run(
                         prev_df=log,
                         log=run,

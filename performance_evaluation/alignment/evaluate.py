@@ -9,13 +9,8 @@ from alignment.utils import postprocess_alignment
 from automata_learning.learning import learning_pipeline
 from config import ConfigParams
 from constants import cat2id, error_messages
-from exceptions import (
-    CounterfactualNotFound,
-    DfaNotAccepting,
-    DfaNotRejecting,
-    NoTargetStatesError,
-    SplitNotCoherent,
-)
+from exceptions import (CounterfactualNotFound, DfaNotAccepting,
+                        DfaNotRejecting, NoTargetStatesError, SplitNotCoherent)
 from generation.utils import equal_ys, labels2cat
 from models.utils import topk, trim
 from type_hints import CategorySet, GoodBadDataset
@@ -40,7 +35,7 @@ def single_run(
 
     dfa = timed_learning_pipeline(source=source_sequence, dataset=_dataset)
 
-    if split:
+    if split is not None:
         source_sequence = split.apply(source_sequence)  # type: ignore
 
     aligned, cost, alignment = timed_trace_disalignment(dfa, source_sequence)
@@ -78,8 +73,9 @@ def _init_log(ks: List[int]) -> Dict[str, Any]:
     return run_log
 
 
-def log_error(error: str, ks: List[int]) -> Dict[str, Any]:
+def log_error(i: int, error: str, ks: List[int]) -> Dict[str, Any]:
     log = _init_log(ks)
+    log["i"] = i
     log["error"] = error
     return log
 
@@ -112,8 +108,6 @@ def evaluate_alignment(
     }
     target_categories = {cat2id[t] for t in target_cat}  # type: ignore
     target_preds = {k: [target_categories for _ in range(k)] for k in ks}
-
-    split = split.parse_nan(trimmed_source)
 
     print(f"----RUN DEBUG-----")
     print(f"Current Split: {split}")
@@ -163,5 +157,5 @@ def evaluate_alignment(
         SplitNotCoherent,
     ) as e:
         print(f"run_full: Raised {type(e)}")
-        log = log_error(error=error_messages[type(e)], ks=ks)
+        log = log_error(i, error=error_messages[type(e)], ks=ks)
     return log

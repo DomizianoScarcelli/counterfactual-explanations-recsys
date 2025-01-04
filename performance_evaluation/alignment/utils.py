@@ -48,7 +48,7 @@ def pk_exists(
     if consider_config:
         config_keys = list(ConfigParams.configs_dict().keys())
         config_keys.remove("timestamp")
-        primary_key = primary_key + config_keys
+        primary_key += config_keys
 
     df = df.copy()  # Avoid modifying the original DataFrame
     df[primary_key] = df[primary_key].astype(str)
