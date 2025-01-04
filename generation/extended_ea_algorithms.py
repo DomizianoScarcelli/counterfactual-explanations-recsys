@@ -11,12 +11,7 @@ from generation.utils import clone
 from utils_classes.Split import Split
 
 
-def split_population(population: list, split: Optional[Split]) -> List[int]:
-    # print(f"Before split fitnesses", [ind.fitness.values for ind in population])
-    og_lengths = [len(ind) for ind in population]
-    if split is None:
-        return og_lengths
-
+def split_population(population: list, split: Optional[Split]):
     for ind in population:
         parsed_split = split.parse_nan(ind)
         start, middle, end = parsed_split.split
@@ -34,8 +29,6 @@ def split_population(population: list, split: Optional[Split]) -> List[int]:
         del ind[middle:]
         assert ind == middle_clone, f"Wrong split: {ind} != {middle_clone}"
         assert len(ind) == middle, f"Wrong split: {len(ind)} != {middle}"
-
-    return og_lengths
 
 
 def reconstruct_population(
@@ -112,7 +105,7 @@ def eaSimpleBatched(
             len(ind) <= MAX_LENGTH for ind in population
         ), f"At gen {gen} there are individuals with length > max: {[len(ind) for ind in population if len(ind) > MAX_LENGTH ]}"
 
-        og_lengths = split_population(population, split)
+        split_population(population, split)
 
         # assert all(
         #     len(ind) > 0 for ind in population
@@ -122,7 +115,7 @@ def eaSimpleBatched(
         # print(f"Ind len:", [len(ind) for ind in population])
         # Select and vary the next generation individuals
         offspring = toolbox.select(population, len(population))
-        offspring = customVarAnd(offspring, toolbox, cxpb, mutpb, og_lengths)
+        offspring = customVarAnd(offspring, toolbox, cxpb, mutpb)
 
         # TODO: [DEBUG], remove
         # assert all(
@@ -160,9 +153,7 @@ def eaSimpleBatched(
     return population, logbook
 
 
-def customVarAnd(
-    population: list, toolbox, cxpb: float, mutpb: float, og_lengths: List[int]
-):
+def customVarAnd(population: list, toolbox, cxpb: float, mutpb: float):
     """
     Extends the `deap.algorithms.varAnd` method in order to also inject the
     offspring index into the mutation and crossover functions, which will be
@@ -195,7 +186,7 @@ def customVarAnd(
         if random.random() < mutpb:
             # print(f"[DEBUG] i: {i}")
             # print(f"[DEBUG] ind: {offspring[i]}")
-            (offspring[i],) = toolbox.mutate(offspring[i], og_lengths[i])
+            (offspring[i],) = toolbox.mutate(offspring[i])
             del offspring[i].fitness.values
 
     # assert all(

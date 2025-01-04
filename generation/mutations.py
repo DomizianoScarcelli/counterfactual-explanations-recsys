@@ -41,7 +41,7 @@ class ReplaceMutation(Mutation):
 
 
 class SwapMutation(Mutation):
-    def __init__(self, offset_ratio: float = 0.5):
+    def __init__(self, offset_ratio: float = 1):
         super().__init__()
         self.offset_ratio = offset_ratio
         self.name = "swap"
@@ -54,7 +54,7 @@ class SwapMutation(Mutation):
 
 
 class ReverseMutation(Mutation):
-    def __init__(self, offset_ratio: float = 0.5):
+    def __init__(self, offset_ratio: float = 0.1):
         super().__init__()
         self.offset_ratio = offset_ratio
         self.name = "reverse"
@@ -67,7 +67,7 @@ class ReverseMutation(Mutation):
 
 
 class ShuffleMutation(Mutation):
-    def __init__(self, offset_ratio: float = 0.5):
+    def __init__(self, offset_ratio: float = 0.1):
         super().__init__()
         self.offset_ratio = offset_ratio
         self.name = "shuffle"
@@ -136,8 +136,8 @@ def parse_mutations(muts: List[str]):
 ALL_MUTATIONS: List[Mutation] = [
     SwapMutation(),
     ReplaceMutation(num_replaces=ConfigParams.NUM_REPLACES),
-    ShuffleMutation(),
-    ReverseMutation(),
+    # ShuffleMutation(),
+    # ReverseMutation(),
     AddMutation(num_additions=ConfigParams.NUM_ADDITIONS),
     DeleteMutation(num_deletions=ConfigParams.NUM_DELETIONS),
     ReplaceMutation(),

@@ -63,9 +63,11 @@ class GeneticStrategy(GenerationStrategy):
 
         self.split = split
         self.og_input_length = len(self.input_seq)
+        self.split_input_length = len(self.input_seq)
         if self.split is not None:
             _, middle, _ = self.split.parse_nan(self.input_seq.tolist()).split
-            self.og_input_length = middle
+            assert isinstance(middle, int)
+            self.split_input_length = middle
 
         creator.create("fitness", base.Fitness, weights=(-1.0,))  # Minimize fitness
         creator.create("individual", list, fitness=creator.fitness)
@@ -98,7 +100,7 @@ class GeneticStrategy(GenerationStrategy):
         if self.verbose:
             print(s)
 
-    def mutate(self, seq: List[int], og_seq_len: int):
+    def mutate(self, seq: List[int]):
         # Set seed according to the index in order to always choose a different mutation
 
         # TODO: remove the assertion for efficiency
@@ -110,7 +112,7 @@ class GeneticStrategy(GenerationStrategy):
         # og_seq_len is the length of the unsplitted sequence.
         # To this we add the difference between the source sequence length (og_input_length) and the current sequence length (seq)
         # to count for the added or removed elements in previous mutations
-        current_seq_length = og_seq_len + (len(seq) - self.og_input_length)
+        current_seq_length = self.og_input_length + (len(seq) - self.split_input_length)
         assert (
             MIN_LENGTH <= current_seq_length <= MAX_LENGTH
         ), f"Sequence BEFORE MUTATIONS is not in the allowed length! {MIN_LENGTH} <= {current_seq_length} <= {MAX_LENGTH}"
@@ -132,14 +134,7 @@ class GeneticStrategy(GenerationStrategy):
         mutation = random.choice(mutations)
         result = mutation(seq, self.alphabet)
 
-        seq_length = og_seq_len + (len(result[0]) - self.og_input_length)
-        # print("_" * 20)
-        # print(f"[DEBUG] length (result): {len(result[0])}")
-        # print(f"[DEBUG] length (seq): {len(seq)}")
-        # print(f"[DEBUG] length (og seq): {og_seq_len}")
-        # print(f"[DEBUG] length (rest): {len(result[0]) - self.og_input_length}")
-        # print(f"[DEBUG] length (seq length): {seq_length}")
-        # print("_" * 20)
+        seq_length = self.og_input_length + (len(result[0]) - self.split_input_length)
         assert (
             MIN_LENGTH <= seq_length <= MAX_LENGTH
         ), f"Sequence is not in the allowed length! {MIN_LENGTH} <= {seq_length} <= {MAX_LENGTH}. [DEBUG]: current_seq_length: {current_seq_length}"
