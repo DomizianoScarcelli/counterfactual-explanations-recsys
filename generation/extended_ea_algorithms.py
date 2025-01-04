@@ -1,6 +1,6 @@
 import random
 from operator import attrgetter
-from typing import List, Optional
+from typing import Optional
 
 from deap.algorithms import tools
 from deap.tools.support import deepcopy
@@ -12,6 +12,8 @@ from utils_classes.Split import Split
 
 
 def split_population(population: list, split: Optional[Split]):
+    if split is None:
+        return
     for ind in population:
         parsed_split = split.parse_nan(ind)
         start, middle, end = parsed_split.split
