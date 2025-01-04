@@ -26,7 +26,7 @@
 crossover_prob_options=(0.7)
 mutation_prob_options=(0.5)
 fitness_alpha_options=(0.5 0.7)
-generations_options=(20 40)
+generations_options=(10 20 30)
 pop_size_options=(2048 4096 8192 16384)
 similarity_threshold_options=(0.5)
 
@@ -73,10 +73,10 @@ EOF
                         # Run the script with the JSON string as the --config-dict argument
                         python -m cli evaluate alignment \
                             --use-cache=False \
-                            --save-path="results/evaluate/alignment/alignment_hyperopt.csv" \
+                            --save-path="results/evaluate/alignment/alignment_hyperopt_all.csv" \
                             --config_dict="$config_json" \
-                            --mode="full" \
-                            --range-i="(0, 100)"
+                            --mode="all" \
+                            --range-i="(0, 20)"
                     done
                 done
             done

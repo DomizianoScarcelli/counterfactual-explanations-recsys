@@ -61,7 +61,7 @@ def run_switcher(
                 splits=splits,  # type: ignore
                 use_cache=use_cache,
                 ks=ConfigParams.TOPK,
-                prev_df= log,
+                prev_df=log,
             )
         elif mode == "genetic":
             run_generator = run_genetic(
@@ -69,7 +69,7 @@ def run_switcher(
                 start_i=range_i[0],
                 end_i=range_i[1],
                 split=splits[0] if splits else None,  # type: ignore
-                prev_df= log,
+                prev_df=log,
             )
         elif mode == "all":
             run_generator = run_all(
@@ -79,7 +79,7 @@ def run_switcher(
                 splits=splits,  # type: ignore
                 use_cache=use_cache,
                 ks=ConfigParams.TOPK,
-                prev_df= log,
+                prev_df=log,
             )
         else:
             raise ValueError(f"Mode '{mode}' not supported")
@@ -90,6 +90,8 @@ def run_switcher(
             for run in runs:
                 print(f"[DEBUG] Run is:", run)
                 if save_path:
+                    if run["i"] is None:
+                        continue
                     log = log_run(
                         prev_df=log,
                         log=run,

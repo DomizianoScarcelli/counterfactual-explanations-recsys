@@ -13,6 +13,7 @@ from exceptions import EmptyDatasetError
 from generation.dataset.utils import interaction_to_tensor
 from performance_evaluation.alignment.evaluate import evaluate_alignment
 from performance_evaluation.alignment.evaluate import log_error as log_alignment_error
+from performance_evaluation.automata_learning.evaluate import evaluate_automata_learning
 from performance_evaluation.genetic.evaluate import evaluate_genetic
 from performance_evaluation.genetic.evaluate import log_error as log_genetic_error
 from type_hints import SplitTuple
@@ -50,6 +51,17 @@ def skip_sequence(i: int, target_cat: List[str], prev_df: Optional[DataFrame]):
             print(
                 f"Skipping i: {i} with target {target_cat} because already in the log..."
             )
+            # print(
+            #     "[debug]", future_df[["i", "gen_target_y@1", "pop_size", "generations"]]
+            # )
+            # print(
+            #     "[debug] duplicated",
+            #     future_df.loc[
+            #         future_df[
+            #             ["i", "gen_target_y@1", "pop_size", "generations"]
+            #         ].duplicated()
+            #     ][["i", "gen_target_y@1", "pop_size", "generations"]],
+            # )
             return True
     return False
 
@@ -110,7 +122,7 @@ def run_genetic(
             dataset, interaction = next(datasets)
         except EmptyDatasetError as e:
             print(f"run_genetic: Raised {type(e)}")
-            log = log_genetic_error(error=error_messages[type(e)], ks=ks)
+            log = log_genetic_error(i, error=error_messages[type(e)], ks=ks)
             datasets.skip()
             datasets.generator.match_indices()  # type: ignore
             yield log
@@ -185,7 +197,7 @@ def run_alignment(
             return
         except EmptyDatasetError as e:
             print(f"run_full: Raised {type(e)}")
-            log = log_alignment_error(error=error_messages[type(e)], ks=ks)
+            log = log_alignment_error(i, error=error_messages[type(e)], ks=ks)
             datasets.skip()
             datasets.generator.match_indices()  # type: ignore
             yield log
@@ -307,17 +319,3 @@ def run_all(
             logs.append({**genetic_log, **alignment_log})
 
         yield logs
-
-
-class SkippableRunner(SkippableGenerator):
-    def __init__(self, runner_fn: Callable):
-        self.runner_fn = runner_fn
-
-    def next(self) -> Any:
-        """
-        Generates the next element.
-
-        Returns:
-            The next generated element.
-        """
-        return self.runner_fn(self.index)

@@ -78,8 +78,9 @@ def _init_log(ks: List[int]) -> Dict[str, Any]:
     return run_log
 
 
-def log_error(error: str, ks: List[int]) -> Dict[str, Any]:
+def log_error(i: int, error: str, ks: List[int]) -> Dict[str, Any]:
     log = _init_log(ks)
+    log["i"] = i
     log["error"] = error
     return log
 
@@ -163,5 +164,5 @@ def evaluate_alignment(
         SplitNotCoherent,
     ) as e:
         print(f"run_full: Raised {type(e)}")
-        log = log_error(error=error_messages[type(e)], ks=ks)
+        log = log_error(i, error=error_messages[type(e)], ks=ks)
     return log

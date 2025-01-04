@@ -44,6 +44,10 @@ warnings.simplefilter(action="ignore", category=FutureWarning)
 warnings.simplefilter(action="ignore", category=RuntimeWarning)
 
 
+def evaluate_automata_learning(i, dfa):
+    return {"i": i, "automata_states": len(dfa.states)}
+
+
 def generate_test_dataset(
     source_sequence: Tensor, source_generator: DatasetGenerator, dfa: Dfa
 ) -> GoodBadDataset:
