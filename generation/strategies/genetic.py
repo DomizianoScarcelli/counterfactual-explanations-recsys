@@ -9,28 +9,17 @@ from torch import Tensor
 
 from config import ConfigParams
 from constants import MAX_LENGTH, MIN_LENGTH
-from generation.extended_ea_algorithms import (
-    customCxTwoPoint,
-    customSelTournament,
-    eaSimpleBatched,
-)
-from generation.mutations import (
-    ALL_MUTATIONS,
-    AddMutation,
-    DeleteMutation,
-    Mutation,
-    contains_mutation,
-    remove_mutation,
-)
+from generation.extended_ea_algorithms import (customCxTwoPoint,
+                                               customSelTournament,
+                                               eaSimpleBatched)
+from generation.mutations import (ALL_MUTATIONS, AddMutation, DeleteMutation,
+                                  Mutation, contains_mutation, remove_mutation)
 from generation.strategies.abstract_strategy import GenerationStrategy
 from generation.utils import _evaluate_generation, clone
 from models.utils import pad_batch, trim
 from type_hints import Dataset
-from utils_classes.distances import (
-    edit_distance,
-    jensen_shannon_divergence,
-    self_indicator,
-)
+from utils_classes.distances import (edit_distance, jensen_shannon_divergence,
+                                     self_indicator)
 from utils_classes.Split import Split
 
 

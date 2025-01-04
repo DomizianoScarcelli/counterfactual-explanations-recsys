@@ -1,28 +1,26 @@
-from constants import cat2id
-from performance_evaluation.alignment.utils import pk_exists
 import warnings
 from typing import Any, Callable, Dict, Generator, List, Optional
 
-from tqdm import tqdm
 import pandas as pd
 from pandas import DataFrame
+from tqdm import tqdm
 
 from config import ConfigParams
-from constants import error_messages
+from constants import cat2id, error_messages
 from exceptions import EmptyDatasetError
 from generation.dataset.utils import interaction_to_tensor
 from performance_evaluation.alignment.evaluate import evaluate_alignment
-from performance_evaluation.alignment.evaluate import log_error as log_alignment_error
-from performance_evaluation.automata_learning.evaluate import evaluate_automata_learning
+from performance_evaluation.alignment.evaluate import \
+    log_error as log_alignment_error
+from performance_evaluation.alignment.utils import pk_exists
+from performance_evaluation.automata_learning.evaluate import \
+    evaluate_automata_learning
 from performance_evaluation.genetic.evaluate import evaluate_genetic
-from performance_evaluation.genetic.evaluate import log_error as log_genetic_error
+from performance_evaluation.genetic.evaluate import \
+    log_error as log_genetic_error
 from type_hints import SplitTuple
-from utils_classes.generators import (
-    DatasetGenerator,
-    InteractionGenerator,
-    SkippableGenerator,
-    TimedGenerator,
-)
+from utils_classes.generators import (DatasetGenerator, InteractionGenerator,
+                                      SkippableGenerator, TimedGenerator)
 from utils_classes.Split import Split
 
 warnings.simplefilter(action="ignore", category=FutureWarning)

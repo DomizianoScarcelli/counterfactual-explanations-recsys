@@ -1,21 +1,20 @@
-from constants import cat2id
-from typing import TypeAlias
 import json
 import os
-from tqdm import tqdm
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple, TypeAlias
 
 import fire
 import pandas as pd
 from pandas import DataFrame
+from tqdm import tqdm
 
 from config import ConfigDict, ConfigParams
+from constants import cat2id
 from performance_evaluation import alignment
 from performance_evaluation.alignment.utils import log_run
-from run import run_alignment, run_all
+from run import run_alignment
 from run import run_alignment as run_alignment
-from run import run_genetic
+from run import run_all, run_genetic
 from sensitivity.model_sensitivity import main as evaluate_sensitivity
 from sensitivity.model_sensitivity import run_on_all_positions
 from utils import SeedSetter

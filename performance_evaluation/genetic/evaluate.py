@@ -1,5 +1,3 @@
-from pandas.errors import EmptyDataError
-from generation.utils import _evaluate_categorized_generation
 import warnings
 from typing import Any, Dict, List
 
@@ -18,10 +16,9 @@ from exceptions import (
     NoTargetStatesError,
     SplitNotCoherent,
 )
-from generation.utils import equal_ys, labels2cat
+from generation.utils import _evaluate_categorized_generation, equal_ys, labels2cat
 from models.utils import pad, topk, trim
-from performance_evaluation.genetic.old_evaluate import evaluate_dataset
-from type_hints import CategorizedDataset, GoodBadDataset
+from type_hints import GoodBadDataset
 from utils import TimedFunction, seq_tostr
 from utils_classes.distances import edit_distance
 from utils_classes.generators import TimedGenerator
@@ -49,6 +46,7 @@ def _init_log(ks: List[int]) -> Dict[str, Any]:
             f"gen_gt@{k}": None,
             f"gen_target_y@{k}": None,
             f"gen_score@{k}": None,
+            f"gen_source_score@{k}": None,
         }
         for k in ks
     ]
@@ -153,16 +151,15 @@ def evaluate_genetic(
         log["i"] = i
         log["gen_source"] = seq_tostr(trimmed_source)
         #
-        if ConfigParams.GENERATION_STRATEGY != "targeted":
-            _, score = equal_ys(
-                source_preds[k], counterfactual_preds[k], return_score=True
-            )
-        else:
-            _, score = equal_ys(
-                target_preds[k], counterfactual_preds[k], return_score=True
-            )
+        _, source_score = equal_ys(
+            source_preds[k], counterfactual_preds[k], return_score=True
+        )
+        _, counter_score = equal_ys(
+            target_preds[k], counterfactual_preds[k], return_score=True
+        )
         # if targeted higher is better, otherwise lower is better
-        log[f"gen_score@{k}"] = score
+        log[f"gen_score@{k}"] = counter_score
+        log[f"gen_source_score@{k}"] = source_score
         log[f"gen_aligned_gt@{k}"] = seq_tostr(counterfactual_preds[k])
 
     log["gen_aligned"] = seq_tostr(best_counterfactual)
