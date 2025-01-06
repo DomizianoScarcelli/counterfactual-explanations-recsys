@@ -10,8 +10,13 @@ from alignment.utils import postprocess_alignment
 from automata_learning.learning import learning_pipeline
 from config import ConfigParams
 from constants import cat2id, error_messages
-from exceptions import (CounterfactualNotFound, DfaNotAccepting,
-                        DfaNotRejecting, NoTargetStatesError, SplitNotCoherent)
+from exceptions import (
+    CounterfactualNotFound,
+    DfaNotAccepting,
+    DfaNotRejecting,
+    NoTargetStatesError,
+    SplitNotCoherent,
+)
 from generation.utils import equal_ys, labels2cat
 from models.utils import topk, trim
 from type_hints import CategorySet, GoodBadDataset
@@ -67,6 +72,7 @@ def _init_log(ks: List[int]) -> Dict[str, Any]:
         "dataset_time": None,
         "align_time": None,
         "automata_learning_time": None,
+        "gen_target_y@1": None,
     }
 
     for log_at_k in log_at_ks:
