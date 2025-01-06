@@ -105,7 +105,8 @@ def run_genetic(
                 f"Skipping i: {i} with target {target_cat} and split {split} because already in the log..."
             )
             if pbar:
-                pbar.update(1)
+                pbar.total -= 1
+                pbar.refresh()
             datasets.skip()
             continue
         try:
@@ -184,7 +185,8 @@ def run_alignment(
                 new_splits.append(split)
             else:
                 if pbar:
-                    pbar.update(1)
+                    pbar.total -= 1
+                    pbar.refresh()
                 printd(
                     f"Skipping i: {i} with target {target_cat} and split {split} because already in the log..."
                 )
@@ -282,7 +284,8 @@ def run_all(
                 new_splits.append(split)
             else:
                 if pbar:
-                    pbar.update(1)
+                    pbar.total -= 1
+                    pbar.refresh()
                 printd(
                     f"Skipping i: {i} with target {target_cat} and split {split} because already in the log..."
                 )
@@ -298,7 +301,7 @@ def run_all(
             dataset, interaction = next(datasets)
         except EmptyDatasetError as e:
             printd(f"run_full: Raised {type(e)}")
-            alignment_log = log_alignment_error(error=error_messages[type(e)], ks=ks)
+            alignment_log = log_alignment_error(i=i, error=error_messages[type(e)], ks=ks)
             datasets.skip()
             datasets.generator.match_indices()  # type: ignore
             yield alignment_log
