@@ -6,7 +6,7 @@ mutation_prob_options=(0.5)
 fitness_alpha_options=(0.5 0.7)
 generations_options=(10 20 30)
 pop_size_options=(2048 4096 8192 16384)
-similarity_threshold_options=(0.5)
+similarity_threshold_options=(0.7 0.5)
 
 # Calculate the total number of iterations
 total_iterations=$(( ${#crossover_prob_options[@]} * ${#mutation_prob_options[@]} * ${#fitness_alpha_options[@]} * ${#generations_options[@]} * ${#pop_size_options[@]} * ${#similarity_threshold_options[@]} ))
@@ -76,7 +76,7 @@ EOF
                             --save-path="results/evaluate/alignment/alignment_hyperopt_$filter.csv" \
                             --config_dict="$config_json" \
                             --mode="all" \
-                            --range-i="(0, 200)" \
+                            --range-i="(0, 100)" \
                             --splits="[(None, 5, 0), (None, 10, 0), (None, 5, 5), (None, 10, 5)]"
                     done
                 done
