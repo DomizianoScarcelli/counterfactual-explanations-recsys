@@ -95,7 +95,7 @@ def run_switcher(
                         prev_df=log,
                         log=run,
                         save_path=save_path,
-                        primary_key=["i", "source", "split"],
+                        primary_key=["i", "source", "split", "gen_target_y@1"],
                     )
                 else:
                     print(json.dumps(run, indent=2))
