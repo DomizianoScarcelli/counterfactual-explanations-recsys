@@ -72,7 +72,6 @@ def _init_log(ks: List[int]) -> Dict[str, Any]:
         "dataset_time": None,
         "align_time": None,
         "automata_learning_time": None,
-        "gen_target_y@1": None,
     }
 
     for log_at_k in log_at_ks:
