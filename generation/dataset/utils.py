@@ -1,3 +1,4 @@
+from utils import printd
 import pickle
 from pathlib import Path
 from typing import Set, Tuple
@@ -24,7 +25,7 @@ def save_dataset(dataset: GoodBadDataset, save_path: str | Path):
         save_path: The save path
     """
     with open(save_path, "wb") as f:
-        print(f"Dataset saved to {save_path}")
+        printd(f"Dataset saved to {save_path}", level=1)
         pickle.dump(dataset, f)
 
 
@@ -38,7 +39,7 @@ def load_dataset(load_path: str | Path) -> GoodBadDataset:
         The dataset (good_points, bad_points).
     """
     with open(load_path, "rb") as f:
-        print(f"Dataset loaded from {load_path}")
+        printd(f"Dataset loaded from {load_path}", level=1)
         return pickle.load(f)
 
 
@@ -59,7 +60,7 @@ def get_dataloaders(config: Config) -> Tuple[DataLoader, DataLoader, DataLoader]
 
 def make_deterministic(dataset: Tuple[Dataset, Dataset]) -> Tuple[Dataset, Dataset]:
     g, b = dataset
-    print(f"Dataset len before making it deterministic: {len(g)}, {len(b)}")
+    printd(f"Dataset len before making it deterministic: {len(g)}, {len(b)}", level=1)
     new_g, new_b = [], []
     ids = set()
     for p, l in g:
@@ -73,9 +74,9 @@ def make_deterministic(dataset: Tuple[Dataset, Dataset]) -> Tuple[Dataset, Datas
         new_b.append((p, l))
         ids.add(tuple(p.tolist()))
     dataset = (new_g, new_b)
-    print(
+    printd(
         f"Dataset len after making it deterministic: {
-          len(new_g)}, {len(new_b)}"
+          len(new_g)}, {len(new_b)}", level=1
     )
     return dataset
 

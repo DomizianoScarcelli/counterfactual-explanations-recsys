@@ -1,9 +1,9 @@
+from utils import printd
 from automata_learning.learning import learning_pipeline
 from automata_learning.utils import run_automata
 from config import ConfigParams
 from generation.dataset.generate import generate
 from generation.dataset.utils import interaction_to_tensor
-from generation.strategies.abstract_strategy import GenerationStrategy
 from models.config_utils import generate_model, get_config
 from models.utils import trim
 from utils_classes.generators import DatasetGenerator, SequenceGenerator
@@ -35,7 +35,7 @@ def test_automata_accepts_source_sequence():
         dfa = learning_pipeline(trace, dataset)
         assert run_automata(dfa, trace), f"Automata do not accept sequence {i}, {trace}"
         i += 1
-        print(f"{i} [PASSED], automata accepts the source trace")
+        printd(f"{i} [PASSED], automata accepts the source trace", level=1)
 
 
 def test_automata_learning_determinism():

@@ -178,7 +178,6 @@ def clone(x):
 
 
 def random_points_with_offset(max_value: int, max_offset: int):
-    # print(f"[DEBUG] max_value is: {max_value}")
     if max_value <= 2:
         return (0, 0)
     i = random.randint(0, max_value)

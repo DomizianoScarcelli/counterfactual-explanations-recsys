@@ -178,5 +178,4 @@ def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
     ndcg = actual_dcg / ideal_dcg if ideal_dcg > 0 else 0.0
     assert 0.0 <= ndcg <= 1.0
     return ndcg
-    # print(f"Rels for {a} and {b}", relevance_scores, max_dcg, actual_dcg, ndcg)
     # return ndcg

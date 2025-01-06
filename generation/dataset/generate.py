@@ -61,14 +61,4 @@ def generate(
     assert (
         good_strat is not None or bad_strat is not None
     ), "Unexpected error, good strat OR bad strat should be not None"
-    # print(
-    #     f"=================================GOOD DATASET================================="
-    # )
-    # for _, v in good_examples:
-    #     print(f"Good {v}")
-    # print(
-    #     f"=================================BAD DATASET================================="
-    # )
-    # for _, v in bad_examples:
-    #     print(f"Bad {v}")
     return good_examples, bad_examples

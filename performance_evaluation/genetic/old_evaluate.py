@@ -1,3 +1,4 @@
+from utils import printd
 import warnings
 from itertools import product
 from pathlib import Path
@@ -121,12 +122,12 @@ def main():
         )
     )
 
-    print(f"[Info] Creating model and sequence generator...")
+    printd(f"[Info] Creating model and sequence generator...")
     conf = get_config(ConfigParams.DATASET, ConfigParams.MODEL)
     sequences = SequenceGenerator(conf)
     model = generate_model(conf)
     alphabet = list(get_items())
-    print(f"[Info] Finished creating stuff, starting evaluation...")
+    printd(f"[Info] Finished creating stuff, starting evaluation...")
     for current_config in tqdm(permutations, desc="Evaluating generation..."):
 
         steps = 1  # number of generations to perform for each configuration
@@ -134,7 +135,6 @@ def main():
         for sequence in sequences:
             sequence = sequence.squeeze()
             if sequences.index > steps:
-                # print(f"[Info] reached {i} sequences for the current config, skipping to next config")
                 break
             evaluate_config(sequence, model, alphabet, sequences.index)
         sequences.reset()

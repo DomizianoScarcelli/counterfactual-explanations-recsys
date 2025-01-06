@@ -30,7 +30,6 @@ class ReplaceMutation(Mutation):
 
     def _apply(self, seq: List[int], alphabet: List[int]) -> List[int]:
         for _ in range(self.num_replaces):
-            # print(f"[DEBUG] seq: {seq} of length: {len(seq)}")
             i = random.sample(range(len(seq)), 1)[0]
             new_value = random.choice(alphabet)
             # avoid repetitions

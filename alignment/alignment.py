@@ -207,7 +207,6 @@ def trace_alignment(a_dfa_aug: Dfa, trace_split: Union[Trace, TraceSplit]):
     if alignment is None:
         raise CounterfactualNotFound("No best path found")
     printd(f"Alignment is: {[print_action(a) for a in alignment]}")
-    # print("Alignments is: ", [f"{act_str(decode_action(a)[0])}_{decode_action(a)[1]}" for a in alignment])
     # planning_aut_to_constraint_aut(a_dfa_aug)
     aligned_trace = align(alignment)
     aligned_accepts = run_automata(a_dfa_aug, aligned_trace)

@@ -116,9 +116,6 @@ class CategorizedGeneticStrategy(GeneticStrategy):
                 )  # [0,MAX_LENGTH] if not normalized, [0,1] if normalized
                 cat_dist = 1 - intersection_weighted_ndcg(ys, y_primes[n_i])
 
-                # print(f"Seq dist: {seq_dist}")
-                # print(f"Cat dist: {cat_dist}")
-
                 self_ind = self_indicator(
                     self.input_seq, candidate_seq
                 )  # 0 if different, inf if equal
@@ -132,7 +129,6 @@ class CategorizedGeneticStrategy(GeneticStrategy):
                 )
                 fitnesses.append(cost)
 
-        # print(f"[DEBUG] Fitnesses: {list(round(x[0], 3) for x in sorted(fitnesses))[:20]}")
         return fitnesses
 
     def generate(self) -> CategorizedDataset:  # type: ignore

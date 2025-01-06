@@ -33,9 +33,7 @@ class ExtendedBERT4Rec(BERT4Rec):
         item_seq = interaction[self.ITEM_SEQ]
         item_seq_len = interaction[self.ITEM_SEQ_LEN]
 
-        # print(f"DEBUG: item_seq: {item_seq}, \n item_seq_len: {item_seq_len}")
         item_seq = self.reconstruct_test_data(item_seq, item_seq_len)
-        # print(f"DEBUG: Reconstructed item_seq: {item_seq}")
         seq_output = self.forward(item_seq)
         seq_output = self.gather_indexes(
             seq_output, item_seq_len - 1
@@ -53,13 +51,9 @@ class ExtendedBERT4Rec(BERT4Rec):
             item_seq_len = (item_seq != PADDING_CHAR).sum(-1).to(torch.int64)
             item_seq = replace_padding(item_seq, PADDING_CHAR, 0).to(torch.int64)
 
-            # print(f"DEBUG: item_seq: {item_seq}, \n item_seq_len: {item_seq_len} with shapes: {item_seq.shape}, {item_seq_len.shape}")
-
             # Shifts sequence by 1 and adds a mask token (NumItems+1) to the
             # last valid position (before padding)
             item_seq = self.reconstruct_test_data(item_seq, item_seq_len)
-            # print(f"DEBUG: Reconstructed item_seq: {item_seq}")
-
             seq_output = self.forward(
                 item_seq
             )  # [Batch_size B, max_length M, hidden_size H] (example torch.Size([1, 50, 64]))

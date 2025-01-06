@@ -53,7 +53,6 @@ def get_target_states(dfa: Dfa, leftover_trace: Sequence[int]):
             curr_state = curr_state.transitions[c]
         if curr_state in accepting_states:
             final_states.add(state)
-        # print(f"[DEBUG] state {state.state_id} reached {curr_state.state_id} after trace {leftover_trace}")
     return final_states
 
 
@@ -247,7 +246,6 @@ def a_star(
         candidate_states: Set[int] = set(state.transitions)
         if (state.state_id, curr_char) in visited:
             candidate_states -= visited[(state.state_id, curr_char)]
-        # print(f"All transitions: {len(state.transitions.items())}, pruned: {len(candidate_states)}")
         for action in candidate_states:
             action_type, e = decode_action(action)
             target = state.transitions[action]

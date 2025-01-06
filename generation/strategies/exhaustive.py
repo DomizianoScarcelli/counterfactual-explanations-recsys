@@ -61,9 +61,6 @@ class ExhaustiveStrategy(GenerationStrategy):
                 result_xs = torch.cat((result_xs, diff_x_primes))
                 result_out = torch.cat((result_out, diff_out_primes))
 
-        print(result_xs.shape)
-        print(result_out.shape)
-
         return [
             (x.to(torch.int16), int(label.item()))
             for x, label in zip(result_xs, result_out)

@@ -6,6 +6,7 @@ from deap.algorithms import tools
 from deap.tools.support import deepcopy
 from tqdm import tqdm
 
+from config import ConfigParams
 from constants import MAX_LENGTH
 from generation.utils import clone
 from utils_classes.Split import Split
@@ -22,7 +23,6 @@ def split_population(population: list, split: Optional[Split]):
         assert isinstance(end, int)
 
         # Modify the individual in place by trimming it to the desired range
-        # print(f"[DEBUG] start and middle are: ", start, middle)
         middle_clone = ind[start : start + middle].copy()
         assert (
             len(middle_clone) > 0
@@ -101,37 +101,17 @@ def eaSimpleBatched(
         disable=not pbar,
         leave=False,
     ):
-        # print(f"Length before split: {[len(ind) for ind in population]}")
-
         assert all(
             len(ind) <= MAX_LENGTH for ind in population
         ), f"At gen {gen} there are individuals with length > max: {[len(ind) for ind in population if len(ind) > MAX_LENGTH ]}"
 
         split_population(population, split)
 
-        # assert all(
-        #     len(ind) > 0 for ind in population
-        # ), f"[DEBUG gen: {gen}] AFTER POP SPLIT: population must not contains empty sequences!"
-
-        # print(f"Length after split: {[len(ind) for ind in population]}")
-        # print(f"Ind len:", [len(ind) for ind in population])
         # Select and vary the next generation individuals
         offspring = toolbox.select(population, len(population))
         offspring = customVarAnd(offspring, toolbox, cxpb, mutpb)
 
-        # TODO: [DEBUG], remove
-        # assert all(
-        #     len(offspring[i]) <= MAX_LENGTH - og_lengths[i]
-        #     for i in range(len(offspring))
-        # ), f"{[(len(offspring[i]), og_lengths[i]) for i in range(len(offspring)) if not len(offspring[i]) <= MAX_LENGTH - og_lengths[i]]}"
-
         reconstruct_population(offspring, og_population, split)  # type: ignore
-
-        # TODO: [DEBUG], remove
-        # assert all(
-        #     MIN_LENGTH <= len(ind) <= MAX_LENGTH for ind in offspring
-        # ), f"{[len(ind) for ind in offspring if not MIN_LENGTH <= len(ind) <= MAX_LENGTH ]}"
-        # print(f"off len:", [len(ind) for ind in offspring])
 
         # Evaluate the individuals with an invalid fitness
         invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
@@ -172,28 +152,15 @@ def customVarAnd(population: list, toolbox, cxpb: float, mutpb: float):
 
     for i in range(1, len(offspring), 2):
         if random.random() < cxpb:
-            # print(
-            #     f"[DEBUG] Individuals chosen for crossover are: {offspring[i-1]} and {offspring[i]}"
-            # )
             offspring[i - 1], offspring[i] = toolbox.mate(
                 offspring[i - 1], offspring[i]
             )
             del offspring[i - 1].fitness.values, offspring[i].fitness.values
 
-    # assert all(
-    #     len(ind) > 0 for ind in offspring
-    # ), f"[DEBUG] BETWEEN CROSSOVER and MUTATIONS: population must not contains empty sequences!"
-
     for i in range(len(offspring)):
         if random.random() < mutpb:
-            # print(f"[DEBUG] i: {i}")
-            # print(f"[DEBUG] ind: {offspring[i]}")
             (offspring[i],) = toolbox.mutate(offspring[i])
             del offspring[i].fitness.values
-
-    # assert all(
-    #     len(ind) > 0 for ind in offspring
-    # ), f"[DEBUG] AFTER MUTATIONS: population must not contains empty sequences!"
 
     return offspring
 
@@ -218,12 +185,10 @@ def customCxTwoPoint(ind1, ind2, return_indices: bool = False):
     else:  # Swap the two cx points
         cxpoint1, cxpoint2 = cxpoint2, cxpoint1
 
-    # print(f"[DEBUG] ind1, ind2 BEFORE CROSSOVER: {ind1, ind2}")
     ind1[cxpoint1:cxpoint2], ind2[cxpoint1:cxpoint2] = (
         ind2[cxpoint1:cxpoint2],
         ind1[cxpoint1:cxpoint2],
     )
-    # print(f"[DEBUG] ind1, ind2 AFTER CROSSOVER: {ind1, ind2}")
 
     if return_indices:
         return (ind1, ind2), (cxpoint1, cxpoint2)

@@ -1,3 +1,4 @@
+from utils import printd
 import os
 from pathlib import Path
 from typing import List, Tuple, Union
@@ -8,6 +9,7 @@ from torch import Tensor
 
 from alignment.alignment import augment_constraint_automata
 from automata_learning.utils import load_automata
+from config import ConfigParams
 from generation.dataset.utils import load_dataset
 from type_hints import GoodBadDataset
 
@@ -30,16 +32,16 @@ def _generate_automata(
         The learned DFA which accepts good points and rejects bad points.
     """
     if Path(f"saved/saved_automatas/{save_path}").exists() and load_if_exists:
-        print("[INFO] Loaded existing automata")
+        printd("[INFO] Loaded existing automata", level=1)
         dfa = load_automata(save_path)
         return dfa
-    print(
+    printd(
         "[INFO] Existing automata not found, generating a new one based on the provided dataset"
     )
     dfa = run_RPNI(
         data=dataset,
         automaton_type="dfa",
-        print_info=True,
+        print_info=ConfigParams.DEBUG > 0,
         input_completeness="sink_state",
     )
     return dfa  # type: ignore
@@ -85,14 +87,14 @@ def learning_pipeline(source: List[Tensor] | List[int], dataset: GoodBadDataset)
     # NOTE: debug info about what the automata is doing
     good_label = dataset[0][0][1]
     bad_label = dataset[1][0][1]
-    print(
+    printd(
         f"[DEBUG INFO] Once inverted, the automata will accept traces with the label similar to {bad_label} (target), and reject labels similar to {good_label} (starting point)"
     )
     return a_dfa_aug
 
 
 if __name__ == "__main__":
-    print("Generating automata from saved dataset")
+    printd("Generating automata from saved dataset")
 
     # Remove non-determinism
     dataset = load_dataset(load_path=Path("saved/counterfactual_dataset.pickle"))

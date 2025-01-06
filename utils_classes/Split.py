@@ -97,28 +97,18 @@ class Split:
             A split coherent with the sequence where there aren't any None
             values.
         """
-        # print(
-        #     f"[DEBUG] split before nan parsing: {self.split}, seq length is: {len(seq)}"
-        # )
         # If None is present, it should appear in exactly two positions
         nans = [s for s in self.split if s is None]
         if len(nans) == 0:
-            # print("Split doesn't contain any None values, returning it")
             raise ValueError(f"Split doesn't contain any None values")
             return self
         if len(nans) == 1:
             self.parsed = True
             result = self._parse_single_nan(seq)
-            # print(
-            #     f"[DEBUG] split after nan parsing: {result}, seq length is: {len(seq)}"
-            # )
             return result
         if len(nans) == 2:
             self.parsed = True
             result = self._parse_double_nan(seq)
-            # print(
-            #     f"[DEBUG] split after nan parsing: {result}, seq length is: {len(seq)}"
-            # )
             return result
         else:
             raise ValueError(f"Cannot infer split with {len(nans)} None values")
@@ -170,7 +160,6 @@ class Split:
         assert len(executed) == start
         assert len(mutable) == middle
         assert len(fixed) == end
-        # print(f"[DEBUG] executed, mutable and fixed: {executed, mutable, fixed}")
         return executed, mutable, fixed
 
     def __len__(self) -> int:

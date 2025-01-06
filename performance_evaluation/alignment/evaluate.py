@@ -1,3 +1,4 @@
+from utils import printd
 from typing import Any, Dict, Generator, List, Optional
 
 from recbole.model.abstract_recommender import SequentialRecommender
@@ -109,8 +110,8 @@ def evaluate_alignment(
     target_categories = {cat2id[t] for t in target_cat}  # type: ignore
     target_preds = {k: [target_categories for _ in range(k)] for k in ks}
 
-    print(f"----RUN DEBUG-----")
-    print(f"Current Split: {split}")
+    printd(f"----RUN DEBUG-----")
+    printd(f"Current Split: {split}")
     try:
         aligned, cost, alignment = single_run(trimmed_source, dataset, split)
 
@@ -156,6 +157,6 @@ def evaluate_alignment(
         CounterfactualNotFound,
         SplitNotCoherent,
     ) as e:
-        print(f"run_full: Raised {type(e)}")
+        printd(f"run_full: Raised {type(e)}")
         log = log_error(i, error=error_messages[type(e)], ks=ks)
     return log

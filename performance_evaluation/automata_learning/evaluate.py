@@ -6,6 +6,7 @@ usable characters to the automa's alphabet, and compute the evaluation metrics
 by computing true/false positive/negatives on the good and bad points.
 """
 
+from utils import printd
 import json
 import warnings
 from pathlib import Path
@@ -121,7 +122,7 @@ def evaluate_all(
         temp_df = pd.concat([prev_df, new_row], ignore_index=True)
         if pk_exists(df=temp_df, primary_key=primary_key.copy(), consider_config=True):
             # TODO: this doesn't  work
-            print(
+            printd(
                 f"[{i}] Skipping source sequence {next_sequence} since it still exists in the log with the same config"
             )
             i += 1
@@ -129,7 +130,6 @@ def evaluate_all(
             continue
         else:
             dataset, interaction = next(datasets)
-            # print(f"[DEBUG] dataset is: {dataset}")
             source_sequence = preprocess_interaction(interaction)
             pbar.set_postfix_str(f"On sequence: {seq_tostr(next_sequence)}")
             assert isinstance(source_sequence, list) and (

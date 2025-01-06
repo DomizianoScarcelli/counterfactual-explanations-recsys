@@ -1,3 +1,4 @@
+from utils import printd
 from pathlib import Path
 
 import torch
@@ -21,8 +22,8 @@ def generate_model(config: Config) -> SequentialRecommender:
         The model.
     """
     train_data, _, _ = get_dataloaders(config)
-    checkpoint_file = (
-        Path(f"saved/{ConfigParams.MODEL.value}_{ConfigParams.DATASET.value}.pth")
+    checkpoint_file = Path(
+        f"saved/{ConfigParams.MODEL.value}_{ConfigParams.DATASET.value}.pth"
     )
 
     if config.model == RecModel.BERT4Rec.value:
@@ -41,7 +42,7 @@ def generate_model(config: Config) -> SequentialRecommender:
 def get_config(
     dataset: RecDataset, model: RecModel, save_dataset: bool = False
 ) -> Config:
-    print(f"Loaded dataset: {dataset}")
+    printd(f"Loaded dataset: {dataset}", level=1)
 
     parameter_dict_ml1m = {
         "load_col": {"inter": ["user_id", "item_id", "rating", "timestamp"]},

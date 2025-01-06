@@ -1,3 +1,5 @@
+from utils import printd
+from utils_classes.generators import InteractionGenerator
 import json
 import os
 from pathlib import Path
@@ -47,7 +49,20 @@ def run_switcher(
         if ConfigParams.TARGET_CAT
         else [[cat] for cat in cat2id if cat != "unknown"]
     )  # type: ignore
-    for target in tqdm(targets, desc=f"Evaluating on targets"):
+    start_i, end_i = range_i
+    if end_i is None:
+        temp_int = InteractionGenerator()
+        end_i = sum(1 for _ in temp_int)
+
+    pbar = tqdm(
+        desc=f"Evaluating {end_i-start_i} sequences on {len(targets)} targets and {len(splits) if splits is not None else 1} splits",
+        total=len(targets)
+        * (end_i - start_i)
+        * (len(splits) if splits is not None else 1),
+    )
+
+    for target in targets:
+        pbar.set_postfix_str(f"Target: {target}")
         log: DataFrame = DataFrame({})
         if save_path and save_path.exists():
             log = pd.read_csv(save_path)
@@ -55,30 +70,33 @@ def run_switcher(
         if mode == "alignment":
             run_generator = run_alignment(
                 target_cat=target,
-                start_i=range_i[0],
-                end_i=range_i[1],
+                start_i=start_i,
+                end_i=end_i,
                 splits=splits,  # type: ignore
                 use_cache=use_cache,
                 ks=ConfigParams.TOPK,
                 prev_df=log,
+                pbar=pbar,
             )
         elif mode == "genetic":
             run_generator = run_genetic(
                 target_cat=target,
-                start_i=range_i[0],
-                end_i=range_i[1],
+                start_i=start_i,
+                end_i=end_i,
                 split=splits[0] if splits and len(splits) == 1 else None,  # type: ignore
                 prev_df=log,
+                pbar=pbar,
             )  # NOTE: splits can be used in the genetic only if just a single one is used, otherwise each split would require a different dataset generation
         elif mode == "all":
             run_generator = run_all(
                 target_cat=target,
-                start_i=range_i[0],
-                end_i=range_i[1],
+                start_i=start_i,
+                end_i=end_i,
                 splits=splits,  # type: ignore
                 use_cache=use_cache,
                 ks=ConfigParams.TOPK,
                 prev_df=log,
+                pbar=pbar,
             )
         else:
             raise ValueError(f"Mode '{mode}' not supported")
@@ -87,7 +105,7 @@ def run_switcher(
             if not isinstance(runs, list):
                 runs = [runs]
             for run in runs:
-                print(f"[DEBUG] Run is:", run)
+                printd(f"[DEBUG] Run is:", run)
                 if save_path:
                     if run["i"] is None:
                         continue
@@ -199,7 +217,6 @@ class CLI:
                 metrics=stats_metrics,
                 filter=filter,
             )
-            print(json.dumps(stats, indent=2))
             return stats
 
         if what == "generation":

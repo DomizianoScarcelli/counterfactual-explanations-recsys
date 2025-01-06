@@ -1,3 +1,4 @@
+from utils import printd
 import os
 import pickle
 from collections import deque
@@ -11,7 +12,7 @@ from torch import Tensor
 def save_automata(automata, save_path):
     with open(Path(f"saved_automatas/{save_path}"), "wb") as f:
         pickle.dump(automata, f)
-        print(f"Automata saved at {save_path}")
+        printd(f"Automata saved at {save_path}")
 
 
 def load_automata(load_path):

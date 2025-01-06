@@ -1,3 +1,4 @@
+from utils import printd
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -22,7 +23,7 @@ def preprocess_interaction(
     try:
         source_gt = oracle(source_sequence).argmax(-1).item()
     except IndexError as e:
-        print("IndexError on sequence ", source_sequence)
+        printd("IndexError on sequence ", source_sequence)
         raise e
     source_sequence = trim(source_sequence.squeeze(0)).tolist()
     return source_sequence, source_gt
@@ -122,9 +123,6 @@ def log_run(
             new_df = new_df.drop(columns=["_merge"])
         else:
             return prev_df
-    # if not prev_df.empty:
-    #     print(f"Prev_df:", prev_df.iloc[0])
-    # print(f"New_df:", new_df.iloc[0])
     prev_df = pd.concat([prev_df, new_df], ignore_index=True)
     prev_df.to_csv(save_path, index=False)
     return prev_df

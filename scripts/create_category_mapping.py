@@ -23,7 +23,6 @@ def create_category_mapping():
     )
     if not dataset_path.exists():
         # Generate the dataset
-        print(f"")
         raise ValueError(
             f"Dataset {ConfigParams.DATASET.value} not found, make sure to download the .zip from https://drive.google.com/drive/folders/1ahiLmzU7cGRPXf5qGMqtAChte2eYp9gI and unzip it in the dataset/ directory"
         )

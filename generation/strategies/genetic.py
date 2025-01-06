@@ -3,23 +3,35 @@ import random
 from typing import Any, Callable, List, Optional
 
 import numpy as np
+from recbole.config import Config
 import torch
 from deap import base, creator, tools
 from torch import Tensor
 
 from config import ConfigParams
 from constants import MAX_LENGTH, MIN_LENGTH
-from generation.extended_ea_algorithms import (customCxTwoPoint,
-                                               customSelTournament,
-                                               eaSimpleBatched)
-from generation.mutations import (ALL_MUTATIONS, AddMutation, DeleteMutation,
-                                  Mutation, contains_mutation, remove_mutation)
+from generation.extended_ea_algorithms import (
+    customCxTwoPoint,
+    customSelTournament,
+    eaSimpleBatched,
+)
+from generation.mutations import (
+    ALL_MUTATIONS,
+    AddMutation,
+    DeleteMutation,
+    Mutation,
+    contains_mutation,
+    remove_mutation,
+)
 from generation.strategies.abstract_strategy import GenerationStrategy
 from generation.utils import _evaluate_generation, clone
 from models.utils import pad_batch, trim
 from type_hints import Dataset
-from utils_classes.distances import (edit_distance, jensen_shannon_divergence,
-                                     self_indicator)
+from utils_classes.distances import (
+    edit_distance,
+    jensen_shannon_divergence,
+    self_indicator,
+)
 from utils_classes.Split import Split
 
 
@@ -34,7 +46,7 @@ class GeneticStrategy(GenerationStrategy):
         generations: int = ConfigParams.GENERATIONS,
         good_examples: bool = True,
         halloffame_ratio: float = 0.1,
-        verbose: bool = True,
+        verbose: bool = ConfigParams.DEBUG > 0,
         split: Optional[Split] = None,
     ):
         super().__init__(
@@ -178,7 +190,6 @@ class GeneticStrategy(GenerationStrategy):
                 )
                 fitnesses.append(cost)
 
-        # print(f"[DEBUG] Fitnesses: {list(sorted(fitnesses))}")
         return fitnesses
 
     def generate(self) -> Dataset:
