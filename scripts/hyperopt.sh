@@ -11,22 +11,31 @@ similarity_threshold_options=(0.7 0.5)
 # Calculate the total number of iterations
 total_iterations=$(( ${#crossover_prob_options[@]} * ${#mutation_prob_options[@]} * ${#fitness_alpha_options[@]} * ${#generations_options[@]} * ${#pop_size_options[@]} * ${#similarity_threshold_options[@]} ))
 
-# Check if an argument was provided
-filter=$1  # Accept the first argument as the filter
-if [[ -z "$filter" ]]; then
-    filter="all"
-elif [[ "$filter" != "odd" && "$filter" != "even" ]]; then
-    echo "Invalid argument: $filter. Use 'odd', 'even', or leave empty for all iterations."
+# Check if arguments were provided
+start=$1
+end=$2
+
+if [[ -z "$start" || -z "$end" ]]; then
+    echo "Usage: $0 <start_index> <end_index>"
+    echo "Both <start_index> and <end_index> must be integers between 1 and $total_iterations."
     exit 1
 fi
 
-# Determine the behavior based on the filter
-is_odd=-1  # Default: run all iterations
-if [[ "$filter" == "odd" ]]; then
-    is_odd=1
-elif [[ "$filter" == "even" ]]; then
-    is_odd=0
+# Validate that start and end are integers
+if ! [[ "$start" =~ ^[0-9]+$ && "$end" =~ ^[0-9]+$ ]]; then
+    echo "Error: Both <start_index> and <end_index> must be integers."
+    exit 1
 fi
+
+# Validate the range
+if (( start < 1 || end < 1 || start > total_iterations || end > total_iterations || start > end )); then
+    echo "Error: Invalid range. Ensure 1 <= start_index <= end_index <= $total_iterations."
+    exit 1
+fi
+
+# Adjust indices to be zero-based for the loop
+start=$((start - 1))
+end=$((end - 1))
 
 # Initialize iteration counter
 iteration=0
@@ -41,13 +50,13 @@ for crossover_prob in "${crossover_prob_options[@]}"; do
                         # Increment the iteration counter
                         ((iteration++))
 
-                        # Skip iterations based on the filter
-                        if [[ "$is_odd" -ne -1 && $((iteration % 2)) -ne "$is_odd" ]]; then
+                        # Skip iterations outside the specified range
+                        if (( iteration < start + 1 || iteration > end + 1 )); then
                             continue
                         fi
 
                         # Print progress
-                        echo "Iteration $iteration of $total_iterations (Executing $filter iterations)"
+                        echo "Iteration $iteration of $total_iterations (Executing range $((start + 1)) to $((end + 1)))"
 
                         # Define the JSON configuration in a variable
                         config_json=$(cat <<EOF
@@ -73,10 +82,10 @@ EOF
                         # Run the script with the JSON string as the --config-dict argument
                         python -m cli evaluate alignment \
                             --use-cache=False \
-                            --save-path="results/evaluate/alignment/alignment_hyperopt_$filter.csv" \
+                            --save-path="results/evaluate/alignment/alignment_hyperopt_range_${start}_${end}.csv" \
                             --config_dict="$config_json" \
                             --mode="all" \
-                            --range-i="(0, 200)" \
+                            --range-i="(0, 100)" \
                             --splits="[(None, 5, 0), (None, 10, 0), (None, 5, 5), (None, 10, 5)]"
                     done
                 done
