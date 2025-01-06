@@ -60,9 +60,10 @@ def run_switcher(
         * (end_i - start_i)
         * (len(splits) if splits is not None else 1),
     )
+    og_desc = pbar.desc
 
     for target in targets:
-        pbar.set_postfix_str(f"Target: {target}")
+        pbar.set_description_str(og_desc + f" | Target: {target}")
         log: DataFrame = DataFrame({})
         if save_path and save_path.exists():
             log = pd.read_csv(save_path)
