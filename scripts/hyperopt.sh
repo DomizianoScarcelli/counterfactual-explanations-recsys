@@ -82,7 +82,7 @@ EOF
                         # Run the script with the JSON string as the --config-dict argument
                         python -m cli evaluate alignment \
                             --use-cache=False \
-                            --save-path="results/evaluate/alignment/alignment_hyperopt_range_${start}_${end}.csv" \
+                            --save-path="results/evaluate/alignment/alignment_hyperopt.csv" \
                             --config_dict="$config_json" \
                             --mode="all" \
                             --range-i="(0, 100)" \
