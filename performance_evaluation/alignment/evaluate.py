@@ -83,6 +83,7 @@ def log_error(i: int, error: str, ks: List[int]) -> Dict[str, Any]:
     log = _init_log(ks)
     log["i"] = i
     log["error"] = error
+    log["gen_target_y@1"] = None
     return log
 
 
