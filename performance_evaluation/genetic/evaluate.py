@@ -1,3 +1,4 @@
+from utils_classes.Split import Split
 import warnings
 from typing import Any, Dict, List
 
@@ -72,11 +73,19 @@ def _init_log(ks: List[int]) -> Dict[str, Any]:
     return run_log
 
 
-def log_error(i: int, error: str, ks: List[int]) -> Dict[str, Any]:
+def log_error(
+    i: int, error: str, ks: List[int], split: Split, target_cat: List[str]
+) -> Dict[str, Any]:
+    from performance_evaluation.alignment.evaluate import _init_log as align_init_log
+
     log = _init_log(ks)
+    align_log = align_init_log(ks)
     log["i"] = i
     log["gen_error"] = error
-    return log
+    log["split"] = split
+    log["gen_target_y@1"] = str({cat2id[cat] for cat in target_cat})
+    align_log.update(log)
+    return align_log
 
 
 def evaluate_genetic(

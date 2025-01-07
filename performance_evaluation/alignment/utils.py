@@ -1,13 +1,13 @@
 from utils import printd
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, Literal
 
 import pandas as pd
 from pandas import DataFrame
 from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
-from torch import Tensor
+from torch import Tensor, Value
 
 from config import ConfigParams
 from generation.dataset.utils import interaction_to_tensor
@@ -57,11 +57,12 @@ def pk_exists(
 
 
 def log_run(
-    prev_df: DataFrame,
+    prev_df: Optional[DataFrame],
     log: Dict,
     save_path: Path | str,
     primary_key: List[str] = [],
     add_config: bool = True,
+    mode: Literal["override", "append"] = "override",
 ) -> DataFrame:
     """
     Log the values in the log dict, concatenating them to a previous log,
@@ -83,6 +84,9 @@ def log_run(
 
     if isinstance(save_path, str):
         save_path = Path(save_path)
+
+    if prev_df is None:
+        prev_df = pd.DataFrame({})
     # Create a dictionary with input parameters as columns
     data = {}
     length = 1
@@ -101,14 +105,13 @@ def log_run(
         primary_key += list(configs.keys())
         primary_key.remove("timestamp")
 
-    new_df = pd.DataFrame(data)
+    new_df = pd.DataFrame(data).astype(str)
     # Remove the fields in primary key that do not exist in prev_df, otherwise key error
     primary_key = [field for field in primary_key if field in prev_df.columns]
 
     # Check for duplicates based on primary_key
-    if not prev_df.empty:
+    if not prev_df.empty and mode == "override":
         # find records in `new_df` that are not already in `prev_df` based on primary_key
-        new_df = new_df.astype(str)
         prev_df = prev_df.astype(str)
         combined = pd.merge(new_df, prev_df, on=primary_key, how="left", indicator=True)
         new_records = combined[combined["_merge"] == "left_only"]
@@ -123,8 +126,15 @@ def log_run(
             new_df = new_df.drop(columns=["_merge"])
         else:
             return prev_df
-    prev_df = pd.concat([prev_df, new_df], ignore_index=True)
-    prev_df.to_csv(save_path, index=False)
+    if mode == "override":
+        prev_df = pd.concat([prev_df, new_df], ignore_index=True)
+        prev_df.to_csv(save_path, index=False)
+    elif mode == "append":
+        new_df.to_csv(save_path, index=False, header=False, mode="a")
+    else:
+        raise ValueError(
+            f"Mode {mode} not supported, choose between 'override' and 'append'"
+        )
     return prev_df
 
 

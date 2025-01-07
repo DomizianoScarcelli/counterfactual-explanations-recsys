@@ -113,7 +113,13 @@ def run_genetic(
             dataset, interaction = next(datasets)
         except EmptyDatasetError as e:
             printd(f"run_genetic: Raised {type(e)}")
-            log = log_genetic_error(i, error=error_messages[type(e)], ks=ks)
+            log = log_genetic_error(
+                i,
+                error=error_messages[type(e)],
+                ks=ks,
+                split=split,
+                target_cat=target_cat,
+            )
             datasets.skip()
             datasets.generator.match_indices()  # type: ignore
             yield log
@@ -193,6 +199,7 @@ def run_alignment(
         if len(new_splits) == 0:
             datasets.skip()
             continue
+        splits = new_splits
         assert datasets.index == i, f"{datasets.index} != {i}"
         assert len(datasets.get_times()) == i, f"{len(datasets.get_times())} != {i}"
 
@@ -203,10 +210,19 @@ def run_alignment(
             return
         except EmptyDatasetError as e:
             printd(f"run_full: Raised {type(e)}")
-            log = log_alignment_error(i, error=error_messages[type(e)], ks=ks)
+            logs = []
+            for split in splits:
+                log = log_alignment_error(
+                    i,
+                    error=error_messages[type(e)],
+                    ks=ks,
+                    split=split,
+                    target_cat=target_cat,
+                )
+                logs.append(log)
             datasets.skip()
             datasets.generator.match_indices()  # type: ignore
-            yield log
+            yield logs
             if pbar:
                 pbar.update(1)
             continue
@@ -264,10 +280,6 @@ def run_all(
 
     assert splits is not None
 
-    if end_i is None:
-        temp_int = InteractionGenerator()
-        end_i = sum(1 for _ in temp_int)
-
     assert (
         start_i < end_i
     ), f"Start index must be strictly less than end index: {start_i} < {end_i}"
@@ -301,10 +313,19 @@ def run_all(
             dataset, interaction = next(datasets)
         except EmptyDatasetError as e:
             printd(f"run_full: Raised {type(e)}")
-            alignment_log = log_alignment_error(i=i, error=error_messages[type(e)], ks=ks)
+            logs = []
+            for split in splits:
+                alignment_log = log_alignment_error(
+                    i=i,
+                    error=error_messages[type(e)],
+                    ks=ks,
+                    split=split,
+                    target_cat=target_cat,
+                )
+                logs.append(alignment_log)
             datasets.skip()
             datasets.generator.match_indices()  # type: ignore
-            yield alignment_log
+            yield logs
             if pbar:
                 pbar.update(1)
             continue

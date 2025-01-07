@@ -50,11 +50,13 @@ def single_run(
 
 
 def _init_log(ks: List[int]) -> Dict[str, Any]:
+
     log_at_ks = [
         {
             f"aligned_gt@{k}": None,
             f"gt@{k}": None,
             f"preds_gt@{k}": None,
+            f"score@{k}": None,
         }
         for k in ks
     ]
@@ -79,12 +81,20 @@ def _init_log(ks: List[int]) -> Dict[str, Any]:
     return run_log
 
 
-def log_error(i: int, error: str, ks: List[int]) -> Dict[str, Any]:
+def log_error(
+    i: int, error: str, ks: List[int], split: Split, target_cat: List[str]
+) -> Dict[str, Any]:
+    from performance_evaluation.genetic.evaluate import _init_log as gen_init_log
+
     log = _init_log(ks)
+    gen_log = gen_init_log(ks)
     log["i"] = i
-    log["error"] = error
-    log["gen_target_y@1"] = None
-    return log
+    log["split"] = split
+    log["gen_target_y@1"] = str({cat2id[cat] for cat in target_cat})
+    gen_log.update(log)
+    gen_log.update(ConfigParams.configs_dict())
+    gen_log["error"] = error
+    return gen_log
 
 
 def evaluate_alignment(
@@ -164,5 +174,7 @@ def evaluate_alignment(
         SplitNotCoherent,
     ) as e:
         printd(f"run_full: Raised {type(e)}")
-        log = log_error(i, error=error_messages[type(e)], ks=ks)
+        log = log_error(
+            i, error=error_messages[type(e)], ks=ks, split=split, target_cat=target_cat
+        )
     return log

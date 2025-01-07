@@ -110,11 +110,12 @@ def run_switcher(
                 if save_path:
                     if run["i"] is None:
                         continue
-                    log = log_run(
-                        prev_df=log,
+                    log_run(
+                        prev_df=None,
                         log=run,
                         save_path=save_path,
                         primary_key=["i", "source", "split", "gen_target_y@1"],
+                        mode="append",
                     )
                 else:
                     print(json.dumps(run, indent=2))
