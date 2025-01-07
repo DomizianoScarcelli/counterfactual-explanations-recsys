@@ -64,6 +64,7 @@ def log_run(
     primary_key: List[str] = [],
     add_config: bool = True,
     mode: Literal["override", "append"] = "override",
+    columns: Optional[List[str]] = None,
 ) -> DataFrame:
     """
     Log the values in the log dict, concatenating them to a previous log,
@@ -108,6 +109,7 @@ def log_run(
         primary_key.remove("timestamp")
 
     new_df = pd.DataFrame(data).astype(str)
+
     # Remove the fields in primary key that do not exist in prev_df, otherwise key error
     primary_key = [field for field in primary_key if field in prev_df.columns]
 
@@ -132,6 +134,11 @@ def log_run(
         prev_df = pd.concat([prev_df, new_df], ignore_index=True)
         prev_df.to_csv(save_path, index=False)
     elif mode == "append":
+        if columns:
+            missing_columns = [col for col in columns if col not in new_df.columns]
+            for col in missing_columns:
+                new_df[col] = None
+            new_df = new_df[columns]
         new_df.to_csv(
             save_path, index=False, header=not os.path.exists(save_path), mode="a"
         )

@@ -85,6 +85,7 @@ def log_error(
     log["split"] = split
     log["gen_target_y@1"] = str({cat2id[cat] for cat in target_cat})
     align_log.update(log)
+
     return align_log
 
 
