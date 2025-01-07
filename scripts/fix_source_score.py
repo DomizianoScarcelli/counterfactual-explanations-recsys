@@ -10,6 +10,7 @@ def fix_source_score():
     original_columns = list(df.columns)
 
     ks = [1, 5, 10, 20]
+
     def fix(row):
         for k in ks:
             target_preds = row[f"gen_target_y@{k}"]
@@ -17,7 +18,9 @@ def fix_source_score():
                 target_preds = ast.literal_eval(target_preds)
                 if isinstance(target_preds, tuple):
                     target_preds = target_preds[0]
-                assert isinstance(target_preds, set), f"target_preds wrong type, {type(target_preds)}, {target_preds}"
+                assert isinstance(
+                    target_preds, set
+                ), f"target_preds wrong type, {type(target_preds)}, {target_preds}"
             except ValueError:
                 print(f"target preds is not valid", target_preds)
                 continue
@@ -26,7 +29,9 @@ def fix_source_score():
                 source_preds = ast.literal_eval(source_preds)
                 if isinstance(source_preds, tuple):
                     source_preds = source_preds[0]
-                assert isinstance(source_preds, set), f"target_preds wrong type, {type(source_preds)}, {source_preds}"
+                assert isinstance(
+                    source_preds, set
+                ), f"target_preds wrong type, {type(source_preds)}, {source_preds}"
             except ValueError:
                 print(f"Source preds is not valid", source_preds)
                 continue
@@ -34,12 +39,15 @@ def fix_source_score():
             row[f"source_score@{k}"] = str(source_score)
         return row
 
-    tqdm.pandas() 
+    tqdm.pandas()
     df = df.progress_apply(fix, axis=1)
     df = df.astype(str)
-    df.to_csv("results/evaluate/alignment/alignment_hyperopt_updated.csv", columns=original_columns)
+    df.to_csv(
+        "results/evaluate/alignment/alignment_hyperopt_updated.csv",
+        columns=original_columns,
+        index=False,
+    )
 
 
 if __name__ == "__main__":
     fix_source_score()
-
