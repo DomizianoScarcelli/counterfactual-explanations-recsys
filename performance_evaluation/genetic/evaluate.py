@@ -160,9 +160,7 @@ def evaluate_genetic(
         log["i"] = i
         log["gen_source"] = seq_tostr(trimmed_source)
         #
-        _, source_score = equal_ys(
-            source_preds[k], counterfactual_preds[k], return_score=True
-        )
+        _, source_score = equal_ys(target_preds[k], source_preds[k], return_score=True)
         _, counter_score = equal_ys(
             target_preds[k], counterfactual_preds[k], return_score=True
         )

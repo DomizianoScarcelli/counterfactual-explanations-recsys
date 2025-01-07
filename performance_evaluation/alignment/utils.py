@@ -2,6 +2,7 @@ from utils import printd
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union, Literal
+import os
 
 import pandas as pd
 from pandas import DataFrame
@@ -87,6 +88,7 @@ def log_run(
 
     if prev_df is None:
         prev_df = pd.DataFrame({})
+
     # Create a dictionary with input parameters as columns
     data = {}
     length = 1
@@ -130,7 +132,9 @@ def log_run(
         prev_df = pd.concat([prev_df, new_df], ignore_index=True)
         prev_df.to_csv(save_path, index=False)
     elif mode == "append":
-        new_df.to_csv(save_path, index=False, header=False, mode="a")
+        new_df.to_csv(
+            save_path, index=False, header=not os.path.exists(save_path), mode="a"
+        )
     else:
         raise ValueError(
             f"Mode {mode} not supported, choose between 'override' and 'append'"
