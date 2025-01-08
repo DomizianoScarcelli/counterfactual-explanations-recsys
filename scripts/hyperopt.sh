@@ -69,7 +69,8 @@ for crossover_prob in "${crossover_prob_options[@]}"; do
     "pop_size": $pop_size
   },
   "generation": {
-    "similarity_threshold": $similarity_threshold
+    "similarity_threshold": $similarity_threshold,
+    "ignore_genetic_split": True
   }
 }
 EOF

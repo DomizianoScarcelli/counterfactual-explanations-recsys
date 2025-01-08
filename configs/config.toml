@@ -18,6 +18,7 @@ include_sink = true         # Include sink state in the target states when doing
 [generation]
 strategy = "targeted"       # [exhaustive, genetic, genetic_categorized, targeted]
 similarity_threshold = 0.5  # threshold of similarity (between set of categories) above which two outputs are considered equal
+ignore_genetic_split = true
 
 # Settings for the evolutionary algorithm
 [evolution]

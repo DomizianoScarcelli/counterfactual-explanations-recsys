@@ -29,6 +29,7 @@ class SettingsConfig(TypedDict):
 class GenerationConfig(TypedDict):
     strategy: str
     similarity_threshold: float
+    ignore_genetic_split: bool
 
 
 class AutomataConfig(TypedDict):
@@ -123,6 +124,7 @@ class ConfigParams:
 
             cls.GENERATION_STRATEGY = config["generation"]["strategy"]
             cls.THRESHOLD = config["generation"]["similarity_threshold"]
+            cls.IGNORE_GEN_SPLIT = config["generation"]["ignore_genetic_split"]
 
             cls.GENERATIONS = config["evolution"]["generations"]
             cls.TARGET_CAT = config["evolution"]["target_cat"]
@@ -219,6 +221,7 @@ class ConfigParams:
             ]
             * length,
             "generation_strategy": [ConfigParams.GENERATION_STRATEGY] * length,
+            "ignore_genetic_split": [ConfigParams.IGNORE_GEN_SPLIT] * length,
             "jaccard_threshold": [ConfigParams.THRESHOLD] * length,
             "timestamp": [ConfigParams.TIMESTAMP] * length,
         }
