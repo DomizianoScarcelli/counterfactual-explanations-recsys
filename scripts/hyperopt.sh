@@ -4,9 +4,11 @@
 crossover_prob_options=(0.7)
 mutation_prob_options=(0.5)
 fitness_alpha_options=(0.5 0.7)
-generations_options=(10 20 30)
-pop_size_options=(2048 4096 8192 16384)
-similarity_threshold_options=(0.7 0.5)
+generations_options=(20 30)
+# pop_size_options=(2048 4096 8192 16384)
+pop_size_options=(8192 16384) #8192 seems better than lower values
+similarity_threshold_options=(0.5) #0.5 seems better than 0.7
+genetic_topk_options=(1) 
 
 # Calculate the total number of iterations
 total_iterations=$(( ${#crossover_prob_options[@]} * ${#mutation_prob_options[@]} * ${#fitness_alpha_options[@]} * ${#generations_options[@]} * ${#pop_size_options[@]} * ${#similarity_threshold_options[@]} ))
@@ -46,20 +48,21 @@ for crossover_prob in "${crossover_prob_options[@]}"; do
         for fitness_alpha in "${fitness_alpha_options[@]}"; do
             for generations in "${generations_options[@]}"; do
                 for pop_size in "${pop_size_options[@]}"; do
-                    for similarity_threshold in "${similarity_threshold_options[@]}"; do
-                        # Increment the iteration counter
-                        ((iteration++))
+                    for genetic_topk in "${genetic_topk_options[@]}"; do
+                        for similarity_threshold in "${similarity_threshold_options[@]}"; do
+                            # Increment the iteration counter
+                            ((iteration++))
 
-                        # Skip iterations outside the specified range
-                        if (( iteration < start + 1 || iteration > end + 1 )); then
-                            continue
-                        fi
+                            # Skip iterations outside the specified range
+                            if (( iteration < start + 1 || iteration > end + 1 )); then
+                                continue
+                            fi
 
-                        # Print progress
-                        echo "Iteration $iteration of $total_iterations (Executing range $((start + 1)) to $((end + 1)))"
+                            # Print progress
+                            echo "Iteration $iteration of $total_iterations (Executing range $((start + 1)) to $((end + 1)))"
 
-                        # Define the JSON configuration in a variable
-                        config_json=$(cat <<EOF
+                            # Define the JSON configuration in a variable
+                            config_json=$(cat <<EOF
 {
   "evolution": {
     "crossover_prob": $crossover_prob,
@@ -70,24 +73,26 @@ for crossover_prob in "${crossover_prob_options[@]}"; do
   },
   "generation": {
     "similarity_threshold": $similarity_threshold,
-    "ignore_genetic_split": True
+    "ignore_genetic_split": True,
+    "genetic_topk": $genetic_topk
   }
 }
 EOF
 )
 
-                        # Print the configuration being tested (for debugging)
-                        echo "Running script with configuration:"
-                        echo "$config_json"
+                            # Print the configuration being tested (for debugging)
+                            echo "Running script with configuration:"
+                            echo "$config_json"
 
-                        # Run the script with the JSON string as the --config-dict argument
-                        python -m cli evaluate alignment \
-                            --use-cache=False \
-                            --save-path="results/evaluate/alignment/alignment_hyperopt.csv" \
-                            --config_dict="$config_json" \
-                            --mode="all" \
-                            --range-i="(0, 100)" \
-                            --splits="[(None, 10, 0)]" 
+                            # Run the script with the JSON string as the --config-dict argument
+                            python -m cli evaluate alignment \
+                                --use-cache=False \
+                                --save-path="results/evaluate/alignment/alignment_hyperopt.csv" \
+                                --config_dict="$config_json" \
+                                --mode="all" \
+                                --range-i="(0, 100)" \
+                                --splits="[(None, 10, 0)]" 
+                            done
                     done
                 done
             done

@@ -38,7 +38,7 @@ class TargetedGeneticStrategy(GeneticStrategy):
         allowed_mutations: List[Mutation] = ALL_MUTATIONS,
         pop_size: int = ConfigParams.POP_SIZE,
         generations: int = ConfigParams.GENERATIONS,
-        k: int = min(ConfigParams.TOPK),  # NOTE: if this is 1, the results are better.
+        k: int = ConfigParams.GENETIC_TOPK,
         good_examples: bool = True,
         halloffame_ratio: float = 0.1,
         verbose: bool = ConfigParams.DEBUG > 0,

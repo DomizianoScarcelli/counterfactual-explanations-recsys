@@ -1,3 +1,4 @@
+from ctypes import alignment
 from utils import printd
 import warnings
 from typing import Any, Dict, Generator, List, Optional
@@ -28,25 +29,32 @@ warnings.simplefilter(action="ignore", category=RuntimeWarning)
 
 
 def skip_sequence(
-    i: int, target_cat: List[str], prev_df: Optional[DataFrame], split: tuple
+    i: int,
+    target_cat: List[str],
+    prev_df: Optional[DataFrame],
+    split: tuple,
+    alignment: bool = True,
 ):
     if prev_df is not None:
+        new_df = {
+            "i": [i],
+            "gen_target_y@1": str({cat2id[cat] for cat in target_cat}),
+        }
+        primary_key = ["i", "gen_target_y@1"]
+        if alignment:
+            new_df["split"] = str(split)
+            primary_key.append("split")
+        new_df.update(ConfigParams.configs_dict())
+
         future_df = pd.concat(
             [
                 prev_df,
-                pd.DataFrame(
-                    {
-                        "i": [i],
-                        "gen_target_y@1": str({cat2id[cat] for cat in target_cat}),
-                        "split": str(split),
-                        **ConfigParams.configs_dict(),
-                    }
-                ),
+                pd.DataFrame(new_df),
             ]
         )
         if pk_exists(
             future_df,
-            primary_key=["i", "gen_target_y@1", "split"],
+            primary_key=primary_key,
             consider_config=True,
         ):
             return True
@@ -100,7 +108,7 @@ def run_genetic(
         datasets.skip()
 
     for i in range(start_i, end_i):
-        if skip_sequence(i, target_cat, prev_df, split.split):
+        if skip_sequence(i, target_cat, prev_df, split.split, alignment=False):
             printd(
                 f"Skipping i: {i} with target {target_cat} and split {split} because already in the log..."
             )

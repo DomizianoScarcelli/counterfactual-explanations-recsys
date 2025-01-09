@@ -30,6 +30,7 @@ class GenerationConfig(TypedDict):
     strategy: str
     similarity_threshold: float
     ignore_genetic_split: bool
+    genetic_topk: int
 
 
 class AutomataConfig(TypedDict):
@@ -125,6 +126,7 @@ class ConfigParams:
             cls.GENERATION_STRATEGY = config["generation"]["strategy"]
             cls.THRESHOLD = config["generation"]["similarity_threshold"]
             cls.IGNORE_GEN_SPLIT = config["generation"]["ignore_genetic_split"]
+            cls.GENETIC_TOPK = config["generation"]["genetic_topk"]
 
             cls.GENERATIONS = config["evolution"]["generations"]
             cls.TARGET_CAT = config["evolution"]["target_cat"]
@@ -212,6 +214,7 @@ class ConfigParams:
             "include_sink": [ConfigParams.INCLUDE_SINK] * length,
             "mut_prob": [ConfigParams.MUT_PROB] * length,
             "crossover_prob": [ConfigParams.CROSSOVER_PROB] * length,
+            "genetic_topk": [ConfigParams.GENETIC_TOPK] * length,
             "mutation_params": [
                 (
                     ConfigParams.NUM_REPLACES,
