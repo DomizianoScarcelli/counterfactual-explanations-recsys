@@ -1,5 +1,5 @@
 #!vd -p
-{"sheet": null, "col": null, "row": null, "longname": "open-file", "input": "results/evaluate/alignment/alignment_hyperopt.csv", "keystrokes": "o", "comment": null}
+{"sheet": null, "col": "", "row": "", "longname": "open-file", "input": "results/evaluate/alignment/alignment_hyperopt.csv", "keystrokes": "o", "comment": null}
 {"sheet": "alignment_hyperopt", "col": "gen_cost", "row": "", "longname": "type-float", "input": "", "keystrokes": "%", "comment": "set type of current column to float"}
 {"sheet": "alignment_hyperopt", "col": "gen_dataset_time", "row": "", "longname": "type-float", "input": "", "keystrokes": "%", "comment": "set type of current column to float"}
 {"sheet": "alignment_hyperopt", "col": "gen_good_points_percentage", "row": "", "longname": "type-float", "input": "", "keystrokes": "%", "comment": "set type of current column to float"}
@@ -52,3 +52,6 @@
 {"sheet": "alignment_hyperopt", "col": "gen_score@20", "row": "", "longname": "go-leftmost", "input": "", "keystrokes": "gh", "comment": "go all the way to the left of sheet"}
 {"sheet": "alignment_hyperopt", "col": "gen_source", "row": "", "longname": "sort-desc", "input": "", "keystrokes": "]", "comment": "sort descending by current column; replace any existing sort criteria "}
 {"sheet": "alignment_hyperopt", "col": "gen_target_y@1", "row": "", "longname": "key-col", "input": "", "keystrokes": "!", "comment": "toggle current column as a key column"}
+{"sheet": "alignment_hyperopt", "col": "gen_gt@1", "row": "", "longname": "go-col-name", "input": "genetic_topk", "keystrokes": "zn", "comment": "go to next column with name matching string, case-insensitive"}
+{"sheet": "alignment_hyperopt", "col": "genetic_topk", "row": "", "longname": "key-col", "input": "", "keystrokes": "!", "comment": "toggle current column as a key column"}
+{"sheet": "alignment_hyperopt", "col": "mutation_params", "row": "", "longname": "key-col", "input": "", "keystrokes": "!", "comment": "toggle current column as a key column"}
