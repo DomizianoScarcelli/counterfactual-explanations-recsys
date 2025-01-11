@@ -82,7 +82,7 @@ def _init_log(ks: List[int]) -> Dict[str, Any]:
 
 
 def log_error(
-    i: int, error: str, ks: List[int], split: Split, target_cat: List[str]
+    i: int, error: str, ks: List[int], split: Split, target_cat: str
 ) -> Dict[str, Any]:
     from performance_evaluation.genetic.evaluate import _init_log as gen_init_log
 
@@ -90,7 +90,7 @@ def log_error(
     gen_log = gen_init_log(ks)
     log["i"] = i
     log["split"] = split
-    log["gen_target_y@1"] = str({cat2id[cat] for cat in target_cat})
+    log["gen_target_y@1"] = str({cat2id[target_cat]})
     gen_log.update(log)
     gen_log.update(ConfigParams.configs_dict())
     gen_log["error"] = error
@@ -103,7 +103,7 @@ def evaluate_alignment(
     source: Tensor,
     model: SequentialRecommender,
     ks: List[int],
-    target_cat: List[str],
+    target_cat: str,
     split: Split,
 ) -> Dict[str, Any]:
     log = _init_log(ks)
@@ -123,7 +123,7 @@ def evaluate_alignment(
         )
         for k in ks
     }
-    target_categories = {cat2id[t] for t in target_cat}  # type: ignore
+    target_categories = {cat2id[target_cat]}
     target_preds = {k: [target_categories for _ in range(k)] for k in ks}
 
     printd(f"----RUN DEBUG-----")

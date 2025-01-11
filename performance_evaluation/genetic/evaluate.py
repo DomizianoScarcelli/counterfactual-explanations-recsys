@@ -74,7 +74,7 @@ def _init_log(ks: List[int]) -> Dict[str, Any]:
 
 
 def log_error(
-    i: int, error: str, ks: List[int], split: Split, target_cat: List[str]
+    i: int, error: str, ks: List[int], split: Split, target_cat: str
 ) -> Dict[str, Any]:
     from performance_evaluation.alignment.evaluate import _init_log as align_init_log
 
@@ -83,7 +83,7 @@ def log_error(
     log["i"] = i
     log["gen_error"] = error
     log["split"] = split
-    log["gen_target_y@1"] = str({cat2id[cat] for cat in target_cat})
+    log["gen_target_y@1"] = str({cat2id[target_cat]})
     align_log.update(log)
 
     return align_log
@@ -95,7 +95,7 @@ def evaluate_genetic(
     dataset: GoodBadDataset,
     source: Tensor,
     model: SequentialRecommender,
-    target_cat: List[str],
+    target_cat: str,
     ks: List[int],
 ) -> Dict[str, Any]:
     """Given the ground truth and the preds, it returns a dictionary containing the evaluation metrics."""
@@ -114,7 +114,7 @@ def evaluate_genetic(
         for k in ks
     }
 
-    target_categories = {cat2id[t] for t in target_cat}  # type: ignore
+    target_categories = {cat2id[target_cat]}
     target_preds = {k: [target_categories for _ in range(k)] for k in ks}
 
     # Compute dataset metrics
@@ -122,7 +122,7 @@ def evaluate_genetic(
         good, bad = dataset
         bad_perc = len(bad) / ConfigParams.POP_SIZE
         good_perc = len(good) / ConfigParams.POP_SIZE
-        target_cats = [set(cat2id[cat] for cat in target_cat) for _ in range(min(ks))]
+        target_cats = [{cat2id[target_cat]} for _ in range(min(ks))]
         if len(bad) != 0:
             _, (_, bad_mean_dist) = _evaluate_categorized_generation(
                 trimmed_source, bad, target_cats  # type: ignore

@@ -47,7 +47,7 @@ def run_switcher(
     targets: List[List[str]] = (
         ConfigParams.TARGET_CAT
         if ConfigParams.TARGET_CAT
-        else [[cat] for cat in cat2id if cat != "unknown"]
+        else [cat for cat in cat2id if cat != "unknown"]
     )  # type: ignore
     start_i, end_i = range_i
     if end_i is None:
@@ -66,7 +66,7 @@ def run_switcher(
         pbar.set_description_str(og_desc + f" | Target: {target}")
         log: DataFrame = DataFrame({})
         if save_path and save_path.exists():
-            log = pd.read_csv(save_path)
+            log = pd.read_csv(save_path, dtype=str)
 
         if mode == "alignment":
             run_generator = run_alignment(
@@ -117,7 +117,7 @@ def run_switcher(
                         save_path=save_path,
                         primary_key=["i", "source", "split", "gen_target_y@1"],
                         mode="append",
-                        columns=list(log.columns)
+                        columns=list(log.columns),
                     )
                 else:
                     print(json.dumps(run, indent=2))

@@ -50,6 +50,7 @@ def pk_exists(
     if consider_config:
         config_keys = list(ConfigParams.configs_dict().keys())
         config_keys.remove("timestamp")
+        config_keys.remove("target_cat")
         primary_key += config_keys
 
     df = df.copy()  # Avoid modifying the original DataFrame

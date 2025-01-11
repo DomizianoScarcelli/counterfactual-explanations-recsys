@@ -30,7 +30,7 @@ warnings.simplefilter(action="ignore", category=RuntimeWarning)
 
 def skip_sequence(
     i: int,
-    target_cat: List[str],
+    target_cat: str,
     prev_df: Optional[DataFrame],
     split: tuple,
     alignment: bool = True,
@@ -38,7 +38,7 @@ def skip_sequence(
     if prev_df is not None:
         new_df = {
             "i": [i],
-            "gen_target_y@1": str({cat2id[cat] for cat in target_cat}),
+            "gen_target_y@1": str({cat2id[target_cat]}),
         }
         primary_key = ["i", "gen_target_y@1"]
         if alignment:

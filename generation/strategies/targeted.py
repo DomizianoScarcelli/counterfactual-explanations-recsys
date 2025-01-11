@@ -32,7 +32,7 @@ class TargetedGeneticStrategy(GeneticStrategy):
     def __init__(
         self,
         input_seq: Tensor,
-        target: Set[int] | Set[str],
+        target: int | str,
         model: Callable,
         alphabet: List[int],
         allowed_mutations: List[Mutation] = ALL_MUTATIONS,
@@ -59,12 +59,8 @@ class TargetedGeneticStrategy(GeneticStrategy):
         )
         self.category_map = get_category_map()
         self.k = k
-        if all(isinstance(t, str) for t in target):
-            target = {cat2id[t] for t in target}  # type: ignore
-
-        assert all(
-            isinstance(t, int) for t in target
-        ), f"Something went wrong, target must be a set of int, not {target}"
+        if isinstance(target, str):
+            target = {cat2id[target]}
 
         self.target = target
 

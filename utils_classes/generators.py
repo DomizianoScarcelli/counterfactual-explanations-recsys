@@ -191,7 +191,7 @@ class DatasetGenerator(SkippableGenerator):
         limit_generation_to: Optional[Literal["good", "bad"]] = None,
         genetic_split: Optional[Split] = None,
         strategy: StrategyStr = ConfigParams.GENERATION_STRATEGY,  # type: ignore
-        target: Optional[List[str]] = None,
+        target: Optional[str] = None,
         use_cache: bool = False,
         return_interaction: bool = False,
         alphabet: Optional[List[int]] = None,
@@ -281,7 +281,7 @@ class DatasetGenerator(SkippableGenerator):
 
             self.good_strat = TargetedGeneticStrategy(
                 input_seq=sequence,
-                target=set(self.target),
+                target=self.target,
                 model=lambda x: model_predict(seq=x, model=self.model, prob=True),
                 allowed_mutations=allowed_mutations,
                 pop_size=ConfigParams.POP_SIZE,
@@ -293,7 +293,7 @@ class DatasetGenerator(SkippableGenerator):
             )
             self.bad_strat = TargetedGeneticStrategy(
                 input_seq=sequence,
-                target=set(self.target),
+                target=self.target,
                 model=lambda x: model_predict(seq=x, model=self.model, prob=True),
                 allowed_mutations=allowed_mutations,
                 pop_size=ConfigParams.POP_SIZE,
