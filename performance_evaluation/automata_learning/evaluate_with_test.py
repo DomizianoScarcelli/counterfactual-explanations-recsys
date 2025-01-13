@@ -70,7 +70,7 @@ def generate_test_dataset(
     )
 
 
-def evaluate(dfa: Dfa, test_dataset: GoodBadDataset):
+def evaluate_single(dfa: Dfa, test_dataset: GoodBadDataset):
     """
     Evaluates the DFA over the test_dataset, returning the tp, fp, tn and fn
     metrics.
@@ -94,7 +94,7 @@ def evaluate(dfa: Dfa, test_dataset: GoodBadDataset):
     return tp, fp, tn, fn
 
 
-def evaluate_all(
+def evaluate(
     datasets: DatasetGenerator,
     oracle: SequentialRecommender,
     end_i: int,
@@ -145,7 +145,7 @@ def evaluate_all(
                 dataset_difference(test_dataset[1], dataset[1]),
             )
 
-            tp, fp, tn, fn = evaluate(dfa, test_dataset)
+            tp, fp, tn, fn = evaluate_single(dfa, test_dataset)
             precision, accuracy, recall = compute_metrics(tp=tp, fp=fp, tn=tn, fn=fn)
             print("----------------------------------------")
             print(f"[{i}] Precision: {precision}")
@@ -238,7 +238,7 @@ def main(
         return_interaction=True,
     )
 
-    evaluate_all(datasets=datasets, oracle=oracle, end_i=end_i, log_path=save_path)
+    evaluate(datasets=datasets, oracle=oracle, end_i=end_i, log_path=save_path)
 
 
 if __name__ == "__main__":
