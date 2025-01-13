@@ -6,7 +6,7 @@ from recbole.model.abstract_recommender import SequentialRecommender
 from torch import Tensor
 
 from alignment.alignment import trace_disalignment
-from automata_learning.learning import learning_pipeline
+from automata_learning.passive_learning import learning_pipeline
 from config import ConfigParams
 from constants import MAX_LENGTH, cat2id
 from exceptions import (

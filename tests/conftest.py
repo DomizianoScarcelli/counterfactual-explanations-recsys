@@ -6,7 +6,7 @@ from recbole.model.abstract_recommender import SequentialRecommender
 
 from alignment.alignment import (augment_constraint_automata,
                                  augment_trace_automata)
-from automata_learning.learning import (generate_automata_from_dataset,
+from automata_learning.passive_learning import (generate_automata_from_dataset,
                                         generate_single_accepting_sequence_dfa)
 from config import ConfigParams
 from generation.dataset.utils import load_dataset

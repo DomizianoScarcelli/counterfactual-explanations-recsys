@@ -1,5 +1,3 @@
-from aalpy.oracles import RandomWalkEqOracle
-from aalpy.SULs import SUL
 from generation.utils import get_items
 from aalpy.learning_algs.deterministic.LStar import run_Lstar
 from recbole.model.abstract_recommender import SequentialRecommender
@@ -72,32 +70,6 @@ def generate_automata_from_dataset(
         raise RuntimeError("DFA is None, aborting")
     assert dfa.is_input_complete(), "Dfa is not input complete"
     return dfa
-
-
-# class TargetLabelSUL(SUL):
-#     def __init__(self, model: SequentialRecommender, target: str):
-#         super().__init__()
-
-#     def pre(self):
-#         pass
-
-#     def post(self):
-#         pass
-
-#     def step(self, char):
-#         pass
-
-
-# def generate_automata_from_oracle(
-#     model: SequentialRecommender,
-#     load_if_exists: bool = True,
-#     save_path: str = "automata.pickle",
-# ):
-#     alphabet = list(get_items())
-#     sul = TargetLabelSUL()
-#     oracle = RandomWalkEqOracle()
-#     dfa = run_Lstar(alphabet=alphabet, sul=None, eq_oracle=oracle, automaton_type="dfa")
-#     return dfa
 
 
 def generate_single_accepting_sequence_dfa(sequence):

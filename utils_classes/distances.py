@@ -5,19 +5,25 @@ from typing import List, Set
 import Levenshtein
 import torch
 import torch.nn.functional as F
-from torch import Tensor, nn
+from torch import Tensor, Value, nn
 
 from config import ConfigParams
 from constants import PADDING_CHAR
 from type_hints import CategorySet
 
 
-def edit_distance(t1: Tensor, t2: Tensor, normalized: bool = True):
+def edit_distance(t1: Tensor | list, t2: Tensor | list, normalized: bool = True):
     if normalized:
         str1, str2 = str(t1), str(t2)  # Levenshtein.ratio only works with strings
         return 1 - Levenshtein.ratio(str1, str2)
     else:
-        return Levenshtein.distance(t1.tolist(), t2.tolist())
+        if isinstance(t1, Tensor):
+            t1 = t1.tolist()
+        if isinstance(t2, Tensor):
+            t2 = t2.tolist()
+        if not isinstance(t1, list) or not isinstance(t2, list):
+            raise ValueError(f"t1 and t2 must be tensor or lists, not {type(t1)}")
+        return Levenshtein.distance(t1, t2)
 
 
 def cosine_distance(prob1: Tensor, prob2: Tensor) -> float:

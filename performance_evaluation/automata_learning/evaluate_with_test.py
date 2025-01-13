@@ -21,7 +21,7 @@ from torch import Tensor
 from tqdm import tqdm
 
 from alignment.actions import Action, decode_action
-from automata_learning.learning import learning_pipeline
+from automata_learning.passive_learning import learning_pipeline
 from automata_learning.utils import run_automata
 from config import ConfigDict, ConfigParams
 from generation.dataset.generate import generate

@@ -7,7 +7,7 @@ from torch import Tensor
 from alignment.actions import print_action
 from alignment.alignment import trace_disalignment
 from alignment.utils import postprocess_alignment
-from automata_learning.learning import learning_pipeline
+from automata_learning.passive_learning import learning_pipeline
 from config import ConfigParams
 from constants import cat2id, error_messages
 from exceptions import (
