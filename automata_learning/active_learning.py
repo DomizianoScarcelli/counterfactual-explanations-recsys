@@ -1,4 +1,6 @@
+from aalpy.automata.Dfa import Dfa
 from sklearn.metrics.pairwise import normalize
+from torch._prims_common import is_integer_dtype
 from automata_learning.passive_learning import generate_automata_from_dataset
 from generation.mutations import ALL_MUTATIONS, parse_mutations
 from generation.utils import labels2cat
@@ -22,7 +24,7 @@ from typing import List, Tuple, Union
 
 from aalpy.automata.Dfa import Dfa
 from aalpy.learning_algs import run_RPNI
-from torch import Tensor
+from torch import Tensor, Value
 
 from alignment.alignment import augment_constraint_automata
 from automata_learning.utils import load_automata
@@ -38,7 +40,6 @@ class TargetLabelSUL(SUL):
         self.model = model
         self.target = target
         self.k = k
-        self.sequence: List[int] = []
 
     def pre(self):
         self.sequence = []
@@ -51,7 +52,6 @@ class TargetLabelSUL(SUL):
         if letter is None:
             return False
         self.sequence.append(letter)
-        print(f"[DEBUG] self.sequence", self.sequence)
         seq = pad(torch.tensor(self.sequence), MAX_LENGTH).unsqueeze(0)
         preds = self.model(seq)
         topk_preds = topk(logits=preds, dim=-1, k=self.k, indices=True).squeeze()
@@ -66,33 +66,37 @@ class NeighborhoodEqOracle(Oracle):
         super().__init__(alphabet, sul)
         self.seq = seq
         self.mutations = parse_mutations(ConfigParams.ALLOWED_MUTATIONS)
-        self.steps = 100
+        self.steps = 300
 
     def perturbate(self) -> List[int]:
         dist = 0
-        max_dist = list(range(1, 6))
+        max_dist = list(range(1, 2))
         perturbed_seq = self.seq.copy()
         while dist <= random.choice(max_dist):
             mutation = random.choice(self.mutations)
             perturbed_seq = mutation(perturbed_seq, alphabet=self.alphabet)[0]
-            print(f"perturbed seq is", perturbed_seq)
             if not MIN_LENGTH <= len(perturbed_seq) <= MAX_LENGTH:
                 continue
             dist = edit_distance(self.seq, perturbed_seq, normalized=False)
+            print(f"[DEBUG] dist is:", dist)
         return perturbed_seq
 
-    def find_cex(self, hypothesis):
-        cexs = []
+    def find_cex(self, hypothesis: Dfa):
         for step in range(self.steps):
-            pseq = self.perturbate()
+            pseq = tuple(self.perturbate())
             hyp_out = None
+            sul_out = None
+            self.sul.pre()
             for c in pseq:
                 hyp_out = hypothesis.step(c)
-            sul_out = self.sul.step(pseq)
+                sul_out = self.sul.step(c)
             assert hyp_out is not None
+            assert sul_out is not None
+            self.sul.post()
+            hypothesis.reset_to_initial()
             if hyp_out != sul_out:
-                cexs.append(pseq)
-        return cexs if cexs != [] else None
+                return pseq
+        return None
 
 
 def generate_automata_from_oracle(
@@ -102,12 +106,18 @@ def generate_automata_from_oracle(
     save_path: str = "automata.pickle",
 ):
     alphabet = list(get_items())
-    print(f"[DEBUG] alphabet", alphabet)
     target = "Action"  # TODO: just for debug, change it
     k = 5  # TODO: just for debug, change it
     sul = TargetLabelSUL(model, target, k)
     oracle = NeighborhoodEqOracle(sul=sul, alphabet=alphabet, seq=input_seq)
-    dfa = run_Lstar(alphabet=alphabet, sul=sul, eq_oracle=oracle, automaton_type="dfa")
+    dfa = run_Lstar(
+        alphabet=alphabet,
+        sul=sul,
+        eq_oracle=oracle,
+        automaton_type="dfa",
+        print_level=3,
+        max_learning_rounds=2
+    )
     return dfa
 
 
