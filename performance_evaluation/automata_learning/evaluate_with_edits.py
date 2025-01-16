@@ -1,71 +1,52 @@
-from pandas._libs.lib import is_integer
-from sklearn.metrics import confusion_matrix
 from constants import MAX_LENGTH
+from statistics import mean
 from generation.utils import labels2cat
 from models.utils import pad
 from generation.utils import equal_ys
 from models.utils import topk
-from alignment.actions import encode_action
 from collections import deque
-import torch
 from recbole.model.abstract_recommender import SequentialRecommender
-from aalpy.automata.Dfa import Dfa, DfaState
-from utils import printd
-import json
-import warnings
-from pathlib import Path
+from aalpy.automata.Dfa import DfaState
 from typing import Optional, List, Set, Tuple
 
-import fire
-import pandas as pd
-from aalpy.automata.Dfa import Dfa
+from aalpy.automata.Dfa import DfaState
 from recbole.model.abstract_recommender import SequentialRecommender
-from recbole.trainer import os
-from torch import Tensor, equal, isin
 from tqdm import tqdm
 
 from alignment.actions import Action, decode_action
 from automata_learning.passive_learning import learning_pipeline
-from automata_learning.utils import run_automata
-from config import ConfigDict, ConfigParams
-from generation.dataset.generate import generate
-from generation.dataset.utils import dataset_difference
+from config import ConfigParams
 from models.config_utils import generate_model, get_config
-from models.utils import pad_batch, trim
+from models.utils import pad_batch
 from performance_evaluation.alignment.utils import (
-    log_run,
-    pk_exists,
     preprocess_interaction,
 )
 from performance_evaluation.evaluation_utils import (
     compute_metrics,
     print_confusion_matrix,
 )
-from type_hints import GoodBadDataset, RecModel
-from utils import SeedSetter, seq_tostr
 from utils_classes.generators import DatasetGenerator
 
 
 def generate_edits(seq: List[int], dfa_state: DfaState) -> List[Tuple[List[int], bool]]:
     """Given a sequence and a DFA in a certain state, it returns the list of sequences that are reachable with a single step in the dfa."""
-    actions = set()
+    actions = []
     print(f"[DEBUG] generating edits for seq: ", seq)
     for encoded_edit, state in dfa_state.transitions.items():
-        action, item_id = decode_action(encoded_edit)
-        print(f"[DEBUG] decoded_edit: ", action, item_id)
+        action, char = decode_action(encoded_edit)
 
         if action == Action.SYNC:
-            res = seq + [item_id]
-        elif action == Action.DEL and seq[-1] == item_id:
-            res = seq[:-1]
+            new_seq = seq + [char]
+        elif action == Action.DEL and len(seq) > 0 and seq[-1] == char:
+            new_seq = seq[:-1]
         elif action == Action.ADD:
-            res = seq + [item_id]
+            new_seq = seq + [char]
         else:
             continue
 
-        actions.add((res, state.is_accepting))
-    print(f"[DEBUG] actions: ", actions)
-    return list(actions)
+        if (new_seq, state.is_accepting) not in actions and new_seq != []:
+            actions.append((new_seq, state.is_accepting))
+    return actions
 
 
 def evaluate_single(
@@ -75,15 +56,16 @@ def evaluate_single(
     k: int,
     target: Optional[str],
 ):
-    seq_gt = model(pad(torch.tensor(seq), MAX_LENGTH))
-    topk_gt = topk(seq_gt, k=k, dim=-1, indices=True)
+    seq_gt = model(pad(seq, MAX_LENGTH).unsqueeze(0))
+    topk_gt = topk(seq_gt, k=k, dim=-1, indices=True).squeeze()
 
     edits = generate_edits(seq, dfa_state)
     seq_edits = [edit[0] for edit in edits]
     ys_edits = [edit[1] for edit in edits]
-    edits_matrix = torch.tensor(pad_batch(seq_edits, MAX_LENGTH))
+    edits_matrix = pad_batch(seq_edits, MAX_LENGTH)
     # TODO: maybe do batches
     gts = model(edits_matrix)
+    edits_matrix = edits_matrix.squeeze()
     if target is None:
 
         def score_fn(i: int) -> Tuple[bool, bool]:
@@ -99,7 +81,7 @@ def evaluate_single(
         def score_fn(i: int) -> Tuple[bool, bool]:
             automata_accepts = ys_edits[i]
             model_ys = gts[i]
-            model_ys = topk(model_ys, k, dim=-1, indices=True)
+            model_ys = topk(model_ys, k, dim=-1, indices=True).squeeze()
             gt_cats = labels2cat(topk_gt, encode=True)
             edits_cat = labels2cat(model_ys, encode=True)
             model_accepts = equal_ys(gt_cats, edits_cat)
@@ -123,42 +105,87 @@ def evaluate_single(
 
 
 def evaluate_all(
-    state: DfaState, trace: Optional[List[int]], target_states: Set[DfaState]
+    model: SequentialRecommender,
+    k: int,
+    state: DfaState,
+    target_states: Set[DfaState],
+    target: Optional[str] = None,
 ):
     # Perform BFS from the current state to any target state
-    queue = deque([(state, 0)])  # Queue of (current_state, hop_length)
+    queue = deque([(state, 0, [])])  # Queue of (current_state, hop_length, sequence)
     visited = set()
-    visited.add(state.state_id)
+    precision, accuracy, recall = [], [], []
+    pbar = tqdm(desc=f"Evaluating all from state {state.state_id}")
+    prec_mean, acc_mean, rec_mean = 0, 0, 0
 
     while queue:
-        current_state, hop_length = queue.popleft()
+        pbar.update(1)
+        current_state, hop_length, seq = queue.popleft()
 
-        if current_state in target_states:
-            return hop_length
+        # Evaluate the current sequence
+        if len(seq) > 1:
+            prec, acc, rec = evaluate_single(
+                seq=seq, model=model, dfa_state=current_state, k=k, target=target
+            )
+            precision.append(prec)
+            accuracy.append(acc)
+            recall.append(rec)
+            prec_mean = round(mean(precision), 2) if len(precision) > 0 else 0
+            acc_mean = round(mean(accuracy), 2) if len(accuracy) > 0 else 0
+            rec_mean = round(mean(recall), 2) if len(recall) > 0 else 0
+            pbar.set_postfix_str(f"prec: {prec_mean}, acc: {acc_mean}, rec: {rec_mean}")
 
         # Process transitions for sync, add, and del actions
-        for next_state in current_state.transitions.values():
-            if next_state.state_id not in visited:
-                visited.add(next_state.state_id)
-                queue.append((next_state, hop_length + 1))
+        for edge, next_state in current_state.transitions.items():
+            if len(seq) >= MAX_LENGTH:
+                continue
 
-    return float("inf")  # No target state is reachable
+            if (tuple(seq), edge) not in visited:
+                action, char = decode_action(edge)
+                visited.add((tuple(seq), edge))
+
+                if action == Action.SYNC:
+                    new_seq = seq + [char]
+                # elif action == Action.DEL and len(seq) > 0 and seq[-1] == char:
+                #     new_seq = seq[:-1]
+                # elif action == Action.ADD:
+                #     new_seq = seq + [char]
+                else:
+                    continue
+
+                queue.append((next_state, hop_length + 1, new_seq))
+
+    return prec_mean, acc_mean, rec_mean
 
 
 def main():
     config = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
     model = generate_model(config)
+    target = "Action"
     datasets = DatasetGenerator(
-        config=config,
-        use_cache=False,
-        return_interaction=True,
+        config=config, use_cache=False, return_interaction=True, target=target
     )
     start_i = 0
     end_i = 10
     for _ in range(start_i):
         datasets.skip()
-    for i in range(start_i, end_i):
+    for i in tqdm(range(start_i, end_i), desc="Evaluating automata learning..."):
         dataset, interaction = next(datasets)
         seq = preprocess_interaction(interaction)
         dfa = learning_pipeline(source=seq, dataset=dataset)
-        evaluate(seq=seq, model=model, dfa=dfa)
+        # final_states = {s for s in dfa.states if s.is_accepting}
+        final_states = set()
+        prec, acc, rec = evaluate_all(
+            model=model,
+            k=5,
+            state=dfa.initial_state,
+            target_states=final_states,
+            target=target,
+        )
+        print(f"-" * 50)
+        print(f"Prec: {prec}, Acc: {acc}, Rec: {rec}")
+        print(f"-" * 50)
+
+
+if __name__ == "__main__":
+    main()
