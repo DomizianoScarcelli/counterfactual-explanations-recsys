@@ -142,6 +142,37 @@ def precision_at(k: int, a: Tensor, b: Tensor) -> float:
     return intersection / k if k > 0 else 0.0
 
 
+def ndcg(a: List[int], b: List[int]) -> float:
+
+    def dcg(relevance_scores: List[float] | List[int]) -> float:
+        """Calculate Discounted Cumulative Gain (DCG)."""
+        return sum(rel / math.log2(idx + 2) for idx, rel in enumerate(relevance_scores))
+
+    def rel(truths: List[int], preds: List[int]) -> List[float]:
+        """Calculate relevance based on positional agreement."""
+        rels = []
+        for j, truth in enumerate(truths):
+            if truth in preds:
+                rank = abs(j - (preds.index(truth))) + 1
+                rels.append(1 / rank)
+            else:
+                rels.append(0.0)
+        return rels
+
+    if len(a) != len(b):
+        raise ValueError("Ground truth and prediction lists must have the same length.")
+
+    rels = rel(a, b)
+    prel = rel(a, a)
+    print(f"Relevance scores: ", rels)
+
+    actual_dcg = dcg(rels)
+    ideal_dcg = dcg(prel)
+    ndcg = actual_dcg / ideal_dcg if ideal_dcg > 0 else 0.0
+    assert 0.0 <= ndcg <= 1.0, f"NDCG is not in a normalized range: {ndcg}"
+    return ndcg
+
+
 def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
     """
     Calculate the NDCG for a list of ground truth sets (a)
@@ -154,11 +185,6 @@ def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
     def dcg(relevance_scores: List[float] | List[int]) -> float:
         """Calculate Discounted Cumulative Gain (DCG)."""
         return sum(rel / math.log2(idx + 2) for idx, rel in enumerate(relevance_scores))
-
-    def ideal_dcg(relevance_scores: List[float]) -> float:
-        """Calculate Ideal DCG (IDCG)."""
-        sorted_scores = sorted(relevance_scores, reverse=True)
-        return dcg(sorted_scores)
 
     def rel(truth_set: Set[int], preds_set: Set[int]) -> float:
         intersection = len(truth_set & preds_set)

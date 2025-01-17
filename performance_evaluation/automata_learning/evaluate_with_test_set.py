@@ -121,7 +121,7 @@ def evaluate(
         new_row = pd.DataFrame({"source_sequence": [next_sequence_str], **config_dict})
         temp_df = pd.concat([prev_df, new_row], ignore_index=True)
         if pk_exists(df=temp_df, primary_key=primary_key.copy(), consider_config=True):
-            # TODO: this doesn't  work
+            # TODO: this doesn't  work in this way, you need to create the future_df before
             printd(
                 f"[{i}] Skipping source sequence {next_sequence} since it still exists in the log with the same config"
             )
@@ -178,9 +178,6 @@ def evaluate(
                 )
             i += 1
 
-
-def get_log_stats():
-    pass
 
 
 def main(

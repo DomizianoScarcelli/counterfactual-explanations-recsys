@@ -1,3 +1,5 @@
+from utils_classes.distances import ndcg
+from typing import Callable
 import json
 import os
 import pickle
@@ -11,6 +13,7 @@ import _pickle as cPickle
 from recbole.config import Config
 from recbole.data.dataset.sequential_dataset import SequentialDataset
 from torch import Tensor, Value
+from torch._prims_common import is_integer_dtype
 
 from config import ConfigParams
 from constants import PADDING_CHAR, cat2id
@@ -35,9 +38,10 @@ def _compare_int_ys(y1: int, y2: int):
     return y1 == y2
 
 
-def _compare_set_ys(
+def _compare_ndcg_ys(
     y1: CategorySet | List[CategorySet],
     y2: CategorySet | List[CategorySet],
+    score_fn: Callable,
     return_score: bool = False,
 ) -> bool | Tuple[bool, float]:
     if isinstance(y1, set):
@@ -45,7 +49,7 @@ def _compare_set_ys(
     if isinstance(y2, set):
         y2 = [y2]
 
-    score = intersection_weighted_ndcg(y1, y2)
+    score = score_fn(y1, y2)
     equal = score >= ConfigParams.THRESHOLD
     if return_score:
         return equal, score
@@ -66,7 +70,28 @@ def equal_ys(
         gt = gt.item() if isinstance(gt, Tensor) else gt  # type: ignore
         pred = pred.item() if isinstance(pred, Tensor) else pred  # type: ignore
         return _compare_int_ys(gt, pred)  # type: ignore
-    return _compare_set_ys(gt, pred, return_score)  # type: ignore
+    elif (
+        isinstance(gt, list)
+        and isinstance(gt[0], int)
+        and isinstance(pred, list)
+        and isinstance(pred[0], int)
+    ):
+        return _compare_ndcg_ys(gt, pred, return_score=return_score, score_fn=ndcg)
+    elif (
+        isinstance(gt, set)
+        or isinstance(pred, set)
+        or (
+            isinstance(gt, list)
+            and isinstance(gt[0], set)
+            and isinstance(pred, list)
+            and isinstance(pred[0], set)
+        )
+    ):
+        return _compare_ndcg_ys(
+            gt, pred, return_score=return_score, score_fn=intersection_weighted_ndcg
+        )
+    else:
+        raise ValueError("Types {type(gt)} and {type(preds)} not supported")
 
 
 def get_items(dataset: RecDataset = ConfigParams.DATASET) -> Set[int]:
