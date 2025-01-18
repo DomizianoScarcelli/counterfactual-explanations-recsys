@@ -201,6 +201,8 @@ def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
 
     # Compute relevance scores: 1 if an element of predicted_set is in truth_set, else 0
     relevance_scores = [rel(truth, pred) for truth, pred in zip(a, b)]
+    # TODO: see if changing this into a relevance score of the truth with itself gives the same result.
+    # This would also remove the need of the perfect_rel and just use the value 1
     ideal_relevance_score = [perfect_rel(truth, pred) for truth, pred in zip(a, b)]
 
     actual_dcg = dcg(relevance_scores)
@@ -214,9 +216,6 @@ def intersection_weighted_positional_ndcg(
     a: List[Set[int]], b: List[Set[int]]
 ) -> float:
     # MAJOR TODO: this has to be tested inside the genetic_categorized topk approach
-
-    def perfect_rel(truth: set, pred: set) -> int:
-        return max(len(truth), len(pred))
 
     def dcg(relevance_scores: List[float] | List[int]) -> float:
         """Calculate Discounted Cumulative Gain (DCG)."""
@@ -235,8 +234,8 @@ def intersection_weighted_positional_ndcg(
                     # E.g. if target is 10, then rel({10}, {10, 12}) should yield a perfect score since the target is in the preds set.
                     # TODO: this can be extended to be more flexible, allowing a more strict requiremenet like perfect score only if intersection is perfect.
                 if intersection >= 1:
-                    n_intersection = intersection / max(len(truth), len(pred))
-                    rel = n_intersection * abs(j - i)
+                    n_intersection = intersection / min(len(truth), len(pred))
+                    rel = n_intersection * (1 / abs(j - i))
                     rels.append(rel)
             else:
                 rels.append(0)
