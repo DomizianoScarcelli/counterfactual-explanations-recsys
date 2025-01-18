@@ -123,18 +123,13 @@ def run_switcher(
                     print(json.dumps(run, indent=2))
 
 
-class CLI:
-    def __init__(self):
-        SeedSetter.set_seed()
+def _absolute_paths(*paths: Optional[str]) -> Tuple[Optional[Path], ...]:
+    return tuple(Path(path) if path is not None else None for path in paths)
 
-    def _absolute_paths(self, *paths: Optional[str]) -> tuple:
-        return tuple(Path(path) if path is not None else None for path in paths)
 
+class CLIStats:
     def stats(
         self,
-        what: Optional[
-            Literal["alignment", "generation", "automata_learning", "sensitivity"]
-        ] = None,
         config_path: Optional[str] = None,
         config_dict: Optional[ConfigDict] = None,
         log_path: Optional[str] = None,
@@ -174,7 +169,20 @@ class CLI:
             3. Generate general statistics for a CSV file:
                 python -m cli stats --log_path="path/to/file.csv" --group_by=["column1"] --metrics=["metric1", "metric2"]
         """
-        save_path, config_path, log_path = self._absolute_paths(
+
+    def sensitivity(
+        self,
+        config_path: Optional[str] = None,
+        config_dict: Optional[ConfigDict] = None,
+        log_path: Optional[str] = None,
+        group_by: Optional[List[str] | str] = None,
+        order_by: Optional[List[str] | str] = None,
+        metrics: Optional[List[str]] = None,
+        filter: Optional[Dict[str, Any]] = None,
+        target: Optional[str] = None,
+        save_path: Optional[str] = None,
+    ):
+        save_path, config_path, log_path = _absolute_paths(
             save_path, config_path, log_path
         )
 
@@ -188,122 +196,72 @@ class CLI:
             ConfigParams.override_params(config_dict)
         ConfigParams.fix()
 
-        if what == "sensitivity":
-            return evaluate_sensitivity(
-                mode="stats",
-                groupby=group_by,  # type: ignore
-                orderby=order_by,
-                stats_save_path=save_path,
-                log_path=log_path,
-                target=target,  # type: ignore
-                metrics=metrics,
-            )
+        return evaluate_sensitivity(
+            mode="stats",
+            groupby=group_by,  # type: ignore
+            orderby=order_by,
+            stats_save_path=save_path,
+            log_path=log_path,
+            target=target,  # type: ignore
+            metrics=metrics,
+        )
 
-        if what == "alignment":
-            if not log_path:
-                raise ValueError(f"Log path needed for stats")
-            if not os.path.exists(log_path):
-                raise FileNotFoundError(f"File {log_path} does not exists")
-
-            stats_metrics = [
-                "status",
-                "dataset_time",
-                "align_time",
-                "automata_learning_time",
-            ]
-            group_by = list(ConfigParams.configs_dict().keys()) + ["split"]
-            group_by.remove("timestamp")
-
-            stats = alignment.utils.get_log_stats(
-                log_path=log_path,
-                save_path=save_path,
-                group_by=group_by,
-                metrics=stats_metrics,
-                filter=filter,
-            )
-            return stats
-
-        if what == "generation":
-            # TODO: implement
-            raise NotImplementedError()
-
-        if what == "automata_learning":
-            # TODO: implement
-            raise NotImplementedError()
-
-        if not what and log_path and group_by and metrics:
-            return alignment.utils.get_log_stats(
-                log_path=log_path,
-                group_by=group_by,
-                metrics=metrics,
-                filter=filter,
-                save_path=save_path,
-            )
-        else:
-            raise ValueError(
-                "Error in parameters, run `python -m cli stats --help` for further information"
-            )
-
-    def run(
+    def alignment(
         self,
         config_path: Optional[str] = None,
-        start_i: int = 0,
-        end_i: Optional[int] = None,
-        splits: Optional[List[tuple]] = None,  # type: ignore
-        use_cache: bool = True,
+        config_dict: Optional[ConfigDict] = None,
+        log_path: Optional[str] = None,
+        group_by: Optional[List[str] | str] = None,
+        filter: Optional[Dict[str, Any]] = None,
+        save_path: Optional[str] = None,
     ):
-        """
-        Run counterfactual generations for a series of configurations.
+        save_path, config_path, log_path = _absolute_paths(
+            save_path, config_path, log_path
+        )
 
-        Args:
-            config_path (Optional[str]): Path to the configuration file. Defaults to None.
-            dataset_type (RecDataset): Type of dataset to use. Defaults to the value from `ConfigParams`.
-            model_type (RecModel): Type of model to use. Defaults to the value from `ConfigParams`.
-            start_i (int): Starting index of the evaluation range. Defaults to 0.
-            end_i (Optional[int]): Ending index of the evaluation range. Defaults to None.
-            splits (Optional[List[int]]): List of splits to evaluate. Defaults to None.
-            use_cache (bool): Whether to use cached results. Defaults to True.
-
-        Returns:
-            None
-
-        Examples:
-            1. Run counterfactual generation with default configuration:
-                python -m cli run
-
-            2. Run counterfactual generation for a specific configuration file:
-                python -m cli run --config_path="path/to/config.yaml"
-
-            3. Run counterfactual generation for splits 0 and 1:
-                python -m cli run --splits=[0,1]
-        """
-        config_path = self._absolute_paths(config_path)[0]
-
-        ConfigParams.reload(config_path)
+        if config_path and config_dict:
+            raise ValueError(
+                "Only one between config_path and config_dict must be set, not both"
+            )
+        if config_path:
+            ConfigParams.reload(config_path)
+        if config_dict:
+            ConfigParams.override_params(config_dict)
         ConfigParams.fix()
-        # trick because run is a generator
-        for _ in run_alignment(
-            start_i=start_i,
-            end_i=end_i,
-            splits=splits,
-            ks=ConfigParams.TOPK,
-            use_cache=use_cache,
-        ):
-            pass
 
-    def evaluate(
+        if not log_path:
+            raise ValueError(f"Log path needed for stats")
+        if not os.path.exists(log_path):
+            raise FileNotFoundError(f"File {log_path} does not exists")
+
+        stats_metrics = [
+            "status",
+            "dataset_time",
+            "align_time",
+            "automata_learning_time",
+        ]
+        group_by = list(ConfigParams.configs_dict().keys()) + ["split"]
+        group_by.remove("timestamp")
+
+        stats = alignment.utils.get_log_stats(
+            log_path=log_path,
+            save_path=save_path,
+            group_by=group_by,
+            metrics=stats_metrics,
+            filter=filter,
+        )
+        return stats
+
+
+class CLIEvaluate:
+
+    def alignment(
         self,
-        what: Optional[
-            Literal["alignment", "generation", "automata_learning", "sensitivity"]
-        ] = None,
         mode: RunModes = "all",
         config_path: Optional[str] = None,
         config_dict: Optional[ConfigDict] = None,
-        k: Optional[int] = None,
-        label_type: Optional[Literal["item", "category", "target"]] = None,
         use_cache: bool = True,
         range_i: Tuple[int, Optional[int]] = (0, None),
-        log_path: Optional[str] = None,
         splits: Optional[List[int]] = None,
         save_path: Optional[str] = None,
     ):
@@ -340,9 +298,7 @@ class CLI:
             3. Evaluate generation analysis (not implemented yet):
                 python -m cli evaluate generation
         """
-        save_path, config_path, log_path = self._absolute_paths(
-            save_path, config_path, log_path
-        )
+        save_path, config_path = _absolute_paths(save_path, config_path)
         if config_path and config_dict:
             raise ValueError(
                 "Only one between config_path and config_dict must be set, not both"
@@ -353,30 +309,50 @@ class CLI:
             ConfigParams.override_params(config_dict)
         ConfigParams.fix()
 
-        if what == "alignment":
-            run_switcher(
-                range_i=range_i,
-                splits=splits,
-                use_cache=use_cache,
-                save_path=save_path,
-                mode=mode,
+        run_switcher(
+            range_i=range_i,
+            splits=splits,
+            use_cache=use_cache,
+            save_path=save_path,
+            mode=mode,
+        )
+
+    def sensitivity(
+        self,
+        config_path: Optional[str] = None,
+        config_dict: Optional[ConfigDict] = None,
+        save_path: Optional[str] = None,
+        label_type: Optional[Literal["item", "category", "target"]] = None,
+        k: Optional[int] = None,
+    ):
+        save_path, config_path = _absolute_paths(save_path, config_path)
+        if config_path and config_dict:
+            raise ValueError(
+                "Only one between config_path and config_dict must be set, not both"
             )
-        if what == "sensitivity":
-            if not k or not label_type:
-                raise ValueError("k and target must not be None")
+        if config_path:
+            ConfigParams.reload(config_path)
+        if config_dict:
+            ConfigParams.override_params(config_dict)
+        ConfigParams.fix()
 
-            return run_on_all_positions(label_type=label_type, log_path=log_path, k=k)
-            # both ends included
-        if what == "generation":
-            # TODO: implement
-            raise NotImplementedError()
-        if what == "automata_learning":
-            # TODO: implement
-            raise NotImplementedError()
+        if not k or not label_type:
+            raise ValueError("k and target must not be None")
 
-    def utils(self):
-        # TODO: insert csv utils that allow pipe-read and pipe-write to modify the csv files on the fly
-        raise NotImplementedError()
+        return run_on_all_positions(label_type=label_type, log_path=save_path, k=k)
+
+
+class CLIUtils:
+    pass
+
+
+class CLI:
+    evaluate = CLIEvaluate()
+    stats = CLIStats()
+    utils = CLIUtils()
+
+    def __init__(self):
+        SeedSetter.set_seed()
 
 
 if __name__ == "__main__":
