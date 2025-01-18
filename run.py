@@ -30,7 +30,7 @@ warnings.simplefilter(action="ignore", category=RuntimeWarning)
 
 def skip_sequence(
     i: int,
-    target_cat: str,
+    target_cat: Optional[str],
     prev_df: Optional[DataFrame],
     split: tuple,
     alignment: bool = True,
@@ -38,9 +38,11 @@ def skip_sequence(
     if prev_df is not None:
         new_df = {
             "i": [i],
-            "gen_target_y@1": str({cat2id[target_cat]}),
         }
-        primary_key = ["i", "gen_target_y@1"]
+        primary_key = ["i"]
+        if target_cat:
+            new_df["gen_target_y@1"] = str({cat2id[target_cat]})
+            primary_key.append("gen_target_y@1")
         if alignment:
             new_df["split"] = str(split)
             primary_key.append("split")
@@ -83,7 +85,8 @@ def parse_splits(splits: Optional[List[tuple]] = None) -> List[Split]:  # type: 
 
 
 def run_genetic(
-    target_cat: List[str],
+    target_cat: Optional[str],
+    categorized: bool,
     start_i: int = 0,
     end_i: int = 1,
     ks: List[int] = ConfigParams.TOPK,
@@ -157,8 +160,10 @@ def run_genetic(
         yield log
 
 
+# TODO: add the possibility for the target_cat to be None, i.e. the run to be untargeted.
 def run_alignment(
-    target_cat: List[str],
+    target_cat: Optional[str],
+    categorized: bool,
     start_i: int = 0,
     end_i: int = 1,
     splits: Optional[List[tuple]] = None,  # type: ignore
@@ -261,8 +266,12 @@ def run_alignment(
         yield alignment_logs
 
 
+# TODO:
+    # - add the possibility for the target_cat to be None, i.e. the run to be untargeted.
+    # - put a boolean 'evaluate' which if false doesn't run the evaluation but just the generation
 def run_all(
-    target_cat: List[str],
+    target_cat: Optional[str],
+    categorized: bool,
     start_i: int = 0,
     end_i: int = 1,
     splits: Optional[List[tuple]] = None,  # type: ignore
@@ -306,9 +315,14 @@ def run_all(
                 if pbar:
                     pbar.total -= 1
                     pbar.refresh()
-                printd(
-                    f"Skipping i: {i} with target {target_cat} and split {split} because already in the log..."
-                )
+                if target_cat:
+                    printd(
+                        f"Skipping i: {i} with target {target_cat} and split {split} because already in the log..."
+                    )
+                else:
+                    printd(
+                        f"Skipping i: {i} with split {split} because already in the log..."
+                    )
         if len(new_splits) == 0:
             datasets.skip()
             continue
@@ -349,6 +363,7 @@ def run_all(
 
         genetic_log = evaluate_genetic(
             i=i,
+            categorized=categorized,
             target_cat=target_cat,
             datasets=datasets,
             dataset=dataset,

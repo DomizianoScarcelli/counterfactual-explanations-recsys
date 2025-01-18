@@ -82,7 +82,7 @@ def _init_log(ks: List[int]) -> Dict[str, Any]:
 
 
 def log_error(
-    i: int, error: str, ks: List[int], split: Split, target_cat: str
+    i: int, error: str, ks: List[int], split: Split, target_cat: Optional[str]
 ) -> Dict[str, Any]:
     from performance_evaluation.genetic.evaluate import _init_log as gen_init_log
 
@@ -90,7 +90,8 @@ def log_error(
     gen_log = gen_init_log(ks)
     log["i"] = i
     log["split"] = split
-    log["gen_target_y@1"] = str({cat2id[target_cat]})
+    if target_cat:
+        log["gen_target_y@1"] = str({cat2id[target_cat]})
     gen_log.update(log)
     gen_log.update(ConfigParams.configs_dict())
     gen_log["error"] = error

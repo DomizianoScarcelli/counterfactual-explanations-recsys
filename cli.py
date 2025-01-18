@@ -1,3 +1,6 @@
+import warnings
+
+from pandas.io.common import tarfile
 from utils import printd
 from utils_classes.generators import InteractionGenerator
 import json
@@ -24,97 +27,130 @@ from utils import SeedSetter
 RunModes: TypeAlias = Literal["alignment", "genetic", "automata_learning", "all"]
 
 
-def run_switcher(
-    range_i: Tuple[int, Optional[int]],
-    splits: Optional[List[int]],
-    use_cache: bool,
-    mode: RunModes = "all",
-    save_path: Optional[Path] = None,
-):
-    """
-    Evaluates the disalignment of traces for a given range and set of splits.
-    Optionally saves the results to a CSV file.
+class RunSwitcher:
+    def __init__(
+        self,
+        targeted: bool,
+        categorized: bool,
+        target: Optional[str],
+        range_i: Tuple[int, Optional[int]],
+        splits: Optional[List[int]],
+        use_cache: bool,
+        mode: RunModes = "all",
+        save_path: Optional[Path] = None,
+    ):
+        self.targeted = targeted
+        self.categorized = categorized
+        self.target = target
+        if not self.targeted and self.target:
+            warnings.warn(
+                f"'target_cat': {self.target} won't be considered since 'targeted' is False"
+            )
+        self.splits = splits
+        self.use_cache = use_cache
+        self.mode = mode
+        self.save_path = save_path
+        self.ks = ConfigParams.TOPK
 
-    Args:
-        range_i: The range of indices to evaluate (start, end).
-        splits: List of split indices to evaluate. If None, evaluates all splits.
-        use_cache: Whether to use cached results.
-        save_path: Path to save the results to a CSV file. If None, results are not saved.
+        self.start_i, self.end_i = range_i
+        if self.end_i is None:
+            temp_int = InteractionGenerator()
+            self.end_i = sum(1 for _ in temp_int)
 
-    Returns:
-        None
-    """
-    targets: List[List[str]] = (
-        ConfigParams.TARGET_CAT
-        if ConfigParams.TARGET_CAT
-        else [cat for cat in cat2id if cat != "unknown"]
-    )  # type: ignore
-    start_i, end_i = range_i
-    if end_i is None:
-        temp_int = InteractionGenerator()
-        end_i = sum(1 for _ in temp_int)
+        self.targets: Optional[List[str]] = None
+        if self.targeted and self.categorized:
+            if self.target:
+                self.targets = [self.target]
+            else:
+                self.targets = (
+                    ConfigParams.TARGET_CAT
+                    if ConfigParams.TARGET_CAT
+                    else [cat for cat in cat2id if cat != "unknown"]
+                )
 
-    pbar = tqdm(
-        desc=f"Evaluating {end_i-start_i} sequences on {len(targets)} targets and {len(splits) if splits is not None else 1} splits",
-        total=len(targets)
-        * (end_i - start_i)
-        * (len(splits) if splits is not None else 1),
-    )
-    og_desc = pbar.desc
+            assert self.targets
+            self.pbar = tqdm(
+                desc=f"[TARGETED] Evaluating {self.end_i-self.start_i} sequences on {len(self.targets)} targets and {len(self.splits) if self.splits is not None else 1} splits",
+                total=len(self.targets)
+                * (self.end_i - self.start_i)
+                * (len(self.splits) if self.splits is not None else 1),
+            )
+            self.og_desc = self.pbar.desc
 
-    for target in targets:
-        pbar.set_description_str(og_desc + f" | Target: {target}")
+        elif self.targeted and not self.categorized:
+            raise NotImplementedError("Targeted uncategorized not yet implemented")
+        elif not self.targeted:
+            self.pbar = tqdm(
+                desc=f"[UNTARGETED] Evaluating {self.end_i-self.start_i} sequences on {len(self.splits) if self.splits is not None else 1} splits",
+                total=(self.end_i - self.start_i)
+                * (len(self.splits) if self.splits is not None else 1),
+            )
+            self.og_desc = self.pbar.desc
+
+    def run(self):
+        if self.targeted:
+            assert self.targets, "If 'targeted' is true, 'targets' must not be None"
+            for target in self.targets:
+                self._run_single(target)
+        else:
+            self._run_single()
+        self
+
+    def _run_single(self, target: Optional[str] = None):
+        if target:
+            self.pbar.set_description_str(self.og_desc + f" | Target: {target}")
+
         log: DataFrame = DataFrame({})
-        if save_path and save_path.exists():
-            log = pd.read_csv(save_path, dtype=str)
+        if self.save_path and self.save_path.exists():
+            log = pd.read_csv(self.save_path, dtype=str)
 
-        if mode == "alignment":
+        if self.mode == "alignment":
             run_generator = run_alignment(
                 target_cat=target,
-                start_i=start_i,
-                end_i=end_i,
-                splits=splits,  # type: ignore
-                use_cache=use_cache,
-                ks=ConfigParams.TOPK,
+                start_i=self.start_i,
+                end_i=self.end_i,
+                splits=self.splits,  # type: ignore
+                use_cache=self.use_cache,
+                ks=self.ks,
                 prev_df=log,
-                pbar=pbar,
+                pbar=self.pbar,
             )
-        elif mode == "genetic":
+        elif self.mode == "genetic":
             run_generator = run_genetic(
                 target_cat=target,
-                start_i=start_i,
-                end_i=end_i,
-                split=splits[0] if splits and len(splits) == 1 else None,  # type: ignore
+                start_i=self.start_i,
+                end_i=self.end_i,
+                split=self.splits[0] if self.splits and len(self.splits) == 1 else None,  # type: ignore
                 prev_df=log,
-                pbar=pbar,
+                pbar=self.pbar,
             )  # NOTE: splits can be used in the genetic only if just a single one is used, otherwise each split would require a different dataset generation
-        elif mode == "all":
+        elif self.mode == "all":
             run_generator = run_all(
                 target_cat=target,
-                start_i=start_i,
-                end_i=end_i,
-                splits=splits,  # type: ignore
-                use_cache=use_cache,
-                ks=ConfigParams.TOPK,
+                start_i=self.start_i,
+                end_i=self.end_i,
+                splits=self.splits,  # type: ignore
+                use_cache=self.use_cache,
+                ks=self.ks,
                 prev_df=log,
-                pbar=pbar,
+                pbar=self.pbar,
             )
         else:
-            raise ValueError(f"Mode '{mode}' not supported")
+            raise ValueError(f"Mode '{self.mode}' not supported")
 
         for runs in run_generator:
             if not isinstance(runs, list):
                 runs = [runs]
             for run in runs:
-                printd(f"[DEBUG] Run is:", run)
-                if save_path:
+                if self.save_path:
                     if run["i"] is None:
                         continue
 
                     log_run(
                         prev_df=None,
                         log=run,
-                        save_path=save_path,
+                        save_path=self.save_path,
+                        # TODO: change in the __init__ according to the targeted/untargeted setting
                         primary_key=["i", "source", "split", "gen_target_y@1"],
                         mode="append",
                         columns=list(log.columns),
@@ -258,46 +294,16 @@ class CLIEvaluate:
     def alignment(
         self,
         mode: RunModes = "all",
-        config_path: Optional[str] = None,
-        config_dict: Optional[ConfigDict] = None,
-        use_cache: bool = True,
+        targeted: bool = True,
+        target_cat: Optional[str] = None,
+        categorized: bool = True,
         range_i: Tuple[int, Optional[int]] = (0, None),
         splits: Optional[List[int]] = None,
+        use_cache: bool = True,
         save_path: Optional[str] = None,
+        config_path: Optional[str] = None,
+        config_dict: Optional[ConfigDict] = None,
     ):
-        """
-
-        Evaluate trace disalignment or other specified tasks.
-
-        Args:
-            what (Optional[Literal["alignment", "generation", "automata_learning", "sensitivity"]]):
-                Type of evaluation to perform. Defaults to None.
-            config_path (Optional[str]): Path to the configuration file. Defaults to None.
-            k (Optional[int]): Number of top results to consider for sensitivity analysis. Required for "sensitivity".
-            target (Optional[Literal["item", "category"]]): Sensitivity analysis target type. Required for "sensitivity".
-            use_cache (bool): Whether to use cached results. Defaults to True.
-            range_i (Tuple[int, Optional[int]]): Range of indices (start, end) to evaluate. Defaults to (0, None).
-            log_path (Optional[str]): Path to the log file for sensitivity evaluation. Required for "sensitivity".
-            splits (Optional[List[int]]): List of splits to evaluate. Defaults to None.
-            save_path (Optional[str]): Path to save the results. Defaults to None.
-
-        Returns:
-            None
-
-        Raises:
-            ValueError: If required parameters are missing or incorrect.
-            NotImplementedError: If the specified evaluation type is not yet implemented.
-
-        Examples:
-            1. Evaluate trace disalignment:
-                python -m cli evaluate alignment --range_i=(0, 100)
-
-            2. Evaluate sensitivity analysis with `k=5` for items:
-                python -m cli evaluate sensitivity --k=5 --target="item"
-
-            3. Evaluate generation analysis (not implemented yet):
-                python -m cli evaluate generation
-        """
         save_path, config_path = _absolute_paths(save_path, config_path)
         if config_path and config_dict:
             raise ValueError(
@@ -309,13 +315,16 @@ class CLIEvaluate:
             ConfigParams.override_params(config_dict)
         ConfigParams.fix()
 
-        run_switcher(
+        RunSwitcher(
             range_i=range_i,
             splits=splits,
             use_cache=use_cache,
             save_path=save_path,
             mode=mode,
-        )
+            categorized=categorized,
+            targeted=targeted,
+            target=target_cat,
+        ).run()
 
     def sensitivity(
         self,

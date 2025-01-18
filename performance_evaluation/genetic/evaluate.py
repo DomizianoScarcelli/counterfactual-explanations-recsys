@@ -1,6 +1,6 @@
 from utils_classes.Split import Split
 import warnings
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from recbole.model.abstract_recommender import SequentialRecommender
 from torch import Tensor
@@ -74,7 +74,7 @@ def _init_log(ks: List[int]) -> Dict[str, Any]:
 
 
 def log_error(
-    i: int, error: str, ks: List[int], split: Split, target_cat: str
+    i: int, error: str, ks: List[int], split: Split, target_cat: Optional[str]
 ) -> Dict[str, Any]:
     from performance_evaluation.alignment.evaluate import _init_log as align_init_log
 
@@ -83,13 +83,14 @@ def log_error(
     log["i"] = i
     log["gen_error"] = error
     log["split"] = split
-    log["gen_target_y@1"] = str({cat2id[target_cat]})
+    if target_cat:
+        log["gen_target_y@1"] = str({cat2id[target_cat]})
     align_log.update(log)
 
     return align_log
 
 
-def evaluate_genetic(
+def _evaluate_targeted_cat(
     i: int,
     datasets: TimedGenerator,
     dataset: GoodBadDataset,
@@ -97,12 +98,7 @@ def evaluate_genetic(
     model: SequentialRecommender,
     target_cat: str,
     ks: List[int],
-) -> Dict[str, Any]:
-    """Given the ground truth and the preds, it returns a dictionary containing the evaluation metrics."""
-    if not ConfigParams.GENERATION_STRATEGY == "targeted":
-        raise ValueError(
-            f"You are using the `evaluate_targeted` evaluation function but the generation strategy is set to '{ConfigParams.GENERATION_STRATEGY}', change it to 'targeted' or use a different evaluation function"
-        )
+):
     log = _init_log(ks)
     source_logits = model(source)
     trimmed_source = trim(source.squeeze(0))
@@ -177,3 +173,91 @@ def evaluate_genetic(
         normalized=False,
     )
     return log
+    pass
+
+
+def _evaluate_untargeted_cat(
+    i: int,
+    datasets: TimedGenerator,
+    dataset: GoodBadDataset,
+    source: Tensor,
+    model: SequentialRecommender,
+    ks: List[int],
+):
+    pass
+
+
+def _evaluate_untargeted_uncat(
+    i: int,
+    datasets: TimedGenerator,
+    dataset: GoodBadDataset,
+    source: Tensor,
+    model: SequentialRecommender,
+    ks: List[int],
+):
+    pass
+
+
+def _evaluate_targeted_uncat(
+    i: int,
+    datasets: TimedGenerator,
+    dataset: GoodBadDataset,
+    source: Tensor,
+    model: SequentialRecommender,
+    target_cat: str,
+    ks: List[int],
+):
+    pass
+
+
+def evaluate_genetic(
+    i: int,
+    datasets: TimedGenerator,
+    dataset: GoodBadDataset,
+    source: Tensor,
+    model: SequentialRecommender,
+    target_cat: Optional[str],
+    categorized: bool,
+    ks: List[int],
+) -> Dict[str, Any]:
+    """Given the ground truth and the preds, it returns a dictionary containing the evaluation metrics."""
+    if target_cat is not None and categorized:
+        return _evaluate_targeted_cat(
+            i=i,
+            datasets=datasets,
+            dataset=dataset,
+            source=source,
+            model=model,
+            target_cat=target_cat,
+            ks=ks,
+        )
+    if target_cat is not None and not categorized:
+        return _evaluate_targeted_uncat(
+            i=i,
+            datasets=datasets,
+            dataset=dataset,
+            source=source,
+            model=model,
+            target_cat=target_cat,
+            ks=ks,
+        )
+    if target_cat is None and categorized:
+        return _evaluate_untargeted_cat(
+            i=i,
+            datasets=datasets,
+            dataset=dataset,
+            source=source,
+            model=model,
+            ks=ks,
+        )
+    if target_cat is None and not categorized:
+        return _evaluate_untargeted_uncat(
+            i=i,
+            datasets=datasets,
+            dataset=dataset,
+            source=source,
+            model=model,
+            ks=ks,
+        )
+    else:
+        raise ValueError()
