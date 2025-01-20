@@ -1,5 +1,6 @@
 import warnings
 
+from pandas.core.base import can_hold_element
 from pandas.io.common import tarfile
 from utils import printd
 from utils_classes.generators import InteractionGenerator
@@ -107,6 +108,7 @@ class RunSwitcher:
         if self.mode == "alignment":
             run_generator = run_alignment(
                 target_cat=target,
+                categorized=self.categorized,
                 start_i=self.start_i,
                 end_i=self.end_i,
                 splits=self.splits,  # type: ignore
@@ -118,6 +120,7 @@ class RunSwitcher:
         elif self.mode == "genetic":
             run_generator = run_genetic(
                 target_cat=target,
+                categorized=self.categorized,
                 start_i=self.start_i,
                 end_i=self.end_i,
                 split=self.splits[0] if self.splits and len(self.splits) == 1 else None,  # type: ignore
@@ -127,6 +130,7 @@ class RunSwitcher:
         elif self.mode == "all":
             run_generator = run_all(
                 target_cat=target,
+                categorized=self.categorized,
                 start_i=self.start_i,
                 end_i=self.end_i,
                 splits=self.splits,  # type: ignore
