@@ -45,7 +45,7 @@ class MutationConfig(TypedDict):
 
 class EvolutionConfig(TypedDict):
     generations: int
-    target_cat: List[str]
+    target_cat: str
     pop_size: int
     halloffame_ratio: float
     fitness_alpha: float

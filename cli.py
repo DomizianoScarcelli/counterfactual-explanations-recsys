@@ -2,6 +2,9 @@ import warnings
 
 from pandas.core.base import can_hold_element
 from pandas.io.common import tarfile
+from performance_evaluation.automata_learning.evaluate_with_test_set import (
+    run_automata_learning_eval,
+)
 from utils import printd
 from utils_classes.generators import InteractionGenerator
 import json
@@ -329,6 +332,30 @@ class CLIEvaluate:
             targeted=targeted,
             target=target_cat,
         ).run()
+
+    def automata_learning(
+        self,
+        config_path: Optional[str] = None,
+        config_dict: Optional[ConfigDict] = None,
+        save_path: Optional[str] = None,
+        end_i: int = 30,
+    ):
+        save_path, config_path = _absolute_paths(save_path, config_path)
+        if config_path and config_dict:
+            raise ValueError(
+                "Only one between config_path and config_dict must be set, not both"
+            )
+        if config_path:
+            ConfigParams.reload(config_path)
+        if config_dict:
+            ConfigParams.override_params(config_dict)
+        ConfigParams.fix()
+
+        run_automata_learning_eval(
+            use_cache=False,
+            end_i=end_i,
+            save_path=save_path,
+        )
 
     def sensitivity(
         self,

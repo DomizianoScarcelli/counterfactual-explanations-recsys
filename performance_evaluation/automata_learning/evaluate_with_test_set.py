@@ -28,10 +28,15 @@ from generation.dataset.generate import generate
 from generation.dataset.utils import dataset_difference
 from models.config_utils import generate_model, get_config
 from models.utils import trim
-from performance_evaluation.alignment.utils import (log_run, pk_exists,
-                                                    preprocess_interaction)
-from performance_evaluation.evaluation_utils import (compute_metrics,
-                                                     print_confusion_matrix)
+from performance_evaluation.alignment.utils import (
+    log_run,
+    pk_exists,
+    preprocess_interaction,
+)
+from performance_evaluation.evaluation_utils import (
+    compute_metrics,
+    print_confusion_matrix,
+)
 from type_hints import GoodBadDataset
 from utils import SeedSetter, seq_tostr
 from utils_classes.generators import DatasetGenerator
@@ -121,7 +126,6 @@ def evaluate(
         new_row = pd.DataFrame({"source_sequence": [next_sequence_str], **config_dict})
         temp_df = pd.concat([prev_df, new_row], ignore_index=True)
         if pk_exists(df=temp_df, primary_key=primary_key.copy(), consider_config=True):
-            # TODO: this doesn't  work in this way, you need to create the future_df before
             printd(
                 f"[{i}] Skipping source sequence {next_sequence} since it still exists in the log with the same config"
             )
@@ -179,25 +183,11 @@ def evaluate(
             i += 1
 
 
-
-def main(
+def run_automata_learning_eval(
     use_cache: bool = False,
-    config_path: Optional[str] = None,
-    config_dict: Optional[ConfigDict] = None,
     end_i: int = 30,
     save_path: Optional[Path] = None,
 ):
-    SeedSetter.set_seed()
-    if config_path and config_dict:
-        raise ValueError(
-            "Only one between config_path and config_dict must be set, not both"
-        )
-    if config_path:
-        ConfigParams.reload(config_path)
-    if config_dict:
-        ConfigParams.override_params(config_dict)
-    ConfigParams.fix()
-
     if save_path and save_path.exists():
         prev_df = pd.read_csv(save_path)
         future_df = pd.DataFrame(ConfigParams.configs_dict())
@@ -233,10 +223,11 @@ def main(
         config=config,
         use_cache=use_cache,
         return_interaction=True,
+        target=ConfigParams.TARGET_CAT,
     )
 
     evaluate(datasets=datasets, oracle=oracle, end_i=end_i, log_path=save_path)
 
 
 if __name__ == "__main__":
-    fire.Fire(main)
+    fire.Fire(run_automata_learning_eval)
