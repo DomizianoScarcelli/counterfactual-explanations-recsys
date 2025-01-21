@@ -16,14 +16,13 @@ import fire
 import pandas as pd
 from aalpy.automata.Dfa import Dfa
 from recbole.model.abstract_recommender import SequentialRecommender
-from recbole.trainer import os
 from torch import Tensor
 from tqdm import tqdm
 
 from alignment.actions import Action, decode_action
 from automata_learning.passive_learning import learning_pipeline
 from automata_learning.utils import run_automata
-from config import ConfigDict, ConfigParams
+from config import ConfigParams
 from generation.dataset.generate import generate
 from generation.dataset.utils import dataset_difference
 from models.config_utils import generate_model, get_config
@@ -38,7 +37,7 @@ from performance_evaluation.evaluation_utils import (
     print_confusion_matrix,
 )
 from type_hints import GoodBadDataset
-from utils import SeedSetter, seq_tostr
+from utils import seq_tostr
 from utils_classes.generators import DatasetGenerator
 
 warnings.simplefilter(action="ignore", category=FutureWarning)

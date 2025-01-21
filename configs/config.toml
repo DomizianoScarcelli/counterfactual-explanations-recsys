@@ -24,10 +24,10 @@ genetic_topk = 1            # the topk to use when computing scores in the datas
 # Settings for the evolutionary algorithm
 [evolution]
 generations = 10            # Number of generations in the evolutionary process
-target_cat = "Action"          # Target category (if false, it will run over all the categories)
-pop_size = 2048             # Population size for the algorithm
+target_cat = "Animation"          # Target category (if false, it will run over all the categories)
+pop_size = 8192             # Population size for the algorithm
 halloffame_ratio = 0        # Ratio of the population to keep in the Hall of Fame
-fitness_alpha = 0.5         # Weight to give to the sequence distance w.r.t. to the label distance
+fitness_alpha = 0.7         # Weight to give to the sequence distance w.r.t. to the label distance
 allowed_mutations = [
     "replace",              # Replace an element in a sequence
     "swap",                 # Swap two elements in a sequence
