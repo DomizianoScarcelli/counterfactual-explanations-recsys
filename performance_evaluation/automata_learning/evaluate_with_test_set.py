@@ -6,6 +6,7 @@ usable characters to the automa's alphabet, and compute the evaluation metrics
 by computing true/false positive/negatives on the good and bad points.
 """
 
+from exceptions import EmptyDatasetError
 from utils import printd
 import json
 import warnings
@@ -100,7 +101,6 @@ def evaluate_single(dfa: Dfa, test_dataset: GoodBadDataset):
 
 def evaluate(
     datasets: DatasetGenerator,
-    oracle: SequentialRecommender,
     end_i: int,
     log_path: Optional[Path] = None,
 ):
@@ -116,23 +116,27 @@ def evaluate(
     pbar = tqdm(
         desc="Automata Learning performance evaluation...", leave=False, total=end_i
     )
-    i = 0
-    while i < end_i:
+    for i in range(end_i):
         pbar.update(1)
         next_sequence = preprocess_interaction(datasets.interactions.peek())
         next_sequence_str = seq_tostr(next_sequence)
         config_dict = ConfigParams.configs_dict()
         new_row = pd.DataFrame({"source_sequence": [next_sequence_str], **config_dict})
-        temp_df = pd.concat([prev_df, new_row], ignore_index=True)
-        if pk_exists(df=temp_df, primary_key=primary_key.copy(), consider_config=True):
+        future_df = pd.concat([prev_df, new_row])
+        if pk_exists(df=future_df, primary_key=primary_key, consider_config=True):
             printd(
                 f"[{i}] Skipping source sequence {next_sequence} since it still exists in the log with the same config"
             )
-            i += 1
             datasets.skip()
             continue
         else:
-            dataset, interaction = next(datasets)
+            try:
+                dataset, interaction = next(datasets)
+            except EmptyDatasetError as e:
+                print(f"Raised error {type(e)}")
+                datasets.skip()
+                datasets.match_indices()  # type: ignore
+                continue
             source_sequence = preprocess_interaction(interaction)
             pbar.set_postfix_str(f"On sequence: {seq_tostr(next_sequence)}")
             assert isinstance(source_sequence, list) and (
@@ -140,7 +144,13 @@ def evaluate(
                 or all(isinstance(x, int) for x in source_sequence)
             )
             dfa = learning_pipeline(source_sequence, dataset)
-            test_dataset = generate_test_dataset(interaction, datasets, dfa)
+            try:
+                test_dataset = generate_test_dataset(interaction, datasets, dfa)
+            except EmptyDatasetError as e:
+                print(f"Raised error {type(e)}")
+                datasets.skip()
+                datasets.match_indices()  # type: ignore
+                continue
 
             # Remove from test the examples that come from test
             test_dataset = (
@@ -179,7 +189,6 @@ def evaluate(
                     save_path=log_path,
                     primary_key=["source_sequence"],
                 )
-            i += 1
 
 
 def run_automata_learning_eval(
@@ -187,16 +196,16 @@ def run_automata_learning_eval(
     end_i: int = 30,
     save_path: Optional[Path] = None,
 ):
-    if save_path and save_path.exists():
-        prev_df = pd.read_csv(save_path)
-        future_df = pd.DataFrame(ConfigParams.configs_dict())
-        df = pd.concat([prev_df, future_df], ignore_index=True)
-        # TODO: for now this works only when we are generating a result for the first sequence
-        # I need to extend it to more sequences, but then this has to be put inside `evaluate_all`,
-        # which will be slower since the config, oracle and dataset generator are created anyways.
-        if end_i == 1 and pk_exists(df, primary_key=[], consider_config=True):
-            print(f"Config skipped since it already exists")
-            return
+    # if save_path and save_path.exists():
+    #     prev_df = pd.read_csv(save_path)
+    #     future_df = pd.DataFrame(ConfigParams.configs_dict())
+    #     df = pd.concat([prev_df, future_df], ignore_index=True)
+    #     # TODO: for now this works only when we are generating a result for the first sequence
+    #     # I need to extend it to more sequences, but then this has to be put inside `evaluate_all`,
+    #     # which will be slower since the config, oracle and dataset generator are created anyways.
+    #     if end_i == 1 and pk_exists(df, primary_key=[], consider_config=True):
+    #         print(f"Config skipped since it already exists")
+    #         return
 
     params = {
         "parameters": {
@@ -217,7 +226,6 @@ def run_automata_learning_eval(
           """
     )
     config = get_config(dataset=ConfigParams().DATASET, model=ConfigParams().MODEL)
-    oracle: SequentialRecommender = generate_model(config)
     datasets = DatasetGenerator(
         config=config,
         use_cache=use_cache,
@@ -225,7 +233,7 @@ def run_automata_learning_eval(
         target=ConfigParams.TARGET_CAT,
     )
 
-    evaluate(datasets=datasets, oracle=oracle, end_i=end_i, log_path=save_path)
+    evaluate(datasets=datasets, end_i=end_i, log_path=save_path)
 
 
 if __name__ == "__main__":

@@ -10,9 +10,10 @@ pop_size_options=(8192) #2048 and 8192 seems better than other values. 8192 bein
 similarity_threshold_options=(0.5) #0.5 seems better than 0.7
 genetic_topk_options=(1) # 1 is better than 5
 num_mutations_options=(1) #1 seems better than other ones
+target_cat_options=("Action" "Adventure" "Animation" "Children's" "Comedy" "Crime" "Documentary" "Drama" "Fantasy" "Film-Noir" "Horror" "Musical" "Mystery" "Romance" "Sci-Fi" "Thriller" "War" "Western")
 
 # Calculate the total number of iterations
-total_iterations=$(( ${#crossover_prob_options[@]} * ${#mutation_prob_options[@]} * ${#fitness_alpha_options[@]} * ${#generations_options[@]} * ${#pop_size_options[@]} * ${#similarity_threshold_options[@]} * ${#genetic_topk_options[@]} * ${#num_mutations_options[@]}  ))
+total_iterations=$(( ${#crossover_prob_options[@]} * ${#mutation_prob_options[@]} * ${#fitness_alpha_options[@]} * ${#generations_options[@]} * ${#pop_size_options[@]} * ${#similarity_threshold_options[@]} * ${#genetic_topk_options[@]} * ${#num_mutations_options[@]} ^ ${#target_cat_options[@]} ))
 
 # Check if arguments were provided
 start=$1
@@ -52,6 +53,7 @@ for crossover_prob in "${crossover_prob_options[@]}"; do
                     for genetic_topk in "${genetic_topk_options[@]}"; do
                         for similarity_threshold in "${similarity_threshold_options[@]}"; do
                             for num_mutations in "${num_mutations_options[@]}"; do
+                                for target_cat in "${target_cat_options[@]}"; do
                                 # Increment the iteration counter
                                 ((iteration++))
 
@@ -77,6 +79,7 @@ for crossover_prob in "${crossover_prob_options[@]}"; do
         "num_deletions": $num_mutations,
         "num_replaces": $num_mutations,
 },
+    "target_cat": $target_cat,
   },
   "generation": {
     "similarity_threshold": $similarity_threshold,
@@ -96,7 +99,8 @@ EOF
                                     --use-cache=False \
                                     --save-path="results/evaluate/automata_learning/automata_learning_hyperopt.csv" \
                                     --config_dict="$config_json" \
-                                    --end_i="200"
+                                    --end_i="50"
+                                done
                             done
                         done
                     done

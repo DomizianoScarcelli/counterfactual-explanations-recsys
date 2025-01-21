@@ -1,11 +1,8 @@
 import warnings
 
-from pandas.core.base import can_hold_element
-from pandas.io.common import tarfile
 from performance_evaluation.automata_learning.evaluate_with_test_set import (
     run_automata_learning_eval,
 )
-from utils import printd
 from utils_classes.generators import InteractionGenerator
 import json
 import os

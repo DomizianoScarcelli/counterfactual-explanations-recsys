@@ -13,3 +13,4 @@
 {"sheet": "automata_learning_hyperopt", "col": "fitness_alpha", "row": "", "longname": "key-col", "input": "", "keystrokes": "!", "comment": "toggle current column as a key column", "replayable": true}
 {"sheet": "automata_learning_hyperopt", "col": "pop_size", "row": "", "longname": "key-col", "input": "", "keystrokes": "!", "comment": "toggle current column as a key column", "replayable": true}
 {"sheet": "automata_learning_hyperopt", "col": "generations", "row": "", "longname": "key-col", "input": "", "keystrokes": "!", "comment": "toggle current column as a key column", "replayable": true}
+{"sheet": "automata_learning_hyperopt", "col": "target_cat", "row": "", "longname": "key-col", "input": "", "keystrokes": "!", "comment": "toggle current column as a key column", "replayable": true}

@@ -8,7 +8,7 @@ import pandas as pd
 from pandas import DataFrame
 from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
-from torch import Tensor, Value
+from torch import Tensor
 
 from config import ConfigParams
 from generation.dataset.utils import interaction_to_tensor
@@ -48,9 +48,10 @@ def pk_exists(
         return False
 
     if consider_config:
+        primary_key = primary_key.copy()
         config_keys = list(ConfigParams.configs_dict().keys())
         config_keys.remove("timestamp")
-        config_keys.remove("target_cat")
+        # config_keys.remove("target_cat") #TODO: this may be needed in case target_cat is false.
         primary_key += config_keys
 
     df = df.copy()  # Avoid modifying the original DataFrame
@@ -251,14 +252,3 @@ def get_log_stats(
         with open(save_path, "w") as f:
             json.dump(results, f, indent=2)
     return results
-
-
-# if __name__ == "__main__":
-#     print(
-#         get_log_stats(
-#             "results/different_splits_run.csv",
-#             ["pop_size", "generations"],
-#             ["status", "dataset_time", "align_time"],
-#             "test",
-#         )
-#     )
