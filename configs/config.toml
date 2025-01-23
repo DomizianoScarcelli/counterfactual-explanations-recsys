@@ -1,6 +1,6 @@
 # General settings for the experiment
 [debug]
-debug = 0                   # Level of debug mode (0=no debug)
+debug = 1                   # Level of debug mode (0=no debug)
 profile = false             # If true it will produce a profiling log with line_profiler
 
 [settings]
@@ -16,7 +16,8 @@ topk = [1, 5, 10, 20]       # K to use when sampling topk
 include_sink = true         # Include sink state in the target states when doing trace alignment
 
 [generation]
-strategy = "targeted"       # [exhaustive, genetic, genetic_categorized, targeted]
+targeted = true
+categorized = true
 similarity_threshold = 0.5  # threshold of similarity (between set of categories) above which two outputs are considered equal
 ignore_genetic_split = true #whether to consider the sequence split also in the dataset generation or not
 genetic_topk = 1            # the topk to use when computing scores in the dataset generation

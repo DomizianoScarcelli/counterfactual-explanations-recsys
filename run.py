@@ -1,4 +1,5 @@
 from ctypes import alignment
+from time import strftime
 from utils import printd
 import warnings
 from typing import Any, Dict, Generator, List, Optional
@@ -86,7 +87,6 @@ def parse_splits(splits: Optional[List[tuple]] = None) -> List[Split]:  # type: 
 
 def run_genetic(
     target_cat: Optional[str],
-    categorized: bool,
     start_i: int = 0,
     end_i: int = 1,
     ks: List[int] = ConfigParams.TOPK,
@@ -95,7 +95,7 @@ def run_genetic(
     pbar=None,
 ):
     split: Split = parse_splits([split] if split else None)[0]  # type: ignore
-
+    print(f"[DEBUG], run genetic strategy", ConfigParams.GENERATION_STRATEGY)
     datasets = TimedGenerator(
         DatasetGenerator(
             use_cache=False,
@@ -163,7 +163,6 @@ def run_genetic(
 # TODO: add the possibility for the target_cat to be None, i.e. the run to be untargeted.
 def run_alignment(
     target_cat: Optional[str],
-    categorized: bool,
     start_i: int = 0,
     end_i: int = 1,
     splits: Optional[List[tuple]] = None,  # type: ignore
@@ -270,7 +269,6 @@ def run_alignment(
 # - put a boolean 'evaluate' which if false doesn't run the evaluation but just the generation
 def run_all(
     target_cat: Optional[str],
-    categorized: bool,
     start_i: int = 0,
     end_i: int = 1,
     splits: Optional[List[tuple]] = None,  # type: ignore
@@ -362,7 +360,7 @@ def run_all(
 
         genetic_log = evaluate_genetic(
             i=i,
-            categorized=categorized,
+            categorized=ConfigParams.CATEGORIZED,
             target_cat=target_cat,
             datasets=datasets,
             dataset=dataset,

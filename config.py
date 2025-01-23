@@ -27,7 +27,8 @@ class SettingsConfig(TypedDict):
 
 
 class GenerationConfig(TypedDict):
-    strategy: str
+    targeted: bool
+    categorized: bool
     similarity_threshold: float
     ignore_genetic_split: bool
     genetic_topk: int
@@ -123,7 +124,10 @@ class ConfigParams:
 
             cls.INCLUDE_SINK = config["automata"]["include_sink"]
 
-            cls.GENERATION_STRATEGY = config["generation"]["strategy"]
+            cls.TARGETED = config["generation"]["targeted"]
+            cls.CATEGORIZED = config["generation"]["categorized"]
+
+            cls._legacy_compute_stategy()
             cls.THRESHOLD = config["generation"]["similarity_threshold"]
             cls.IGNORE_GEN_SPLIT = config["generation"]["ignore_genetic_split"]
             cls.GENETIC_TOPK = config["generation"]["genetic_topk"]
@@ -154,6 +158,22 @@ class ConfigParams:
             raise AttributeError(f"'{cls.__name__}' object has no attribute '{name}'")
 
     @classmethod
+    def _legacy_compute_stategy(cls):
+        # TODO: remove generation strategy, this is done to make legacy code work
+        assert isinstance(cls.TARGETED, bool) and isinstance(cls.CATEGORIZED, bool)
+        print(cls.TARGETED, cls.CATEGORIZED)
+        if cls.TARGETED and cls.CATEGORIZED:
+            cls.GENERATION_STRATEGY = "targeted"
+        elif not cls.TARGETED and cls.CATEGORIZED:
+            cls.GENERATION_STRATEGY = "genetic_categorized"
+        elif not cls.TARGETED and not cls.CATEGORIZED:
+            cls.GENERATION_STRATEGY = "genetic"
+        else:
+            raise NotImplementedError(
+                f"targeted: {cls.TARGETED} of type{type(cls.TARGETED)}, categorized: {cls.CATEGORIZED} of type {type(cls.CATEGORIZED)} still not implemented"
+            )
+
+    @classmethod
     def reload(cls, path: Optional[str]):
         """Allow setting a custom config file path."""
         if not cls._reloadable:
@@ -175,7 +195,11 @@ class ConfigParams:
             cls._config_path if cls._config_path else default_config_path
         )
         config = deep_update(config, override)
+        if cls.DEBUG >= 1:
+            print(f"Overwriting parameters with the new config {override}")
         cls.reload_from_dict(_dict=config)  # type: ignore
+        cls._legacy_compute_stategy()
+        print(f"[DEBUG] strategy is ", cls.GENERATION_STRATEGY)
 
     @classmethod
     def reload_from_dict(cls, _dict: ConfigDict):

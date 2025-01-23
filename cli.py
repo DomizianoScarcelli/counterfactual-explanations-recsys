@@ -31,8 +31,6 @@ RunModes: TypeAlias = Literal["alignment", "genetic", "automata_learning", "all"
 class RunSwitcher:
     def __init__(
         self,
-        targeted: bool,
-        categorized: bool,
         target: Optional[str],
         range_i: Tuple[int, Optional[int]],
         splits: Optional[List[int]],
@@ -40,8 +38,8 @@ class RunSwitcher:
         mode: RunModes = "all",
         save_path: Optional[Path] = None,
     ):
-        self.targeted = targeted
-        self.categorized = categorized
+        self.targeted = ConfigParams.TARGETED
+        self.categorized = ConfigParams.CATEGORIZED
         self.target = target
         if not self.targeted and self.target:
             warnings.warn(
@@ -95,7 +93,6 @@ class RunSwitcher:
                 self._run_single(target)
         else:
             self._run_single()
-        self
 
     def _run_single(self, target: Optional[str] = None):
         if target:
@@ -108,7 +105,6 @@ class RunSwitcher:
         if self.mode == "alignment":
             run_generator = run_alignment(
                 target_cat=target,
-                categorized=self.categorized,
                 start_i=self.start_i,
                 end_i=self.end_i,
                 splits=self.splits,  # type: ignore
@@ -120,7 +116,6 @@ class RunSwitcher:
         elif self.mode == "genetic":
             run_generator = run_genetic(
                 target_cat=target,
-                categorized=self.categorized,
                 start_i=self.start_i,
                 end_i=self.end_i,
                 split=self.splits[0] if self.splits and len(self.splits) == 1 else None,  # type: ignore
@@ -130,7 +125,6 @@ class RunSwitcher:
         elif self.mode == "all":
             run_generator = run_all(
                 target_cat=target,
-                categorized=self.categorized,
                 start_i=self.start_i,
                 end_i=self.end_i,
                 splits=self.splits,  # type: ignore
@@ -326,9 +320,7 @@ class CLIEvaluate:
     def alignment(
         self,
         mode: RunModes = "all",
-        targeted: bool = True,
         target_cat: Optional[str] = None,
-        categorized: bool = True,
         range_i: Tuple[int, Optional[int]] = (0, None),
         splits: Optional[List[int]] = None,
         use_cache: bool = True,
@@ -347,14 +339,14 @@ class CLIEvaluate:
             ConfigParams.override_params(config_dict)
         ConfigParams.fix()
 
+        print(f"[DEBUG] final strategy is ", ConfigParams.GENERATION_STRATEGY)
+
         RunSwitcher(
             range_i=range_i,
             splits=splits,
             use_cache=use_cache,
             save_path=save_path,
             mode=mode,
-            categorized=categorized,
-            targeted=targeted,
             target=target_cat,
         ).run()
 

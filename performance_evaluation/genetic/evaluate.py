@@ -1,6 +1,7 @@
+from generation.utils import _evaluate_generation
 from utils_classes.Split import Split
 import warnings
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from recbole.model.abstract_recommender import SequentialRecommender
 from torch import Tensor
@@ -90,6 +91,29 @@ def log_error(
     return align_log
 
 
+def compute_metrics_log(
+    log: Dict[str, Any],
+    gt_preds: Dict[int, List[int] | List[Set[int]]],
+    source_preds: Dict[int, List[int] | List[Set[int]]],
+    counterfactual_preds: Dict[int, List[int] | List[Set[int]]],
+):
+    ks = gt_preds.keys()
+    for k in ks:
+        log[f"gen_target_y@{k}"] = seq_tostr(gt_preds[k])
+        log[f"gen_gt@{k}"] = seq_tostr(source_preds[k])
+        #
+        _, source_score = equal_ys(target_preds[k], source_preds[k], return_score=True)
+        _, counter_score = equal_ys(
+            target_preds[k], counterfactual_preds[k], return_score=True
+        )
+        # if targeted higher is better, otherwise lower is better
+        log[f"gen_score@{k}"] = counter_score
+        log[f"gen_source_score@{k}"] = source_score
+        log[f"gen_aligned_gt@{k}"] = seq_tostr(counterfactual_preds[k])
+
+    pass
+
+
 def _evaluate_targeted_cat(
     i: int,
     datasets: TimedGenerator,
@@ -173,7 +197,6 @@ def _evaluate_targeted_cat(
         normalized=False,
     )
     return log
-    pass
 
 
 def _evaluate_untargeted_cat(
@@ -184,7 +207,60 @@ def _evaluate_untargeted_cat(
     model: SequentialRecommender,
     ks: List[int],
 ):
-    pass
+    log = _init_log(ks)
+    source_logits = model(source)
+    trimmed_source = trim(source.squeeze(0))
+    source_preds = {
+        k: labels2cat(
+            topk(logits=source_logits, k=k, dim=-1, indices=True).squeeze(0),
+            encode=True,
+        )
+        for k in ks
+    }
+
+    # Compute dataset metrics not implemented for untargeted categorized
+    log["gen_good_points_percentage"] = None
+    log["gen_bad_points_percentage"] = None
+    # NOTE: for now I take just the counterfactual which is the most similar to the source sequence, but since they are all counterfactuals,
+    # we can also generate a list of different counterfactuals.
+
+    counterfactuals, _ = dataset
+    best_counterfactual, _ = max(
+        counterfactuals,
+        key=lambda x: -edit_distance(trim(x[0]).squeeze(), trimmed_source),
+    )
+    counterfactual_logits = model(pad(best_counterfactual, MAX_LENGTH).unsqueeze(0))
+    best_counterfactual = trim(best_counterfactual.squeeze())
+    counterfactual_preds = {
+        k: labels2cat(
+            topk(logits=counterfactual_logits, k=k, dim=-1, indices=True).squeeze(0),
+            encode=True,
+        )
+        for k in ks
+    }
+
+    for k in ks:
+        log[f"gen_target_y@{k}"] = None
+        log[f"gen_gt@{k}"] = seq_tostr(source_preds[k])
+        log["gen_dataset_time"] = datasets.get_times()[i]
+        log["i"] = i
+        log["gen_source"] = seq_tostr(trimmed_source)
+        #
+        _, counter_score = equal_ys(
+            source_preds[k], counterfactual_preds[k], return_score=True
+        )
+        # if targeted higher is better, otherwise lower is better
+        log[f"gen_score@{k}"] = counter_score
+        log[f"gen_source_score@{k}"] = None
+        log[f"gen_aligned_gt@{k}"] = seq_tostr(counterfactual_preds[k])
+
+    log["gen_aligned"] = seq_tostr(best_counterfactual)
+    log["gen_cost"] = edit_distance(
+        best_counterfactual,
+        trimmed_source,
+        normalized=False,
+    )
+    return log
 
 
 def _evaluate_untargeted_uncat(
@@ -195,7 +271,54 @@ def _evaluate_untargeted_uncat(
     model: SequentialRecommender,
     ks: List[int],
 ):
-    pass
+    log = _init_log(ks)
+    source_logits = model(source)
+    trimmed_source = trim(source.squeeze(0))
+    source_preds = {
+        k: topk(logits=source_logits, k=k, dim=-1, indices=True).squeeze(0) for k in ks
+    }
+
+    # Compute dataset metrics not implemented for untargeted uncategorized
+    log["gen_good_points_percentage"] = None
+    log["gen_bad_points_percentage"] = None
+
+    # NOTE: for now I take just the counterfactual which is the most similar to the source sequence, but since they are all counterfactuals,
+    # we can also generate a list of different counterfactuals.
+
+    counterfactuals, _ = dataset
+    best_counterfactual, _ = max(
+        counterfactuals,
+        key=lambda x: -edit_distance(trim(x[0]).squeeze(), trimmed_source),
+    )
+    counterfactual_logits = model(pad(best_counterfactual, MAX_LENGTH).unsqueeze(0))
+    best_counterfactual = trim(best_counterfactual.squeeze())
+    counterfactual_preds = {
+        k: topk(logits=counterfactual_logits, k=k, dim=-1, indices=True).squeeze(0)
+        for k in ks
+    }
+
+    for k in ks:
+        log[f"gen_target_y@{k}"] = None
+        log[f"gen_gt@{k}"] = seq_tostr(source_preds[k])
+        log["gen_dataset_time"] = datasets.get_times()[i]
+        log["i"] = i
+        log["gen_source"] = seq_tostr(trimmed_source)
+        #
+        _, counter_score = equal_ys(
+            source_preds[k], counterfactual_preds[k], return_score=True
+        )
+        # if targeted higher is better, otherwise lower is better
+        log[f"gen_score@{k}"] = counter_score
+        log[f"gen_source_score@{k}"] = None
+        log[f"gen_aligned_gt@{k}"] = seq_tostr(counterfactual_preds[k])
+
+    log["gen_aligned"] = seq_tostr(best_counterfactual)
+    log["gen_cost"] = edit_distance(
+        best_counterfactual,
+        trimmed_source,
+        normalized=False,
+    )
+    return log
 
 
 def _evaluate_targeted_uncat(
@@ -207,7 +330,56 @@ def _evaluate_targeted_uncat(
     target_cat: str,
     ks: List[int],
 ):
-    pass
+    log = _init_log(ks)
+    source_logits = model(source)
+    trimmed_source = trim(source.squeeze(0))
+    source_preds = {
+        k: topk(logits=source_logits, k=k, dim=-1, indices=True).squeeze(0) for k in ks
+    }
+
+    target_preds = {k: [{target_cat} for _ in range(k)] for k in ks}
+
+    # Compute dataset metrics not implemented for targeted uncategorized
+    log["gen_good_points_percentage"] = None
+    log["gen_bad_points_percentage"] = None
+
+    # NOTE: for now I take just the counterfactual which is the most similar to the source sequence, but since they are all counterfactuals,
+    # we can also generate a list of different counterfactuals.
+    _, counterfactuals = dataset
+    best_counterfactual, _ = max(
+        counterfactuals,
+        key=lambda x: -edit_distance(trim(x[0]).squeeze(), trimmed_source),
+    )
+    counterfactual_logits = model(pad(best_counterfactual, MAX_LENGTH).unsqueeze(0))
+    best_counterfactual = trim(best_counterfactual.squeeze())
+    counterfactual_preds = {
+        k: topk(logits=counterfactual_logits, k=k, dim=-1, indices=True).squeeze(0)
+        for k in ks
+    }
+
+    for k in ks:
+        log[f"gen_target_y@{k}"] = seq_tostr(target_preds[k])
+        log[f"gen_gt@{k}"] = seq_tostr(source_preds[k])
+        log["gen_dataset_time"] = datasets.get_times()[i]
+        log["i"] = i
+        log["gen_source"] = seq_tostr(trimmed_source)
+        #
+        _, source_score = equal_ys(target_preds[k], source_preds[k], return_score=True)
+        _, counter_score = equal_ys(
+            target_preds[k], counterfactual_preds[k], return_score=True
+        )
+        # if targeted higher is better, otherwise lower is better
+        log[f"gen_score@{k}"] = counter_score
+        log[f"gen_source_score@{k}"] = source_score
+        log[f"gen_aligned_gt@{k}"] = seq_tostr(counterfactual_preds[k])
+
+    log["gen_aligned"] = seq_tostr(best_counterfactual)
+    log["gen_cost"] = edit_distance(
+        best_counterfactual,
+        trimmed_source,
+        normalized=False,
+    )
+    return log
 
 
 def evaluate_genetic(
@@ -242,7 +414,7 @@ def evaluate_genetic(
             ks=ks,
         )
     if target_cat is None and categorized:
-        return _evaluate_untargeted_cat(
+        return _evaluate_untargeted_uncat(
             i=i,
             datasets=datasets,
             dataset=dataset,

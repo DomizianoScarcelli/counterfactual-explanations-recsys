@@ -190,7 +190,6 @@ class DatasetGenerator(SkippableGenerator):
         config: Optional[Config] = None,
         limit_generation_to: Optional[Literal["good", "bad"]] = None,
         genetic_split: Optional[Split] = None,
-        strategy: StrategyStr = ConfigParams.GENERATION_STRATEGY,  # type: ignore
         target: Optional[str] = None,
         use_cache: bool = False,
         return_interaction: bool = False,
@@ -204,7 +203,8 @@ class DatasetGenerator(SkippableGenerator):
         self.model = generate_model(self.config)
         self.use_cache = use_cache
         self.return_interaction = return_interaction
-        self.strategy = strategy
+        self.strategy = ConfigParams.GENERATION_STRATEGY
+        print(f"[DEBUG] generator strategy is: ", self.strategy)
         self.alphabet = alphabet if alphabet else list(get_items())
         self.target = target
         self.limit_generation_to = limit_generation_to
