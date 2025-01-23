@@ -252,3 +252,19 @@ def get_log_stats(
         with open(save_path, "w") as f:
             json.dump(results, f, indent=2)
     return results
+
+
+def compute_fidelity(df: pd.DataFrame) -> dict:
+    """
+    Compute fidelity for each score@k in the DataFrame.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame containing score@k columns and jaccard_threshold column.
+    """
+    fidelity_results = {}
+    score_columns = [col for col in df.columns if col.startswith("score@")]
+    for score_col in score_columns:
+        above_threshold = (df[score_col] > df["jaccard_threshold"]).sum()
+        fidelity_k = above_threshold / len(df)
+        fidelity_results[score_col] = fidelity_k
+    return fidelity_results

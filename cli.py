@@ -17,7 +17,7 @@ from tqdm import tqdm
 from config import ConfigDict, ConfigParams
 from constants import cat2id
 from performance_evaluation import alignment
-from performance_evaluation.alignment.utils import log_run
+from performance_evaluation.alignment.utils import compute_fidelity, log_run
 from run import run_alignment
 from run import run_alignment as run_alignment
 from run import run_all, run_genetic
@@ -245,6 +245,34 @@ class CLIStats:
             target=target,  # type: ignore
             metrics=metrics,
         )
+
+    def fidelity(self, log_path: str, save_path: Optional[str] = None):
+        config_keys = list(ConfigParams.configs_dict().keys())
+        config_keys.remove("timestamp")
+        config_keys.remove("target_cat")
+        config_keys.append("split")
+        config_keys.append("gen_target_y@1")
+        df = pd.read_csv(log_path)
+        fidelity_rows = []
+        grouped = df.groupby(config_keys)
+
+        for config_values, group in grouped:
+            fidelity_dict = compute_fidelity(group)
+            if isinstance(config_values, tuple):
+                config_dict = dict(zip(config_keys, config_values))
+            else:
+                config_dict = {config_keys[0]: config_values}
+            for key, value in fidelity_dict.items():
+                config_dict[f"fidelity_{key}"] = value
+                config_dict[f"count"] = group.shape[0]
+            fidelity_rows.append(config_dict)
+
+        fidelity_df = pd.DataFrame(fidelity_rows)
+
+        if save_path:
+            fidelity_df.to_csv(save_path, index=False)
+        else:
+            print(fidelity_df)
 
     def alignment(
         self,

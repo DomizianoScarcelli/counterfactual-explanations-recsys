@@ -267,7 +267,6 @@ def run_alignment(
 
 
 # TODO:
-# - add the possibility for the target_cat to be None, i.e. the run to be untargeted.
 # - put a boolean 'evaluate' which if false doesn't run the evaluation but just the generation
 def run_all(
     target_cat: Optional[str],
