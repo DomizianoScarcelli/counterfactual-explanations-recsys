@@ -99,7 +99,7 @@ EOF
                                     --use-cache=False \
                                     --save-path="results/evaluate/automata_learning/automata_learning_hyperopt.csv" \
                                     --config_dict="$config_json" \
-                                    --end_i="50"
+                                    --end_i="100"
                                 done
                             done
                         done
