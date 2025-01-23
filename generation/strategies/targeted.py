@@ -1,6 +1,6 @@
 import math
 from statistics import mean
-from typing import Callable, List, Optional, Set
+from typing import Callable, List, Optional
 
 import numpy as np
 import torch

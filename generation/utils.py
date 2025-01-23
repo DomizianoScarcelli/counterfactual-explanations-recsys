@@ -82,10 +82,9 @@ def equal_ys(
         if isinstance(pred[0], Tensor):
             pred = [x.item() for x in pred]  # type: ignore
 
-        assert all(isinstance(x, int) for x in (gt + pred))
-
-        print("[DEBUG] comparing with ndcg")
-        return _compare_ndcg_ys(gt, pred, return_score=return_score, score_fn=ndcg)
+        if all(isinstance(x, int) for x in (gt + pred)):
+            print("[DEBUG] comparing with ndcg")
+            return _compare_ndcg_ys(gt, pred, return_score=return_score, score_fn=ndcg)
     if (
         isinstance(gt, set)
         or isinstance(pred, set)

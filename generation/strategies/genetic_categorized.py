@@ -11,12 +11,19 @@ from constants import MAX_LENGTH
 from generation.extended_ea_algorithms import eaSimpleBatched
 from generation.mutations import ALL_MUTATIONS, Mutation
 from generation.strategies.genetic import GeneticStrategy
-from generation.utils import (_evaluate_categorized_generation, equal_ys,
-                              get_category_map, labels2cat)
+from generation.utils import (
+    _evaluate_categorized_generation,
+    equal_ys,
+    get_category_map,
+    labels2cat,
+)
 from models.utils import pad_batch, topk, trim
 from type_hints import CategorizedDataset
-from utils_classes.distances import (edit_distance, intersection_weighted_ndcg,
-                                     self_indicator)
+from utils_classes.distances import (
+    edit_distance,
+    intersection_weighted_ndcg,
+    self_indicator,
+)
 from utils_classes.Split import Split
 
 
@@ -37,7 +44,7 @@ class CategorizedGeneticStrategy(GeneticStrategy):
         allowed_mutations: List[Mutation] = ALL_MUTATIONS,
         pop_size: int = ConfigParams.POP_SIZE,
         generations: int = ConfigParams.GENERATIONS,
-        k: int = ConfigParams.TOPK,
+        k: int = ConfigParams.GENETIC_TOPK,
         good_examples: bool = True,
         halloffame_ratio: float = 0.1,
         verbose: bool = True,
@@ -70,10 +77,10 @@ class CategorizedGeneticStrategy(GeneticStrategy):
             good_examples=good_examples,
             halloffame_ratio=halloffame_ratio,
             verbose=verbose,
+            k=k,
             split=split,
         )
         self.category_map = get_category_map()
-        self.k = k
 
     def evaluate_fitness_batch(self, individuals: List[List[int]]) -> List[float]:
         """
@@ -102,9 +109,7 @@ class CategorizedGeneticStrategy(GeneticStrategy):
                 labels2cat(topk_y_prime, encode=True) for topk_y_prime in topk_y_primes
             ]  # [num_seqs, k]
 
-            topk_ys = topk(logits=self.gt, dim=-1, k=self.k, indices=True).squeeze(
-                0
-            )  # shape [k]
+            topk_ys = topk(logits=self.gt, dim=-1, k=self.k, indices=True)
             ys = labels2cat(topk_ys, encode=True)  # shape [k]
 
             for n_i in range(candidate_seqs.size(0)):
@@ -196,7 +201,8 @@ class CategorizedGeneticStrategy(GeneticStrategy):
         Returns:
             CategorizedDataset: A cleaned dataset of sequences.
         """
-        gt_preds = topk(logits=self.gt, dim=-1, k=self.k, indices=True).squeeze(0)
+
+        gt_preds = topk(logits=self.gt, dim=-1, k=self.k, indices=True)
         gt_cats = labels2cat(gt_preds, encode=True)
         if self.good_examples:
             clean: CategorizedDataset = [
@@ -214,54 +220,54 @@ class CategorizedGeneticStrategy(GeneticStrategy):
         )
         return clean
 
-    def _postprocess(self, population: CategorizedDataset) -> CategorizedDataset:  # type: ignore
-        """
-        Post-processes the population by cleaning and optionally adding the source sequence.
+    # def _postprocess(self, population: CategorizedDataset) -> CategorizedDataset:  # type: ignore
+    #     """
+    #     Post-processes the population by cleaning and optionally adding the source sequence.
 
-        Args:
-            population (CategorizedDataset): The dataset to process.
+    #     Args:
+    #         population (CategorizedDataset): The dataset to process.
 
-        Returns:
-            CategorizedDataset: The processed dataset.
-        """
-        clean_pop = self._clean(population)
-        label_eval, seq_eval = self.evaluate_generation(clean_pop)
+    #     Returns:
+    #         CategorizedDataset: The processed dataset.
+    #     """
+    #     clean_pop = self._clean(population)
+    #     label_eval, seq_eval = self.evaluate_generation(clean_pop)
 
-        gt_preds = topk(logits=self.gt, dim=-1, k=self.k, indices=True).squeeze(0)
-        gt_cats = labels2cat(gt_preds, encode=True)
-        source_point = (self.input_seq, gt_cats)
+    #     gt_preds = topk(logits=self.gt, dim=-1, k=self.k, indices=True).squeeze(0)
+    #     gt_cats = labels2cat(gt_preds, encode=True)
+    #     source_point = (self.input_seq, gt_cats)
 
-        # Remove any copy of the source point from the good or bad dataset.
-        new_pop = [
-            (ind, label)
-            for ind, label in clean_pop
-            if ind.tolist() != source_point[0].tolist()
-        ]
-        if len(new_pop) < len(clean_pop):
-            self.print(
-                f"Source point was in the dataset {len(clean_pop) - len(new_pop)} times!, removing it"
-            )
-        clean_pop = new_pop
+    #     # Remove any copy of the source point from the good or bad dataset.
+    #     new_pop = [
+    #         (ind, label)
+    #         for ind, label in clean_pop
+    #         if ind.tolist() != source_point[0].tolist()
+    #     ]
+    #     if len(new_pop) < len(clean_pop):
+    #         self.print(
+    #             f"Source point was in the dataset {len(clean_pop) - len(new_pop)} times!, removing it"
+    #         )
+    #     clean_pop = new_pop
 
-        # If source point is not in good datset, add just one instance back
-        if (
-            self.good_examples
-            and len(
-                [
-                    ind
-                    for ind, _ in clean_pop
-                    if ind.tolist() == source_point[0].tolist()
-                ]
-            )
-            == 0
-        ):
-            clean_pop.append(source_point)
+    #     # If source point is not in good datset, add just one instance back
+    #     if (
+    #         self.good_examples
+    #         and len(
+    #             [
+    #                 ind
+    #                 for ind, _ in clean_pop
+    #                 if ind.tolist() == source_point[0].tolist()
+    #             ]
+    #         )
+    #         == 0
+    #     ):
+    #         clean_pop.append(source_point)
 
-        label_eval, seq_eval = self.evaluate_generation(clean_pop)
-        self.print(
-            f"[After clean] Good examples={self.good_examples} ({len(clean_pop)}) ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}"
-        )
-        return clean_pop
+    #     label_eval, seq_eval = self.evaluate_generation(clean_pop)
+    #     self.print(
+    #         f"[After clean] Good examples={self.good_examples} ({len(clean_pop)}) ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}"
+    #     )
+    #     return clean_pop
 
     def evaluate_generation(self, examples: CategorizedDataset):  # type: ignore
         """
@@ -274,7 +280,7 @@ class CategorizedGeneticStrategy(GeneticStrategy):
             Tuple[float, float]: The percentage of sequences matching the input category and
             the average sequence distance.
         """
-        gt_preds = topk(logits=self.gt, dim=-1, k=self.k, indices=True).squeeze(0)
+        gt_preds = topk(logits=self.gt, dim=-1, k=self.k, indices=True)
         gt_cats = labels2cat(gt_preds, encode=True)
         # TODO: return also the average score in the evaluation
         return _evaluate_categorized_generation(

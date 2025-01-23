@@ -187,10 +187,10 @@ def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
 
     def rel(truth_set: Set[int], preds_set: Set[int]) -> float:
         intersection = len(truth_set & preds_set)
-        if ConfigParams.GENERATION_STRATEGY != "targeted":
-            raise ValueError(
-                f"intersection_weighted_ndcg must not be used in the untargeted seetting!"
-            )
+        # if ConfigParams.GENERATION_STRATEGY != "targeted":
+        #     raise ValueError(
+        #         f"intersection_weighted_ndcg must not be used in the untargeted seetting!"
+        #     )
         if intersection >= 1:
             return perfect_rel(truth_set, preds_set)
         return intersection
