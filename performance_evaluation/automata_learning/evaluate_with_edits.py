@@ -31,7 +31,6 @@ from utils_classes.generators import DatasetGenerator
 def generate_edits(seq: List[int], dfa_state: DfaState) -> List[Tuple[List[int], bool]]:
     """Given a sequence and a DFA in a certain state, it returns the list of sequences that are reachable with a single step in the dfa."""
     actions = []
-    print(f"[DEBUG] generating edits for seq: ", seq)
     for encoded_edit, state in dfa_state.transitions.items():
         action, char = decode_action(encoded_edit)
 

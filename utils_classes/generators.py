@@ -204,7 +204,6 @@ class DatasetGenerator(SkippableGenerator):
         self.use_cache = use_cache
         self.return_interaction = return_interaction
         self.strategy = ConfigParams.GENERATION_STRATEGY
-        print(f"[DEBUG] generator strategy is: ", self.strategy)
         self.alphabet = alphabet if alphabet else list(get_items())
         self.target = target
         self.limit_generation_to = limit_generation_to

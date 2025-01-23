@@ -1,5 +1,7 @@
 import warnings
 
+from pandas.api.types import is_int64_dtype
+
 from performance_evaluation.automata_learning.evaluate_with_test_set import (
     run_automata_learning_eval,
 )
@@ -89,6 +91,7 @@ class RunSwitcher:
     def run(self):
         if self.targeted:
             assert self.targets, "If 'targeted' is true, 'targets' must not be None"
+            assert isinstance(self.targets, list) and isinstance(self.targets[0], str)
             for target in self.targets:
                 self._run_single(target)
         else:
@@ -339,7 +342,6 @@ class CLIEvaluate:
             ConfigParams.override_params(config_dict)
         ConfigParams.fix()
 
-        print(f"[DEBUG] final strategy is ", ConfigParams.GENERATION_STRATEGY)
 
         RunSwitcher(
             range_i=range_i,

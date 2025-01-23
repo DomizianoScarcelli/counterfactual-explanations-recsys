@@ -119,7 +119,6 @@ def model_sensitivity_category(
         filtered_df = prev_df[prev_df["k"] == k]
         seen_idx = set(filtered_df["position"].tolist())
 
-    print(f"[DEBUG] seen_idx: {seen_idx}")
 
     if position in seen_idx:
         print(f"[DEBUG] skipping position {position}")

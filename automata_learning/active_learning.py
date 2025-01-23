@@ -78,7 +78,6 @@ class NeighborhoodEqOracle(Oracle):
             if not MIN_LENGTH <= len(perturbed_seq) <= MAX_LENGTH:
                 continue
             dist = edit_distance(self.seq, perturbed_seq, normalized=False)
-            print(f"[DEBUG] dist is:", dist)
         return perturbed_seq
 
     def find_cex(self, hypothesis: Dfa):

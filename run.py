@@ -95,7 +95,6 @@ def run_genetic(
     pbar=None,
 ):
     split: Split = parse_splits([split] if split else None)[0]  # type: ignore
-    print(f"[DEBUG], run genetic strategy", ConfigParams.GENERATION_STRATEGY)
     datasets = TimedGenerator(
         DatasetGenerator(
             use_cache=False,

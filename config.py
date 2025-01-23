@@ -199,7 +199,6 @@ class ConfigParams:
             print(f"Overwriting parameters with the new config {override}")
         cls.reload_from_dict(_dict=config)  # type: ignore
         cls._legacy_compute_stategy()
-        print(f"[DEBUG] strategy is ", cls.GENERATION_STRATEGY)
 
     @classmethod
     def reload_from_dict(cls, _dict: ConfigDict):

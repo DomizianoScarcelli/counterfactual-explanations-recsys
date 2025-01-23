@@ -51,7 +51,7 @@ def pk_exists(
         primary_key = primary_key.copy()
         config_keys = list(ConfigParams.configs_dict().keys())
         config_keys.remove("timestamp")
-        # config_keys.remove("target_cat") #TODO: this may be needed in case target_cat is false.
+        config_keys.remove("target_cat") #TODO: this has to be fixed with https://trello.com/c/IjjOwQhc/166-risolvi-bug-targetcat
         primary_key += config_keys
 
     df = df.copy()  # Avoid modifying the original DataFrame
