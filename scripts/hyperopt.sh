@@ -3,7 +3,7 @@
 # Define the possible values for each parameter
 crossover_prob_options=(0.7) #0.7 is better than 0.2
 mutation_prob_options=(0.5) #0.5 is better than 0.2
-fitness_alpha_options=(0.7) #0.7 is better than 0.5 and 0.85
+fitness_alpha_options=(0.5) #0.5 is better than 0.7 and 0.85
 generations_options=(10) #20 and 10 are the best
 # pop_size_options=(2048 4096 8192 16384)
 pop_size_options=(8192) #2048 and 8192 seems better than other values. 8192 being better than all others.

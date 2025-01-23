@@ -263,6 +263,7 @@ def compute_fidelity(df: pd.DataFrame) -> dict:
     """
     fidelity_results = {}
     score_columns = [col for col in df.columns if col.startswith("score@")]
+    score_columns.extend([col for col in df.columns if col.startswith("gen_score@")])
     for score_col in score_columns:
         above_threshold = (df[score_col] > df["jaccard_threshold"]).sum()
         fidelity_k = above_threshold / len(df)
