@@ -161,7 +161,6 @@ class ConfigParams:
     def _legacy_compute_stategy(cls):
         # TODO: remove generation strategy, this is done to make legacy code work
         assert isinstance(cls.TARGETED, bool) and isinstance(cls.CATEGORIZED, bool)
-        print(cls.TARGETED, cls.CATEGORIZED)
         if cls.TARGETED and cls.CATEGORIZED:
             cls.GENERATION_STRATEGY = "targeted"
         elif not cls.TARGETED and cls.CATEGORIZED:

@@ -1,7 +1,6 @@
 from utils_classes.distances import ndcg
 from typing import Callable
 import json
-import os
 import pickle
 import random
 from enum import Enum
@@ -10,13 +9,11 @@ from statistics import mean
 from typing import Dict, List, Literal, Set, Tuple, TypedDict, overload
 
 import _pickle as cPickle
-from recbole.config import Config
 from recbole.data.dataset.sequential_dataset import SequentialDataset
-from torch import Tensor, Value
-from torch._prims_common import is_integer_dtype
+from torch import Tensor
 
 from config import ConfigParams
-from constants import PADDING_CHAR, cat2id
+from constants import cat2id
 from exceptions import EmptyDatasetError
 from type_hints import CategorizedDataset, CategorySet, Dataset, RecDataset
 from utils_classes.Cached import Cached
@@ -34,7 +31,9 @@ class NumItems(Enum):
     MOCK = 6
 
 
-def _compare_int_ys(y1: int, y2: int):
+def _compare_int_ys(y1: int, y2: int, return_score: bool = False):
+    if return_score:
+        return y1 == y2, int(y1 == y2)
     return y1 == y2
 
 
@@ -67,17 +66,27 @@ def equal_ys(
         - Set[int], comparing them with a thresholded jaccard similarity
     """
     if isinstance(gt, (int, Tensor)) and isinstance(pred, (int, Tensor)):
-        gt = gt.item() if isinstance(gt, Tensor) else gt  # type: ignore
-        pred = pred.item() if isinstance(pred, Tensor) else pred  # type: ignore
-        return _compare_int_ys(gt, pred)  # type: ignore
-    elif (
-        isinstance(gt, list)
-        and isinstance(gt[0], int)
-        and isinstance(pred, list)
-        and isinstance(pred[0], int)
-    ):
+        if isinstance(gt, Tensor) and len(gt.flatten()) == 1:
+            gt = gt.item()  # type: ignore
+
+        if isinstance(pred, Tensor) and len(pred.flatten()) == 1:
+            pred = pred.item()  # type: ignore
+
+        if isinstance(gt, int) and isinstance(pred, int):
+            print("[DEBUG] comparing with int comparison")
+            return _compare_int_ys(gt, pred, return_score=return_score)  # type: ignore
+
+    if isinstance(gt, (list, Tensor)) and isinstance(pred, (list, Tensor)):
+        if isinstance(gt[0], Tensor):
+            gt = [x.item() for x in gt]  # type: ignore
+        if isinstance(pred[0], Tensor):
+            pred = [x.item() for x in pred]  # type: ignore
+
+        assert all(isinstance(x, int) for x in (gt + pred))
+
+        print("[DEBUG] comparing with ndcg")
         return _compare_ndcg_ys(gt, pred, return_score=return_score, score_fn=ndcg)
-    elif (
+    if (
         isinstance(gt, set)
         or isinstance(pred, set)
         or (
@@ -87,11 +96,11 @@ def equal_ys(
             and isinstance(pred[0], set)
         )
     ):
+        print("[DEBUG] comparing with intersection_weighted_ndcg")
         return _compare_ndcg_ys(
             gt, pred, return_score=return_score, score_fn=intersection_weighted_ndcg
         )
-    else:
-        raise ValueError("Types {type(gt)} and {type(preds)} not supported")
+    raise ValueError(f"Types {type(gt)} and {type(pred)} not supported")
 
 
 def get_items(dataset: RecDataset = ConfigParams.DATASET) -> Set[int]:

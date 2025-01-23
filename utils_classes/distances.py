@@ -164,7 +164,6 @@ def ndcg(a: List[int], b: List[int]) -> float:
 
     rels = rel(a, b)
     prel = rel(a, a)
-    print(f"Relevance scores: ", rels)
 
     actual_dcg = dcg(rels)
     ideal_dcg = dcg(prel)

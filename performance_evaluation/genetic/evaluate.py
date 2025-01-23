@@ -224,7 +224,7 @@ def _evaluate_untargeted_cat(
     # NOTE: for now I take just the counterfactual which is the most similar to the source sequence, but since they are all counterfactuals,
     # we can also generate a list of different counterfactuals.
 
-    counterfactuals, _ = dataset
+    _, counterfactuals = dataset
     best_counterfactual, _ = max(
         counterfactuals,
         key=lambda x: -edit_distance(trim(x[0]).squeeze(), trimmed_source),
@@ -285,7 +285,7 @@ def _evaluate_untargeted_uncat(
     # NOTE: for now I take just the counterfactual which is the most similar to the source sequence, but since they are all counterfactuals,
     # we can also generate a list of different counterfactuals.
 
-    counterfactuals, _ = dataset
+    _, counterfactuals = dataset
     best_counterfactual, _ = max(
         counterfactuals,
         key=lambda x: -edit_distance(trim(x[0]).squeeze(), trimmed_source),
@@ -303,7 +303,17 @@ def _evaluate_untargeted_uncat(
         log["gen_dataset_time"] = datasets.get_times()[i]
         log["i"] = i
         log["gen_source"] = seq_tostr(trimmed_source)
-        #
+
+        print(
+            f"[DEBUG] soucre shape",
+            source_preds[k].shape,
+            len(source_preds[k].flatten()),
+        )
+        print(
+            f"[DEBUG] counterfactual preds shape",
+            counterfactual_preds[k].shape,
+            len(counterfactual_preds[k].flatten()),
+        )
         _, counter_score = equal_ys(
             source_preds[k], counterfactual_preds[k], return_score=True
         )
@@ -389,10 +399,10 @@ def evaluate_genetic(
     source: Tensor,
     model: SequentialRecommender,
     target_cat: Optional[str],
-    categorized: bool,
     ks: List[int],
 ) -> Dict[str, Any]:
     """Given the ground truth and the preds, it returns a dictionary containing the evaluation metrics."""
+    categorized = ConfigParams.CATEGORIZED
     if target_cat is not None and categorized:
         return _evaluate_targeted_cat(
             i=i,
