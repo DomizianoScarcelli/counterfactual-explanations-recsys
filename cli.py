@@ -245,6 +245,7 @@ class CLIStats:
 
     def fidelity(self, log_path: str, save_path: Optional[str] = None):
         config_keys = list(ConfigParams.configs_dict().keys())
+        # TODO: after the target_cat=None but gen_target_y@1=target_cat encoded, adjust this accordingly
         config_keys.remove("timestamp")
         config_keys.remove("target_cat")
         config_keys.append("split")

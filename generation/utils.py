@@ -217,10 +217,10 @@ def random_points_with_offset(max_value: int, max_offset: int):
 
 
 def _evaluate_generation(
-    input_seq: Tensor, dataset: Dataset, label: int
+    input_seq: Tensor, dataset: Dataset, label: List[int]
 ) -> Tuple[float, Tuple[float, float]]:
     # Evaluate label
-    same_label = sum(1 for ex in dataset if ex[1] == label)
+    same_label = sum(1 for ex in dataset if equal_ys(ex[1], label))
     # Evaluate example similarity
     distances_norm = []
     distances_nnorm = []

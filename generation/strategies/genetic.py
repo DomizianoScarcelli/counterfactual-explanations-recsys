@@ -1,3 +1,4 @@
+from utils import printd
 from utils_classes.distances import ndcg
 from generation.utils import equal_ys
 from models.utils import topk
@@ -176,7 +177,10 @@ class GeneticStrategy(GenerationStrategy):
                 seq_dist = edit_distance(
                     self.input_seq, candidate_seq, normalized=True
                 )  # [0,MAX_LENGTH] if not normalized, [0,1] if normalized
-                label_dist = 1 - ndcg(ys.tolist(), y_primes[i].tolist())
+                label_dist = 1 - ndcg(
+                    ys.tolist(), y_primes[i].tolist()
+                )  # TODO: this may be wrong in this case, results in all 0 labels
+                # label_dist = jensen_shannon_divergence(ys, y_primes[i])
 
                 assert (
                     self.input_seq.dim() == 1
@@ -185,7 +189,7 @@ class GeneticStrategy(GenerationStrategy):
                     candidate_seq.dim() == 1
                 ), f"candidate seq wrong shape: {candidate_seq.shape}"
 
-                #TODO: experiment which is better, jensen_shannon or ndcg
+                # TODO: experiment which is better, jensen_shannon or ndcg
                 # label_dist = jensen_shannon_divergence(candidate_prob, self.gt)  # [0,1]
                 self_ind = self_indicator(
                     self.input_seq, candidate_seq
@@ -223,8 +227,7 @@ class GeneticStrategy(GenerationStrategy):
         preds = topk(logits=preds, dim=-1, k=self.k, indices=True)  # [pop_size, k]
 
         new_population: Dataset = [
-            (torch.tensor(x), preds[i].argmax(-1).item())
-            for (i, x) in enumerate(population)
+            (torch.tensor(x), preds[i].item()) for (i, x) in enumerate(population)
         ]
         label_eval, seq_eval = self.evaluate_generation(new_population)
 
@@ -240,7 +243,7 @@ class GeneticStrategy(GenerationStrategy):
         preds = self.model(pad_batch(augmented, MAX_LENGTH))
         preds = topk(logits=preds, dim=-1, k=self.k, indices=True)
         for i, x in enumerate(augmented):
-            new_augmented.append((torch.tensor(x), preds[i].argmax(-1).item()))
+            new_augmented.append((torch.tensor(x), preds[i].item()))
         label_eval, seq_eval = self.evaluate_generation(new_augmented)
         self.print(
             f"[Augmented] Good examples = {self.good_examples} [{len(new_augmented)}] ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}"
@@ -330,4 +333,5 @@ class GeneticStrategy(GenerationStrategy):
         return clean_pop
 
     def evaluate_generation(self, examples: Dataset):
-        return _evaluate_generation(self.input_seq, examples, self.gt.argmax(-1).item())
+        labels = topk(logits=self.gt, dim=-1, k=self.k, indices=True)  # [pop_size, k]
+        return _evaluate_generation(self.input_seq, examples, labels)

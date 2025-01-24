@@ -51,7 +51,9 @@ def pk_exists(
         primary_key = primary_key.copy()
         config_keys = list(ConfigParams.configs_dict().keys())
         config_keys.remove("timestamp")
-        config_keys.remove("target_cat") #TODO: this has to be fixed with https://trello.com/c/IjjOwQhc/166-risolvi-bug-targetcat
+        config_keys.remove(
+            "target_cat"
+        )  # TODO: this has to be fixed with https://trello.com/c/IjjOwQhc/166-risolvi-bug-targetcat
         primary_key += config_keys
 
     df = df.copy()  # Avoid modifying the original DataFrame
@@ -109,7 +111,7 @@ def log_run(
         data = {**data, **configs}
         primary_key += list(configs.keys())
         primary_key.remove("timestamp")
-
+    
     new_df = pd.DataFrame(data).astype(str)
 
     # Remove the fields in primary key that do not exist in prev_df, otherwise key error
@@ -141,6 +143,7 @@ def log_run(
             for col in missing_columns:
                 new_df[col] = None
             new_df = new_df[columns]
+
         new_df.to_csv(
             save_path, index=False, header=not os.path.exists(save_path), mode="a"
         )
@@ -256,16 +259,36 @@ def get_log_stats(
 
 def compute_fidelity(df: pd.DataFrame) -> dict:
     """
-    Compute fidelity for each score@k in the DataFrame.
+    Compute fidelity for each score@k and gen_score@k in the DataFrame, handling None values
+    and error cases.
 
     Args:
-        df (pd.DataFrame): Input DataFrame containing score@k columns and jaccard_threshold column.
+        df (pd.DataFrame): Input DataFrame containing score@k, gen_score@k columns,
+                           jaccard_threshold column, and optionally an error column.
+
+    Returns:
+        dict: Dictionary containing fidelity@k values for each k.
     """
     fidelity_results = {}
+
+    # Identify score and gen_score columns
     score_columns = [col for col in df.columns if col.startswith("score@")]
-    score_columns.extend([col for col in df.columns if col.startswith("gen_score@")])
-    for score_col in score_columns:
-        above_threshold = (df[score_col] > df["jaccard_threshold"]).sum()
+    gen_score_columns = [col for col in df.columns if col.startswith("gen_score@")]
+    all_score_columns = score_columns + gen_score_columns
+
+    # Iterate over each score column
+    for score_col in all_score_columns:
+        # Handle cases where values are None or error is not None
+        above_threshold = (
+            (df[score_col] > df["jaccard_threshold"])
+            & (df[score_col].notna())
+            & (df["error"].isna())
+        ).sum()
+
+        # Compute fidelity as the proportion of valid rows above the threshold
         fidelity_k = above_threshold / len(df)
+
+        # Store the result in the dictionary
         fidelity_results[score_col] = fidelity_k
+
     return fidelity_results
