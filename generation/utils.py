@@ -227,6 +227,10 @@ def _evaluate_generation(
     for seq, _ in dataset:
         distances_norm.append(edit_distance(input_seq, seq))
         distances_nnorm.append(edit_distance(input_seq, seq, normalized=False))
+    if len(dataset) == 0:
+        raise EmptyDatasetError(
+            "Generated dataset has length 0, change the dataset generation parameters to be more loose"
+        )
     return (same_label / len(dataset)), (mean(distances_norm), mean(distances_nnorm))
 
 
@@ -242,7 +246,6 @@ def _evaluate_categorized_generation(
         distances_norm.append(edit_distance(input_seq, seq))
         distances_nnorm.append(edit_distance(input_seq, seq, normalized=False))
     if len(dataset) == 0:
-        # TODO: is it correct to raise this exception?
         raise EmptyDatasetError(
             "Generated dataset has length 0, change the dataset generation parameters to be more loose"
         )

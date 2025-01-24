@@ -1,5 +1,4 @@
 from utils_classes.distances import ndcg
-from utils_classes.distances import intersection_weighted_ndcg
 from generation.utils import equal_ys
 from models.utils import topk
 import math
