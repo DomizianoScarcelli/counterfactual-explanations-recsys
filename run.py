@@ -359,7 +359,6 @@ def run_all(
 
         genetic_log = evaluate_genetic(
             i=i,
-            categorized=ConfigParams.CATEGORIZED,
             target_cat=target_cat,
             datasets=datasets,
             dataset=dataset,

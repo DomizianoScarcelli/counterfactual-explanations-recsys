@@ -73,7 +73,6 @@ def equal_ys(
             pred = pred.item()  # type: ignore
 
         if isinstance(gt, int) and isinstance(pred, int):
-            print("[DEBUG] comparing with int comparison")
             return _compare_int_ys(gt, pred, return_score=return_score)  # type: ignore
 
     if isinstance(gt, (list, Tensor)) and isinstance(pred, (list, Tensor)):
@@ -83,7 +82,6 @@ def equal_ys(
             pred = [x.item() for x in pred]  # type: ignore
 
         if all(isinstance(x, int) for x in (gt + pred)):
-            print("[DEBUG] comparing with ndcg")
             return _compare_ndcg_ys(gt, pred, return_score=return_score, score_fn=ndcg)
     if (
         isinstance(gt, set)
@@ -95,7 +93,6 @@ def equal_ys(
             and isinstance(pred[0], set)
         )
     ):
-        print("[DEBUG] comparing with intersection_weighted_ndcg")
         return _compare_ndcg_ys(
             gt, pred, return_score=return_score, score_fn=intersection_weighted_ndcg
         )

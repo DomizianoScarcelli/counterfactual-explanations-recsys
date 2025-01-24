@@ -151,7 +151,7 @@ class RunSwitcher:
                         prev_df=None,
                         log=run,
                         save_path=self.save_path,
-                        # TODO: change in the __init__ according to the targeted/untargeted setting
+                        #MAJOR TODO: change in the __init__ according to the targeted/untargeted setting
                         primary_key=["i", "source", "split", "gen_target_y@1"],
                         mode="append",
                         columns=list(log.columns),

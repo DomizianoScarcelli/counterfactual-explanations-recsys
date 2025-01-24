@@ -304,16 +304,6 @@ def _evaluate_untargeted_uncat(
         log["i"] = i
         log["gen_source"] = seq_tostr(trimmed_source)
 
-        print(
-            f"[DEBUG] soucre shape",
-            source_preds[k].shape,
-            len(source_preds[k].flatten()),
-        )
-        print(
-            f"[DEBUG] counterfactual preds shape",
-            counterfactual_preds[k].shape,
-            len(counterfactual_preds[k].flatten()),
-        )
         _, counter_score = equal_ys(
             source_preds[k], counterfactual_preds[k], return_score=True
         )
