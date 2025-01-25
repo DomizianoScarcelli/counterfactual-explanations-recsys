@@ -1,3 +1,6 @@
+from performance_evaluation.automata_learning.evaluate_with_test_set import (
+    compute_automata_metrics,
+)
 import warnings
 
 from pandas.api.types import is_int64_dtype
@@ -242,6 +245,34 @@ class CLIStats:
             target=target,  # type: ignore
             metrics=metrics,
         )
+
+    def automata_metrics(self, log_path: str, save_path: Optional[str] = None):
+        config_keys = list(ConfigParams.configs_dict().keys())
+        df = pd.read_csv(log_path)
+        config_keys.remove("timestamp")
+
+        group_rows = []
+        grouped = df.groupby(config_keys)
+
+        for config_values, group in grouped:
+            fidelity_dict = compute_automata_metrics(group)
+            if isinstance(config_values, tuple):
+                config_dict = dict(zip(config_keys, config_values))
+            else:
+                config_dict = {config_keys[0]: config_values}
+            for key, value in fidelity_dict.items():
+                config_dict[f"{key}"] = value
+                config_dict[f"count"] = group.shape[0]
+            group_rows.append(config_dict)
+
+        metrics_df = pd.DataFrame(group_rows)
+
+        if save_path:
+            metrics_df.to_csv(save_path, index=False)
+        else:
+            print(metrics_df)
+
+        pass
 
     def fidelity(self, log_path: str, save_path: Optional[str] = None):
         config_keys = list(ConfigParams.configs_dict().keys())

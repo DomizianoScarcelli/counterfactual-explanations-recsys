@@ -8,6 +8,7 @@ by computing true/false positive/negatives on the good and bad points.
 
 from exceptions import EmptyDatasetError
 from utils import printd
+from pandas import DataFrame
 import json
 import warnings
 from pathlib import Path
@@ -159,7 +160,9 @@ def evaluate(
             )
 
             tp, fp, tn, fn = evaluate_single(dfa, test_dataset)
-            precision, accuracy, recall = compute_metrics(tp=tp, fp=fp, tn=tn, fn=fn)
+            precision, accuracy, recall = compute_automata_metrics(
+                tp=tp, fp=fp, tn=tn, fn=fn
+            )
             print("----------------------------------------")
             print(f"[{i}] Precision: {precision}")
             print(f"[{i}] Accuracy: {accuracy}")
@@ -191,22 +194,30 @@ def evaluate(
                 )
 
 
+def compute_automata_metrics(df: DataFrame) -> dict:
+    """
+    Given a pandas DataFrame with at least "tp, fp, tn, fn" columns, it computes the overall
+    precision, accuracy and recall based on the aggregation of those metrics.
+    """
+    result_df = {}
+    metrics_cols = [col for col in df.columns if col in ["tp", "fp", "tn", "fn"]]
+    for metrics_col in metrics_cols:
+        col_sum = df[metrics_col].sum()
+        result_df[metrics_col] = col_sum
+
+    tp, fp, tn, fn = result_df["tp"], result_df["fp"], result_df["tn"], result_df["fn"]
+    precision, accuracy, recall = compute_metrics(tp=tp, fp=fp, tn=tn, fn=fn)
+    result_df["precision"] = precision
+    result_df["accuracy"] = accuracy
+    result_df["recall"] = recall
+    return result_df
+
+
 def run_automata_learning_eval(
     use_cache: bool = False,
     end_i: int = 30,
     save_path: Optional[Path] = None,
 ):
-    # if save_path and save_path.exists():
-    #     prev_df = pd.read_csv(save_path)
-    #     future_df = pd.DataFrame(ConfigParams.configs_dict())
-    #     df = pd.concat([prev_df, future_df], ignore_index=True)
-    #     # TODO: for now this works only when we are generating a result for the first sequence
-    #     # I need to extend it to more sequences, but then this has to be put inside `evaluate_all`,
-    #     # which will be slower since the config, oracle and dataset generator are created anyways.
-    #     if end_i == 1 and pk_exists(df, primary_key=[], consider_config=True):
-    #         print(f"Config skipped since it already exists")
-    #         return
-
     params = {
         "parameters": {
             "use_cache": use_cache,
