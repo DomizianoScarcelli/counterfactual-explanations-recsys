@@ -162,10 +162,10 @@ class GeneticStrategy(GenerationStrategy):
             candidate_seqs = pad_batch(batch_individuals, MAX_LENGTH)
             candidate_preds = self.model(candidate_seqs)
             y_primes = topk(
-                logits=candidate_preds, dim=-1, k=self.k, indices=True
+                logits=candidate_preds, dim=-1, k=self.k, indices=False
             )  # [num_seqs, k]
 
-            topk_ys = topk(logits=self.gt, dim=-1, k=self.k, indices=True)  # shape [k]
+            topk_ys = topk(logits=self.gt, dim=-1, k=self.k, indices=False)  # shape [k]
             ys = topk_ys
 
             for i in range(candidate_seqs.size(0)):
@@ -177,10 +177,10 @@ class GeneticStrategy(GenerationStrategy):
                 seq_dist = edit_distance(
                     self.input_seq, candidate_seq, normalized=True
                 )  # [0,MAX_LENGTH] if not normalized, [0,1] if normalized
-                label_dist = 1 - ndcg(
-                    ys.tolist(), y_primes[i].tolist()
-                )  # TODO: this may be wrong in this case, results in all 0 labels
-                # label_dist = jensen_shannon_divergence(ys, y_primes[i])
+                # label_dist = 1 - ndcg(
+                #     ys.tolist(), y_primes[i].tolist()
+                # )  # TODO: this may be wrong in this case, results in all 0 labels
+                label_dist = jensen_shannon_divergence(ys, y_primes[i])
 
                 assert (
                     self.input_seq.dim() == 1

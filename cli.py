@@ -151,7 +151,7 @@ class RunSwitcher:
                         prev_df=None,
                         log=run,
                         save_path=self.save_path,
-                        #MAJOR TODO: change in the __init__ according to the targeted/untargeted setting
+                        # MAJOR TODO: change in the __init__ according to the targeted/untargeted setting
                         primary_key=["i", "source", "split", "gen_target_y@1"],
                         mode="append",
                         columns=list(log.columns),
@@ -245,12 +245,15 @@ class CLIStats:
 
     def fidelity(self, log_path: str, save_path: Optional[str] = None):
         config_keys = list(ConfigParams.configs_dict().keys())
-        # TODO: after the target_cat=None but gen_target_y@1=target_cat encoded, adjust this accordingly
-        config_keys.remove("timestamp")
-        config_keys.remove("target_cat")
-        config_keys.append("split")
-        config_keys.append("gen_target_y@1")
         df = pd.read_csv(log_path)
+        if "gen_target_y@1" in df.columns:
+            config_keys.append("gen_target_y@1")
+            # TODO: after the target_cat=None but gen_target_y@1=target_cat encoded, adjust this accordingly
+            config_keys.remove("target_cat")
+
+        config_keys.remove("timestamp")
+        config_keys.append("split")
+
         fidelity_rows = []
         grouped = df.groupby(config_keys)
 
@@ -342,7 +345,6 @@ class CLIEvaluate:
         if config_dict:
             ConfigParams.override_params(config_dict)
         ConfigParams.fix()
-
 
         RunSwitcher(
             range_i=range_i,
