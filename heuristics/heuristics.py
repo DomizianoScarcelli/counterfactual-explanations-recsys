@@ -1,3 +1,4 @@
+from alignment.actions import encode_action
 from collections import deque
 from typing import List, Optional, Set
 
@@ -12,7 +13,7 @@ def hops(curr_state, remaining_trace, target_states):
         # Execute the most amount of sync actions on the trace
         if trace:
             for c in trace:
-                sync_c = f"sync_{c}"
+                sync_c = encode_action(Action.SYNC, c)
                 if sync_c in state.transitions:
                     state = state.transitions[sync_c]
                 else:

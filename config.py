@@ -27,8 +27,11 @@ class SettingsConfig(TypedDict):
 
 
 class GenerationConfig(TypedDict):
-    strategy: str
+    targeted: bool
+    categorized: bool
     similarity_threshold: float
+    ignore_genetic_split: bool
+    genetic_topk: int
 
 
 class AutomataConfig(TypedDict):
@@ -43,7 +46,7 @@ class MutationConfig(TypedDict):
 
 class EvolutionConfig(TypedDict):
     generations: int
-    target_cat: List[str] | List[List[str]]
+    target_cat: str
     pop_size: int
     halloffame_ratio: float
     fitness_alpha: float
@@ -121,8 +124,13 @@ class ConfigParams:
 
             cls.INCLUDE_SINK = config["automata"]["include_sink"]
 
-            cls.GENERATION_STRATEGY = config["generation"]["strategy"]
+            cls.TARGETED = config["generation"]["targeted"]
+            cls.CATEGORIZED = config["generation"]["categorized"]
+
+            cls._legacy_compute_stategy()
             cls.THRESHOLD = config["generation"]["similarity_threshold"]
+            cls.IGNORE_GEN_SPLIT = config["generation"]["ignore_genetic_split"]
+            cls.GENETIC_TOPK = config["generation"]["genetic_topk"]
 
             cls.GENERATIONS = config["evolution"]["generations"]
             cls.TARGET_CAT = config["evolution"]["target_cat"]
@@ -150,6 +158,21 @@ class ConfigParams:
             raise AttributeError(f"'{cls.__name__}' object has no attribute '{name}'")
 
     @classmethod
+    def _legacy_compute_stategy(cls):
+        # TODO: remove generation strategy, this is done to make legacy code work
+        assert isinstance(cls.TARGETED, bool) and isinstance(cls.CATEGORIZED, bool)
+        if cls.TARGETED and cls.CATEGORIZED:
+            cls.GENERATION_STRATEGY = "targeted"
+        elif not cls.TARGETED and cls.CATEGORIZED:
+            cls.GENERATION_STRATEGY = "genetic_categorized"
+        elif not cls.TARGETED and not cls.CATEGORIZED:
+            cls.GENERATION_STRATEGY = "genetic"
+        else:
+            raise NotImplementedError(
+                f"targeted: {cls.TARGETED} of type{type(cls.TARGETED)}, categorized: {cls.CATEGORIZED} of type {type(cls.CATEGORIZED)} still not implemented"
+            )
+
+    @classmethod
     def reload(cls, path: Optional[str]):
         """Allow setting a custom config file path."""
         if not cls._reloadable:
@@ -171,7 +194,10 @@ class ConfigParams:
             cls._config_path if cls._config_path else default_config_path
         )
         config = deep_update(config, override)
+        if cls.DEBUG >= 1:
+            print(f"Overwriting parameters with the new config {override}")
         cls.reload_from_dict(_dict=config)  # type: ignore
+        cls._legacy_compute_stategy()
 
     @classmethod
     def reload_from_dict(cls, _dict: ConfigDict):
@@ -210,6 +236,7 @@ class ConfigParams:
             "include_sink": [ConfigParams.INCLUDE_SINK] * length,
             "mut_prob": [ConfigParams.MUT_PROB] * length,
             "crossover_prob": [ConfigParams.CROSSOVER_PROB] * length,
+            "genetic_topk": [ConfigParams.GENETIC_TOPK] * length,
             "mutation_params": [
                 (
                     ConfigParams.NUM_REPLACES,
@@ -219,6 +246,7 @@ class ConfigParams:
             ]
             * length,
             "generation_strategy": [ConfigParams.GENERATION_STRATEGY] * length,
+            "ignore_genetic_split": [ConfigParams.IGNORE_GEN_SPLIT] * length,
             "jaccard_threshold": [ConfigParams.THRESHOLD] * length,
             "timestamp": [ConfigParams.TIMESTAMP] * length,
         }

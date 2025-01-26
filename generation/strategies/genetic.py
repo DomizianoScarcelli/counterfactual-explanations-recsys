@@ -1,3 +1,7 @@
+from utils import printd
+from utils_classes.distances import ndcg
+from generation.utils import equal_ys
+from models.utils import topk
 import math
 import random
 from typing import Any, Callable, List, Optional
@@ -44,6 +48,7 @@ class GeneticStrategy(GenerationStrategy):
         allowed_mutations: List[Mutation] = ALL_MUTATIONS,
         pop_size: int = ConfigParams.POP_SIZE,
         generations: int = ConfigParams.GENERATIONS,
+        k: int = ConfigParams.GENETIC_TOPK,
         good_examples: bool = True,
         halloffame_ratio: float = 0.1,
         verbose: bool = ConfigParams.DEBUG > 0,
@@ -56,6 +61,7 @@ class GeneticStrategy(GenerationStrategy):
             good_examples=good_examples,
             verbose=verbose,
         )
+        self.k = k
         self.pop_size = pop_size
         self.gt = self.model(input_seq.unsqueeze(0)).squeeze()
         self.generations = generations
@@ -153,30 +159,38 @@ class GeneticStrategy(GenerationStrategy):
             batch_individuals = individuals[
                 batch_i * batch_size : (batch_i + 1) * batch_size
             ]
-            candidate_seqs = pad_batch(batch_individuals, MAX_LENGTH), MIN_LENGTH
-            candidate_probs = self.model(candidate_seqs)
+            candidate_seqs = pad_batch(batch_individuals, MAX_LENGTH)
+            candidate_preds = self.model(candidate_seqs)
+            y_primes = topk(
+                logits=candidate_preds, dim=-1, k=self.k, indices=False
+            )  # [num_seqs, k]
 
-            # TODO: you can use this to remove the for loop. This still doesn't work
-            # edit distance is not easily vectorizable
-            # seq_dists = list(map(lambda seq: edit_distance(self.input_seq, trim(seq)), candidate_seqs))
-            # if self.good_examples:
-            #     label_dists = cosine_distance(self.gt, candidate_probs)
-            # else:
-            #     label_dists = 1 - cosine_distance(self.gt, candidate_probs)
-            # # also self inds can be vectorized
-            # self_inds = list(map(lambda seq: self_indicator(self.input_seq, trim(seq)), candidate_seqs))
-            # costs = [ALPHA1 * seq_dist + ALPHA2 * label_dist + self_ind for (seq_dist, label_dist, self_ind) in zip(seq_dists, label_dists, self_inds)]
-            # fitnesses.extend(costs)
+            topk_ys = topk(logits=self.gt, dim=-1, k=self.k, indices=False)  # shape [k]
+            ys = topk_ys
 
             for i in range(candidate_seqs.size(0)):
                 candidate_seq = trim(candidate_seqs[i])
-                candidate_prob = candidate_probs[i]
+                # candidate_prob = candidate_preds[i]
 
-                assert self.gt.shape == candidate_prob.shape
+                # assert self.gt.shape == candidate_prob.shape
+
                 seq_dist = edit_distance(
                     self.input_seq, candidate_seq, normalized=True
                 )  # [0,MAX_LENGTH] if not normalized, [0,1] if normalized
-                label_dist = jensen_shannon_divergence(candidate_prob, self.gt)  # [0,1]
+                # label_dist = 1 - ndcg(
+                #     ys.tolist(), y_primes[i].tolist()
+                # )  # TODO: this may be wrong in this case, results in all 0 labels
+                label_dist = jensen_shannon_divergence(ys, y_primes[i])
+
+                assert (
+                    self.input_seq.dim() == 1
+                ), f"input seq wrong shape: {self.input_seq.shape}"
+                assert (
+                    candidate_seq.dim() == 1
+                ), f"candidate seq wrong shape: {candidate_seq.shape}"
+
+                # TODO: experiment which is better, jensen_shannon or ndcg
+                # label_dist = jensen_shannon_divergence(candidate_prob, self.gt)  # [0,1]
                 self_ind = self_indicator(
                     self.input_seq, candidate_seq
                 )  # 0 if different, inf if equal
@@ -209,11 +223,14 @@ class GeneticStrategy(GenerationStrategy):
             pbar=self.verbose,
             split=self.split,
         )
-        preds = self.model(pad_batch(population, MAX_LENGTH)).argmax(-1)
-        new_population = [
+        preds = self.model(pad_batch(population, MAX_LENGTH))
+        preds = topk(logits=preds, dim=-1, k=self.k, indices=True)  # [pop_size, k]
+
+        new_population: Dataset = [
             (torch.tensor(x), preds[i].item()) for (i, x) in enumerate(population)
         ]
         label_eval, seq_eval = self.evaluate_generation(new_population)
+
         self.print(
             f"[Original] Good examples = {self.good_examples} [{len(new_population)}] ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}"
         )
@@ -223,7 +240,8 @@ class GeneticStrategy(GenerationStrategy):
 
         augmented = self._augment(population, halloffame)
         new_augmented = []
-        preds = self.model(pad_batch(augmented, MAX_LENGTH)).argmax(-1)
+        preds = self.model(pad_batch(augmented, MAX_LENGTH))
+        preds = topk(logits=preds, dim=-1, k=self.k, indices=True)
         for i, x in enumerate(augmented):
             new_augmented.append((torch.tensor(x), preds[i].item()))
         label_eval, seq_eval = self.evaluate_generation(new_augmented)
@@ -233,6 +251,7 @@ class GeneticStrategy(GenerationStrategy):
         return self._postprocess(new_augmented)
 
     def _augment(self, population, halloffame):
+        # TODO: this hasn't been tested for multiple ks
         fitness_values = [
             p.fitness.wvalues[0]
             for p in population
@@ -262,30 +281,29 @@ class GeneticStrategy(GenerationStrategy):
         return oversample
 
     def _clean(self, examples: Dataset) -> Dataset:
-        label = self.gt.argmax(-1).item()
+        label = topk(self.gt, self.k, dim=-1, indices=True)
+
         if self.good_examples:
-            clean: Dataset = [ex for ex in examples if ex[1] == label]
+            clean: Dataset = [ex for ex in examples if equal_ys(ex[1], label)]
             self.print(
                 f"Removed {len(examples) - len(clean)} individuals from good (label was not equal to gt)"
             )
             return clean
-        clean: Dataset = [ex for ex in examples if ex[1] != label]
+        clean: Dataset = [ex for ex in examples if not equal_ys(ex[1], label)]
         self.print(
             f"Removed {len(examples) - len(clean)} individuals from bad (label was equal to gt)"
         )
         return clean
 
-    def _postprocess(self, population: Dataset) -> Dataset:
+    def _postprocess(self, population: Dataset) -> Dataset:  # type: ignore
         clean_pop = self._clean(population)
         label_eval, seq_eval = self.evaluate_generation(clean_pop)
-
-        source_point = (self.input_seq, self.gt.argmax(-1).item())
 
         # Remove any copy of the source point from the good or bad dataset.
         new_pop = [
             (ind, label)
             for ind, label in clean_pop
-            if ind.tolist() != source_point[0].tolist()
+            if ind.tolist() != self.input_seq.tolist()
         ]
         if len(new_pop) < len(clean_pop):
             self.print(
@@ -293,19 +311,20 @@ class GeneticStrategy(GenerationStrategy):
             )
         clean_pop = new_pop
 
-        # If source point is not in good datset, add just one instance back
-        if (
-            self.good_examples
-            and len(
-                [
-                    ind
-                    for ind, _ in clean_pop
-                    if ind.tolist() == source_point[0].tolist()
-                ]
-            )
-            == 0
-        ):
-            clean_pop.append(source_point)
+        # NOTE: I don't think this is needed
+        # # If source point is not in good datset, add just one instance back
+        # if (
+        #     self.good_examples
+        #     and len(
+        #         [
+        #             ind
+        #             for ind, _ in clean_pop
+        #             if ind.tolist() == source_point[0].tolist()
+        #         ]
+        #     )
+        #     == 0
+        # ):
+        #     clean_pop.append(source_point)
 
         label_eval, seq_eval = self.evaluate_generation(clean_pop)
         self.print(
@@ -314,4 +333,5 @@ class GeneticStrategy(GenerationStrategy):
         return clean_pop
 
     def evaluate_generation(self, examples: Dataset):
-        return _evaluate_generation(self.input_seq, examples, self.gt.argmax(-1).item())
+        labels = topk(logits=self.gt, dim=-1, k=self.k, indices=True)  # [pop_size, k]
+        return _evaluate_generation(self.input_seq, examples, labels)

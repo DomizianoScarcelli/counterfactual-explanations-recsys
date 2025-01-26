@@ -1,5 +1,5 @@
 from utils import printd
-from automata_learning.learning import learning_pipeline
+from automata_learning.passive_learning import learning_pipeline
 from automata_learning.utils import run_automata
 from config import ConfigParams
 from generation.dataset.generate import generate

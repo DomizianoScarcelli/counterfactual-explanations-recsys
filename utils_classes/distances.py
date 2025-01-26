@@ -5,19 +5,25 @@ from typing import List, Set
 import Levenshtein
 import torch
 import torch.nn.functional as F
-from torch import Tensor, nn
+from torch import Tensor, Value, nn
 
 from config import ConfigParams
 from constants import PADDING_CHAR
 from type_hints import CategorySet
 
 
-def edit_distance(t1: Tensor, t2: Tensor, normalized: bool = True):
+def edit_distance(t1: Tensor | list, t2: Tensor | list, normalized: bool = True):
     if normalized:
         str1, str2 = str(t1), str(t2)  # Levenshtein.ratio only works with strings
         return 1 - Levenshtein.ratio(str1, str2)
     else:
-        return Levenshtein.distance(t1.tolist(), t2.tolist())
+        if isinstance(t1, Tensor):
+            t1 = t1.tolist()
+        if isinstance(t2, Tensor):
+            t2 = t2.tolist()
+        if not isinstance(t1, list) or not isinstance(t2, list):
+            raise ValueError(f"t1 and t2 must be tensor or lists, not {type(t1)}")
+        return Levenshtein.distance(t1, t2)
 
 
 def cosine_distance(prob1: Tensor, prob2: Tensor) -> float:
@@ -136,6 +142,36 @@ def precision_at(k: int, a: Tensor, b: Tensor) -> float:
     return intersection / k if k > 0 else 0.0
 
 
+def ndcg(a: List[int], b: List[int]) -> float:
+    # MAJOR TODO: this has to be tested in the genetic.py topk approach
+    def dcg(relevance_scores: List[float] | List[int]) -> float:
+        """Calculate Discounted Cumulative Gain (DCG)."""
+        return sum(rel / math.log2(idx + 2) for idx, rel in enumerate(relevance_scores))
+
+    def rel(truths: List[int], preds: List[int]) -> List[float]:
+        """Calculate relevance based on positional agreement."""
+        rels = []
+        for j, truth in enumerate(truths):
+            if truth in preds:
+                rank = abs(j - (preds.index(truth))) + 1
+                rels.append(1 / rank)
+            else:
+                rels.append(0.0)
+        return rels
+
+    if len(a) != len(b):
+        raise ValueError("Ground truth and prediction lists must have the same length.")
+
+    rels = rel(a, b)
+    prel = rel(a, a)
+
+    actual_dcg = dcg(rels)
+    ideal_dcg = dcg(prel)
+    ndcg = actual_dcg / ideal_dcg if ideal_dcg > 0 else 0.0
+    assert 0.0 <= ndcg <= 1.0, f"NDCG is not in a normalized range: {ndcg}"
+    return ndcg
+
+
 def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
     """
     Calculate the NDCG for a list of ground truth sets (a)
@@ -149,21 +185,14 @@ def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
         """Calculate Discounted Cumulative Gain (DCG)."""
         return sum(rel / math.log2(idx + 2) for idx, rel in enumerate(relevance_scores))
 
-    def ideal_dcg(relevance_scores: List[float]) -> float:
-        """Calculate Ideal DCG (IDCG)."""
-        sorted_scores = sorted(relevance_scores, reverse=True)
-        return dcg(sorted_scores)
-
     def rel(truth_set: Set[int], preds_set: Set[int]) -> float:
         intersection = len(truth_set & preds_set)
-        if ConfigParams.GENERATION_STRATEGY == "targeted":
-            # When we are in the targeted setting, we just want the target category to be part of the output categories.
-            # E.g. if target is 10, then rel({10}, {10, 12}) should yield a perfect score since the target is in the preds set.
-            # TODO: this can be extended to be more flexible, allowing a more strict requiremenet like perfect score only if intersection is perfect.
-            if intersection >= 1:
-                return perfect_rel(truth_set, preds_set)
-        # When we are NOT in the targeted setting, then we want the preds set to be as similar as possible to the truth set, hence we take the
-        # intersection as a measure of similarity.
+        # if ConfigParams.GENERATION_STRATEGY != "targeted":
+        #     raise ValueError(
+        #         f"intersection_weighted_ndcg must not be used in the untargeted seetting!"
+        #     )
+        if intersection >= 1:
+            return perfect_rel(truth_set, preds_set)
         return intersection
 
     if len(a) != len(b):
@@ -171,6 +200,8 @@ def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
 
     # Compute relevance scores: 1 if an element of predicted_set is in truth_set, else 0
     relevance_scores = [rel(truth, pred) for truth, pred in zip(a, b)]
+    # TODO: see if changing this into a relevance score of the truth with itself gives the same result.
+    # This would also remove the need of the perfect_rel and just use the value 1
     ideal_relevance_score = [perfect_rel(truth, pred) for truth, pred in zip(a, b)]
 
     actual_dcg = dcg(relevance_scores)
@@ -178,4 +209,46 @@ def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
     ndcg = actual_dcg / ideal_dcg if ideal_dcg > 0 else 0.0
     assert 0.0 <= ndcg <= 1.0
     return ndcg
-    # return ndcg
+
+
+def intersection_weighted_positional_ndcg(
+    a: List[Set[int]], b: List[Set[int]]
+) -> float:
+    # MAJOR TODO: this has to be tested inside the genetic_categorized topk approach
+
+    def dcg(relevance_scores: List[float] | List[int]) -> float:
+        """Calculate Discounted Cumulative Gain (DCG)."""
+        return sum(rel / math.log2(idx + 2) for idx, rel in enumerate(relevance_scores))
+
+    def rels(truths: List[Set[int]], preds: List[Set[int]]) -> List[float]:
+        rels = []
+        for j, truth in enumerate(truths):
+            for i, pred in enumerate(preds):
+                intersection = len(truth & pred)
+                if ConfigParams.GENERATION_STRATEGY == "targeted":
+                    raise ValueError(
+                        f"intersection_weighted_positional_ndcg must not be used in the targeted seetting!"
+                    )
+                    # When we are in the targeted setting, we just want the target category to be part of the output categories.
+                    # E.g. if target is 10, then rel({10}, {10, 12}) should yield a perfect score since the target is in the preds set.
+                    # TODO: this can be extended to be more flexible, allowing a more strict requiremenet like perfect score only if intersection is perfect.
+                if intersection >= 1:
+                    n_intersection = intersection / min(len(truth), len(pred))
+                    rel = n_intersection * (1 / abs(j - i))
+                    rels.append(rel)
+            else:
+                rels.append(0)
+        return rels
+
+    if len(a) != len(b):
+        raise ValueError("Ground truth and prediction lists must have the same length.")
+
+    # Compute relevance scores: 1 if an element of predicted_set is in truth_set, else 0
+    rels = rels(a, b)
+    prels = rels(a, a)
+
+    actual_dcg = dcg(rels)
+    ideal_dcg = dcg(prels)
+    ndcg = actual_dcg / ideal_dcg if ideal_dcg > 0 else 0.0
+    assert 0.0 <= ndcg <= 1.0
+    return ndcg

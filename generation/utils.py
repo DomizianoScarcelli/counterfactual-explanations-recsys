@@ -1,5 +1,6 @@
+from utils_classes.distances import ndcg
+from typing import Callable
 import json
-import os
 import pickle
 import random
 from enum import Enum
@@ -8,12 +9,11 @@ from statistics import mean
 from typing import Dict, List, Literal, Set, Tuple, TypedDict, overload
 
 import _pickle as cPickle
-from recbole.config import Config
 from recbole.data.dataset.sequential_dataset import SequentialDataset
-from torch import Tensor, Value
+from torch import Tensor
 
 from config import ConfigParams
-from constants import PADDING_CHAR, cat2id
+from constants import cat2id
 from exceptions import EmptyDatasetError
 from type_hints import CategorizedDataset, CategorySet, Dataset, RecDataset
 from utils_classes.Cached import Cached
@@ -31,13 +31,16 @@ class NumItems(Enum):
     MOCK = 6
 
 
-def _compare_int_ys(y1: int, y2: int):
+def _compare_int_ys(y1: int, y2: int, return_score: bool = False):
+    if return_score:
+        return y1 == y2, int(y1 == y2)
     return y1 == y2
 
 
-def _compare_set_ys(
+def _compare_ndcg_ys(
     y1: CategorySet | List[CategorySet],
     y2: CategorySet | List[CategorySet],
+    score_fn: Callable,
     return_score: bool = False,
 ) -> bool | Tuple[bool, float]:
     if isinstance(y1, set):
@@ -45,7 +48,7 @@ def _compare_set_ys(
     if isinstance(y2, set):
         y2 = [y2]
 
-    score = intersection_weighted_ndcg(y1, y2)
+    score = score_fn(y1, y2)
     equal = score >= ConfigParams.THRESHOLD
     if return_score:
         return equal, score
@@ -63,10 +66,37 @@ def equal_ys(
         - Set[int], comparing them with a thresholded jaccard similarity
     """
     if isinstance(gt, (int, Tensor)) and isinstance(pred, (int, Tensor)):
-        gt = gt.item() if isinstance(gt, Tensor) else gt  # type: ignore
-        pred = pred.item() if isinstance(pred, Tensor) else pred  # type: ignore
-        return _compare_int_ys(gt, pred)  # type: ignore
-    return _compare_set_ys(gt, pred, return_score)  # type: ignore
+        if isinstance(gt, Tensor) and len(gt.flatten()) == 1:
+            gt = gt.item()  # type: ignore
+
+        if isinstance(pred, Tensor) and len(pred.flatten()) == 1:
+            pred = pred.item()  # type: ignore
+
+        if isinstance(gt, int) and isinstance(pred, int):
+            return _compare_int_ys(gt, pred, return_score=return_score)  # type: ignore
+
+    if isinstance(gt, (list, Tensor)) and isinstance(pred, (list, Tensor)):
+        if isinstance(gt[0], Tensor):
+            gt = [x.item() for x in gt]  # type: ignore
+        if isinstance(pred[0], Tensor):
+            pred = [x.item() for x in pred]  # type: ignore
+
+        if all(isinstance(x, int) for x in (gt + pred)):
+            return _compare_ndcg_ys(gt, pred, return_score=return_score, score_fn=ndcg)
+    if (
+        isinstance(gt, set)
+        or isinstance(pred, set)
+        or (
+            isinstance(gt, list)
+            and isinstance(gt[0], set)
+            and isinstance(pred, list)
+            and isinstance(pred[0], set)
+        )
+    ):
+        return _compare_ndcg_ys(
+            gt, pred, return_score=return_score, score_fn=intersection_weighted_ndcg
+        )
+    raise ValueError(f"Types {type(gt)} and {type(pred)} not supported")
 
 
 def get_items(dataset: RecDataset = ConfigParams.DATASET) -> Set[int]:
@@ -187,16 +217,20 @@ def random_points_with_offset(max_value: int, max_offset: int):
 
 
 def _evaluate_generation(
-    input_seq: Tensor, dataset: Dataset, label: int
+    input_seq: Tensor, dataset: Dataset, label: List[int]
 ) -> Tuple[float, Tuple[float, float]]:
     # Evaluate label
-    same_label = sum(1 for ex in dataset if ex[1] == label)
+    same_label = sum(1 for ex in dataset if equal_ys(ex[1], label))
     # Evaluate example similarity
     distances_norm = []
     distances_nnorm = []
     for seq, _ in dataset:
         distances_norm.append(edit_distance(input_seq, seq))
         distances_nnorm.append(edit_distance(input_seq, seq, normalized=False))
+    if len(dataset) == 0:
+        raise EmptyDatasetError(
+            "Generated dataset has length 0, change the dataset generation parameters to be more loose"
+        )
     return (same_label / len(dataset)), (mean(distances_norm), mean(distances_nnorm))
 
 
@@ -212,7 +246,6 @@ def _evaluate_categorized_generation(
         distances_norm.append(edit_distance(input_seq, seq))
         distances_nnorm.append(edit_distance(input_seq, seq, normalized=False))
     if len(dataset) == 0:
-        # TODO: is it correct to raise this exception?
         raise EmptyDatasetError(
             "Generated dataset has length 0, change the dataset generation parameters to be more loose"
         )

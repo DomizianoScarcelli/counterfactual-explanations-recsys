@@ -1,6 +1,6 @@
 import math
 from statistics import mean
-from typing import Callable, List, Optional, Set
+from typing import Callable, List, Optional
 
 import numpy as np
 import torch
@@ -32,13 +32,13 @@ class TargetedGeneticStrategy(GeneticStrategy):
     def __init__(
         self,
         input_seq: Tensor,
-        target: Set[int] | Set[str],
+        target: int | str,
         model: Callable,
         alphabet: List[int],
         allowed_mutations: List[Mutation] = ALL_MUTATIONS,
         pop_size: int = ConfigParams.POP_SIZE,
         generations: int = ConfigParams.GENERATIONS,
-        k: int = min(ConfigParams.TOPK),  # NOTE: if this is 1, the results are better.
+        k: int = ConfigParams.GENETIC_TOPK,
         good_examples: bool = True,
         halloffame_ratio: float = 0.1,
         verbose: bool = ConfigParams.DEBUG > 0,
@@ -56,15 +56,11 @@ class TargetedGeneticStrategy(GeneticStrategy):
             halloffame_ratio=halloffame_ratio,
             verbose=verbose,
             split=split,
+            k=k,
         )
         self.category_map = get_category_map()
-        self.k = k
-        if all(isinstance(t, str) for t in target):
-            target = {cat2id[t] for t in target}  # type: ignore
-
-        assert all(
-            isinstance(t, int) for t in target
-        ), f"Something went wrong, target must be a set of int, not {target}"
+        if isinstance(target, str):
+            target = {cat2id[target]}
 
         self.target = target
 
@@ -197,43 +193,6 @@ class TargetedGeneticStrategy(GeneticStrategy):
             f"Removed {len(examples) - len(clean)} individuals from bad (label was equal to gt)"
         )
         return clean
-
-    def _postprocess(self, population: CategorizedDataset) -> CategorizedDataset:  # type: ignore
-        clean_pop = self._clean(population)
-        label_eval, seq_eval = self.evaluate_generation(clean_pop)
-
-        # Remove any copy of the source point from the good or bad dataset.
-        new_pop = [
-            (ind, label)
-            for ind, label in clean_pop
-            if ind.tolist() != self.input_seq.tolist()
-        ]
-        if len(new_pop) < len(clean_pop):
-            self.print(
-                f"Source point was in the dataset {len(clean_pop) - len(new_pop)} times!, removing it"
-            )
-        clean_pop = new_pop
-
-        # NOTE: I don't think this is needed
-        # # If source point is not in good datset, add just one instance back
-        # if (
-        #     self.good_examples
-        #     and len(
-        #         [
-        #             ind
-        #             for ind, _ in clean_pop
-        #             if ind.tolist() == source_point[0].tolist()
-        #         ]
-        #     )
-        #     == 0
-        # ):
-        #     clean_pop.append(source_point)
-
-        label_eval, seq_eval = self.evaluate_generation(clean_pop)
-        self.print(
-            f"[After clean] Good examples={self.good_examples} ({len(clean_pop)}) ratio of same_label is: {label_eval*100}%, avg distance: {seq_eval}"
-        )
-        return clean_pop
 
     def evaluate_generation(self, examples: CategorizedDataset):  # type: ignore
         target_cats = [self.target for _ in range(self.k)]

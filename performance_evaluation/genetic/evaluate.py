@@ -1,12 +1,13 @@
+from generation.utils import _evaluate_generation
 from utils_classes.Split import Split
 import warnings
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Set
 
 from recbole.model.abstract_recommender import SequentialRecommender
 from torch import Tensor
 
 from alignment.alignment import trace_disalignment
-from automata_learning.learning import learning_pipeline
+from automata_learning.passive_learning import learning_pipeline
 from config import ConfigParams
 from constants import MAX_LENGTH, cat2id
 from exceptions import (
@@ -74,7 +75,7 @@ def _init_log(ks: List[int]) -> Dict[str, Any]:
 
 
 def log_error(
-    i: int, error: str, ks: List[int], split: Split, target_cat: List[str]
+    i: int, error: str, ks: List[int], split: Split, target_cat: Optional[str]
 ) -> Dict[str, Any]:
     from performance_evaluation.alignment.evaluate import _init_log as align_init_log
 
@@ -83,26 +84,45 @@ def log_error(
     log["i"] = i
     log["gen_error"] = error
     log["split"] = split
-    log["gen_target_y@1"] = str({cat2id[cat] for cat in target_cat})
+    if target_cat:
+        log["gen_target_y@1"] = str({cat2id[target_cat]})
     align_log.update(log)
 
     return align_log
 
 
-def evaluate_genetic(
+def compute_metrics_log(
+    log: Dict[str, Any],
+    gt_preds: Dict[int, List[int] | List[Set[int]]],
+    source_preds: Dict[int, List[int] | List[Set[int]]],
+    counterfactual_preds: Dict[int, List[int] | List[Set[int]]],
+):
+    ks = gt_preds.keys()
+    for k in ks:
+        log[f"gen_target_y@{k}"] = seq_tostr(gt_preds[k])
+        log[f"gen_gt@{k}"] = seq_tostr(source_preds[k])
+        #
+        _, source_score = equal_ys(target_preds[k], source_preds[k], return_score=True)
+        _, counter_score = equal_ys(
+            target_preds[k], counterfactual_preds[k], return_score=True
+        )
+        # if targeted higher is better, otherwise lower is better
+        log[f"gen_score@{k}"] = counter_score
+        log[f"gen_source_score@{k}"] = source_score
+        log[f"gen_aligned_gt@{k}"] = seq_tostr(counterfactual_preds[k])
+
+    pass
+
+
+def _evaluate_targeted_cat(
     i: int,
     datasets: TimedGenerator,
     dataset: GoodBadDataset,
     source: Tensor,
     model: SequentialRecommender,
-    target_cat: List[str],
+    target_cat: str,
     ks: List[int],
-) -> Dict[str, Any]:
-    """Given the ground truth and the preds, it returns a dictionary containing the evaluation metrics."""
-    if not ConfigParams.GENERATION_STRATEGY == "targeted":
-        raise ValueError(
-            f"You are using the `evaluate_targeted` evaluation function but the generation strategy is set to '{ConfigParams.GENERATION_STRATEGY}', change it to 'targeted' or use a different evaluation function"
-        )
+):
     log = _init_log(ks)
     source_logits = model(source)
     trimmed_source = trim(source.squeeze(0))
@@ -114,7 +134,7 @@ def evaluate_genetic(
         for k in ks
     }
 
-    target_categories = {cat2id[t] for t in target_cat}  # type: ignore
+    target_categories = {cat2id[target_cat]}
     target_preds = {k: [target_categories for _ in range(k)] for k in ks}
 
     # Compute dataset metrics
@@ -122,7 +142,7 @@ def evaluate_genetic(
         good, bad = dataset
         bad_perc = len(bad) / ConfigParams.POP_SIZE
         good_perc = len(good) / ConfigParams.POP_SIZE
-        target_cats = [set(cat2id[cat] for cat in target_cat) for _ in range(min(ks))]
+        target_cats = [{cat2id[target_cat]} for _ in range(min(ks))]
         if len(bad) != 0:
             _, (_, bad_mean_dist) = _evaluate_categorized_generation(
                 trimmed_source, bad, target_cats  # type: ignore
@@ -177,3 +197,239 @@ def evaluate_genetic(
         normalized=False,
     )
     return log
+
+
+def _evaluate_untargeted_cat(
+    i: int,
+    datasets: TimedGenerator,
+    dataset: GoodBadDataset,
+    source: Tensor,
+    model: SequentialRecommender,
+    ks: List[int],
+):
+    log = _init_log(ks)
+    source_logits = model(source)
+    trimmed_source = trim(source.squeeze(0))
+    source_preds = {
+        k: labels2cat(
+            topk(logits=source_logits, k=k, dim=-1, indices=True).squeeze(0),
+            encode=True,
+        )
+        for k in ks
+    }
+
+    # Compute dataset metrics not implemented for untargeted categorized
+    log["gen_good_points_percentage"] = None
+    log["gen_bad_points_percentage"] = None
+    # NOTE: for now I take just the counterfactual which is the most similar to the source sequence, but since they are all counterfactuals,
+    # we can also generate a list of different counterfactuals.
+
+    _, counterfactuals = dataset
+    best_counterfactual, _ = max(
+        counterfactuals,
+        key=lambda x: -edit_distance(trim(x[0]).squeeze(), trimmed_source),
+    )
+    counterfactual_logits = model(pad(best_counterfactual, MAX_LENGTH).unsqueeze(0))
+    best_counterfactual = trim(best_counterfactual.squeeze())
+    counterfactual_preds = {
+        k: labels2cat(
+            topk(logits=counterfactual_logits, k=k, dim=-1, indices=True).squeeze(0),
+            encode=True,
+        )
+        for k in ks
+    }
+
+    for k in ks:
+        log[f"gen_target_y@{k}"] = None
+        log[f"gen_gt@{k}"] = seq_tostr(source_preds[k])
+        log["gen_dataset_time"] = datasets.get_times()[i]
+        log["i"] = i
+        log["gen_source"] = seq_tostr(trimmed_source)
+        #
+        _, counter_score = equal_ys(
+            source_preds[k], counterfactual_preds[k], return_score=True
+        )
+        # if targeted higher is better, otherwise lower is better
+        log[f"gen_score@{k}"] = counter_score
+        log[f"gen_source_score@{k}"] = None
+        log[f"gen_aligned_gt@{k}"] = seq_tostr(counterfactual_preds[k])
+
+    log["gen_aligned"] = seq_tostr(best_counterfactual)
+    log["gen_cost"] = edit_distance(
+        best_counterfactual,
+        trimmed_source,
+        normalized=False,
+    )
+    return log
+
+
+def _evaluate_untargeted_uncat(
+    i: int,
+    datasets: TimedGenerator,
+    dataset: GoodBadDataset,
+    source: Tensor,
+    model: SequentialRecommender,
+    ks: List[int],
+):
+    log = _init_log(ks)
+    source_logits = model(source)
+    trimmed_source = trim(source.squeeze(0))
+    source_preds = {
+        k: topk(logits=source_logits, k=k, dim=-1, indices=True).squeeze(0) for k in ks
+    }
+
+    # Compute dataset metrics not implemented for untargeted uncategorized
+    log["gen_good_points_percentage"] = None
+    log["gen_bad_points_percentage"] = None
+
+    # NOTE: for now I take just the counterfactual which is the most similar to the source sequence, but since they are all counterfactuals,
+    # we can also generate a list of different counterfactuals.
+
+    _, counterfactuals = dataset
+    best_counterfactual, _ = max(
+        counterfactuals,
+        key=lambda x: -edit_distance(trim(x[0]).squeeze(), trimmed_source),
+    )
+    counterfactual_logits = model(pad(best_counterfactual, MAX_LENGTH).unsqueeze(0))
+    best_counterfactual = trim(best_counterfactual.squeeze())
+    counterfactual_preds = {
+        k: topk(logits=counterfactual_logits, k=k, dim=-1, indices=True).squeeze(0)
+        for k in ks
+    }
+
+    for k in ks:
+        log[f"gen_target_y@{k}"] = None
+        log[f"gen_gt@{k}"] = seq_tostr(source_preds[k])
+        log["gen_dataset_time"] = datasets.get_times()[i]
+        log["i"] = i
+        log["gen_source"] = seq_tostr(trimmed_source)
+
+        _, counter_score = equal_ys(
+            source_preds[k], counterfactual_preds[k], return_score=True
+        )
+        # if targeted higher is better, otherwise lower is better
+        log[f"gen_score@{k}"] = counter_score
+        log[f"gen_source_score@{k}"] = None
+        log[f"gen_aligned_gt@{k}"] = seq_tostr(counterfactual_preds[k])
+
+    log["gen_aligned"] = seq_tostr(best_counterfactual)
+    log["gen_cost"] = edit_distance(
+        best_counterfactual,
+        trimmed_source,
+        normalized=False,
+    )
+    return log
+
+
+def _evaluate_targeted_uncat(
+    i: int,
+    datasets: TimedGenerator,
+    dataset: GoodBadDataset,
+    source: Tensor,
+    model: SequentialRecommender,
+    target_cat: str,
+    ks: List[int],
+):
+    log = _init_log(ks)
+    source_logits = model(source)
+    trimmed_source = trim(source.squeeze(0))
+    source_preds = {
+        k: topk(logits=source_logits, k=k, dim=-1, indices=True).squeeze(0) for k in ks
+    }
+
+    target_preds = {k: [{target_cat} for _ in range(k)] for k in ks}
+
+    # Compute dataset metrics not implemented for targeted uncategorized
+    log["gen_good_points_percentage"] = None
+    log["gen_bad_points_percentage"] = None
+
+    # NOTE: for now I take just the counterfactual which is the most similar to the source sequence, but since they are all counterfactuals,
+    # we can also generate a list of different counterfactuals.
+    _, counterfactuals = dataset
+    best_counterfactual, _ = max(
+        counterfactuals,
+        key=lambda x: -edit_distance(trim(x[0]).squeeze(), trimmed_source),
+    )
+    counterfactual_logits = model(pad(best_counterfactual, MAX_LENGTH).unsqueeze(0))
+    best_counterfactual = trim(best_counterfactual.squeeze())
+    counterfactual_preds = {
+        k: topk(logits=counterfactual_logits, k=k, dim=-1, indices=True).squeeze(0)
+        for k in ks
+    }
+
+    for k in ks:
+        log[f"gen_target_y@{k}"] = seq_tostr(target_preds[k])
+        log[f"gen_gt@{k}"] = seq_tostr(source_preds[k])
+        log["gen_dataset_time"] = datasets.get_times()[i]
+        log["i"] = i
+        log["gen_source"] = seq_tostr(trimmed_source)
+        #
+        _, source_score = equal_ys(target_preds[k], source_preds[k], return_score=True)
+        _, counter_score = equal_ys(
+            target_preds[k], counterfactual_preds[k], return_score=True
+        )
+        # if targeted higher is better, otherwise lower is better
+        log[f"gen_score@{k}"] = counter_score
+        log[f"gen_source_score@{k}"] = source_score
+        log[f"gen_aligned_gt@{k}"] = seq_tostr(counterfactual_preds[k])
+
+    log["gen_aligned"] = seq_tostr(best_counterfactual)
+    log["gen_cost"] = edit_distance(
+        best_counterfactual,
+        trimmed_source,
+        normalized=False,
+    )
+    return log
+
+
+def evaluate_genetic(
+    i: int,
+    datasets: TimedGenerator,
+    dataset: GoodBadDataset,
+    source: Tensor,
+    model: SequentialRecommender,
+    target_cat: Optional[str],
+    ks: List[int],
+) -> Dict[str, Any]:
+    """Given the ground truth and the preds, it returns a dictionary containing the evaluation metrics."""
+    categorized = ConfigParams.CATEGORIZED
+    if target_cat is not None and categorized:
+        return _evaluate_targeted_cat(
+            i=i,
+            datasets=datasets,
+            dataset=dataset,
+            source=source,
+            model=model,
+            target_cat=target_cat,
+            ks=ks,
+        )
+    if target_cat is not None and not categorized:
+        return _evaluate_targeted_uncat(
+            i=i,
+            datasets=datasets,
+            dataset=dataset,
+            source=source,
+            model=model,
+            target_cat=target_cat,
+            ks=ks,
+        )
+    if target_cat is None and categorized:
+        return _evaluate_untargeted_uncat(
+            i=i,
+            datasets=datasets,
+            dataset=dataset,
+            source=source,
+            model=model,
+            ks=ks,
+        )
+    if target_cat is None and not categorized:
+        return _evaluate_untargeted_uncat(
+            i=i,
+            datasets=datasets,
+            dataset=dataset,
+            source=source,
+            model=model,
+            ks=ks,
+        )
+    else:
+        raise ValueError()

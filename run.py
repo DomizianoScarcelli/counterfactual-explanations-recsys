@@ -1,3 +1,5 @@
+from ctypes import alignment
+from time import strftime
 from utils import printd
 import warnings
 from typing import Any, Dict, Generator, List, Optional
@@ -28,25 +30,34 @@ warnings.simplefilter(action="ignore", category=RuntimeWarning)
 
 
 def skip_sequence(
-    i: int, target_cat: List[str], prev_df: Optional[DataFrame], split: tuple
+    i: int,
+    target_cat: Optional[str],
+    prev_df: Optional[DataFrame],
+    split: tuple,
+    alignment: bool = True,
 ):
     if prev_df is not None:
+        new_df = {
+            "i": [i],
+        }
+        primary_key = ["i"]
+        if target_cat:
+            new_df["gen_target_y@1"] = str({cat2id[target_cat]})
+            primary_key.append("gen_target_y@1")
+        if alignment:
+            new_df["split"] = str(split)
+            primary_key.append("split")
+        new_df.update(ConfigParams.configs_dict())
+
         future_df = pd.concat(
             [
                 prev_df,
-                pd.DataFrame(
-                    {
-                        "i": [i],
-                        "gen_target_y@1": str({cat2id[cat] for cat in target_cat}),
-                        "split": str(split),
-                        **ConfigParams.configs_dict(),
-                    }
-                ),
+                pd.DataFrame(new_df),
             ]
         )
         if pk_exists(
             future_df,
-            primary_key=["i", "gen_target_y@1", "split"],
+            primary_key=primary_key,
             consider_config=True,
         ):
             return True
@@ -75,7 +86,7 @@ def parse_splits(splits: Optional[List[tuple]] = None) -> List[Split]:  # type: 
 
 
 def run_genetic(
-    target_cat: List[str],
+    target_cat: Optional[str],
     start_i: int = 0,
     end_i: int = 1,
     ks: List[int] = ConfigParams.TOPK,
@@ -84,7 +95,6 @@ def run_genetic(
     pbar=None,
 ):
     split: Split = parse_splits([split] if split else None)[0]  # type: ignore
-
     datasets = TimedGenerator(
         DatasetGenerator(
             use_cache=False,
@@ -100,7 +110,7 @@ def run_genetic(
         datasets.skip()
 
     for i in range(start_i, end_i):
-        if skip_sequence(i, target_cat, prev_df, split.split):
+        if skip_sequence(i, target_cat, prev_df, split.split, alignment=False):
             printd(
                 f"Skipping i: {i} with target {target_cat} and split {split} because already in the log..."
             )
@@ -149,8 +159,9 @@ def run_genetic(
         yield log
 
 
+# TODO: add the possibility for the target_cat to be None, i.e. the run to be untargeted.
 def run_alignment(
-    target_cat: List[str],
+    target_cat: Optional[str],
     start_i: int = 0,
     end_i: int = 1,
     splits: Optional[List[tuple]] = None,  # type: ignore
@@ -253,8 +264,10 @@ def run_alignment(
         yield alignment_logs
 
 
+# TODO:
+# - put a boolean 'evaluate' which if false doesn't run the evaluation but just the generation
 def run_all(
-    target_cat: List[str],
+    target_cat: Optional[str],
     start_i: int = 0,
     end_i: int = 1,
     splits: Optional[List[tuple]] = None,  # type: ignore
@@ -298,9 +311,14 @@ def run_all(
                 if pbar:
                     pbar.total -= 1
                     pbar.refresh()
-                printd(
-                    f"Skipping i: {i} with target {target_cat} and split {split} because already in the log..."
-                )
+                if target_cat:
+                    printd(
+                        f"Skipping i: {i} with target {target_cat} and split {split} because already in the log..."
+                    )
+                else:
+                    printd(
+                        f"Skipping i: {i} with split {split} because already in the log..."
+                    )
         if len(new_splits) == 0:
             datasets.skip()
             continue

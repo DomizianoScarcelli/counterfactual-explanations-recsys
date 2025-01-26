@@ -2,8 +2,12 @@ import pytest
 from torch import tensor
 
 from config import ConfigParams
-from utils_classes.distances import (intersection_weighted_ndcg, jaccard_sim,
-                                     precision_at)
+from utils_classes.distances import (
+    intersection_weighted_ndcg,
+    ndcg,
+    jaccard_sim,
+    precision_at,
+)
 
 
 class TestJaccardSim:
@@ -40,7 +44,7 @@ class TestPrecisionAtK:
         assert precision_at(3, a, b) == 1.0, "Failed for perfect match."
 
 
-class TestNDCG:
+class TestIntersectionWeightedNDCG:
     def test_NDCG_ReturnsOne_WhenListsAreIdentical(self):
         a = [{1, 2, 3}, {4, 5}]
         b = [{1, 2, 3}, {4, 5}]
@@ -78,7 +82,7 @@ class TestNDCG:
         if ConfigParams.GENERATION_STRATEGY == "targeted":
             assert result_perfect == result_suboptimal
         else:
-            assert result_perfect > result_suboptimal, result_suboptimal 
+            assert result_perfect > result_suboptimal, result_suboptimal
 
     def test_NDCG_ReturnsZero_WhenNoItemsInB(self):
         a = [{1, 2, 3}, {4, 5}]
@@ -111,4 +115,63 @@ class TestNDCG:
         a = [{1}, {2}, {3}]
         b = [{1}, {2}, {3}]
         result = intersection_weighted_ndcg(a, b)
+        assert pytest.approx(result, 0.00001) == 1.0, result
+
+
+class TestNDCG:
+    def test_NDCG_ReturnsOne_WhenListsAreIdentical(self):
+        a = [1, 4]
+        b = [1, 4]
+        result = ndcg(a, b)
+        assert pytest.approx(result, 0.00001) == 1.0, result
+
+    def test_NDCG_ReturnsZero_WhenListsAreDisjoint(self):
+        a = [1, 2, 3, 4, 5]
+        b = [6, 7, 8, 9, 10]
+        result = ndcg(a, b)
+        assert pytest.approx(result, 0.00001) == 0.0, result
+
+    def test_NDCG_ReturnsCorrectValue_WhenPartialOverlap(self):
+        a = [1, 2, 3, 4]
+        b = [1, 3, 2, 4]
+        result = ndcg(a, b)
+
+        assert 0.0 < result < 1.0, result
+
+    def test_NDCG_ReturnsOne_WhenRankingIsPerfect(self):
+        a = [1, 2, 3]
+        b = [1, 2, 3]
+        result = ndcg(a, b)
+        assert pytest.approx(result, 0.00001) == 1.0, result
+
+    def test_NDCG_ReturnsLowerValue_WhenRankingIsSuboptimal(self):
+        a = [1, 2, 3]
+        b = [1, 3, 2]
+        result_perfect = ndcg(a, [1, 2, 3])
+        result_suboptimal = ndcg(a, b)
+
+        assert result_perfect > result_suboptimal, f"{result_perfect} > {result_suboptimal}"
+
+    def test_NDCG_HandlesEmptyInputLists(self):
+        a = []
+        b = []
+        result = ndcg(a, b)
+        assert pytest.approx(result, 0.00001) == 0.0, result
+
+    def test_NDCG_HandlesSingleListInputs(self):
+        a = [1, 2]
+        b = [3, 1]
+        result = ndcg(a, b)
+        assert 0.0 < result <= 1.0, result
+
+    def test_NDCG_HandlesVaryingLengthsOfAAndB(self):
+        a = [1, 2, 3]
+        b = [1, 2]
+        with pytest.raises(ValueError):
+            ndcg(a, b)
+
+    def test_NDCG_ReturnsOne_WhenAllItemsMatchWithPerfectRanking(self):
+        a = [1, 2, 3]
+        b = [1, 2, 3]
+        result = ndcg(a, b)
         assert pytest.approx(result, 0.00001) == 1.0, result
