@@ -124,9 +124,14 @@ def evaluate(
         config_dict = ConfigParams.configs_dict()
         new_row = pd.DataFrame({"source_sequence": [next_sequence_str], **config_dict})
         future_df = pd.concat([prev_df, new_row])
-        if pk_exists(df=future_df, primary_key=primary_key, consider_config=True):
+        if pk_exists(
+            df=future_df,
+            primary_key=primary_key,
+            consider_config=True,
+            config_blacklist=["timestamp"],
+        ):
             printd(
-                f"[{i}] Skipping source sequence {next_sequence} since it still exists in the log with the same config"
+                f"[{i}] Skipping source sequence {next_sequence} since it still exists in the log with the same config: {config_dict}"
             )
             datasets.skip()
             continue
@@ -160,7 +165,7 @@ def evaluate(
             )
 
             tp, fp, tn, fn = evaluate_single(dfa, test_dataset)
-            precision, accuracy, recall = compute_automata_metrics(
+            precision, accuracy, recall = compute_metrics(
                 tp=tp, fp=fp, tn=tn, fn=fn
             )
             print("----------------------------------------")
@@ -236,7 +241,7 @@ def run_automata_learning_eval(
           -----------------------
           """
     )
-    config = get_config(dataset=ConfigParams().DATASET, model=ConfigParams().MODEL)
+    config = get_config(dataset=ConfigParams.DATASET, model=ConfigParams.MODEL)
     datasets = DatasetGenerator(
         config=config,
         use_cache=use_cache,

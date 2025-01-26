@@ -2,8 +2,8 @@ from performance_evaluation.automata_learning.evaluate_with_test_set import (
     compute_automata_metrics,
 )
 import warnings
-
-from pandas.api.types import is_int64_dtype
+from scripts.print_pth import print_pth as print_pth_script
+from scripts.targets_popularity import main as targets_popularity_script
 
 from performance_evaluation.automata_learning.evaluate_with_test_set import (
     run_automata_learning_eval,
@@ -165,6 +165,14 @@ class RunSwitcher:
 
 def _absolute_paths(*paths: Optional[str]) -> Tuple[Optional[Path], ...]:
     return tuple(Path(path) if path is not None else None for path in paths)
+
+
+class CLIScripts:
+    def print_pth(self, pth_path: str):
+        print_pth_script(pth_path)
+
+    def targets_popularity(self, dataset: str, categorized: bool = False):
+        targets_popularity_script(dataset, categorized)
 
 
 class CLIStats:
@@ -443,6 +451,7 @@ class CLI:
     evaluate = CLIEvaluate()
     stats = CLIStats()
     utils = CLIUtils()
+    scripts = CLIScripts()
 
     def __init__(self):
         SeedSetter.set_seed()

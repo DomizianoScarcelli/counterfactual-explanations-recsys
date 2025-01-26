@@ -31,7 +31,10 @@ def preprocess_interaction(
 
 
 def pk_exists(
-    df: pd.DataFrame, primary_key: List[str], consider_config: bool = True
+    df: pd.DataFrame,
+    primary_key: List[str],
+    consider_config: bool = True,
+    config_blacklist: List[str] = ["timestamp", "target_cat"],
 ) -> bool:
     """
     Returns True if a record with the same primary key exists in the dataframe.
@@ -50,10 +53,8 @@ def pk_exists(
     if consider_config:
         primary_key = primary_key.copy()
         config_keys = list(ConfigParams.configs_dict().keys())
-        config_keys.remove("timestamp")
-        config_keys.remove(
-            "target_cat"
-        )  # TODO: this has to be fixed with https://trello.com/c/IjjOwQhc/166-risolvi-bug-targetcat
+        for item in config_blacklist:
+            config_keys.remove(item)
         primary_key += config_keys
 
     df = df.copy()  # Avoid modifying the original DataFrame
@@ -111,7 +112,7 @@ def log_run(
         data = {**data, **configs}
         primary_key += list(configs.keys())
         primary_key.remove("timestamp")
-    
+
     new_df = pd.DataFrame(data).astype(str)
 
     # Remove the fields in primary key that do not exist in prev_df, otherwise key error
