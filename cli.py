@@ -4,6 +4,7 @@ from performance_evaluation.automata_learning.evaluate_with_test_set import (
 import warnings
 from scripts.print_pth import print_pth as print_pth_script
 from scripts.targets_popularity import main as targets_popularity_script
+from scripts.merge_dfs import main as merge_dfs_script
 
 from performance_evaluation.automata_learning.evaluate_with_test_set import (
     run_automata_learning_eval,
@@ -173,6 +174,19 @@ class CLIScripts:
 
     def targets_popularity(self, dataset: str, categorized: bool = False):
         targets_popularity_script(dataset, categorized)
+
+    def merge_dfs(
+        self,
+        paths: Optional[List[str]] = None,
+        dir: Optional[str] = None,
+        primary_key: List[str] = [],
+        blacklist_keys: List[str] = ["timestamp"],
+        ignore_config: bool = False,
+        save_path: Optional[str] = None,
+    ):
+        merge_dfs_script(
+            paths, dir, primary_key, blacklist_keys, ignore_config, save_path
+        )
 
 
 class CLIStats:

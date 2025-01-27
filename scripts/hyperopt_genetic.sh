@@ -97,7 +97,7 @@ EOF
                                 # Run the script with the JSON string as the --config-dict argument
                                 python -m cli evaluate alignment \
                                     --use-cache=False \
-                                    --save-path="results/evaluate/alignment/alignment_hyperopt.csv" \
+                                    --save-path="results/evaluate/alignment/alignment_hyperopt_genetic.csv" \
                                     --config_dict="$config_json" \
                                     --mode="genetic" \
                                     --range-i="(0, 400)" \
