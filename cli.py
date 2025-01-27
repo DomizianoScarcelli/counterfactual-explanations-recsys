@@ -312,7 +312,8 @@ class CLIStats:
             config_keys.remove("target_cat")
 
         config_keys.remove("timestamp")
-        config_keys.append("split")
+        if "split" in df.columns:
+            config_keys.append("split")
 
         assert (
             set(config_keys) - set(df.columns) == set()

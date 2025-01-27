@@ -414,7 +414,7 @@ def evaluate_genetic(
             ks=ks,
         )
     if target_cat is None and categorized:
-        return _evaluate_untargeted_uncat(
+        return _evaluate_untargeted_cat(
             i=i,
             datasets=datasets,
             dataset=dataset,

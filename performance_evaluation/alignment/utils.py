@@ -277,17 +277,32 @@ def compute_fidelity(df: pd.DataFrame) -> dict:
     gen_score_columns = [col for col in df.columns if col.startswith("gen_score@")]
     all_score_columns = score_columns + gen_score_columns
 
+    similarity_threshold = df["jaccard_threshold"]
+
     # Iterate over each score column
+    error_col = "error" if "error" in df.columns else "gen_error"
     for score_col in all_score_columns:
         # Handle cases where values are None or error is not None
-        above_threshold = (
-            (df[score_col] > df["jaccard_threshold"])
-            & (df[score_col].notna())
-            & (df["error"].isna())
-        ).sum()
-
+        if all(df["gen_strategy"] == "targeted"):
+            good_generation = (
+                (df[score_col] > similarity_threshold)
+                & (df[score_col].notna())
+                & (df[error_col].isna())
+            ).sum()
+        elif all(df["gen_strategy"] == "genetic") or all(
+            df["gen_strategy"] == "genetic_categorized"
+        ):
+            good_generation = (
+                (df[score_col] < similarity_threshold)
+                & (df[score_col].notna())
+                & (df[error_col].isna())
+            ).sum()
+        else:
+            raise ValueError(
+                f"The entire group should have the same generation strategy. Insert the generation strategy as a primary key"
+            )
         # Compute fidelity as the proportion of valid rows above the threshold
-        fidelity_k = above_threshold / len(df)
+        fidelity_k = good_generation / len(df)
 
         # Store the result in the dictionary
         fidelity_results[score_col] = fidelity_k
