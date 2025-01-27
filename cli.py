@@ -179,13 +179,20 @@ class CLIScripts:
         self,
         paths: Optional[List[str]] = None,
         dir: Optional[str] = None,
+        regex: Optional[str] = None,
         primary_key: List[str] = [],
         blacklist_keys: List[str] = ["timestamp"],
         ignore_config: bool = False,
         save_path: Optional[str] = None,
     ):
         merge_dfs_script(
-            paths, dir, primary_key, blacklist_keys, ignore_config, save_path
+            paths=paths,
+            dir=dir,
+            regex=regex,
+            primary_key=primary_key,
+            blacklist_keys=blacklist_keys,
+            ignore_config=ignore_config,
+            save_path=save_path,
         )
 
 
@@ -307,6 +314,11 @@ class CLIStats:
         config_keys.remove("timestamp")
         config_keys.append("split")
 
+        assert (
+            set(config_keys) - set(df.columns) == set()
+        ), f"Some config keys: {set(config_keys) - set(df.columns)} do not exist in the loaded df"
+
+        df[config_keys] = df[config_keys].fillna("NaN")
         fidelity_rows = []
         grouped = df.groupby(config_keys)
 
