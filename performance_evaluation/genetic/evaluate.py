@@ -307,6 +307,7 @@ def _evaluate_untargeted_uncat(
         _, counter_score = equal_ys(
             source_preds[k], counterfactual_preds[k], return_score=True
         )
+        assert 0.0 <= counter_score <= 1, f"gen_score@{k} is out of range: {counter_score}"
         # if targeted higher is better, otherwise lower is better
         log[f"gen_score@{k}"] = counter_score
         log[f"gen_source_score@{k}"] = None

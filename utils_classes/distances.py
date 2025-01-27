@@ -143,7 +143,6 @@ def precision_at(k: int, a: Tensor, b: Tensor) -> float:
 
 
 def ndcg(a: List[int], b: List[int]) -> float:
-    # MAJOR TODO: this has to be tested in the genetic.py topk approach
     def dcg(relevance_scores: List[float] | List[int]) -> float:
         """Calculate Discounted Cumulative Gain (DCG)."""
         return sum(rel / math.log2(idx + 2) for idx, rel in enumerate(relevance_scores))
@@ -207,7 +206,8 @@ def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
     actual_dcg = dcg(relevance_scores)
     ideal_dcg = dcg(ideal_relevance_score)
     ndcg = actual_dcg / ideal_dcg if ideal_dcg > 0 else 0.0
-    assert 0.0 <= ndcg <= 1.0
+    assert 0.0 <= ndcg <= 1.0, f"NDCG is not in a normalized range: {ndcg}"
+
     return ndcg
 
 
