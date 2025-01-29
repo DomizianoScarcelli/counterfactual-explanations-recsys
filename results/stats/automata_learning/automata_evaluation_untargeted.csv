@@ -1,0 +1,2 @@
+determinism,model,dataset,target_cat,pop_size,generations,halloffame_ratio,fitness_alpha,allowed_mutations,include_sink,mut_prob,crossover_prob,genetic_topk,mutation_params,generation_strategy,ignore_genetic_split,jaccard_threshold,tp,count,fp,tn,fn,precision,accuracy,recall
+True,BERT4Rec,ml-100k,False,8192,10,0,0.5,"('replace', 'swap', 'add', 'delete', 'shuffle', 'reverse')",True,0.5,0.7,1,"(1, 1, 1)",genetic,True,0.5,41687,53,9080,127695,162584,0.8211436563121713,0.49665441025550805,0.20407693701014828
