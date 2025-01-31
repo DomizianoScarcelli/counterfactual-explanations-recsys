@@ -142,6 +142,27 @@ def evaluate(
                 print(f"Raised error {type(e)}")
                 datasets.skip()
                 datasets.match_indices()  # type: ignore
+                log = {
+                    "tp": None,
+                    "fp": None,
+                    "tn": None,
+                    "fn": None,
+                    "precision": None,
+                    "accuracy": None,
+                    "recall": None,
+                    "train_dataset_len": None,
+                    "test_dataset_len": None,
+                    "source_sequence_len": None,
+                    "source_sequence": seq_tostr(next_sequence),
+                    "error": "EmptyDatasetError",
+                }
+                if log_path:
+                    prev_df = log_run(
+                        log=log,
+                        prev_df=prev_df,
+                        save_path=log_path,
+                        primary_key=["source_sequence"],
+                    )
                 continue
             source_sequence = preprocess_interaction(interaction)
             pbar.set_postfix_str(f"On sequence: {seq_tostr(next_sequence)}")
@@ -165,9 +186,7 @@ def evaluate(
             )
 
             tp, fp, tn, fn = evaluate_single(dfa, test_dataset)
-            precision, accuracy, recall = compute_metrics(
-                tp=tp, fp=fp, tn=tn, fn=fn
-            )
+            precision, accuracy, recall = compute_metrics(tp=tp, fp=fp, tn=tn, fn=fn)
             print("----------------------------------------")
             print(f"[{i}] Precision: {precision}")
             print(f"[{i}] Accuracy: {accuracy}")
@@ -189,6 +208,7 @@ def evaluate(
                 "test_dataset_len": test_dataset_len,
                 "source_sequence_len": len(source_sequence),
                 "source_sequence": seq_tostr(source_sequence),
+                "error": None,
             }
             if log_path:
                 prev_df = log_run(
