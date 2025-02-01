@@ -172,8 +172,8 @@ class CLIScripts:
     def print_pth(self, pth_path: str):
         print_pth_script(pth_path)
 
-    def targets_popularity(self, dataset: str, categorized: bool = False):
-        targets_popularity_script(dataset, categorized)
+    def targets_popularity(self, dataset: str):
+        targets_popularity_script(dataset)
 
     def merge_dfs(
         self,
