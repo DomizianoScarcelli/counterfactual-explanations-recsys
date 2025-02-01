@@ -3,14 +3,14 @@ from models.utils import replace_padding
 from typing import Union
 
 import torch
-from recbole.model.sequential_recommender import SASRec
+from recbole.model.sequential_recommender import GRU4Rec
 from recbole.trainer import Interaction
 from torch import Tensor
 
 from constants import PADDING_CHAR
 
 
-class ExtendedSASRec(SASRec):
+class ExtendedGRU4Rec(GRU4Rec):
     def __init__(self, config, dataset):
         super().__init__(config=config, dataset=dataset)
         self.eval()
@@ -18,7 +18,7 @@ class ExtendedSASRec(SASRec):
     def __call__(self, x: Union[Interaction, Tensor]):
         x = x.to(ConfigParams.DEVICE)
         return self.full_sort_predict(x)
-        
+
     def full_sort_predict(self, interaction: Union[Interaction, Tensor]):
         if isinstance(interaction, Interaction):
             return super().full_sort_predict(interaction)
@@ -33,6 +33,7 @@ class ExtendedSASRec(SASRec):
             item_seq = replace_padding(item_seq, PADDING_CHAR, 0).to(torch.int64)
             seq_output = self.forward(item_seq, item_seq_len)
             test_items_emb = self.item_embedding.weight
-            scores = torch.matmul(seq_output, test_items_emb.transpose(0, 1))  # [B n_items]
+            scores = torch.matmul(
+                seq_output, test_items_emb.transpose(0, 1)
+            )  # [B, n_items]
             return scores
-
