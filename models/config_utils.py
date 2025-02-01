@@ -31,7 +31,7 @@ def generate_model(config: Config) -> SequentialRecommender:
         model = ExtendedBERT4Rec(config, train_data.dataset)
     elif config.model == RecModel.SASRec.value:
         model = ExtendedSASRec(config, train_data.dataset)
-    elif config.model == RecModel.BERT4Rec.value:
+    elif config.model == RecModel.GRU4Rec.value:
         model = ExtendedGRU4Rec(config, train_data.dataset)
     else:
         raise ValueError(f"Model {config.model} not supported")
