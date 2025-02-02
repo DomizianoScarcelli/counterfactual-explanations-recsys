@@ -1,4 +1,3 @@
-from utils import printd
 from automata_learning.passive_learning import learning_pipeline
 from automata_learning.utils import run_automata
 from config import ConfigParams
@@ -6,6 +5,7 @@ from generation.dataset.generate import generate
 from generation.dataset.utils import interaction_to_tensor
 from models.config_utils import generate_model, get_config
 from models.utils import trim
+from utils import printd
 from utils_classes.generators import DatasetGenerator, SequenceGenerator
 
 

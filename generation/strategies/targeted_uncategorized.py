@@ -12,23 +12,16 @@ from constants import MAX_LENGTH, cat2id
 from generation.extended_ea_algorithms import eaSimpleBatched
 from generation.mutations import ALL_MUTATIONS, Mutation
 from generation.strategies.genetic import GeneticStrategy
-from generation.utils import (
-    _evaluate_categorized_generation,
-    equal_ys,
-    get_category_map,
-    labels2cat,
-)
+from generation.utils import (_evaluate_categorized_generation, equal_ys,
+                              get_category_map, labels2cat)
 from models.utils import pad_batch, topk, trim
 from type_hints import CategorizedDataset
-from utils_classes.distances import (
-    edit_distance,
-    intersection_weighted_ndcg,
-    self_indicator,
-)
+from utils_classes.distances import (edit_distance, intersection_weighted_ndcg,
+                                     self_indicator)
 from utils_classes.Split import Split
 
 
-class TargetedGeneticStrategy(GeneticStrategy):
+class TargetedUncategorizedGeneticStrategy(GeneticStrategy):
     def __init__(
         self,
         input_seq: Tensor,

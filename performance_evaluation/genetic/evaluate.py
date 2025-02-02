@@ -1,5 +1,3 @@
-from generation.utils import _evaluate_generation
-from utils_classes.Split import Split
 import warnings
 from typing import Any, Dict, List, Optional, Set
 
@@ -10,20 +8,17 @@ from alignment.alignment import trace_disalignment
 from automata_learning.passive_learning import learning_pipeline
 from config import ConfigParams
 from constants import MAX_LENGTH, cat2id
-from exceptions import (
-    CounterfactualNotFound,
-    DfaNotAccepting,
-    DfaNotRejecting,
-    EmptyDatasetError,
-    NoTargetStatesError,
-    SplitNotCoherent,
-)
-from generation.utils import _evaluate_categorized_generation, equal_ys, labels2cat
+from exceptions import (CounterfactualNotFound, DfaNotAccepting,
+                        DfaNotRejecting, EmptyDatasetError,
+                        NoTargetStatesError, SplitNotCoherent)
+from generation.utils import (_evaluate_categorized_generation,
+                              _evaluate_generation, equal_ys, labels2cat)
 from models.utils import pad, topk, trim
 from type_hints import GoodBadDataset
 from utils import TimedFunction, seq_tostr
 from utils_classes.distances import edit_distance
 from utils_classes.generators import TimedGenerator
+from utils_classes.Split import Split
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 warnings.simplefilter(action="ignore", category=RuntimeWarning)
@@ -77,7 +72,8 @@ def _init_log(ks: List[int]) -> Dict[str, Any]:
 def log_error(
     i: int, error: str, ks: List[int], split: Split, target_cat: Optional[str]
 ) -> Dict[str, Any]:
-    from performance_evaluation.alignment.evaluate import _init_log as align_init_log
+    from performance_evaluation.alignment.evaluate import \
+        _init_log as align_init_log
 
     log = _init_log(ks)
     align_log = align_init_log(ks)

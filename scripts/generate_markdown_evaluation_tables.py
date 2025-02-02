@@ -1,4 +1,5 @@
 import pandas as pd
+
 from constants import cat2id
 
 # Load data into DataFrame

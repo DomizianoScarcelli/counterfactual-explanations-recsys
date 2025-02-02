@@ -1,6 +1,8 @@
-import torch
 import fire
+import torch
+
 from config import ConfigParams
+
 
 def print_pth(pth_path:str):
     pth_file = torch.load(pth_path, map_location=ConfigParams.DEVICE)

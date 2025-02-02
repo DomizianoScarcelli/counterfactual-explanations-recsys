@@ -1,7 +1,8 @@
-from typing import Optional, List
-import pandas as pd
 import os
 import re
+from typing import List, Optional
+
+import pandas as pd
 
 from config import ConfigParams
 

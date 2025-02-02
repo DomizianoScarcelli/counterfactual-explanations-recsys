@@ -1,5 +1,3 @@
-from models.extended_models.ExtendedGRU4Rec import ExtendedGRU4Rec
-from utils import printd
 from pathlib import Path
 
 import torch
@@ -9,8 +7,10 @@ from recbole.model.abstract_recommender import SequentialRecommender
 from config import ConfigParams
 from generation.dataset.utils import get_dataloaders
 from models.extended_models.ExtendedBERT4Rec import ExtendedBERT4Rec
+from models.extended_models.ExtendedGRU4Rec import ExtendedGRU4Rec
 from models.extended_models.ExtendedSASRec import ExtendedSASRec
 from type_hints import RecDataset, RecModel
+from utils import printd
 
 
 def generate_model(config: Config) -> SequentialRecommender:

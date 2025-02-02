@@ -1,5 +1,3 @@
-from config import ConfigParams
-from models.utils import replace_padding
 from typing import Union
 
 import torch
@@ -7,7 +5,9 @@ from recbole.model.sequential_recommender import GRU4Rec
 from recbole.trainer import Interaction
 from torch import Tensor
 
+from config import ConfigParams
 from constants import PADDING_CHAR
+from models.utils import replace_padding
 
 
 class ExtendedGRU4Rec(GRU4Rec):

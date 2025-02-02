@@ -1,4 +1,3 @@
-from utils import printd
 from typing import Any, Dict, Generator, List, Optional
 
 from recbole.model.abstract_recommender import SequentialRecommender
@@ -10,17 +9,12 @@ from alignment.utils import postprocess_alignment
 from automata_learning.passive_learning import learning_pipeline
 from config import ConfigParams
 from constants import cat2id, error_messages
-from exceptions import (
-    CounterfactualNotFound,
-    DfaNotAccepting,
-    DfaNotRejecting,
-    NoTargetStatesError,
-    SplitNotCoherent,
-)
+from exceptions import (CounterfactualNotFound, DfaNotAccepting,
+                        DfaNotRejecting, NoTargetStatesError, SplitNotCoherent)
 from generation.utils import equal_ys, labels2cat
 from models.utils import topk, trim
 from type_hints import CategorySet, GoodBadDataset
-from utils import TimedFunction, seq_tostr
+from utils import TimedFunction, printd, seq_tostr
 from utils_classes.Split import Split
 
 timed_learning_pipeline = TimedFunction(learning_pipeline)
@@ -84,7 +78,8 @@ def _init_log(ks: List[int]) -> Dict[str, Any]:
 def log_error(
     i: int, error: str, ks: List[int], split: Split, target_cat: Optional[str] = None
 ) -> Dict[str, Any]:
-    from performance_evaluation.genetic.evaluate import _init_log as gen_init_log
+    from performance_evaluation.genetic.evaluate import \
+        _init_log as gen_init_log
 
     log = _init_log(ks)
     gen_log = gen_init_log(ks)

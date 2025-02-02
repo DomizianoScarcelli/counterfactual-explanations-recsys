@@ -1,4 +1,3 @@
-from utils import printd
 import pickle
 from pathlib import Path
 from typing import Set, Tuple
@@ -14,6 +13,7 @@ from torch.utils.data import DataLoader
 from constants import MAX_LENGTH, PADDING_CHAR
 from models.utils import replace_padding
 from type_hints import Dataset, GoodBadDataset
+from utils import printd
 
 
 def save_dataset(dataset: GoodBadDataset, save_path: str | Path):

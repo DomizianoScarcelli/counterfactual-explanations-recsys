@@ -1,17 +1,6 @@
-from performance_evaluation.automata_learning.evaluate_with_test_set import (
-    compute_automata_metrics,
-)
-import warnings
-from scripts.print_pth import print_pth as print_pth_script
-from scripts.targets_popularity import main as targets_popularity_script
-from scripts.merge_dfs import main as merge_dfs_script
-
-from performance_evaluation.automata_learning.evaluate_with_test_set import (
-    run_automata_learning_eval,
-)
-from utils_classes.generators import InteractionGenerator
 import json
 import os
+import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, TypeAlias
 
@@ -24,12 +13,18 @@ from config import ConfigDict, ConfigParams
 from constants import cat2id
 from performance_evaluation import alignment
 from performance_evaluation.alignment.utils import compute_fidelity, log_run
+from performance_evaluation.automata_learning.evaluate_with_test_set import (
+    compute_automata_metrics, run_automata_learning_eval)
 from run import run_alignment
 from run import run_alignment as run_alignment
 from run import run_all, run_genetic
+from scripts.merge_dfs import main as merge_dfs_script
+from scripts.print_pth import print_pth as print_pth_script
+from scripts.targets_popularity import main as targets_popularity_script
 from sensitivity.model_sensitivity import main as evaluate_sensitivity
 from sensitivity.model_sensitivity import run_on_all_positions
 from utils import SeedSetter
+from utils_classes.generators import InteractionGenerator
 
 RunModes: TypeAlias = Literal["alignment", "genetic", "automata_learning", "all"]
 

@@ -1,7 +1,6 @@
+import warnings
 from ctypes import alignment
 from time import strftime
-from utils import printd
-import warnings
 from typing import Any, Dict, Generator, List, Optional
 
 import pandas as pd
@@ -13,16 +12,16 @@ from constants import cat2id, error_messages
 from exceptions import EmptyDatasetError
 from generation.dataset.utils import interaction_to_tensor
 from performance_evaluation.alignment.evaluate import evaluate_alignment
-from performance_evaluation.alignment.evaluate import log_error as log_alignment_error
+from performance_evaluation.alignment.evaluate import \
+    log_error as log_alignment_error
 from performance_evaluation.alignment.utils import pk_exists
 from performance_evaluation.genetic.evaluate import evaluate_genetic
-from performance_evaluation.genetic.evaluate import log_error as log_genetic_error
+from performance_evaluation.genetic.evaluate import \
+    log_error as log_genetic_error
 from type_hints import SplitTuple
-from utils_classes.generators import (
-    DatasetGenerator,
-    InteractionGenerator,
-    TimedGenerator,
-)
+from utils import printd
+from utils_classes.generators import (DatasetGenerator, InteractionGenerator,
+                                      TimedGenerator)
 from utils_classes.Split import Split
 
 warnings.simplefilter(action="ignore", category=FutureWarning)

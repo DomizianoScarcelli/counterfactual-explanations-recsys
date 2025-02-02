@@ -2,12 +2,8 @@ import pytest
 from torch import tensor
 
 from config import ConfigParams
-from utils_classes.distances import (
-    intersection_weighted_ndcg,
-    ndcg,
-    jaccard_sim,
-    precision_at,
-)
+from utils_classes.distances import (intersection_weighted_ndcg, jaccard_sim,
+                                     ndcg, precision_at)
 
 
 class TestJaccardSim:

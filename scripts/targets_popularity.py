@@ -1,10 +1,11 @@
-import pandas as pd
-from pandas import DataFrame
-from typing import Tuple, Optional
+from typing import Optional, Tuple
+
 import fire
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import seaborn as sns
+from pandas import DataFrame
 
 from generation.dataset.utils import interaction_to_tensor
 

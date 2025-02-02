@@ -1,8 +1,7 @@
-from utils import printd
 import json
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union, Literal
 import os
+from pathlib import Path
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 import pandas as pd
 from pandas import DataFrame
@@ -13,6 +12,7 @@ from torch import Tensor
 from config import ConfigParams
 from generation.dataset.utils import interaction_to_tensor
 from models.utils import trim
+from utils import printd
 
 
 def preprocess_interaction(
