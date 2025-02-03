@@ -1,3 +1,4 @@
+from utils_classes.distances import ndcg
 import math
 from statistics import mean
 from typing import Callable, List, Optional
@@ -6,18 +7,24 @@ import numpy as np
 import torch
 from deap import tools
 from torch import Tensor
+from type_hints import Dataset
 
 from config import ConfigParams
-from constants import MAX_LENGTH, cat2id
+from constants import MAX_LENGTH
 from generation.extended_ea_algorithms import eaSimpleBatched
 from generation.mutations import ALL_MUTATIONS, Mutation
 from generation.strategies.genetic import GeneticStrategy
-from generation.utils import (_evaluate_categorized_generation, equal_ys,
-                              get_category_map, labels2cat)
+from generation.utils import (
+    _evaluate_categorized_generation,
+    equal_ys,
+    get_category_map,
+)
 from models.utils import pad_batch, topk, trim
 from type_hints import CategorizedDataset
-from utils_classes.distances import (edit_distance, intersection_weighted_ndcg,
-                                     self_indicator)
+from utils_classes.distances import (
+    edit_distance,
+    self_indicator,
+)
 from utils_classes.Split import Split
 
 
@@ -25,7 +32,7 @@ class TargetedUncategorizedGeneticStrategy(GeneticStrategy):
     def __init__(
         self,
         input_seq: Tensor,
-        target: int | str,
+        target: int,
         model: Callable,
         alphabet: List[int],
         allowed_mutations: List[Mutation] = ALL_MUTATIONS,
@@ -52,9 +59,6 @@ class TargetedUncategorizedGeneticStrategy(GeneticStrategy):
             k=k,
         )
         self.category_map = get_category_map()
-        if isinstance(target, str):
-            target = {cat2id[target]}
-
         self.target = target
 
     def evaluate_fitness_batch(self, individuals: List[List[int]]) -> List[float]:
@@ -76,13 +80,8 @@ class TargetedUncategorizedGeneticStrategy(GeneticStrategy):
                 logits=candidate_preds, dim=-1, k=self.k, indices=True
             )  # [num_seqs, k]
 
-            # I get the category identifiers (list) of each candidate
-            y_primes = [
-                labels2cat(y_prime, encode=True) for y_prime in y_primes
-            ]  # [num_seqs, k]
-
             topk_ys = topk(logits=self.gt, dim=-1, k=self.k, indices=True)  # shape [k]
-            ys = labels2cat(topk_ys, encode=True)  # shape [k]
+            ys = topk_ys
 
             target_ys = [self.target for _ in range(self.k)]  # [k]
 
@@ -92,10 +91,8 @@ class TargetedUncategorizedGeneticStrategy(GeneticStrategy):
                 seq_dist = edit_distance(
                     self.input_seq, candidate_seq, normalized=True
                 )  # [0,MAX_LENGTH] if not normalized, [0,1] if normalized
-                cat_dist_from_gt = 1 - intersection_weighted_ndcg(ys, y_primes[n_i])
-                cat_dist_from_target = 1 - intersection_weighted_ndcg(
-                    target_ys, y_primes[n_i]
-                )
+                cat_dist_from_gt = 1 - ndcg(ys.tolist(), y_primes[n_i].tolist())
+                cat_dist_from_target = 1 - ndcg(target_ys, y_primes[n_i].tolist())
 
                 cat_dist = cat_dist_from_target
 
@@ -119,7 +116,7 @@ class TargetedUncategorizedGeneticStrategy(GeneticStrategy):
 
         return fitnesses
 
-    def generate(self) -> CategorizedDataset:  # type: ignore
+    def generate(self) -> Dataset:  # type: ignore
         population = self.toolbox.population()
 
         halloffame_size = int(np.round(self.pop_size * self.halloffame_ratio))
@@ -138,11 +135,9 @@ class TargetedUncategorizedGeneticStrategy(GeneticStrategy):
         )
         preds = self.model(pad_batch(population, MAX_LENGTH))
         preds = topk(logits=preds, dim=-1, k=self.k, indices=True)  # [pop_size, k]
-        cats = [labels2cat(y, encode=True) for y in preds]  # [pop_size, k]
-
         # cats = labels2cat(preds, encode=True)
-        new_population: CategorizedDataset = [
-            (torch.tensor(ind), cat) for ind, cat in zip(population, cats)
+        new_population: Dataset = [
+            (torch.tensor(x), preds[i].item()) for (i, x) in enumerate(population)
         ]
 
         label_eval, seq_eval = self.evaluate_generation(new_population)
@@ -157,10 +152,9 @@ class TargetedUncategorizedGeneticStrategy(GeneticStrategy):
         new_augmented = []
         preds = self.model(pad_batch(augmented, MAX_LENGTH))
         preds = topk(logits=preds, dim=-1, k=self.k, indices=True)
-        cats = [labels2cat(y, encode=True) for y in preds]  # [pop_size, k]
 
-        for ind, cat in zip(augmented, cats):
-            new_augmented.append((torch.tensor(ind), cat))
+        for i, x in enumerate(augmented):
+            new_augmented.append((torch.tensor(x), preds[i].item()))
 
         label_eval, seq_eval = self.evaluate_generation(new_augmented)
         self.print(
@@ -170,29 +164,29 @@ class TargetedUncategorizedGeneticStrategy(GeneticStrategy):
 
     def _clean(self, examples: CategorizedDataset) -> CategorizedDataset:  # type: ignore
         """Removes the bad points from the good points and vice versa."""
-        target_cats = [self.target for _ in range(self.k)]
+        target = [self.target for _ in range(self.k)]
         if self.good_examples:
             clean: CategorizedDataset = [
-                (seq, cats) for seq, cats in examples if equal_ys(target_cats, cats)
+                (seq, label) for seq, label in examples if equal_ys(target, label)
             ]
             self.print(
                 f"Removed {len(examples) - len(clean)} individuals from good (label was not equal to gt)"
             )
             return clean
         clean: CategorizedDataset = [
-            (seq, cats) for seq, cats in examples if not equal_ys(target_cats, cats)
+            (seq, label) for seq, label in examples if not equal_ys(target, label)
         ]
         self.print(
             f"Removed {len(examples) - len(clean)} individuals from bad (label was equal to gt)"
         )
         return clean
 
-    def evaluate_generation(self, examples: CategorizedDataset):  # type: ignore
-        target_cats = [self.target for _ in range(self.k)]
+    def evaluate_generation(self, examples: Dataset):  # type: ignore
+        target = [self.target for _ in range(self.k)]
 
         # TODO: return also the average score in the evaluation
         return _evaluate_categorized_generation(
             input_seq=self.input_seq,
             dataset=examples,
-            cats=target_cats,
+            cats=target,
         )

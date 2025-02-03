@@ -168,9 +168,10 @@ class ConfigParams:
         elif not cls.TARGETED and not cls.CATEGORIZED:
             cls.GENERATION_STRATEGY = "genetic"
         else:
-            raise NotImplementedError(
-                f"targeted: {cls.TARGETED} of type{type(cls.TARGETED)}, categorized: {cls.CATEGORIZED} of type {type(cls.CATEGORIZED)} still not implemented"
-            )
+            cls.GENERATION_STRATEGY = "targeted_uncategorized"
+            # raise NotImplementedError(
+            #     f"targeted: {cls.TARGETED} of type{type(cls.TARGETED)}, categorized: {cls.CATEGORIZED} of type {type(cls.CATEGORIZED)} still not implemented"
+            # )
 
     @classmethod
     def reload(cls, path: Optional[str]):

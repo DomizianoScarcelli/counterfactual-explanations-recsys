@@ -14,7 +14,9 @@ from constants import cat2id
 from performance_evaluation import alignment
 from performance_evaluation.alignment.utils import compute_fidelity, log_run
 from performance_evaluation.automata_learning.evaluate_with_test_set import (
-    compute_automata_metrics, run_automata_learning_eval)
+    compute_automata_metrics,
+    run_automata_learning_eval,
+)
 from run import run_alignment
 from run import run_alignment as run_alignment
 from run import run_all, run_genetic
@@ -58,7 +60,7 @@ class RunSwitcher:
             self.end_i = sum(1 for _ in temp_int)
 
         self.targets: Optional[List[str]] = None
-        if self.targeted and self.categorized:
+        if self.targeted:
             if self.target:
                 self.targets = [self.target]
             else:
@@ -77,8 +79,6 @@ class RunSwitcher:
             )
             self.og_desc = self.pbar.desc
 
-        elif self.targeted and not self.categorized:
-            raise NotImplementedError("Targeted uncategorized not yet implemented")
         elif not self.targeted:
             self.pbar = tqdm(
                 desc=f"[UNTARGETED] Evaluating {self.end_i-self.start_i} sequences on {len(self.splits) if self.splits is not None else 1} splits",
@@ -90,7 +90,7 @@ class RunSwitcher:
     def run(self):
         if self.targeted:
             assert self.targets, "If 'targeted' is true, 'targets' must not be None"
-            assert isinstance(self.targets, list) and isinstance(self.targets[0], str)
+            assert isinstance(self.targets, list) and isinstance(self.targets[0], (str, int))
             for target in self.targets:
                 self._run_single(target)
         else:
