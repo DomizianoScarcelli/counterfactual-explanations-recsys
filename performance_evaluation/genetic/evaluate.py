@@ -8,11 +8,20 @@ from alignment.alignment import trace_disalignment
 from automata_learning.passive_learning import learning_pipeline
 from config import ConfigParams
 from constants import MAX_LENGTH, cat2id
-from exceptions import (CounterfactualNotFound, DfaNotAccepting,
-                        DfaNotRejecting, EmptyDatasetError,
-                        NoTargetStatesError, SplitNotCoherent)
-from generation.utils import (_evaluate_categorized_generation,
-                              _evaluate_generation, equal_ys, labels2cat)
+from exceptions import (
+    CounterfactualNotFound,
+    DfaNotAccepting,
+    DfaNotRejecting,
+    EmptyDatasetError,
+    NoTargetStatesError,
+    SplitNotCoherent,
+)
+from generation.utils import (
+    _evaluate_categorized_generation,
+    _evaluate_generation,
+    equal_ys,
+    labels2cat,
+)
 from models.utils import pad, topk, trim
 from type_hints import GoodBadDataset
 from utils import TimedFunction, seq_tostr
@@ -72,8 +81,7 @@ def _init_log(ks: List[int]) -> Dict[str, Any]:
 def log_error(
     i: int, error: str, ks: List[int], split: Split, target_cat: Optional[str]
 ) -> Dict[str, Any]:
-    from performance_evaluation.alignment.evaluate import \
-        _init_log as align_init_log
+    from performance_evaluation.alignment.evaluate import _init_log as align_init_log
 
     log = _init_log(ks)
     align_log = align_init_log(ks)
@@ -303,7 +311,9 @@ def _evaluate_untargeted_uncat(
         _, counter_score = equal_ys(
             source_preds[k], counterfactual_preds[k], return_score=True
         )
-        assert 0.0 <= counter_score <= 1, f"gen_score@{k} is out of range: {counter_score}"
+        assert (
+            0.0 <= counter_score <= 1
+        ), f"gen_score@{k} is out of range: {counter_score}"
         # if targeted higher is better, otherwise lower is better
         log[f"gen_score@{k}"] = counter_score
         log[f"gen_source_score@{k}"] = None
@@ -327,7 +337,7 @@ def _evaluate_targeted_uncat(
     target_cat: str,
     ks: List[int],
 ):
-    #TODO: I don't remember if this is correctly implemented or not
+    # TODO: I don't remember if this is correctly implemented or not
     log = _init_log(ks)
     source_logits = model(source)
     trimmed_source = trim(source.squeeze(0))
@@ -335,7 +345,7 @@ def _evaluate_targeted_uncat(
         k: topk(logits=source_logits, k=k, dim=-1, indices=True).squeeze(0) for k in ks
     }
 
-    target_preds = {k: [{target_cat} for _ in range(k)] for k in ks}
+    target_preds = {k: [target_cat for _ in range(k)] for k in ks}
 
     # Compute dataset metrics not implemented for targeted uncategorized
     log["gen_good_points_percentage"] = None

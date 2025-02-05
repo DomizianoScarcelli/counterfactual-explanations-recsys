@@ -65,8 +65,6 @@ def equal_ys(
         - int and torch.Tensor, comparing them with the equal (==) operator
         - Set[int], comparing them with a thresholded jaccard similarity
     """
-    # print("DEBUG, equal_ys gt", gt)
-    # print("DEBUG, equal_ys pred", pred)
     if isinstance(gt, (int, Tensor, list)) and isinstance(pred, (int, Tensor, list)):
         if isinstance(gt, Tensor) and len(gt.flatten()) == 1:
             gt = gt.item()  # type: ignore

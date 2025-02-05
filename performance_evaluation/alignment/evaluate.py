@@ -92,7 +92,7 @@ def log_error(
     log["split"] = split
     if target_cat:
         log["gen_target_y@1"] = str(
-            {cat2id[target_cat]} if isinstance(target_cat, str) else {target_cat}
+            {cat2id[target_cat]} if isinstance(target_cat, str) else target_cat
         )
     gen_log.update(log)
     gen_log.update(ConfigParams.configs_dict())

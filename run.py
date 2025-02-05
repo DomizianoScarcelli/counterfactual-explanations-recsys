@@ -43,7 +43,7 @@ def skip_sequence(
         primary_key = ["i"]
         if target_cat:
             new_df["gen_target_y@1"] = str(
-                {cat2id[target_cat]} if isinstance(target_cat, str) else {target_cat}
+                {cat2id[target_cat]} if isinstance(target_cat, str) else target_cat
             )
             primary_key.append("gen_target_y@1")
         if alignment:
