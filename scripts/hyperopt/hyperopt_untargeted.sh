@@ -68,6 +68,10 @@ for crossover_prob in "${crossover_prob_options[@]}"; do
                                 # Define the JSON configuration in a variable
                                 config_json=$(cat <<EOF
 {
+"settings": {
+    "model": "SASRec",
+    "device": "cpu"
+    },
   "evolution": {
     "crossover_prob": $crossover_prob,
     "fitness_alpha": $fitness_alpha,
@@ -98,10 +102,10 @@ EOF
                                 # Run the script with the JSON string as the --config-dict argument
                                 python -m cli evaluate alignment \
                                     --use-cache=False \
-                                    --save-path="results/evaluate/alignment/alignment_hyperopt_untargeted.csv" \
+                                    --save-path="results/evaluate/alignment/alignment_hyperopt_untargeted_sasrec.csv" \
                                     --config_dict="$config_json" \
                                     --mode="all" \
-                                    --range-i="(0, 100)" \
+                                    --range-i="(0, 400)" \
                                     --splits="[(None, 10, 0)]"
                                 done
                             done
