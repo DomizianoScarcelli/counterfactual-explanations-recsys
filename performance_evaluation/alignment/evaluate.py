@@ -187,7 +187,6 @@ def _evaluate_targeted_uncat(
     target_cat: str,
     split: Split,
 ) -> Dict[str, Any]:
-    # TODO: this is a copy paste, has to be modified
     log = _init_log(ks)
     log["i"] = i
 
