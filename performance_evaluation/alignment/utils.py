@@ -283,7 +283,9 @@ def compute_fidelity(df: pd.DataFrame) -> dict:
     error_col = "error" if "error" in df.columns else "gen_error"
     for score_col in all_score_columns:
         # Handle cases where values are None or error is not None
-        if all(df["gen_strategy"] == "targeted"):
+        if all(df["gen_strategy"] == "targeted") or all(
+            df["gen_strategy"] == "targeted_uncategorized"
+        ):
             good_generation = (
                 (df[score_col] > similarity_threshold)
                 & (df[score_col].notna())

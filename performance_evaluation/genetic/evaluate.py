@@ -337,7 +337,6 @@ def _evaluate_targeted_uncat(
     target_cat: str,
     ks: List[int],
 ):
-    # TODO: I don't remember if this is correctly implemented or not
     log = _init_log(ks)
     source_logits = model(source)
     trimmed_source = trim(source.squeeze(0))
