@@ -80,19 +80,12 @@ def model_sensitivity_universal(
     targeted: bool = False,
     categorized: bool = False,
 ):
-    """ Analyze the sensitivity of a sequential recommender model to changes in category predictions
+    """Analyze the sensitivity of a sequential recommender model to changes in category predictions
     when input sequences are modified at a specific position. Optionally logs the results to a file.
     """
-    # seen_idx = set()
     prev_df = pd.DataFrame({})
     if log_path and log_path.exists():
         prev_df = pd.read_csv(log_path)
-        # filtered_df = prev_df[prev_df["k"] == k]
-        # seen_idx = set(filtered_df["position"].tolist())
-
-    # if position in seen_idx:
-    #     print(f"[DEBUG] skipping position {position}")
-    #     return
 
     if ConfigParams.DATASET in [RecDataset.ML_1M, RecDataset.ML_100K]:
         alphabet = torch.tensor(list(get_items()))
@@ -106,14 +99,16 @@ def model_sensitivity_universal(
 
     i = 0
     start_i = 0
-    # end_i = sum(1 for _ in InteractionGenerator())  # all users
-    end_i = 10
+    end_i = sum(1 for _ in InteractionGenerator())  # all users
     pbar = tqdm(
         total=end_i - start_i, desc=f"Testing model sensitivity on position {position}"
     )
     count = 0
     i_list, sequence_list = [], []
     scores_ks = {k: [] for k in ks}
+    primary_key = ["i", "position"]
+    if targeted:
+        primary_key.append("target")
     for i, sequence in enumerate(sequences):
         if i < start_i:
             continue
@@ -123,13 +118,12 @@ def model_sensitivity_universal(
         count += 1
 
         if log_path:
-            future_df = pd.concat(
-                [prev_df, pd.DataFrame({"i": [i], "position": [position]})]
-            )
-            if pk_exists(
-                future_df, primary_key=["i", "position"], consider_config=False
-            ):
-                print(f"Skipping i: {i} at pos: {position}...")
+            new_df = {"i": [i], "position": [position]}
+            if targeted:
+                new_df["target"] = [y_target]
+
+            future_df = pd.concat([prev_df, pd.DataFrame(new_df)])
+            if pk_exists(future_df, primary_key=primary_key, consider_config=False):
                 continue
 
         pbar.update(1)
@@ -188,7 +182,7 @@ def model_sensitivity_universal(
         i_list.append(i)
         sequence_list.append(sequence.squeeze().tolist())
 
-    score_dict = {f"score@{k}": [scores_ks[k]] * len(i_list) for k in ks}
+    score_dict = {f"score@{k}": scores_ks[k] for k in ks}
     data = {
         "i": i_list,
         "position": [position] * len(i_list),
@@ -201,13 +195,15 @@ def model_sensitivity_universal(
         "categorized": [categorized] * len(i_list),
         **score_dict,
     }
+    if targeted:
+        data["target"] = y_target
     if log_path:
         prev_df = log_run(
             prev_df=prev_df,
             log=data,
             save_path=log_path,
             add_config=False,
-            primary_key=["i", "position"],
+            primary_key=primary_key,
         )
     else:
         print(pd.DataFrame(data))

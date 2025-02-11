@@ -3,7 +3,7 @@
 target_cat_options=(50 411 630 1305)
 
 # Calculate the total number of iterations
-total_iterations=$(( ${#target_cat_options[@]})) * 2
+total_iterations=$(( ${#target_cat_options[@]}))
 
 # Check if arguments were provided
 start=$1
@@ -49,15 +49,15 @@ for target_cat in "${target_cat_options[@]}"; do
 
     # Define the JSON configuration in a variable
     config_json=$(cat <<EOF
-    {
-        "settings": {
-        "model": "BERT4Rec",
-        "device": "cpu",
+{
+"settings": {
+    "model": "BERT4Rec",
+    "device": "cpu",
     },
-    "target_cat": $target_cat,
-    "generation": {
-        "targeted": False,
-        "categorized": False 
+"target_cat": $target_cat,
+"generation": {
+    "targeted": False,
+    "categorized": False 
     },
 }
 
