@@ -69,8 +69,8 @@ for crossover_prob in "${crossover_prob_options[@]}"; do
                                 config_json=$(cat <<EOF
 {
 "settings": {
-    "model": "BERT4Rec",
-    "dataset": "ML_1M",
+    "model": "GRU4Rec",
+    "dataset": "ML_100K",
     "device": "cpu"
     },
   "evolution": {
@@ -104,7 +104,7 @@ EOF
                                 # Run the script with the JSON string as the --config-dict argument
                                 python -m cli evaluate alignment \
                                     --use-cache=False \
-                                    --save-path="results/evaluate/alignment/alignment_hyperopt_targeted_uncat_1m.csv" \
+                                    --save-path="results/evaluate/alignment/alignment_hyperopt_targeted_uncat_gru4rec.csv" \
                                     --config_dict="$config_json" \
                                     --mode="all" \
                                     --range-i="(0, 400)" \

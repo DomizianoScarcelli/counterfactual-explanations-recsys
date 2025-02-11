@@ -23,7 +23,6 @@ from run import run_all, run_genetic
 from scripts.merge_dfs import main as merge_dfs_script
 from scripts.print_pth import print_pth as print_pth_script
 from scripts.targets_popularity import main as targets_popularity_script
-from sensitivity.model_sensitivity import main as evaluate_sensitivity
 from sensitivity.model_sensitivity import run_on_all_positions
 from utils import SeedSetter
 from utils_classes.generators import InteractionGenerator
@@ -90,7 +89,9 @@ class RunSwitcher:
     def run(self):
         if self.targeted:
             assert self.targets, "If 'targeted' is true, 'targets' must not be None"
-            assert isinstance(self.targets, list) and isinstance(self.targets[0], (str, int))
+            assert isinstance(self.targets, list) and isinstance(
+                self.targets[0], (str, int)
+            )
             for target in self.targets:
                 self._run_single(target)
         else:
@@ -234,41 +235,41 @@ class CLIStats:
                 python -m cli stats --log_path="path/to/file.csv" --group_by=["column1"] --metrics=["metric1", "metric2"]
         """
 
-    def sensitivity(
-        self,
-        config_path: Optional[str] = None,
-        config_dict: Optional[ConfigDict] = None,
-        log_path: Optional[str] = None,
-        group_by: Optional[List[str] | str] = None,
-        order_by: Optional[List[str] | str] = None,
-        metrics: Optional[List[str]] = None,
-        filter: Optional[Dict[str, Any]] = None,
-        target: Optional[str] = None,
-        save_path: Optional[str] = None,
-    ):
-        save_path, config_path, log_path = _absolute_paths(
-            save_path, config_path, log_path
-        )
+    # def sensitivity(
+    #     self,
+    #     config_path: Optional[str] = None,
+    #     config_dict: Optional[ConfigDict] = None,
+    #     log_path: Optional[str] = None,
+    #     group_by: Optional[List[str] | str] = None,
+    #     order_by: Optional[List[str] | str] = None,
+    #     metrics: Optional[List[str]] = None,
+    #     filter: Optional[Dict[str, Any]] = None,
+    #     target: Optional[str] = None,
+    #     save_path: Optional[str] = None,
+    # ):
+    #     save_path, config_path, log_path = _absolute_paths(
+    #         save_path, config_path, log_path
+    #     )
 
-        if config_path and config_dict:
-            raise ValueError(
-                "Only one between config_path and config_dict must be set, not both"
-            )
-        if config_path:
-            ConfigParams.reload(config_path)
-        if config_dict:
-            ConfigParams.override_params(config_dict)
-        ConfigParams.fix()
+    #     if config_path and config_dict:
+    #         raise ValueError(
+    #             "Only one between config_path and config_dict must be set, not both"
+    #         )
+    #     if config_path:
+    #         ConfigParams.reload(config_path)
+    #     if config_dict:
+    #         ConfigParams.override_params(config_dict)
+    #     ConfigParams.fix()
 
-        return evaluate_sensitivity(
-            mode="stats",
-            groupby=group_by,  # type: ignore
-            orderby=order_by,
-            stats_save_path=save_path,
-            log_path=log_path,
-            target=target,  # type: ignore
-            metrics=metrics,
-        )
+    #     return evaluate_sensitivity(
+    #         mode="stats",
+    #         groupby=group_by,  # type: ignore
+    #         orderby=order_by,
+    #         stats_save_path=save_path,
+    #         log_path=log_path,
+    #         target=target,  # type: ignore
+    #         metrics=metrics,
+    #     )
 
     def automata_metrics(self, log_path: str, save_path: Optional[str] = None):
         config_keys = list(ConfigParams.configs_dict().keys())
@@ -442,11 +443,9 @@ class CLIEvaluate:
 
     def sensitivity(
         self,
+        save_path: str,
         config_path: Optional[str] = None,
         config_dict: Optional[ConfigDict] = None,
-        save_path: Optional[str] = None,
-        label_type: Optional[Literal["item", "category", "target"]] = None,
-        k: Optional[int] = None,
     ):
         save_path, config_path = _absolute_paths(save_path, config_path)
         if config_path and config_dict:
@@ -459,10 +458,7 @@ class CLIEvaluate:
             ConfigParams.override_params(config_dict)
         ConfigParams.fix()
 
-        if not k or not label_type:
-            raise ValueError("k and target must not be None")
-
-        return run_on_all_positions(label_type=label_type, log_path=save_path, k=k)
+        return run_on_all_positions(log_path=save_path, ks=ConfigParams.TOPK)
 
 
 class CLIUtils:

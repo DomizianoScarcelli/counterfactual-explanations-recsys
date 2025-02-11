@@ -1,6 +1,6 @@
 # ML-100k
 ## BERT4Rec
-- [x] Targeted-Categorized (alignment_hyperopt.csv) 400 users. (WIP su 943 utenti: alignment_hyperopt.csv)
+- [-x] Targeted-Categorized (alignment_hyperopt.csv) 400 users. (WIP su 943 utenti: alignment_hyperopt.csv)
 - [-] Targeted-Uncategorized (WIP alignment_hyperopt_targeted_uncat.csv e alignment_hyperopt_targeted_uncat_2.csv) 400 users, manca primo target (parziale su uncat.csv, gli altri su uncat_2.csv) uncat_2 è stato reportato già su tesi.
 - [x] Untargeted-Categorized (alignment_hyperopt_untargeted.csv) 400 users
 - [x] Untargted-Uncategorized (alignment_hyperopt_untargeted.csv) 400 users

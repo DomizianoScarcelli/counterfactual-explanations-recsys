@@ -1,11 +1,10 @@
-import os
+from utils_classes.generators import InteractionGenerator
 from pathlib import Path
 from statistics import mean
-from typing import List, Literal, Optional
+from typing import List, Optional, Dict
 
 import pandas as pd
 import torch
-from pandas import DataFrame
 from recbole.model.abstract_recommender import SequentialRecommender
 from torch import Tensor
 from tqdm import tqdm
@@ -15,12 +14,12 @@ from constants import cat2id
 from generation.utils import equal_ys, get_items, labels2cat
 from models.config_utils import generate_model, get_config
 from models.utils import topk, trim
-from performance_evaluation.alignment.utils import (get_log_stats, log_run,
-                                                    pk_exists, stats_to_df)
+from performance_evaluation.alignment.utils import (
+    log_run,
+    pk_exists,
+)
 from type_hints import CategorySet, RecDataset
 from utils import seq_tostr
-from utils_classes.distances import (intersection_weighted_ndcg, jaccard_sim,
-                                     pairwise_jaccard_sim, precision_at)
 from utils_classes.generators import SequenceGenerator, SkippableGenerator
 
 
@@ -71,70 +70,50 @@ def generate_sequence_variants(sequence: Tensor, position: int, alphabet: Tensor
     return x_primes
 
 
-def model_sensitivity_category(
+def model_sensitivity_universal(
     sequences: SkippableGenerator,
     model: SequentialRecommender,
     position: int,
-    k: int,
+    ks: List[int],
+    y_target: Optional[int] = None,
     log_path: Optional[Path] = None,
+    targeted: bool = False,
+    categorized: bool = False,
 ):
-    """
-    Analyze the sensitivity of a sequential recommender model to changes in category predictions
+    """ Analyze the sensitivity of a sequential recommender model to changes in category predictions
     when input sequences are modified at a specific position. Optionally logs the results to a file.
-
-    Parameters:
-        sequences (SkippableGenerator): A generator that provides sequences to analyze.
-        model (SequentialRecommender): The recommender model to evaluate.
-        position (int): The index in the sequence where modifications will be made.
-        k (int): The number of top predictions to consider for sensitivity analysis.
-        log_path (Optional[str]): Path to a CSV file for logging results. If provided, results
-                                  are appended to the file; otherwise, they are printed.
-
-    Returns:
-        None
-
-    Description:
-        - The function evaluates the model's sensitivity to changes in the categories of its top-k predictions
-          when the sequence is modified at the specified `position`.
-        - Each sequence is modified by replacing the character at `position` with all possible characters
-          in the `alphabet`.
-        - The function computes the following metrics:
-          - **All Changes**: Proportion of categories in the original predictions that are completely replaced.
-          - **Any Changes**: Proportion of categories in the original predictions that are partially replaced.
-          - **Jaccard Similarity**: Similarity measure between the original and modified category sets.
-
-    Output:
-        - Logs or prints metrics for each sequence, including the proportion of changes and similarity scores.
-        - If `log_path` is specified, results are saved with additional context, including the dataset and model used.
-
-    Notes:
-        - Skips sequences that have already been processed if a `log_path` is provided with existing results.
-        - Supports only the MovieLens 1M dataset (`ML_1M`). Throws a `NotImplementedError` for other datasets.
-
     """
-    seen_idx = set()
+    # seen_idx = set()
     prev_df = pd.DataFrame({})
     if log_path and log_path.exists():
         prev_df = pd.read_csv(log_path)
-        filtered_df = prev_df[prev_df["k"] == k]
-        seen_idx = set(filtered_df["position"].tolist())
+        # filtered_df = prev_df[prev_df["k"] == k]
+        # seen_idx = set(filtered_df["position"].tolist())
 
-
-    if position in seen_idx:
-        print(f"[DEBUG] skipping position {position}")
-        return
+    # if position in seen_idx:
+    #     print(f"[DEBUG] skipping position {position}")
+    #     return
 
     if ConfigParams.DATASET in [RecDataset.ML_1M, RecDataset.ML_100K]:
         alphabet = torch.tensor(list(get_items()))
     else:
         raise NotImplementedError(f"Dataset {ConfigParams.DATASET} not supported yet!")
+
+    if targeted and not y_target:
+        raise ValueError("If setting is 'targeted', then y_target has to be defined")
+
+    y_targets_ks = {k: [y_target for _ in range(k)] for k in ks}
+
     i = 0
-    start_i, end_i = 0, 130
+    start_i = 0
+    # end_i = sum(1 for _ in InteractionGenerator())  # all users
+    end_i = 10
     pbar = tqdm(
         total=end_i - start_i, desc=f"Testing model sensitivity on position {position}"
     )
     count = 0
-    i_list, jaccards, sequence_list, counterfactuals, ndcgs = ([], [], [], [], [])
+    i_list, sequence_list = [], []
+    scores_ks = {k: [] for k in ks}
     for i, sequence in enumerate(sequences):
         if i < start_i:
             continue
@@ -145,10 +124,10 @@ def model_sensitivity_category(
 
         if log_path:
             future_df = pd.concat(
-                [prev_df, pd.DataFrame({"i": [i], "position": [position], "k": [k]})]
+                [prev_df, pd.DataFrame({"i": [i], "position": [position]})]
             )
             if pk_exists(
-                future_df, primary_key=["i", "position", "k"], consider_config=False
+                future_df, primary_key=["i", "position"], consider_config=False
             ):
                 print(f"Skipping i: {i} at pos: {position}...")
                 continue
@@ -163,344 +142,80 @@ def model_sensitivity_category(
         out = model(sequence)
         out_primes = model(x_primes)
 
-        topk_out = topk(logits=out, k=k, dim=-1, indices=True).squeeze(0)  # [k]
-        out_cat: List[CategorySet] = labels2cat(topk_out)  # type: ignore
+        topk_out_ks = {
+            k: topk(logits=out, k=k, dim=-1, indices=True).squeeze(0) for k in ks
+        }
+        out_cat_ks = topk_out_ks
+        if categorized:
+            out_cat_ks = {k: labels2cat(topk_out_ks[k]) for k in ks}  # type: ignore
 
-        topk_out_primes = topk(
-            logits=out_primes, k=k, dim=-1, indices=True
-        )  # [n_items, k]
+        topk_out_primes_ks = {
+            k: topk(logits=out_primes, k=k, dim=-1, indices=True) for k in ks
+        }
 
-        out_primes_cat: List[List[CategorySet]] = [
-            labels2cat(topk_out_prime) for topk_out_prime in topk_out_primes  # type: ignore
-        ]  # [n_items, k]
+        out_primes_cat_ks: Dict[int, Tensor] | Dict[int, List[List[CategorySet]]] = (
+            topk_out_primes_ks
+        )
+        if categorized:
+            out_primes_cat_ks = {
+                k: [
+                    labels2cat(topk_out_prime)  # type: ignore
+                    for topk_out_prime in topk_out_primes_ks[k]
+                ]
+                for k in ks
+            }
 
         # TODO: This can be vectorized by using torch operations
-        jaccard, counterfactual, ndcg_v = [], [], []
-        n_items = len(out_primes_cat)
-        for n_i in range(n_items):
-            y = out_cat
-            y_prime = out_primes_cat[n_i]
+        scores_batch_ks = {k: [] for k in ks}
+        for k in ks:
+            n_items = len(out_primes_cat_ks[k])
+            y = out_cat_ks[k]
+            y_targets = y_targets_ks[k]
+            for n_i in range(n_items):
+                y_prime = out_primes_cat_ks[k][n_i]
 
-            assert len(y) == len(y_prime) == k
+                assert len(y) == len(y_prime) == k
 
-            jaccard.append(pairwise_jaccard_sim(y, y_prime))
-            equal = equal_ys(y, y_prime, return_score=False)
-            counterfactual.append(not equal)
-            ndcg_v.append(intersection_weighted_ndcg(y, y_prime))
+                if targeted:
+                    eq_res = equal_ys(y_targets, y_prime, return_score=True)
+                else:
+                    eq_res = equal_ys(y, y_prime, return_score=True)
+                assert isinstance(eq_res, tuple)
+                _, score = eq_res
+                scores_batch_ks[k].append(score)
 
+            scores_ks[k].append(mean(scores_batch_ks[k]))
         i_list.append(i)
-        jaccards.append(mean(jaccard))
-        ndcgs.append(mean(ndcg_v))
-        counterfactuals.append(mean(counterfactual))
         sequence_list.append(sequence.squeeze().tolist())
-        # pbar.set_postfix_str(
-        #     f"jacc: {mean(jaccards)*100:.2f}%, ndcg: {mean(ndcgs) * 100:.2f}, counterfactuals: {mean(counterfactuals)*100:.2f}%"
-        # )
 
+    score_dict = {f"score@{k}": [scores_ks[k]] * len(i_list) for k in ks}
     data = {
         "i": i_list,
         "position": [position] * len(i_list),
         "count": [count] * len(i_list),
-        "k": [k] * len(i_list),
-        "jaccards": [v * 100 for v in jaccards],  # similarity
-        "ndcg": [v * 100 for v in ndcgs],  # the higher, the more similar
-        "counterfactuals": [v * 100 for v in counterfactuals],
         "alphabet_len": [len(alphabet)] * len(i_list),
         "sequence": [seq_tostr(x) for x in sequence_list],
         "model": [ConfigParams.MODEL.value] * len(i_list),
         "dataset": [ConfigParams.DATASET.value] * len(i_list),
+        "targeted": [targeted] * len(i_list),
+        "categorized": [categorized] * len(i_list),
+        **score_dict,
     }
     if log_path:
         prev_df = log_run(
             prev_df=prev_df,
             log=data,
             save_path=log_path,
-            add_config=True,
-            primary_key=["i", "position", "k"],
+            add_config=False,
+            primary_key=["i", "position"],
         )
     else:
         print(pd.DataFrame(data))
 
 
-def model_sensitivity_category_targeted(
-    sequences: SkippableGenerator,
-    model: SequentialRecommender,
-    position: int,
-    k: int,
-    log_path: Optional[Path] = None,
-):
-    """
-    Analyze the sensitivity of a sequential recommender model to changes in category predictions
-    when input sequences are modified at a specific position. Optionally logs the results to a file.
-
-    Parameters:
-        sequences (SkippableGenerator): A generator that provides sequences to analyze.
-        model (SequentialRecommender): The recommender model to evaluate.
-        position (int): The index in the sequence where modifications will be made.
-        k (int): The number of top predictions to consider for sensitivity analysis.
-        log_path (Optional[str]): Path to a CSV file for logging results. If provided, results
-                                  are appended to the file; otherwise, they are printed.
-
-    Returns:
-        None
-
-    Description:
-        - The function evaluates the model's sensitivity to changes in the categories of its top-k predictions
-          when the sequence is modified at the specified `position`.
-        - Each sequence is modified by replacing the character at `position` with all possible characters
-          in the `alphabet`.
-        - The function computes the following metrics:
-          - **All Changes**: Proportion of categories in the original predictions that are completely replaced.
-          - **Any Changes**: Proportion of categories in the original predictions that are partially replaced.
-          - **Jaccard Similarity**: Similarity measure between the original and modified category sets.
-
-    Output:
-        - Logs or prints metrics for each sequence, including the proportion of changes and similarity scores.
-        - If `log_path` is specified, results are saved with additional context, including the dataset and model used.
-
-    Notes:
-        - Skips sequences that have already been processed if a `log_path` is provided with existing results.
-        - Supports only the MovieLens 1M dataset (`ML_1M`). Throws a `NotImplementedError` for other datasets.
-
-    """
-    prev_df = pd.DataFrame({})
-    if log_path and log_path.exists():
-        prev_df = pd.read_csv(log_path)
-
-    if ConfigParams.DATASET in [RecDataset.ML_1M, RecDataset.ML_100K]:
-        alphabet = torch.tensor(list(get_items()))
-    else:
-        raise NotImplementedError(f"Dataset {ConfigParams.DATASET} not supported yet!")
-    start_i, end_i = 0, 130
-    pbar = tqdm(
-        total=end_i - start_i, desc=f"Testing model sensitivity on position {position}"
-    )
-
-    PRIMARY_KEY = ["i", "position", "k", "target"]
-    targets = cat2id.keys()
-    if not ConfigParams.GENERATION_STRATEGY == "targeted":
-        raise ValueError(
-            "Before running `model_sensitivity_category_targeted`, set generation_strategy to 'targeted'"
-        )
-    data = {
-        "i": [],
-        "target": [],
-        "target_gt": [],
-        "position": [],
-        "k": [],
-        "ndcg": [],  # the higher, the more similar
-        "min_ndcg": [],
-        "max_ndcg": [],
-        "counterfactuals": [],
-        "alphabet_len": [],
-        "sequence": [],
-        "model": [],
-        "dataset": [],
-    }
-
-    for _ in range(start_i):
-        sequences.skip()
-    for i in range(start_i, end_i):
-        sequence = next(sequences)
-
-        out = model(sequence)
-        topk_out = topk(logits=out, k=k, dim=-1, indices=True).squeeze(0)  # [k]
-        target_gt: List[CategorySet] = labels2cat(topk_out, encode=False)  # type: ignore
-
-        pbar.update(1)
-        for target_str in targets:
-            target = {cat2id[target_str]}
-            if log_path:
-                future_df = pd.concat(
-                    [
-                        prev_df,
-                        pd.DataFrame(
-                            {
-                                "i": [i],
-                                "position": [position],
-                                "k": [k],
-                                "target": [target_str],
-                            }
-                        ),
-                    ]
-                )
-                if pk_exists(
-                    future_df,
-                    primary_key=PRIMARY_KEY,
-                    consider_config=False,
-                ):
-                    print(
-                        f"Skipping i: {i} at pos: {position} with target {target_str}..."
-                    )
-                    continue
-
-            sequence = trim(sequence.squeeze(0)).unsqueeze(0)
-            x_primes = generate_sequence_variants(sequence, position, alphabet)
-            if x_primes is None:
-                continue
-
-            out_primes = model(x_primes)
-
-            topk_out_primes = topk(
-                logits=out_primes, k=k, dim=-1, indices=True
-            )  # [n_items, k]
-
-            out_primes_cat: List[List[CategorySet]] = [
-                labels2cat(topk_out_prime) for topk_out_prime in topk_out_primes  # type: ignore
-            ]  # [n_items, k]
-
-            counterfactuals, ndcgs = [], []
-            n_items = len(out_primes_cat)
-            for n_i in range(n_items):
-                y = [target for _ in range(k)]
-                y_prime = out_primes_cat[n_i]
-
-                assert len(y) == len(y_prime) == k
-
-                equal = equal_ys(y, y_prime, return_score=False)
-                counterfactuals.append(equal)
-                ndcgs.append(intersection_weighted_ndcg(y, y_prime))
-
-            # TODO: replicate this logging logic also to the other model sensitivities
-            counterfactuals = mean(counterfactuals) * 100
-            min_ndcg, max_ndcg = min(ndcgs), max(ndcgs)
-            ndcgs = mean(ndcgs)
-
-            data["i"].append(i)
-            data["target"].append(target_str)
-            data["target_gt"].append(seq_tostr(target_gt))
-            data["position"].append(position)
-            data["k"].append(k)
-            data["ndcg"].append(ndcgs)
-            data["min_ndcg"].append(min_ndcg)
-            data["max_ndcg"].append(max_ndcg)
-            data["counterfactuals"].append(counterfactuals)
-            data["alphabet_len"].append(len(alphabet))
-            data["sequence"].append(seq_tostr(sequence.squeeze()))
-            data["model"].append(ConfigParams.MODEL.value)
-            data["dataset"].append(ConfigParams.DATASET.value)
-
-        if log_path:
-            prev_df = log_run(
-                prev_df=prev_df,
-                log=data,
-                save_path=log_path,
-                add_config=False,
-                primary_key=PRIMARY_KEY,
-            )
-            # Reset data
-            data = {key: [] for key in data}
-        else:
-            print(pd.DataFrame(data))
-
-
-# TODO: This method doesn't work right now, since it has to be edited to reflect the changes
-# from the categorized one, this must be heavily changed.
-def model_sensitivity_simple(
-    sequences: SkippableGenerator,
-    model: SequentialRecommender,
-    position: int,
-    k: int = 1,
-    log_path: Optional[Path] = None,
-):
-    """
-    The sensitivity consists in taking a source sequence `x` with a label `y`, result of `model(x)`.
-    Then replace the element at position `position` of the sequence with each element of the alphabet (given by the `dataset`),
-    generating a new sequence x', and see the percentage of elements such that:
-        model(x') != y.
-
-    The percentage reflects the sensitivity of the sequential recommender model on the position`position`of the sequence.
-
-    Args:
-        sequences: A generator that yields the sequences.
-        model: the sequential recommender model we want to test the sensitivity on
-        dataset: the dataset used to train the sequential recommender, which will be used to take the alphabet.
-    """
-    prev_df = pd.DataFrame({})
-    if log_path and log_path.exists():
-        prev_df = pd.read_csv(log_path)
-
-    if ConfigParams.DATASET in [RecDataset.ML_1M, RecDataset.ML_100K]:
-        alphabet = torch.tensor(list(get_items()))
-    else:
-        raise NotImplementedError(f"Dataset {ConfigParams.DATASET} not supported yet!")
-    i = 0
-    start_i, end_i = 0, 20
-    pbar = tqdm(
-        total=end_i - start_i, desc=f"Testing model sensitivity on position {position}"
-    )
-    for _ in range(start_i):
-        sequences.skip()
-    for i in range(start_i, end_i):
-        sequence = next(sequences)
-        pbar.update(1)
-
-        result = generate_sequence_variants(sequence, model, position, alphabet)
-        if not result:
-            continue
-        out, out_primes = result
-
-        # TODO: since I'm using metrics@k, I don't think I need this
-        out_k = topk(out, k, dim=-1, indices=True).squeeze()  # [K]
-        out_primes_k = topk(out_primes, k, dim=-1, indices=True)  # [len(alphabet), K]
-
-        if k == 1:
-            out_k = out_k.unsqueeze(-1)
-
-        jaccards = mean(
-            jaccard_sim(a=out_k, b=(out_prime_k.squeeze() if k != 1 else out_prime_k))
-            for out_prime_k in out_primes_k
-        )
-        precisions = mean(
-            precision_at(
-                k=k, a=out_k, b=(out_prime_k.squeeze() if k != 1 else out_prime_k)
-            )
-            for out_prime_k in out_primes_k
-        )
-        ndcgs = mean(
-            DEPRECATED_ndng_at(
-                k=k, a=out_k, b=out_prime_k.squeeze() if k != 1 else out_prime_k
-            )
-        )
-        # pbar.set_postfix_str(
-        #     f"jacc: {mean(jaccards)*100:.2f}, prec: {mean(precisions)*100:.2f}, ndcg: {mean(ndcgs)*100:.2f}"
-        # )
-
-        if log_path:
-            data = {
-                "i": i,
-                "sequence": seq_tostr(sequence),
-                "position": position,
-                "num_seqs": end_i - start_i,
-                "mean_precision": precisions * 100,
-                "mean_ndcgs": ndcgs * 100,
-                "mean_jaccard": jaccards * 100,
-                "k": k,
-                "model": ConfigParams.MODEL.value,
-                "dataset": ConfigParams.DATASET.value,
-            }
-
-            prev_df = log_run(
-                prev_df=prev_df, log=data, save_path=log_path, add_config=True
-            )
-
-
-def get_stats(
-    log_path: str, metrics: List[str], groupby: List[str], orderby: Optional[List[str]]
-) -> DataFrame:
-    stats = get_log_stats(log_path=log_path, group_by=groupby, metrics=metrics)
-    df = stats_to_df(stats)
-    if orderby:
-        for col in orderby:
-            df[col] = pd.to_numeric(df[col], errors="ignore", downcast="integer")
-        df = df.sort_values(by=orderby)
-    return df
-
-
 def run_on_all_positions(
-    label_type: Literal["item", "category", "target"],
-    k: int,
-    log_path: Optional[str] = None,
+    ks: List[int],
+    log_path: Optional[Path] = None,
 ):
     config = get_config(dataset=ConfigParams.DATASET, model=ConfigParams.MODEL)
     sequences = SequenceGenerator(config)
@@ -511,69 +226,37 @@ def run_on_all_positions(
     ):
         # This is very important in order to evaluate different positions on the same sequences
         sequences.reset()
-        if label_type == "item":
-            model_sensitivity_simple(
-                model=model, sequences=sequences, position=i, log_path=log_path, k=k
-            )
-        elif label_type == "category":
-            model_sensitivity_category(
-                model=model,
-                sequences=sequences,
-                position=i,
-                k=k,
-                log_path=log_path,
-            )
-        elif label_type == "target":
-            model_sensitivity_category_targeted(
-                model=model,
-                sequences=sequences,
-                position=i,
-                k=k,
-                log_path=log_path,
-            )
-        else:
-            raise ValueError(f"target must be 'item' or 'category', not '{label_type}'")
 
+        targeted = ConfigParams.TARGETED
+        categorized = ConfigParams.CATEGORIZED
 
-def main(
-    log_path: Optional[str] = None,
-    k: int = 1,
-    target: Literal["item", "category"] = "item",
-    mode: Literal["evaluate", "stats"] = "evaluate",
-    groupby: Optional[List[str]] = None,
-    orderby: Optional[List[str]] = None,
-    metrics: Optional[List[str]] = None,
-    stats_save_path: Optional[str] = None,
-):
-    # TODO: merge this with the `cli.stats` method, this is cli logic, shouldn't be here.
-    if mode == "evaluate":
-        raise NotImplementedError(
-            "This function is DEPRECATED, please use the `run_on_all_positions function`"
+        y_target: Optional[int | str] = ConfigParams.TARGET_CAT if targeted else None
+
+        if targeted:
+            if y_target == False:
+                raise ValueError(
+                    "false -> run all on all targets is not implemented in model sensitivity, please specify the target as a string (category) or int (item id)"
+                )
+            if (
+                not isinstance(y_target, str)
+                and categorized
+                or isinstance(y_target, int)
+                and not categorized
+            ):
+                raise ValueError(
+                    f"if categorized, y_target must be str; if non categorized, y_target must be int. Now categorized={categorized} and y_target is of type: {type(y_target)}"
+                )
+
+            if isinstance(y_target, int):
+                y_target = cat2id[y_target]
+
+        model_sensitivity_universal(
+            model=model,
+            sequences=sequences,
+            position=i,
+            log_path=log_path,
+            ks=ks,
+            y_target=y_target,
+            targeted=targeted,
+            categorized=categorized,
         )
-    elif mode == "stats":
-        if not target and not metrics:
-            raise ValueError("target or metrics should be set to something")
-
-        if target == "item" and not metrics:
-            metrics = []  # TODO: to be defined
-
-        if target == "category" and not metrics:
-            metrics = ["all_changes", "any_changes", "jaccards"]
-
-        assert metrics
-
-        if not log_path:
-            raise ValueError(f"define a log_path as a source for the stats")
-
-        if not groupby:
-            raise ValueError(f"group_by should not be None: {groupby}")
-        stats = get_stats(
-            log_path=log_path, groupby=groupby, metrics=metrics, orderby=orderby
-        )
-        if stats is not None:
-            print(stats)
-
-        if stats is not None and stats_save_path:
-            stats.to_csv(stats_save_path, index=False)
-    else:
-        raise ValueError(f"mode must be 'evaluate' or 'stats', not '{mode}'")
