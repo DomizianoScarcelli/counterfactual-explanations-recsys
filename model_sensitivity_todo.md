@@ -1,9 +1,9 @@
 # ML-100k
 ## BERT4Rec
-- [ ] Targeted-Categorized 
-- [ ] Targeted-Uncategorized 
-- [-] Untargeted-Categorized (WIP sensitivity_untargeted.csv)
-- [-] Untargted-Uncategorized (WIP sensitivity_untargeted.csv)
+- [x] Targeted-Categorized (DONE)
+- [-] Targeted-Uncategorized (WIP)
+- [x] Untargeted-Categorized (DONE sensitivity_untargeted.csv)
+- [x] Untargted-Uncategorized (DONE sensitivity_untargeted.csv)
 ## SASRec
 - [ ] Targeted-Categorized 
 - [ ] Targeted-Uncategorized

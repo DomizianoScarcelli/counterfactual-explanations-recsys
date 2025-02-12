@@ -105,7 +105,7 @@ EOF
                                     --save-path="results/evaluate/alignment/alignment_hyperopt_untargeted_sasrec.csv" \
                                     --config_dict="$config_json" \
                                     --mode="all" \
-                                    --range-i="(0, 400)" \
+                                    --range-i="(0, None)" \
                                     --splits="[(None, 10, 0)]"
                                 done
                             done
