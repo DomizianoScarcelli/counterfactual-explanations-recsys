@@ -8,8 +8,8 @@ from deap import base, creator, tools
 from tqdm import tqdm
 
 from alignment.alignment import augment_constraint_automata
-from automata_learning.passive_learning import (generate_single_accepting_sequence_dfa,
-                                        learning_pipeline)
+from automata_learning.passive_learning import (
+    generate_single_accepting_sequence_dfa, learning_pipeline)
 from automata_learning.utils import run_automata
 from config import ConfigParams
 from constants import MAX_LENGTH, MIN_LENGTH

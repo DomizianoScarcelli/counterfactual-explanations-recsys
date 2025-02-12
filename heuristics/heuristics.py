@@ -1,10 +1,9 @@
-from alignment.actions import encode_action
 from collections import deque
 from typing import List, Optional, Set
 
 from aalpy.automata.Dfa import DfaState
 
-from alignment.actions import Action, decode_action
+from alignment.actions import Action, decode_action, encode_action
 
 
 def hops(curr_state, remaining_trace, target_states):

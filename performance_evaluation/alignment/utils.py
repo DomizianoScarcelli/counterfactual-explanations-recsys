@@ -1,8 +1,7 @@
-from utils import printd
 import json
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union, Literal
 import os
+from pathlib import Path
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 import pandas as pd
 from pandas import DataFrame
@@ -13,6 +12,7 @@ from torch import Tensor
 from config import ConfigParams
 from generation.dataset.utils import interaction_to_tensor
 from models.utils import trim
+from utils import printd
 
 
 def preprocess_interaction(
@@ -31,7 +31,10 @@ def preprocess_interaction(
 
 
 def pk_exists(
-    df: pd.DataFrame, primary_key: List[str], consider_config: bool = True
+    df: pd.DataFrame,
+    primary_key: List[str],
+    consider_config: bool = True,
+    config_blacklist: List[str] = ["timestamp", "target_cat"],
 ) -> bool:
     """
     Returns True if a record with the same primary key exists in the dataframe.
@@ -50,10 +53,8 @@ def pk_exists(
     if consider_config:
         primary_key = primary_key.copy()
         config_keys = list(ConfigParams.configs_dict().keys())
-        config_keys.remove("timestamp")
-        config_keys.remove(
-            "target_cat"
-        )  # TODO: this has to be fixed with https://trello.com/c/IjjOwQhc/166-risolvi-bug-targetcat
+        for item in config_blacklist:
+            config_keys.remove(item)
         primary_key += config_keys
 
     df = df.copy()  # Avoid modifying the original DataFrame
@@ -111,7 +112,7 @@ def log_run(
         data = {**data, **configs}
         primary_key += list(configs.keys())
         primary_key.remove("timestamp")
-    
+
     new_df = pd.DataFrame(data).astype(str)
 
     # Remove the fields in primary key that do not exist in prev_df, otherwise key error
@@ -276,19 +277,46 @@ def compute_fidelity(df: pd.DataFrame) -> dict:
     gen_score_columns = [col for col in df.columns if col.startswith("gen_score@")]
     all_score_columns = score_columns + gen_score_columns
 
+    similarity_threshold = df["jaccard_threshold"]
+
     # Iterate over each score column
+    error_col = "error" if "error" in df.columns else "gen_error"
     for score_col in all_score_columns:
         # Handle cases where values are None or error is not None
-        above_threshold = (
-            (df[score_col] > df["jaccard_threshold"])
-            & (df[score_col].notna())
-            & (df["error"].isna())
-        ).sum()
-
+        if all(df["gen_strategy"] == "targeted") or all(
+            df["gen_strategy"] == "targeted_uncategorized"
+        ):
+            good_generation = (
+                (df[score_col] > similarity_threshold)
+                & (df[score_col].notna())
+                & (df[error_col].isna())
+            ).sum()
+        elif all(df["gen_strategy"] == "genetic") or all(
+            df["gen_strategy"] == "genetic_categorized"
+        ):
+            good_generation = (
+                (df[score_col] < similarity_threshold)
+                & (df[score_col].notna())
+                & (df[error_col].isna())
+            ).sum()
+        else:
+            raise ValueError(
+                f"The entire group should have the same generation strategy. Insert the generation strategy as a primary key"
+            )
         # Compute fidelity as the proportion of valid rows above the threshold
-        fidelity_k = above_threshold / len(df)
+        fidelity_k = good_generation / len(df)
 
         # Store the result in the dictionary
         fidelity_results[score_col] = fidelity_k
 
     return fidelity_results
+
+def compute_edit_distance(df: pd.DataFrame) -> dict:
+    cost_columns = [col for col in df.columns if col.endswith("cost")]
+    cost_means = {col: df[col].mean() for col in cost_columns}
+    return cost_means
+
+def compute_running_times(df: pd.DataFrame) -> dict:
+    time_columns = [col for col in df.columns if col.endswith("time")]
+    time_means = {col: df[col].mean() for col in time_columns}
+    return time_means

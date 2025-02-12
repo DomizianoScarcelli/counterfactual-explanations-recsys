@@ -5,6 +5,10 @@ from recbole.model.sequential_recommender import SASRec
 from recbole.trainer import Interaction
 from torch import Tensor
 
+from config import ConfigParams
+from constants import PADDING_CHAR
+from models.utils import replace_padding
+
 
 class ExtendedSASRec(SASRec):
     def __init__(self, config, dataset):
@@ -12,6 +16,7 @@ class ExtendedSASRec(SASRec):
         self.eval()
 
     def __call__(self, x: Union[Interaction, Tensor]):
+        x = x.to(ConfigParams.DEVICE)
         return self.full_sort_predict(x)
         
     def full_sort_predict(self, interaction: Union[Interaction, Tensor]):
@@ -24,8 +29,8 @@ class ExtendedSASRec(SASRec):
 
     def full_sort_predict_from_sequence(self, item_seq: Tensor):
         with torch.no_grad():
-            item_seq_len = (item_seq >= 0).sum(-1).unsqueeze(0).to(torch.int64)
-            item_seq = item_seq.to(torch.int64)
+            item_seq_len = (item_seq != PADDING_CHAR).sum(-1).to(torch.int64)
+            item_seq = replace_padding(item_seq, PADDING_CHAR, 0).to(torch.int64)
             seq_output = self.forward(item_seq, item_seq_len)
             test_items_emb = self.item_embedding.weight
             scores = torch.matmul(seq_output, test_items_emb.transpose(0, 1))  # [B n_items]

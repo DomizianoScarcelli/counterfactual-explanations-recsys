@@ -1,6 +1,6 @@
-from utils import printd
 from typing import Any, Dict, Generator, List, Optional
 
+from pandas.core.dtypes.common import is_int64_dtype
 from recbole.model.abstract_recommender import SequentialRecommender
 from torch import Tensor
 
@@ -20,7 +20,7 @@ from exceptions import (
 from generation.utils import equal_ys, labels2cat
 from models.utils import topk, trim
 from type_hints import CategorySet, GoodBadDataset
-from utils import TimedFunction, seq_tostr
+from utils import TimedFunction, printd, seq_tostr
 from utils_classes.Split import Split
 
 timed_learning_pipeline = TimedFunction(learning_pipeline)
@@ -91,7 +91,9 @@ def log_error(
     log["i"] = i
     log["split"] = split
     if target_cat:
-        log["gen_target_y@1"] = str({cat2id[target_cat]})
+        log["gen_target_y@1"] = str(
+            {cat2id[target_cat]} if isinstance(target_cat, str) else target_cat
+        )
     gen_log.update(log)
     gen_log.update(ConfigParams.configs_dict())
     gen_log["error"] = error
@@ -174,7 +176,6 @@ def _evaluate_targeted_cat(
             i, error=error_messages[type(e)], ks=ks, split=split, target_cat=target_cat
         )
     return log
-    pass
 
 
 def _evaluate_targeted_uncat(
@@ -186,7 +187,6 @@ def _evaluate_targeted_uncat(
     target_cat: str,
     split: Split,
 ) -> Dict[str, Any]:
-    # TODO: this is a copy paste, has to be modified
     log = _init_log(ks)
     log["i"] = i
 
@@ -195,6 +195,7 @@ def _evaluate_targeted_uncat(
     source_preds = {
         k: topk(logits=source_logits, k=k, dim=-1, indices=True).squeeze(0) for k in ks
     }
+    target_preds = {k: [target_cat for _ in range(k)] for k in ks}
     try:
         aligned, cost, alignment = single_run(trimmed_source, dataset, split)
 

@@ -1,14 +1,14 @@
-from utils_classes.distances import ndcg
-from typing import Callable
 import json
 import pickle
 import random
 from enum import Enum
 from pathlib import Path
 from statistics import mean
-from typing import Dict, List, Literal, Set, Tuple, TypedDict, overload
+from typing import Callable, Dict, List, Literal, Set, Tuple, TypedDict, overload
 
 import _pickle as cPickle
+from numpy import isin
+from pandas.core.dtypes.common import is_int64_dtype
 from recbole.data.dataset.sequential_dataset import SequentialDataset
 from torch import Tensor
 
@@ -17,7 +17,7 @@ from constants import cat2id
 from exceptions import EmptyDatasetError
 from type_hints import CategorizedDataset, CategorySet, Dataset, RecDataset
 from utils_classes.Cached import Cached
-from utils_classes.distances import edit_distance, intersection_weighted_ndcg
+from utils_classes.distances import edit_distance, intersection_weighted_ndcg, ndcg
 
 
 class ItemInfo(TypedDict):
@@ -65,12 +65,16 @@ def equal_ys(
         - int and torch.Tensor, comparing them with the equal (==) operator
         - Set[int], comparing them with a thresholded jaccard similarity
     """
-    if isinstance(gt, (int, Tensor)) and isinstance(pred, (int, Tensor)):
+    if isinstance(gt, (int, Tensor, list)) and isinstance(pred, (int, Tensor, list)):
         if isinstance(gt, Tensor) and len(gt.flatten()) == 1:
             gt = gt.item()  # type: ignore
+        elif isinstance(gt, list) and len(gt) == 1:
+            gt = gt[0]  # type: ignore
 
         if isinstance(pred, Tensor) and len(pred.flatten()) == 1:
             pred = pred.item()  # type: ignore
+        elif isinstance(pred, list) and len(pred) == 1:
+            pred = pred[0]  # type: ignore
 
         if isinstance(gt, int) and isinstance(pred, int):
             return _compare_int_ys(gt, pred, return_score=return_score)  # type: ignore

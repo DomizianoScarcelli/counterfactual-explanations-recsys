@@ -1,3 +1,4 @@
+from config import ConfigParams
 import warnings
 from pathlib import Path
 
@@ -26,8 +27,8 @@ parameter_dict = {
 }
 
 config = Config(
-    model=RecModel.BERT4Rec.value,
-    dataset=RecDataset.ML_1M.value,
+    model=ConfigParams.MODEL.value,
+    dataset=ConfigParams.DATASET.value,
     config_dict=parameter_dict,
 )
 
@@ -40,11 +41,11 @@ dataset = create_dataset(config)
 train_data, valid_data, test_data = data_preparation(config, dataset)
 
 # Load a pre-trained model checkpoint
-model = get_model(config["model"])(config, train_data.dataset).to(config["device"])
+model = get_model(config["model"])(config, train_data.dataset).to(ConfigParams.DEVICE)
 
 # Perform inference
 trainer = Trainer(config, model)
-latest_checkpoint = Path("saved/BERT4Rec_ml1m.pth")
+latest_checkpoint = Path(f"saved/{ConfigParams.MODEL.value}_{ConfigParams.DATASET.value}.pth")
 trainer.resume_checkpoint(latest_checkpoint)
 # NOTE: uncomment this to perform the training, otherwise just the evaluation part will be performed
 # results = trainer.fit(train_data, show_progress=True)

@@ -1,7 +1,6 @@
+import warnings
 from ctypes import alignment
 from time import strftime
-from utils import printd
-import warnings
 from typing import Any, Dict, Generator, List, Optional
 
 import pandas as pd
@@ -18,6 +17,7 @@ from performance_evaluation.alignment.utils import pk_exists
 from performance_evaluation.genetic.evaluate import evaluate_genetic
 from performance_evaluation.genetic.evaluate import log_error as log_genetic_error
 from type_hints import SplitTuple
+from utils import printd
 from utils_classes.generators import (
     DatasetGenerator,
     InteractionGenerator,
@@ -42,7 +42,9 @@ def skip_sequence(
         }
         primary_key = ["i"]
         if target_cat:
-            new_df["gen_target_y@1"] = str({cat2id[target_cat]})
+            new_df["gen_target_y@1"] = str(
+                {cat2id[target_cat]} if isinstance(target_cat, str) else target_cat
+            )
             primary_key.append("gen_target_y@1")
         if alignment:
             new_df["split"] = str(split)

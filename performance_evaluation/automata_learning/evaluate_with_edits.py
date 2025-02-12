@@ -1,13 +1,6 @@
-from constants import MAX_LENGTH
-from statistics import mean
-from generation.utils import labels2cat
-from models.utils import pad
-from generation.utils import equal_ys
-from models.utils import topk
 from collections import deque
-from recbole.model.abstract_recommender import SequentialRecommender
-from aalpy.automata.Dfa import DfaState
-from typing import Optional, List, Set, Tuple
+from statistics import mean
+from typing import List, Optional, Set, Tuple
 
 from aalpy.automata.Dfa import DfaState
 from recbole.model.abstract_recommender import SequentialRecommender
@@ -16,15 +9,13 @@ from tqdm import tqdm
 from alignment.actions import Action, decode_action
 from automata_learning.passive_learning import learning_pipeline
 from config import ConfigParams
+from constants import MAX_LENGTH
+from generation.utils import equal_ys, labels2cat
 from models.config_utils import generate_model, get_config
-from models.utils import pad_batch
-from performance_evaluation.alignment.utils import (
-    preprocess_interaction,
-)
-from performance_evaluation.evaluation_utils import (
-    compute_metrics,
-    print_confusion_matrix,
-)
+from models.utils import pad, pad_batch, topk
+from performance_evaluation.alignment.utils import preprocess_interaction
+from performance_evaluation.evaluation_utils import (compute_metrics,
+                                                     print_confusion_matrix)
 from utils_classes.generators import DatasetGenerator
 
 

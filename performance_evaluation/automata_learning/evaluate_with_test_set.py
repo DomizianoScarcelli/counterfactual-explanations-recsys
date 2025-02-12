@@ -6,9 +6,6 @@ usable characters to the automa's alphabet, and compute the evaluation metrics
 by computing true/false positive/negatives on the good and bad points.
 """
 
-from exceptions import EmptyDatasetError
-from utils import printd
-from pandas import DataFrame
 import json
 import warnings
 from pathlib import Path
@@ -17,6 +14,7 @@ from typing import Optional
 import fire
 import pandas as pd
 from aalpy.automata.Dfa import Dfa
+from pandas import DataFrame
 from recbole.model.abstract_recommender import SequentialRecommender
 from torch import Tensor
 from tqdm import tqdm
@@ -25,21 +23,17 @@ from alignment.actions import Action, decode_action
 from automata_learning.passive_learning import learning_pipeline
 from automata_learning.utils import run_automata
 from config import ConfigParams
+from exceptions import EmptyDatasetError
 from generation.dataset.generate import generate
 from generation.dataset.utils import dataset_difference
 from models.config_utils import generate_model, get_config
 from models.utils import trim
-from performance_evaluation.alignment.utils import (
-    log_run,
-    pk_exists,
-    preprocess_interaction,
-)
-from performance_evaluation.evaluation_utils import (
-    compute_metrics,
-    print_confusion_matrix,
-)
+from performance_evaluation.alignment.utils import (log_run, pk_exists,
+                                                    preprocess_interaction)
+from performance_evaluation.evaluation_utils import (compute_metrics,
+                                                     print_confusion_matrix)
 from type_hints import GoodBadDataset
-from utils import seq_tostr
+from utils import printd, seq_tostr
 from utils_classes.generators import DatasetGenerator
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
@@ -124,9 +118,14 @@ def evaluate(
         config_dict = ConfigParams.configs_dict()
         new_row = pd.DataFrame({"source_sequence": [next_sequence_str], **config_dict})
         future_df = pd.concat([prev_df, new_row])
-        if pk_exists(df=future_df, primary_key=primary_key, consider_config=True):
+        if pk_exists(
+            df=future_df,
+            primary_key=primary_key,
+            consider_config=True,
+            config_blacklist=["timestamp"],
+        ):
             printd(
-                f"[{i}] Skipping source sequence {next_sequence} since it still exists in the log with the same config"
+                f"[{i}] Skipping source sequence {next_sequence} since it still exists in the log with the same config: {config_dict}"
             )
             datasets.skip()
             continue
@@ -137,6 +136,27 @@ def evaluate(
                 print(f"Raised error {type(e)}")
                 datasets.skip()
                 datasets.match_indices()  # type: ignore
+                log = {
+                    "tp": None,
+                    "fp": None,
+                    "tn": None,
+                    "fn": None,
+                    "precision": None,
+                    "accuracy": None,
+                    "recall": None,
+                    "train_dataset_len": None,
+                    "test_dataset_len": None,
+                    "source_sequence_len": None,
+                    "source_sequence": seq_tostr(next_sequence),
+                    "error": "EmptyDatasetError",
+                }
+                if log_path:
+                    prev_df = log_run(
+                        log=log,
+                        prev_df=prev_df,
+                        save_path=log_path,
+                        primary_key=["source_sequence"],
+                    )
                 continue
             source_sequence = preprocess_interaction(interaction)
             pbar.set_postfix_str(f"On sequence: {seq_tostr(next_sequence)}")
@@ -160,9 +180,7 @@ def evaluate(
             )
 
             tp, fp, tn, fn = evaluate_single(dfa, test_dataset)
-            precision, accuracy, recall = compute_automata_metrics(
-                tp=tp, fp=fp, tn=tn, fn=fn
-            )
+            precision, accuracy, recall = compute_metrics(tp=tp, fp=fp, tn=tn, fn=fn)
             print("----------------------------------------")
             print(f"[{i}] Precision: {precision}")
             print(f"[{i}] Accuracy: {accuracy}")
@@ -184,6 +202,7 @@ def evaluate(
                 "test_dataset_len": test_dataset_len,
                 "source_sequence_len": len(source_sequence),
                 "source_sequence": seq_tostr(source_sequence),
+                "error": None,
             }
             if log_path:
                 prev_df = log_run(
@@ -236,7 +255,7 @@ def run_automata_learning_eval(
           -----------------------
           """
     )
-    config = get_config(dataset=ConfigParams().DATASET, model=ConfigParams().MODEL)
+    config = get_config(dataset=ConfigParams.DATASET, model=ConfigParams.MODEL)
     datasets = DatasetGenerator(
         config=config,
         use_cache=use_cache,

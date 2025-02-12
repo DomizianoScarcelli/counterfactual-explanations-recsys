@@ -1,4 +1,3 @@
-from utils import printd
 import warnings
 from itertools import product
 from pathlib import Path
@@ -15,6 +14,7 @@ from models.config_utils import generate_model, get_config
 from models.model_funcs import model_predict
 from performance_evaluation.alignment.utils import log_run
 from type_hints import Dataset
+from utils import printd
 from utils_classes.generators import SequenceGenerator
 
 warnings.simplefilter(action="ignore", category=FutureWarning)

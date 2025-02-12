@@ -1,9 +1,10 @@
 !.gitkeep
 **/__pycache__/**
-**/.DS_store/**
+**/.DS_Store/**
 /dataset/**
 .dataset_cache/**
 .pytest_cache/**
 **/log_tensorboard/**
 log/**
 .ropeproject/**
+**/evaluation_all.csv

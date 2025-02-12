@@ -1,36 +1,32 @@
-from aalpy.automata.Dfa import Dfa
-from sklearn.metrics.pairwise import normalize
-from torch._prims_common import is_integer_dtype
-from automata_learning.passive_learning import generate_automata_from_dataset
-from generation.mutations import ALL_MUTATIONS, parse_mutations
-from generation.utils import labels2cat
-import random
-from models.config_utils import generate_model, get_config
-from constants import MIN_LENGTH, cat2id
-from models.utils import topk
-from models.utils import pad
-from aalpy.oracles import RandomWalkEqOracle
-from aalpy.SULs import SUL
-from constants import MAX_LENGTH
-from torch.nn import MaxPool1d
-from generation.utils import equal_ys, get_items
-from aalpy.learning_algs.deterministic.LStar import Oracle, run_Lstar
-from recbole.model.abstract_recommender import SequentialRecommender
-from utils import printd
 import os
-import torch
+import random
 from pathlib import Path
 from typing import List, Tuple, Union
 
+import torch
 from aalpy.automata.Dfa import Dfa
 from aalpy.learning_algs import run_RPNI
+from aalpy.learning_algs.deterministic.LStar import Oracle, run_Lstar
+from aalpy.oracles import RandomWalkEqOracle
+from aalpy.SULs import SUL
+from recbole.model.abstract_recommender import SequentialRecommender
+from sklearn.metrics.pairwise import normalize
 from torch import Tensor, Value
+from torch._prims_common import is_integer_dtype
+from torch.nn import MaxPool1d
 
 from alignment.alignment import augment_constraint_automata
+from automata_learning.passive_learning import generate_automata_from_dataset
 from automata_learning.utils import load_automata
 from config import ConfigParams
+from constants import MAX_LENGTH, MIN_LENGTH, cat2id
 from generation.dataset.utils import load_dataset
+from generation.mutations import ALL_MUTATIONS, parse_mutations
+from generation.utils import equal_ys, get_items, labels2cat
+from models.config_utils import generate_model, get_config
+from models.utils import pad, topk
 from type_hints import GoodBadDataset, RecDataset, RecModel
+from utils import printd
 from utils_classes.distances import edit_distance
 
 

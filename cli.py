@@ -1,16 +1,6 @@
-from performance_evaluation.automata_learning.evaluate_with_test_set import (
-    compute_automata_metrics,
-)
-import warnings
-
-from pandas.api.types import is_int64_dtype
-
-from performance_evaluation.automata_learning.evaluate_with_test_set import (
-    run_automata_learning_eval,
-)
-from utils_classes.generators import InteractionGenerator
 import json
 import os
+import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, TypeAlias
 
@@ -22,13 +12,25 @@ from tqdm import tqdm
 from config import ConfigDict, ConfigParams
 from constants import cat2id
 from performance_evaluation import alignment
-from performance_evaluation.alignment.utils import compute_fidelity, log_run
+from performance_evaluation.alignment.utils import (
+    compute_edit_distance,
+    compute_fidelity,
+    compute_running_times,
+    log_run,
+)
+from performance_evaluation.automata_learning.evaluate_with_test_set import (
+    compute_automata_metrics,
+    run_automata_learning_eval,
+)
 from run import run_alignment
 from run import run_alignment as run_alignment
 from run import run_all, run_genetic
-from sensitivity.model_sensitivity import main as evaluate_sensitivity
+from scripts.merge_dfs import main as merge_dfs_script
+from scripts.print_pth import print_pth as print_pth_script
+from scripts.targets_popularity import main as targets_popularity_script
 from sensitivity.model_sensitivity import run_on_all_positions
 from utils import SeedSetter
+from utils_classes.generators import InteractionGenerator
 
 RunModes: TypeAlias = Literal["alignment", "genetic", "automata_learning", "all"]
 
@@ -62,7 +64,7 @@ class RunSwitcher:
             self.end_i = sum(1 for _ in temp_int)
 
         self.targets: Optional[List[str]] = None
-        if self.targeted and self.categorized:
+        if self.targeted:
             if self.target:
                 self.targets = [self.target]
             else:
@@ -81,8 +83,6 @@ class RunSwitcher:
             )
             self.og_desc = self.pbar.desc
 
-        elif self.targeted and not self.categorized:
-            raise NotImplementedError("Targeted uncategorized not yet implemented")
         elif not self.targeted:
             self.pbar = tqdm(
                 desc=f"[UNTARGETED] Evaluating {self.end_i-self.start_i} sequences on {len(self.splits) if self.splits is not None else 1} splits",
@@ -94,7 +94,9 @@ class RunSwitcher:
     def run(self):
         if self.targeted:
             assert self.targets, "If 'targeted' is true, 'targets' must not be None"
-            assert isinstance(self.targets, list) and isinstance(self.targets[0], str)
+            assert isinstance(self.targets, list) and isinstance(
+                self.targets[0], (str, int)
+            )
             for target in self.targets:
                 self._run_single(target)
         else:
@@ -167,6 +169,34 @@ def _absolute_paths(*paths: Optional[str]) -> Tuple[Optional[Path], ...]:
     return tuple(Path(path) if path is not None else None for path in paths)
 
 
+class CLIScripts:
+    def print_pth(self, pth_path: str):
+        print_pth_script(pth_path)
+
+    def targets_popularity(self, dataset: str):
+        targets_popularity_script(dataset)
+
+    def merge_dfs(
+        self,
+        paths: Optional[List[str]] = None,
+        dir: Optional[str] = None,
+        regex: Optional[str] = None,
+        primary_key: List[str] = [],
+        blacklist_keys: List[str] = ["timestamp"],
+        ignore_config: bool = False,
+        save_path: Optional[str] = None,
+    ):
+        merge_dfs_script(
+            paths=paths,
+            dir=dir,
+            regex=regex,
+            primary_key=primary_key,
+            blacklist_keys=blacklist_keys,
+            ignore_config=ignore_config,
+            save_path=save_path,
+        )
+
+
 class CLIStats:
     def stats(
         self,
@@ -210,41 +240,41 @@ class CLIStats:
                 python -m cli stats --log_path="path/to/file.csv" --group_by=["column1"] --metrics=["metric1", "metric2"]
         """
 
-    def sensitivity(
-        self,
-        config_path: Optional[str] = None,
-        config_dict: Optional[ConfigDict] = None,
-        log_path: Optional[str] = None,
-        group_by: Optional[List[str] | str] = None,
-        order_by: Optional[List[str] | str] = None,
-        metrics: Optional[List[str]] = None,
-        filter: Optional[Dict[str, Any]] = None,
-        target: Optional[str] = None,
-        save_path: Optional[str] = None,
-    ):
-        save_path, config_path, log_path = _absolute_paths(
-            save_path, config_path, log_path
-        )
+    # def sensitivity(
+    #     self,
+    #     config_path: Optional[str] = None,
+    #     config_dict: Optional[ConfigDict] = None,
+    #     log_path: Optional[str] = None,
+    #     group_by: Optional[List[str] | str] = None,
+    #     order_by: Optional[List[str] | str] = None,
+    #     metrics: Optional[List[str]] = None,
+    #     filter: Optional[Dict[str, Any]] = None,
+    #     target: Optional[str] = None,
+    #     save_path: Optional[str] = None,
+    # ):
+    #     save_path, config_path, log_path = _absolute_paths(
+    #         save_path, config_path, log_path
+    #     )
 
-        if config_path and config_dict:
-            raise ValueError(
-                "Only one between config_path and config_dict must be set, not both"
-            )
-        if config_path:
-            ConfigParams.reload(config_path)
-        if config_dict:
-            ConfigParams.override_params(config_dict)
-        ConfigParams.fix()
+    #     if config_path and config_dict:
+    #         raise ValueError(
+    #             "Only one between config_path and config_dict must be set, not both"
+    #         )
+    #     if config_path:
+    #         ConfigParams.reload(config_path)
+    #     if config_dict:
+    #         ConfigParams.override_params(config_dict)
+    #     ConfigParams.fix()
 
-        return evaluate_sensitivity(
-            mode="stats",
-            groupby=group_by,  # type: ignore
-            orderby=order_by,
-            stats_save_path=save_path,
-            log_path=log_path,
-            target=target,  # type: ignore
-            metrics=metrics,
-        )
+    #     return evaluate_sensitivity(
+    #         mode="stats",
+    #         groupby=group_by,  # type: ignore
+    #         orderby=order_by,
+    #         stats_save_path=save_path,
+    #         log_path=log_path,
+    #         target=target,  # type: ignore
+    #         metrics=metrics,
+    #     )
 
     def automata_metrics(self, log_path: str, save_path: Optional[str] = None):
         config_keys = list(ConfigParams.configs_dict().keys())
@@ -283,28 +313,38 @@ class CLIStats:
             config_keys.remove("target_cat")
 
         config_keys.remove("timestamp")
-        config_keys.append("split")
+        if "split" in df.columns:
+            config_keys.append("split")
 
-        fidelity_rows = []
+        assert (
+            set(config_keys) - set(df.columns) == set()
+        ), f"Some config keys: {set(config_keys) - set(df.columns)} do not exist in the loaded df"
+
+        df[config_keys] = df[config_keys].fillna("NaN")
+        rows = []
         grouped = df.groupby(config_keys)
 
         for config_values, group in grouped:
             fidelity_dict = compute_fidelity(group)
+            edit_distance_dict = compute_edit_distance(group)
+            running_time_dict = compute_running_times(group)
             if isinstance(config_values, tuple):
                 config_dict = dict(zip(config_keys, config_values))
             else:
                 config_dict = {config_keys[0]: config_values}
             for key, value in fidelity_dict.items():
-                config_dict[f"fidelity_{key}"] = value
                 config_dict[f"count"] = group.shape[0]
-            fidelity_rows.append(config_dict)
+                config_dict[f"fidelity_{key}"] = value
+            for key, value in {**edit_distance_dict, **running_time_dict}.items():
+                config_dict[key] = value
+            rows.append(config_dict)
 
-        fidelity_df = pd.DataFrame(fidelity_rows)
+        result_df = pd.DataFrame(rows)
 
         if save_path:
-            fidelity_df.to_csv(save_path, index=False)
+            result_df.to_csv(save_path, index=False)
         else:
-            print(fidelity_df)
+            print(result_df)
 
     def alignment(
         self,
@@ -412,11 +452,9 @@ class CLIEvaluate:
 
     def sensitivity(
         self,
+        save_path: str,
         config_path: Optional[str] = None,
         config_dict: Optional[ConfigDict] = None,
-        save_path: Optional[str] = None,
-        label_type: Optional[Literal["item", "category", "target"]] = None,
-        k: Optional[int] = None,
     ):
         save_path, config_path = _absolute_paths(save_path, config_path)
         if config_path and config_dict:
@@ -429,10 +467,7 @@ class CLIEvaluate:
             ConfigParams.override_params(config_dict)
         ConfigParams.fix()
 
-        if not k or not label_type:
-            raise ValueError("k and target must not be None")
-
-        return run_on_all_positions(label_type=label_type, log_path=save_path, k=k)
+        return run_on_all_positions(log_path=save_path, ks=ConfigParams.TOPK)
 
 
 class CLIUtils:
@@ -443,6 +478,7 @@ class CLI:
     evaluate = CLIEvaluate()
     stats = CLIStats()
     utils = CLIUtils()
+    scripts = CLIScripts()
 
     def __init__(self):
         SeedSetter.set_seed()

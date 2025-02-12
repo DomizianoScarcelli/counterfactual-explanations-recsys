@@ -1,4 +1,3 @@
-from utils import printd
 import os
 import pickle
 from collections import deque
@@ -7,6 +6,8 @@ from typing import List
 
 from aalpy.automata.Dfa import Dfa
 from torch import Tensor
+
+from utils import printd
 
 
 def save_automata(automata, save_path):

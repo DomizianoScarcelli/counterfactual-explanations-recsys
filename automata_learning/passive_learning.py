@@ -1,20 +1,20 @@
-from generation.utils import get_items
-from aalpy.learning_algs.deterministic.LStar import run_Lstar
-from recbole.model.abstract_recommender import SequentialRecommender
-from utils import printd
 import os
 from pathlib import Path
 from typing import List, Tuple, Union
 
 from aalpy.automata.Dfa import Dfa
 from aalpy.learning_algs import run_RPNI
+from aalpy.learning_algs.deterministic.LStar import run_Lstar
+from recbole.model.abstract_recommender import SequentialRecommender
 from torch import Tensor
 
 from alignment.alignment import augment_constraint_automata
 from automata_learning.utils import load_automata
 from config import ConfigParams
 from generation.dataset.utils import load_dataset
+from generation.utils import get_items
 from type_hints import GoodBadDataset
+from utils import printd
 
 
 def _generate_automata(
