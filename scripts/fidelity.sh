@@ -12,3 +12,7 @@ python -m cli stats fidelity --log-path=$eval_path --save-path=$fidelity_path
 
 vd --play "scripts/visidata/filter_fidelity_all.vdj"
 
+python -m scripts.fidelity_all_to_md
+
+nvim fidelity_results.md
+

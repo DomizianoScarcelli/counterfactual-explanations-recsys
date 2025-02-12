@@ -1,5 +1,5 @@
 #!vd -p
-{"sheet": null, "col": null, "row": null, "longname": "open-file", "input": "results/stats/alignment/fidelity_all.csv", "keystrokes": "o", "comment": null, "replayable": true}
+{"sheet": null, "col": "", "row": "", "longname": "open-file", "input": "results/stats/alignment/fidelity_all.csv", "keystrokes": "o", "comment": null, "replayable": true}
 {"sheet": "fidelity_all", "col": "pop_size", "row": "", "longname": "select-col-regex", "input": {"regex": "8192", "flags": "I"}, "keystrokes": "|", "comment": "select rows matching regex in current column", "replayable": true}
 {"sheet": "fidelity_all", "col": "", "row": "", "longname": "dup-selected", "input": "", "keystrokes": "\"", "comment": "open a duplicate sheet with only the selected rows", "replayable": true}
 {"sheet": "fidelity_all_selectedref", "col": "generations", "row": "", "longname": "select-col-regex", "input": {"regex": "10", "flags": "I"}, "keystrokes": "|", "comment": "select rows matching regex in current column", "replayable": true}
@@ -43,3 +43,6 @@
 {"sheet": "fidelity_all_selectedref_selectedref_selectedref_selectedref_selectedref", "col": "gen_cost", "row": "", "longname": "go-leftmost", "input": "", "keystrokes": "gh", "comment": "go all the way to the left of sheet", "replayable": true}
 {"sheet": "fidelity_all_selectedref_selectedref_selectedref_selectedref_selectedref", "col": "gen_target_y@1", "row": "", "longname": "go-rightmost", "input": "", "keystrokes": "gl", "comment": "go all the way to the right of sheet", "replayable": true}
 {"sheet": "fidelity_all_selectedref_selectedref_selectedref_selectedref_selectedref", "col": "align_time", "row": "", "longname": "go-leftmost", "input": "", "keystrokes": "gh", "comment": "go all the way to the left of sheet", "replayable": true}
+{"sheet": "fidelity_all_selectedref_selectedref_selectedref_selectedref_selectedref", "col": "", "row": "", "longname": "save-sheet", "input": "results/stats/alignment/fidelity_all.csv", "keystrokes": "Ctrl+S", "comment": "save current sheet to filename in format determined by extension (default .tsv)", "replayable": true}
+{"longname": "qall", "keystrokes": "gq", "input": "", "comment": "quit all sheets"}
+
