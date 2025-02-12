@@ -7,3 +7,4 @@
 **/log_tensorboard/**
 log/**
 .ropeproject/**
+**/evaluation_all.csv

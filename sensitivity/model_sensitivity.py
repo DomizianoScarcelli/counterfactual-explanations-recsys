@@ -101,9 +101,8 @@ def model_sensitivity_universal(
     start_i = 0
     end_i = sum(1 for _ in InteractionGenerator())  # all users
     pbar = tqdm(
-        total=end_i - start_i, desc=f"Testing model sensitivity on position {position}"
+        total=end_i - start_i, desc=f"Testing model sensitivity on position {position}", leave=False
     )
-    count = 0
     i_list, sequence_list = [], []
     scores_ks = {k: [] for k in ks}
     primary_key = ["i", "position"]
@@ -114,8 +113,6 @@ def model_sensitivity_universal(
             continue
         if i >= end_i:
             break
-
-        count += 1
 
         if log_path:
             new_df = {"i": [i], "position": [position]}
@@ -186,7 +183,7 @@ def model_sensitivity_universal(
     data = {
         "i": i_list,
         "position": [position] * len(i_list),
-        "count": [count] * len(i_list),
+        "pos_from_end": [len(x) - (position + 1) for x in sequence_list],
         "alphabet_len": [len(alphabet)] * len(i_list),
         "sequence": [seq_tostr(x) for x in sequence_list],
         "model": [ConfigParams.MODEL.value] * len(i_list),
@@ -218,7 +215,7 @@ def run_on_all_positions(
     model = generate_model(config)
     start_i, end_i = 49, 0
     for i in tqdm(
-        range(start_i, end_i - 1, -1), "Testing model sensitivity on all positions"
+        range(start_i, end_i - 1, -1), "Testing model sensitivity on all positions", leave=False
     ):
         # This is very important in order to evaluate different positions on the same sequences
         sequences.reset()

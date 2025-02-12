@@ -310,3 +310,13 @@ def compute_fidelity(df: pd.DataFrame) -> dict:
         fidelity_results[score_col] = fidelity_k
 
     return fidelity_results
+
+def compute_edit_distance(df: pd.DataFrame) -> dict:
+    cost_columns = [col for col in df.columns if col.endswith("cost")]
+    cost_means = {col: df[col].mean() for col in cost_columns}
+    return cost_means
+
+def compute_running_times(df: pd.DataFrame) -> dict:
+    time_columns = [col for col in df.columns if col.endswith("time")]
+    time_means = {col: df[col].mean() for col in time_columns}
+    return time_means

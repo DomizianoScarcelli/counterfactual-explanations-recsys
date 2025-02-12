@@ -12,7 +12,12 @@ from tqdm import tqdm
 from config import ConfigDict, ConfigParams
 from constants import cat2id
 from performance_evaluation import alignment
-from performance_evaluation.alignment.utils import compute_fidelity, log_run
+from performance_evaluation.alignment.utils import (
+    compute_edit_distance,
+    compute_fidelity,
+    compute_running_times,
+    log_run,
+)
 from performance_evaluation.automata_learning.evaluate_with_test_set import (
     compute_automata_metrics,
     run_automata_learning_eval,
@@ -316,26 +321,30 @@ class CLIStats:
         ), f"Some config keys: {set(config_keys) - set(df.columns)} do not exist in the loaded df"
 
         df[config_keys] = df[config_keys].fillna("NaN")
-        fidelity_rows = []
+        rows = []
         grouped = df.groupby(config_keys)
 
         for config_values, group in grouped:
             fidelity_dict = compute_fidelity(group)
+            edit_distance_dict = compute_edit_distance(group)
+            running_time_dict = compute_running_times(group)
             if isinstance(config_values, tuple):
                 config_dict = dict(zip(config_keys, config_values))
             else:
                 config_dict = {config_keys[0]: config_values}
             for key, value in fidelity_dict.items():
-                config_dict[f"fidelity_{key}"] = value
                 config_dict[f"count"] = group.shape[0]
-            fidelity_rows.append(config_dict)
+                config_dict[f"fidelity_{key}"] = value
+            for key, value in {**edit_distance_dict, **running_time_dict}.items():
+                config_dict[key] = value
+            rows.append(config_dict)
 
-        fidelity_df = pd.DataFrame(fidelity_rows)
+        result_df = pd.DataFrame(rows)
 
         if save_path:
-            fidelity_df.to_csv(save_path, index=False)
+            result_df.to_csv(save_path, index=False)
         else:
-            print(fidelity_df)
+            print(result_df)
 
     def alignment(
         self,
