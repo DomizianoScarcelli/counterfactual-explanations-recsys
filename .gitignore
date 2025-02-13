@@ -8,3 +8,4 @@
 log/**
 .ropeproject/**
 **/evaluation_all.csv
+**/*.db
