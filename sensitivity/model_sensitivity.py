@@ -95,7 +95,7 @@ def model_sensitivity_universal(
     if targeted and not y_target:
         raise ValueError("If setting is 'targeted', then y_target has to be defined")
 
-    y_targets_ks = {k: [y_target for _ in range(k)] for k in ks}
+    y_targets_ks = {k: [{cat2id[y_target]} for _ in range(k)] for k in ks}
 
     i = 0
     start_i = 0
@@ -228,7 +228,7 @@ def run_on_all_positions(
         if targeted:
             if y_target == False:
                 raise ValueError(
-                    "false -> run all on all targets is not implemented in model sensitivity, please specify the target as a string (category) or int (item id)"
+                    "false -> run on all targets is not implemented in model sensitivity, please specify the target as a string (category) or int (item id)"
                 )
             if (
                 not isinstance(y_target, str)

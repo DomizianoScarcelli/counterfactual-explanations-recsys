@@ -54,9 +54,11 @@ for target_cat in "${target_cat_options[@]}"; do
     "model": "BERT4Rec",
     "device": "cpu",
     },
-"target_cat": $target_cat,
+"evolution":{
+    "target_cat": $target_cat,
+},
 "generation": {
-    "targeted": False,
+    "targeted": True,
     "categorized": True 
     },
 }
