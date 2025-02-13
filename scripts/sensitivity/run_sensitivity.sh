@@ -51,7 +51,7 @@ for categorized in "${categorized_options[@]}"; do
     config_json=$(cat <<EOF
 {
 "settings": {
-    "model": "BERT4Rec",
+    "model": "SASRec",
     "device": "cpu"
     },
 "generation": {
@@ -69,7 +69,7 @@ EOF
 
     # Run the script with the JSON string as the --config-dict argument
     python -m cli evaluate sensitivity \
-        --save-path="results/evaluate/sensitivity/sensitivity_untargeted.csv" \
+        --save-path="results/evaluate/sensitivity/sensitivity_untargeted_sasrec.csv" \
         --config_dict="$config_json" \
         --target-cat=$target_cat
     done
