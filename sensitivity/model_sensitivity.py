@@ -1,3 +1,4 @@
+from utils_classes.RunLogger import RunLogger
 from utils_classes.generators import InteractionGenerator
 from pathlib import Path
 from statistics import mean
@@ -14,10 +15,6 @@ from constants import cat2id
 from generation.utils import equal_ys, get_items, labels2cat
 from models.config_utils import generate_model, get_config
 from models.utils import topk, trim
-from performance_evaluation.alignment.utils import (
-    log_run,
-    pk_exists,
-)
 from type_hints import CategorySet, RecDataset
 from utils import seq_tostr
 from utils_classes.generators import SequenceGenerator, SkippableGenerator
@@ -83,9 +80,22 @@ def model_sensitivity_universal(
     """Analyze the sensitivity of a sequential recommender model to changes in category predictions
     when input sequences are modified at a specific position. Optionally logs the results to a file.
     """
-    prev_df = pd.DataFrame({})
-    if log_path and log_path.exists():
-        prev_df = pd.read_csv(log_path)
+    score_log = {f"score@{k}": float for k in ks}
+    log = {
+        "i": int,
+        "position": int,
+        "pos_from_end": int, 
+        "alphabet_len": int,
+        "sequence": str,
+        "model": str,
+        "dataset": str,
+        "targeted": bool,
+        "categorized": bool,
+        **score_log,
+    }
+
+    if log_path:
+        logger = RunLogger(db_path=log_path, schema=log, add_config=False)
 
     if ConfigParams.DATASET in [RecDataset.ML_1M, RecDataset.ML_100K]:
         alphabet = torch.tensor(list(get_items()))
@@ -94,8 +104,9 @@ def model_sensitivity_universal(
 
     if targeted and not y_target:
         raise ValueError("If setting is 'targeted', then y_target has to be defined")
-
-    y_targets_ks = {k: [{cat2id[y_target]} for _ in range(k)] for k in ks}
+    
+    if targeted:
+        y_targets_ks = {k: [{cat2id[y_target]} for _ in range(k)] for k in ks}
 
     i = 0
     start_i = 0
@@ -114,16 +125,15 @@ def model_sensitivity_universal(
         if i >= end_i:
             break
 
+        pbar.update(1)
         if log_path:
-            new_df = {"i": [i], "position": [position]}
+            new_row = {"i": i, "position": position}
             if targeted:
-                new_df["target"] = [y_target]
+                new_row["target"] = y_target
 
-            future_df = pd.concat([prev_df, pd.DataFrame(new_df)])
-            if pk_exists(future_df, primary_key=primary_key, consider_config=False):
+            if logger.will_exist(new_row, primary_key, consider_config=False):
                 continue
 
-        pbar.update(1)
 
         sequence = trim(sequence.squeeze(0)).unsqueeze(0)
         x_primes = generate_sequence_variants(sequence, position, alphabet)
@@ -161,7 +171,8 @@ def model_sensitivity_universal(
         for k in ks:
             n_items = len(out_primes_cat_ks[k])
             y = out_cat_ks[k]
-            y_targets = y_targets_ks[k]
+            if targeted:
+                y_targets = y_targets_ks[k]
             for n_i in range(n_items):
                 y_prime = out_primes_cat_ks[k][n_i]
 
@@ -194,14 +205,8 @@ def model_sensitivity_universal(
     }
     if targeted:
         data["target"] = y_target
-    if log_path:
-        prev_df = log_run(
-            prev_df=prev_df,
-            log=data,
-            save_path=log_path,
-            add_config=False,
-            primary_key=primary_key,
-        )
+    if log_path and len(i_list) > 0:
+        logger.log_run(log=data, primary_key=primary_key)
     else:
         print(pd.DataFrame(data))
 

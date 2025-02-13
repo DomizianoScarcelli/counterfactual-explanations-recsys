@@ -1,9 +1,9 @@
 #!/bin/bash
-
 categorized_options=("False" "True")
+models_options=("BERT4Rec" "SASRec" "GRU4Rec")
 
 # Calculate the total number of iterations
-total_iterations=2
+total_iterations=6
 
 # Check if arguments were provided
 start=$1
@@ -36,22 +36,23 @@ iteration=0
 
 # Iterate over all combinations of parameters
 for categorized in "${categorized_options[@]}"; do
-    # Increment the iteration counter
-    ((iteration++))
+    for model in "${models_options[@]}"; do
+        # Increment the iteration counter
+        ((iteration++))
 
-    # Skip iterations outside the specified range
-    if (( iteration < start + 1 || iteration > end + 1 )); then
-        continue
-    fi
+        # Skip iterations outside the specified range
+        if (( iteration < start + 1 || iteration > end + 1 )); then
+            continue
+        fi
 
-    # Print progress
-    echo "Iteration $iteration of $total_iterations (Executing range $((start + 1)) to $((end + 1)))"
+        # Print progress
+        echo "Iteration $iteration of $total_iterations (Executing range $((start + 1)) to $((end + 1)))"
 
-    # Define the JSON configuration in a variable
-    config_json=$(cat <<EOF
+        # Define the JSON configuration in a variable
+        config_json=$(cat <<EOF
 {
 "settings": {
-    "model": "SASRec",
+    "model": $model,
     "device": "cpu"
     },
 "generation": {
@@ -63,13 +64,14 @@ for categorized in "${categorized_options[@]}"; do
 EOF
 )
 
-    # Print the configuration being tested (for debugging)
-    echo "Running script with configuration:"
-    echo "$config_json"
+        # Print the configuration being tested (for debugging)
+        echo "Running script with configuration:"
+        echo "$config_json"
 
-    # Run the script with the JSON string as the --config-dict argument
-    python -m cli evaluate sensitivity \
-        --save-path="results/evaluate/sensitivity/sensitivity_untargeted_sasrec.csv" \
-        --config_dict="$config_json" \
-        --target-cat=$target_cat
+        # Run the script with the JSON string as the --config-dict argument
+        python -m cli evaluate sensitivity \
+            --save-path="results/evaluate/sensitivity/sensitivity.db" \
+            --config_dict="$config_json" \
+            --target-cat=$target_cat
+        done
     done
