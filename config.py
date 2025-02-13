@@ -223,8 +223,8 @@ class ConfigParams:
         return toml.load(default_config_path)  # type: ignore
 
     @classmethod
-    def configs_dict(cls, length=1):
-        return {
+    def configs_dict(cls, length=1, pandas: bool=True, tostr: bool=False):
+        conf =  {
             "determinism": [ConfigParams.DETERMINISM] * length,
             "model": [ConfigParams.MODEL.value] * length,
             "dataset": [ConfigParams.DATASET.value] * length,
@@ -251,6 +251,11 @@ class ConfigParams:
             "jaccard_threshold": [ConfigParams.THRESHOLD] * length,
             "timestamp": [ConfigParams.TIMESTAMP] * length,
         }
+        if not pandas:
+            conf = {key: value[0] for key, value in conf.items()}
+        if tostr:
+            conf = {key: str(value) for key, value in conf.items()}
+        return conf
 
     @classmethod
     def print_config(cls, indent: Optional[int] = None):

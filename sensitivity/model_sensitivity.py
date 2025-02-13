@@ -131,7 +131,7 @@ def model_sensitivity_universal(
             if targeted:
                 new_row["target"] = y_target
 
-            if logger.will_exist(new_row, primary_key, consider_config=False):
+            if logger.exists(new_row, primary_key, consider_config=False):
                 continue
 
 

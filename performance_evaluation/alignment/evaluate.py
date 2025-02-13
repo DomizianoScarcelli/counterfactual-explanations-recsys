@@ -49,6 +49,36 @@ def single_run(
     return aligned, cost, alignment
 
 
+def _init_schema(ks: List[int]) -> Dict[str, Any]:
+    log_at_ks = [
+        {
+            f"aligned_gt@{k}": str,
+            f"gt@{k}": str,
+            f"preds_gt@{k}": str,
+            f"score@{k}": float,
+        }
+        for k in ks
+    ]
+    run_log = {
+        "i": int,
+        "split": str,
+        "status": str,
+        "score": float,
+        "source": str,
+        "aligned": str,
+        "alignment": str,
+        "cost": float,
+        "gt": str,
+        "aligned_gt": str,
+        "dataset_time": float,
+        "align_time": float,
+        "automata_learning_time": float,
+    }
+
+    for log_at_k in log_at_ks:
+        run_log = {**run_log, **log_at_k}
+    return run_log
+
 def _init_log(ks: List[int]) -> Dict[str, Any]:
 
     log_at_ks = [

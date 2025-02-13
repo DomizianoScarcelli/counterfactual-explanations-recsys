@@ -1,4 +1,4 @@
-import json
+from utils_classes.RunLogger import RunLogger
 import os
 import warnings
 from pathlib import Path
@@ -6,7 +6,6 @@ from typing import Any, Dict, List, Literal, Optional, Tuple, TypeAlias
 
 import fire
 import pandas as pd
-from pandas import DataFrame
 from tqdm import tqdm
 
 from config import ConfigDict, ConfigParams
@@ -16,7 +15,6 @@ from performance_evaluation.alignment.utils import (
     compute_edit_distance,
     compute_fidelity,
     compute_running_times,
-    log_run,
 )
 from performance_evaluation.automata_learning.evaluate_with_test_set import (
     compute_automata_metrics,
@@ -106,63 +104,41 @@ class RunSwitcher:
         if target:
             self.pbar.set_description_str(self.og_desc + f" | Target: {target}")
 
-        log: DataFrame = DataFrame({})
-        if self.save_path and self.save_path.exists():
-            log = pd.read_csv(self.save_path, dtype=str)
-
+        logger = RunLogger(db_path=self.save_path, schema=None, add_config=True, merge_cols=True)
         if self.mode == "alignment":
-            run_generator = run_alignment(
+
+            run_alignment(
                 target_cat=target,
+                logger=logger,
                 start_i=self.start_i,
                 end_i=self.end_i,
                 splits=self.splits,  # type: ignore
                 use_cache=self.use_cache,
                 ks=self.ks,
-                prev_df=log,
                 pbar=self.pbar,
             )
         elif self.mode == "genetic":
-            run_generator = run_genetic(
+            run_genetic(
                 target_cat=target,
+                logger=logger,
                 start_i=self.start_i,
                 end_i=self.end_i,
                 split=self.splits[0] if self.splits and len(self.splits) == 1 else None,  # type: ignore
-                prev_df=log,
                 pbar=self.pbar,
             )  # NOTE: splits can be used in the genetic only if just a single one is used, otherwise each split would require a different dataset generation
         elif self.mode == "all":
-            run_generator = run_all(
+            run_all(
                 target_cat=target,
+                logger=logger,
                 start_i=self.start_i,
                 end_i=self.end_i,
                 splits=self.splits,  # type: ignore
                 use_cache=self.use_cache,
                 ks=self.ks,
-                prev_df=log,
                 pbar=self.pbar,
             )
         else:
             raise ValueError(f"Mode '{self.mode}' not supported")
-
-        for runs in run_generator:
-            if not isinstance(runs, list):
-                runs = [runs]
-            for run in runs:
-                if self.save_path:
-                    if run["i"] is None:
-                        continue
-
-                    log_run(
-                        prev_df=None,
-                        log=run,
-                        save_path=self.save_path,
-                        # MAJOR TODO: change in the __init__ according to the targeted/untargeted setting
-                        primary_key=["i", "source", "split", "gen_target_y@1"],
-                        mode="append",
-                        columns=list(log.columns),
-                    )
-                else:
-                    print(json.dumps(run, indent=2))
 
 
 def _absolute_paths(*paths: Optional[str]) -> Tuple[Optional[Path], ...]:

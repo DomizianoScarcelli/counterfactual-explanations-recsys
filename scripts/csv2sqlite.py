@@ -1,11 +1,12 @@
 from typing import List, Optional
+from config import ConfigDict, ConfigParams
 from utils_classes.RunLogger import RunLogger
 import pandas as pd
 import os
 import fire
 from tqdm import tqdm
 
-def csv_to_sqlite(csv_file: str, db_file: str, primary_key: Optional[List[str]] = None, batch_size: int = 1000, merge_cols: bool=False):
+def csv_to_sqlite(csv_file: str, db_file: str, merge_cols, primary_key: Optional[List[str]] = None, batch_size: int = 1000):
     # Check if the CSV file exists
     if not os.path.exists(csv_file):
         raise FileNotFoundError(f"The file {csv_file} does not exist.")
@@ -13,11 +14,8 @@ def csv_to_sqlite(csv_file: str, db_file: str, primary_key: Optional[List[str]] 
     # Read the CSV file using pandas
     df = pd.read_csv(csv_file)
 
-    # Define the schema based on the dataframe columns
-    schema = {col: str for col in df.columns}
-
     # Initialize the RunLogger to handle the database interactions
-    logger = RunLogger(db_file, schema, add_config=True, merge_cols=merge_cols)
+    logger = RunLogger(db_file, schema=None, add_config=False, merge_cols=merge_cols)
 
     # Initialize a list to collect rows for batch insert
     batch = []
@@ -26,6 +24,9 @@ def csv_to_sqlite(csv_file: str, db_file: str, primary_key: Optional[List[str]] 
     for _, row in tqdm(df.iterrows(), total=len(df)):
         # Convert the row to a dictionary
         log_entry = row.to_dict()
+        log_entry_metr = {k: v for k, v in log_entry.items() if k not in ConfigParams.configs_dict().keys()}
+        log_entry_str = {k: str(v) for k, v in log_entry.items() if k in ConfigParams.configs_dict().keys()}
+        log_entry = {**log_entry_metr, **log_entry_str}
 
         # Add the log entry to the batch
         batch.append(log_entry)

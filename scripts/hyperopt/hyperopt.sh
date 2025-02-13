@@ -18,6 +18,7 @@ total_iterations=$(( ${#crossover_prob_options[@]} * ${#mutation_prob_options[@]
 # Check if arguments were provided
 start=$1
 end=$2
+model=$3
 
 if [[ -z "$start" || -z "$end" ]]; then
     echo "Usage: $0 <start_index> <end_index>"
@@ -69,7 +70,7 @@ for crossover_prob in "${crossover_prob_options[@]}"; do
                                 config_json=$(cat <<EOF
 {
 "settings": {
-    "model": "SASRec",
+    "model": $model,
     "device": "cpu"
     },
   "evolution": {
@@ -101,7 +102,7 @@ EOF
                                 # Run the script with the JSON string as the --config-dict argument
                                 python -m cli evaluate alignment \
                                     --use-cache=False \
-                                    --save-path="results/evaluate/alignment/alignment_hyperopt_sasrec.csv" \
+                                    --save-path="results/evaluate/alignment/alignment.db" \
                                     --config_dict="$config_json" \
                                     --mode="all" \
                                     --range-i="(0, None)" \

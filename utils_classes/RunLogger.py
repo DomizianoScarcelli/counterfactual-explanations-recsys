@@ -9,27 +9,25 @@ class RunLogger:
     def __init__(
         self,
         db_path: Union[str, Path],
-        schema: Dict[str, Any],
+        schema: Optional[Dict[str, Any]] = None,
         add_config: bool = False,
-        merge_cols: bool = False,
+        merge_cols: bool = True,  # Changed default to True since it's needed for schema-less operation
     ):
         self.db_path = db_path
         self.merge_cols = merge_cols
-        self.schema = self._normalize_schema(
-            schema
-        )  # Normalize column names (replace @ with _at_)
+        self.schema = self._normalize_schema(schema) if schema else {}
         self.add_config = add_config
         self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self.cursor = self.conn.cursor()
 
         # Add config parameters to schema if add_config is True
-        if self.add_config:
+        if self.add_config and schema:  # Only add to schema if schema is provided
             configs = [
                 key for key in ConfigParams.configs_dict().keys() if key != "timestamp"
             ]
             for config_key in configs:
                 if config_key not in self.schema:
-                    self.schema[config_key] = str  # Assuming all configs are strings
+                    self.schema[config_key] = str
 
         self._check_or_init_db()
 
@@ -56,38 +54,49 @@ class RunLogger:
             return "TEXT"  # Default to TEXT for unknown types
 
     def _check_or_init_db(self):
-        """Check if the database exists and matches the expected schema, or merge columns if enabled."""
-        if Path(self.db_path).exists():
-            # Check if the 'logs' table exists
-            self.cursor.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='logs';"
-            )
-            table_exists = self.cursor.fetchone()
+        """Check if the database exists and initialize if needed."""
+        self.cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='logs';"
+        )
+        table_exists = self.cursor.fetchone()
 
-            if table_exists:
-                # If the table exists, fetch current schema
-                self.cursor.execute("PRAGMA table_info(logs)")
-                existing_columns = {row[1]: row[2] for row in self.cursor.fetchall()}
-                expected_columns = {
-                    key: self._get_sql_type(value) for key, value in self.schema.items()
-                }
-
-                # Determine missing columns
-                missing_columns = [
-                    key for key in expected_columns if key not in existing_columns
-                ]
-
-                if missing_columns and self.merge_cols:
-                    self._add_missing_columns(missing_columns, expected_columns)
-                elif missing_columns:
-                    raise ValueError(
-                        f"Database schema mismatch. Missing columns: {missing_columns}"
+        if not table_exists:
+            # If no schema provided, create an empty table with a temporary column
+            # (SQLite requires at least one column when creating a table)
+            if not self.schema:
+                self.cursor.execute(
+                    """
+                    CREATE TABLE logs (
+                        _id INTEGER PRIMARY KEY AUTOINCREMENT
                     )
+                """
+                )
+            else:
+                # Create table with provided schema
+                self._init_table()
 
-                return
+            self.conn.commit()
+            return
 
-        # If table does not exist, create it
-        self._init_table()
+        # If schema provided, check for missing columns
+        if self.schema:
+            self.cursor.execute("PRAGMA table_info(logs)")
+            existing_columns = {row[1]: row[2] for row in self.cursor.fetchall()}
+            expected_columns = {
+                key: self._get_sql_type(value) for key, value in self.schema.items()
+            }
+
+            # Determine missing columns
+            missing_columns = [
+                key for key in expected_columns if key not in existing_columns
+            ]
+
+            if missing_columns and self.merge_cols:
+                self._add_missing_columns(missing_columns, expected_columns)
+            elif missing_columns:
+                raise ValueError(
+                    f"Database schema mismatch. Missing columns: {missing_columns}"
+                )
 
     def _add_missing_columns(
         self, missing_columns: List[str], expected_columns: Dict[str, str]
@@ -100,6 +109,7 @@ class RunLogger:
         print(f"Added missing columns: {missing_columns}")
 
     def _init_table(self):
+        """Initialize table with schema."""
         columns = ", ".join(
             [f"{key} {self._get_sql_type(value)}" for key, value in self.schema.items()]
         )
@@ -117,19 +127,41 @@ class RunLogger:
         log = {self._normalize_column_name(key): value for key, value in log.items()}
 
         if primary_key is None:
-            primary_key = list(
-                log.keys()
-            )  # Use all columns as primary key if none is given
+            primary_key = list(log.keys())
 
         # Add config values to the log entry if add_config is True
         if self.add_config:
-            configs = ConfigParams.configs_dict()
+            configs = ConfigParams.configs_dict(pandas=False)
             for config_key, config_value in configs.items():
-                if config_key != "timestamp":  # Skip the timestamp key
-                    log[self._normalize_column_name(config_key)] = str(
-                        config_value[0]
-                    )  # TODO: change this when the ConfigParams.configs_dict is changed from key:[value] to key:value
+                if config_key != "timestamp":
+                    log[self._normalize_column_name(config_key)] = str(config_value)
 
+        # Check for new columns and add them if merge_cols is True
+        if self.merge_cols:
+            self.cursor.execute("PRAGMA table_info(logs)")
+            existing_columns = {row[1]: row[2] for row in self.cursor.fetchall()}
+            new_columns = []
+
+            for col_name, value in log.items():
+                if col_name not in existing_columns:
+                    sql_type = self._get_sql_type(str)
+                    # sql_type = str
+                    new_columns.append((col_name, sql_type))
+
+            # Add any new columns found
+            for col_name, sql_type in new_columns:
+                try:
+                    self.cursor.execute(
+                        f"ALTER TABLE logs ADD COLUMN {col_name} {sql_type};"
+                    )
+                    self.conn.commit()
+                    print(f"Added new column during logging: {col_name} ({sql_type})")
+                    # Update our schema
+                    self.schema[col_name] = type(log[col_name])
+                except sqlite3.Error as e:
+                    print(f"Error adding column {col_name}: {e}")
+
+        # Get updated list of columns
         self.cursor.execute("PRAGMA table_info(logs)")
         existing_columns = {row[1] for row in self.cursor.fetchall()}
         primary_key = [k for k in primary_key if k in existing_columns]
@@ -141,9 +173,13 @@ class RunLogger:
 
                 self.cursor.execute(f"SELECT 1 FROM logs WHERE {key_str}", key_values)
                 if not self.cursor.fetchone():
-                    columns = ", ".join(log.keys())
-                    placeholders = ", ".join(["?" for _ in log])
-                    values = tuple(log.values())
+                    # Only include columns that exist in the table
+                    valid_columns = {
+                        k: v for k, v in log.items() if k in existing_columns
+                    }
+                    columns = ", ".join(valid_columns.keys())
+                    placeholders = ", ".join(["?" for _ in valid_columns])
+                    values = tuple(valid_columns.values())
                     self.cursor.execute(
                         f"INSERT INTO logs ({columns}) VALUES ({placeholders})", values
                     )
@@ -152,58 +188,49 @@ class RunLogger:
             print(f"Error while executing SQL: {e}")
             print(f"Log entry: {log}")
             print(f"Primary key used: {primary_key}")
-            raise  # Re-raise the exception after logging the details
+            raise
 
-    def exists(self, key: str, value: Any, consider_config: bool = True) -> bool:
-        """
-        Check if a log entry exists in the database with the specified primary key.
-        If consider_config is False, primary key is extended with config keys.
-        """
-        if not consider_config:
-            primary_key = [key]
-        else:
-            primary_key = [key] + [
-                config_key
-                for config_key in ConfigParams.configs_dict().keys()
-                if config_key != "timestamp"
-            ]
-
-        # Normalize column names for the primary key
-        primary_key = [self._normalize_column_name(k) for k in primary_key]
-
-        self.cursor.execute("PRAGMA table_info(logs)")
-        existing_columns = {row[1] for row in self.cursor.fetchall()}
-        primary_key = [k for k in primary_key if k in existing_columns]
-
-        key_values = tuple(value for k in primary_key if k in existing_columns)
-        key_str = " AND ".join(
-            [f"{k} = ?" for k in primary_key if k in existing_columns]
-        )
-
-        self.cursor.execute(f"SELECT 1 FROM logs WHERE {key_str}", key_values)
-        return self.cursor.fetchone() is not None
-
-    def will_exist(
-        self, log: Dict[str, Any], primary_key: List[str], consider_config: bool = True
+    def exists(
+        self,
+        log: Dict[str, Any],
+        primary_key: List[str],
+        consider_config: bool = True,
+        type_sensitive: bool = False,
     ) -> bool:
         """
         Checks if inserting the given log entry will violate the primary key constraint.
-        If consider_config is False, primary key is extended with config keys.
+
+        Args:
+            log: Dictionary containing the log entry
+            primary_key: List of column names to use as primary key
+            consider_config: If True, primary key is extended with config keys
+            type_sensitive: If False, performs type-insensitive comparison (converts all values to strings)
+
+        Returns:
+            bool: True if a matching record exists, False otherwise
         """
         if not consider_config:
             primary_key = [k for k in primary_key if k in log]
         else:
-            primary_key = primary_key + [
+            primary_key += [
                 config_key
                 for config_key in ConfigParams.configs_dict().keys()
-                if config_key != "timestamp"
+                if config_key not in ["timestamp", "target_cat", "allowed_mutations"] + primary_key
             ]
 
         # Normalize column names for the primary key
         primary_key = [self._normalize_column_name(k) for k in primary_key]
 
-        key_values = tuple(log[k] for k in primary_key if k in log)
-        key_str = " AND ".join([f"{k} = ?" for k in primary_key if k in log])
+        if type_sensitive:
+            # Original type-sensitive comparison
+            key_values = tuple(log[k] for k in primary_key if k in log)
+            key_str = " AND ".join([f"{k} = ?" for k in primary_key if k in log])
+        else:
+            # Type-insensitive comparison by converting everything to strings
+            key_values = tuple(str(log[k]) for k in primary_key if k in log)
+            key_str = " AND ".join(
+                [f"CAST({k} AS TEXT) = ?" for k in primary_key if k in log]
+            )
 
         self.cursor.execute(f"SELECT 1 FROM logs WHERE {key_str}", key_values)
         return self.cursor.fetchone() is not None
@@ -217,24 +244,24 @@ class RunLogger:
 
 if __name__ == "__main__":
     # Example Usage:
-    run_log = {
-        "i": int,
-        "gen_strategy": str,
-        "gen_error": float,
-        "gen_source": str,
-        "gen_aligned": str,
-        "gen_alignment": str,
-        "gen_cost": float,
-        "gen_gt": str,
-        "gen_aligned_gt": str,
-        "gen_dataset_time": float,
-        "gen_good_points_percentage": float,
-        "gen_bad_points_percentage": float,
-        "gen_good_points_edit_distance": float,
-        "gen_bad_points_edit_distance": float,
-    }
+    # run_log = {
+    #     "i": int,
+    #     "gen_strategy": str,
+    #     "gen_error": float,
+    #     "gen_source": str,
+    #     "gen_aligned": str,
+    #     "gen_alignment": str,
+    #     "gen_cost": float,
+    #     "gen_gt": str,
+    #     "gen_aligned_gt": str,
+    #     "gen_dataset_time": float,
+    #     "gen_good_points_percentage": float,
+    #     "gen_bad_points_percentage": float,
+    #     "gen_good_points_edit_distance": float,
+    #     "gen_bad_points_edit_distance": float,
+    # }
 
-    logger = RunLogger("run_log.db", schema=run_log, add_config=True)
+    logger = RunLogger("run_log.db", schema=None, add_config=True)
     log_entry = {"i": 1, "gen_strategy": "A", "gen_error": 0.2, "gen_source": "src"}
     log_entry_3 = {"i": 1, "gen_strategy": "A", "gen_error": 0.2, "gen_source": "src"}
     log_entry_2 = {"i": 2, "gen_strategy": "A", "gen_error": 0.2, "gen_source": "src"}
