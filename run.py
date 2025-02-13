@@ -53,9 +53,6 @@ def skip_sequence(
 
     new_row.update(ConfigParams.configs_dict(pandas=False, tostr=True))
 
-    print(f"[DEBUG] new row:", new_row)
-    print(f"[DEBUG] primary key is:", primary_key)
-
     return logger.exists(log=new_row, primary_key=primary_key, consider_config=True)
 
 

@@ -212,7 +212,7 @@ class RunLogger:
         log = {self._normalize_column_name(k): v for k, v in log.items()}
         blacklist = ["timestamp", "target_cat"]
         # blacklist = set(ConfigParams.configs_dict()) - set({"gen_target_y@1", "determinism", "generation_strategy", "allowed_mutations", "include_sink", "pop_size", "model"})
-        primary_key = set(primary_key)
+        primary_key = set(primary_key) & set(log)
         if consider_config:
             primary_key |= set(ConfigParams.configs_dict())
             primary_key -= set(blacklist)
@@ -249,22 +249,20 @@ class RunLogger:
 
 if __name__ == "__main__":
     logger = RunLogger("results/evaluate/alignment/alignment.db", schema=None, add_config=False)
-    query = """SELECT gen_target_y_at_1, count(model) FROM logs 
-WHERE CAST(model AS TEXT) = 'BERT4Rec' 
-AND CAST(dataset AS TEXT) = 'ml-100k' 
+    query = """SELECT count(model) FROM logs 
+WHERE CAST(i AS TEXT) = '1' 
 AND CAST(split AS TEXT) = '(None, 10, 0)' 
 AND CAST(generation_strategy AS TEXT) = 'targeted' 
+AND CAST(gen_target_y_at_1 AS TEXT) = '{0}' 
 AND CAST(determinism AS TEXT) = 'True' 
 AND CAST(generations AS TEXT) = '10'
 AND CAST(halloffame_ratio AS TEXT) = '0' 
 AND CAST(fitness_alpha AS TEXT) = '0.5'
 AND CAST(mut_prob AS TEXT) = '0.5'
 AND CAST(pop_size AS TEXT) = '8192'
-AND CAST(generations AS TEXT) = '10'
 AND CAST(crossover_prob AS TEXT) = '0.7' 
 AND CAST(genetic_topk AS TEXT) = '1' 
 AND CAST(mutation_params AS TEXT) = '(1, 1, 1)' 
 AND CAST(ignore_genetic_split AS TEXT) = 'True' 
-AND CAST(jaccard_threshold AS TEXT) = '0.5'
-group by gen_target_y_at_1"""
+AND CAST(jaccard_threshold AS TEXT) = '0.5';"""
     print(logger.query(query))

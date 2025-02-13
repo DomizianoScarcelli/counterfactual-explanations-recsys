@@ -10,8 +10,8 @@
 | Action    | GRU4Rec  | ml-100k   | PACE     |        38    |        41    |         38.75 |         36.25 |      400 |
 | Action    | SASRec   | ml-100k   | GENE     |       100    |        78.75 |         63.5  |         48.75 |      400 |
 | Action    | SASRec   | ml-100k   | PACE     |        41    |        44    |         36.75 |         31.75 |      400 |
-| Adventure | BERT4Rec | ml-100k   | GENE     |        99.81 |        60.58 |         34.95 |         19.81 |      515 |
-| Adventure | BERT4Rec | ml-100k   | PACE     |        27.96 |        21.17 |         13.98 |          8.74 |      515 |
+| Adventure | BERT4Rec | ml-100k   | GENE     |        99.81 |        60.3  |         34.78 |         19.28 |      529 |
+| Adventure | BERT4Rec | ml-100k   | PACE     |        28.17 |        21.17 |         14.37 |          8.51 |      529 |
 | Adventure | BERT4Rec | ml-1m     | GENE     |       100    |        66    |         44    |         30.5  |      200 |
 | Adventure | BERT4Rec | ml-1m     | PACE     |        34    |        34    |         23    |         17    |      200 |
 | Adventure | GRU4Rec  | ml-100k   | GENE     |       100    |        62.5  |         36.75 |         17.5  |      400 |
@@ -46,8 +46,8 @@
 | Horror    | BERT4Rec | ml-100k   | PACE     |        17.6  |         8.06 |          5.2  |          3.61 |      943 |
 | Horror    | GRU4Rec  | ml-100k   | GENE     |        99    |        17.5  |          2    |          1    |      400 |
 | Horror    | GRU4Rec  | ml-100k   | PACE     |         9    |         1.5  |          1    |          1.25 |      400 |
-| Horror    | SASRec   | ml-100k   | GENE     |        99.32 |        21.77 |          9.52 |          5.1  |      588 |
-| Horror    | SASRec   | ml-100k   | PACE     |        13.44 |         4.25 |          3.23 |          2.04 |      588 |
+| Horror    | SASRec   | ml-100k   | GENE     |        99.34 |        21.89 |          9.29 |          4.98 |      603 |
+| Horror    | SASRec   | ml-100k   | PACE     |        13.27 |         4.15 |          3.15 |          1.99 |      603 |
 
 ### Targeted-Uncategorized
 
@@ -90,8 +90,8 @@
 |      nan | BERT4Rec | ml-1m     | PACE     |        78.5  |        85.5  |         88.5  |         92    |      200 |
 |      nan | GRU4Rec  | ml-100k   | GENE     |       100    |        86.5  |         89.5  |         96    |      400 |
 |      nan | GRU4Rec  | ml-100k   | PACE     |        54.5  |        58.5  |         61.25 |         62    |      400 |
-|      nan | SASRec   | ml-100k   | GENE     |       100    |        73.5  |         76.77 |         81.31 |      551 |
-|      nan | SASRec   | ml-100k   | PACE     |        68.78 |        70.24 |         70.6  |         70.6  |      551 |
+|      nan | SASRec   | ml-100k   | GENE     |       100    |        73.31 |         76.69 |         80.96 |      562 |
+|      nan | SASRec   | ml-100k   | PACE     |        68.68 |        70.28 |         70.64 |         70.64 |      562 |
 
 ### Untargeted-Categorized
 
