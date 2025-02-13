@@ -7,9 +7,6 @@ def csv_to_markdown(csv_file):
     # Read the CSV file
     df = pd.read_csv(csv_file)
 
-    # Print the unique strategies in input file for debugging
-    print("Input file strategies:", df['generation_strategy'].unique())
-
     # Extract relevant columns
     columns_to_keep = {
         "model": "Model",
@@ -54,6 +51,7 @@ def csv_to_markdown(csv_file):
     pace_df['Method'] = 'PACE'
     pace_df.columns = [col.replace('PACE ', '') for col in pace_df.columns]
 
+
     gene_df = df[[
         'Model', 'Dataset', 'Target', 'Generation Strategy', '#users',
         'GENE fidelity@1', 'GENE fidelity@5', 'GENE fidelity@10', 'GENE fidelity@20',
@@ -82,17 +80,22 @@ def csv_to_markdown(csv_file):
         key=lambda x: pd.Categorical(x, ['GENE', 'PACE']) if x.name == 'Method' else x
     )
 
+    print(f"[DEBUG] strategies are", df["Generation Strategy"].unique())
     # Function to blank out repeated values in specified columns
     def blank_repeated_values(df_group):
         result_df = df_group.copy()
-        non_metric_columns = ['Target', 'Model', 'Dataset']
+        non_metric_columns = ['Target', 'Model', 'Dataset', "Generation Strategy"]
         for col in non_metric_columns:
             mask = result_df[col].duplicated(keep='first')
             result_df.loc[mask, col] = ''
         return result_df
 
     # Apply the blank_repeated_values function to each group
-    df = df.groupby(['Target', 'Model', 'Dataset']).apply(blank_repeated_values).reset_index(drop=True)
+    #FIX: this line is broken, it removes some generation strategies
+    # df = df.groupby(['Target', 'Model', 'Dataset', "Generation Strategy"]).apply(blank_repeated_values).reset_index(drop=True)
+
+    print(f"[DEBUG] df is", df)
+    print(f"[DEBUG] strategies are", df["Generation Strategy"].unique())
 
     # Convert DataFrame to Markdown
     markdown_content = ""

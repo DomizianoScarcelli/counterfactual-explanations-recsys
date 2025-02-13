@@ -16,3 +16,5 @@ python -m scripts.fidelity_all_to_md
 
 nvim fidelity_results.md
 
+python -m scripts.check_fidelity_progress
+
