@@ -106,7 +106,7 @@ def run_genetic(
         datasets.skip()
 
     for i in range(start_i, end_i):
-        if skip_sequence(i, target_cat, logger, split.split, alignment=False):
+        if skip_sequence(i, primary_key, target_cat, logger, split.split, alignment=False):
             printd(
                 f"Skipping i: {i} with target {target_cat} and split {split} because already in the log..."
             )

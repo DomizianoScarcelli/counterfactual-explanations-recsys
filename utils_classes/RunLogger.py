@@ -19,6 +19,7 @@ class RunLogger:
         self.add_config = add_config
         self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self.cursor = self.conn.cursor()
+        self.blacklist = ["timestamp", "target_cat", "_id", "rowid"]
 
         # Add config parameters to schema if add_config is True
         if self.add_config and schema:  # Only add to schema if schema is provided
@@ -122,19 +123,25 @@ class RunLogger:
         )
         self.conn.commit()
 
-    def log_run(self, log: Dict[str, Any], primary_key: Optional[List[str]] = None):
+    def log_run(
+        self,
+        log: Dict[str, Any],
+        primary_key: Optional[List[str]] = None,
+        strict: bool = True,
+    ):
         # Normalize column names in the log
         log = {self._normalize_column_name(key): value for key, value in log.items()}
 
         if primary_key is None:
-            primary_key = list(log.keys())
+            primary_key = [key for key in log.keys() if key not in ["_id", "rowid"]]
 
         # Add config values to the log entry if add_config is True
         if self.add_config:
             configs = ConfigParams.configs_dict(pandas=False)
             for config_key, config_value in configs.items():
-                if config_key != "timestamp":
-                    log[self._normalize_column_name(config_key)] = str(config_value)
+                log[self._normalize_column_name(config_key)] = str(config_value)
+                if config_key not in self.blacklist:
+                    primary_key.append(self._normalize_column_name(config_key))
 
         # Check for new columns and add them if merge_cols is True
         if self.merge_cols:
@@ -142,10 +149,9 @@ class RunLogger:
             existing_columns = {row[1]: row[2] for row in self.cursor.fetchall()}
             new_columns = []
 
-            for col_name, value in log.items():
+            for col_name, _ in log.items():
                 if col_name not in existing_columns:
                     sql_type = self._get_sql_type(str)
-                    # sql_type = str
                     new_columns.append((col_name, sql_type))
 
             # Add any new columns found
@@ -156,7 +162,6 @@ class RunLogger:
                     )
                     self.conn.commit()
                     print(f"Added new column during logging: {col_name} ({sql_type})")
-                    # Update our schema
                     self.schema[col_name] = type(log[col_name])
                 except sqlite3.Error as e:
                     print(f"Error adding column {col_name}: {e}")
@@ -167,23 +172,43 @@ class RunLogger:
         primary_key = [k for k in primary_key if k in existing_columns]
 
         try:
-            if primary_key:
-                key_values = tuple(log[k] for k in primary_key if k in log)
-                key_str = " AND ".join([f"{k} = ?" for k in primary_key if k in log])
+            # Get count before insertion (strict mode check)
+            count_before = None
+            if strict:
+                self.cursor.execute("SELECT COUNT(*) FROM logs;")
+                count_before = self.cursor.fetchone()[0]
 
-                self.cursor.execute(f"SELECT 1 FROM logs WHERE {key_str}", key_values)
-                if not self.cursor.fetchone():
-                    # Only include columns that exist in the table
-                    valid_columns = {
-                        k: v for k, v in log.items() if k in existing_columns
-                    }
-                    columns = ", ".join(valid_columns.keys())
-                    placeholders = ", ".join(["?" for _ in valid_columns])
-                    values = tuple(valid_columns.values())
-                    self.cursor.execute(
-                        f"INSERT INTO logs ({columns}) VALUES ({placeholders})", values
+            # if primary_key:
+            #     key_values = tuple(log[k] for k in primary_key if k in log)
+            #     key_str = " AND ".join([f"{k} = ?" for k in primary_key if k in log])
+
+            #     self.cursor.execute(f"SELECT 1 FROM logs WHERE {key_str}", key_values)
+            #     if not self.cursor.fetchone():
+            # Directly use all log items without filtering out non-existing columns
+            columns = ", ".join(log.keys())
+            placeholders = ", ".join(["?" for _ in log])
+            values = tuple(log.values())
+
+            self.cursor.execute(
+                f"INSERT INTO logs ({columns}) VALUES ({placeholders})", values
+            )
+            self.conn.commit()
+
+            # Get count after insertion (strict mode check)
+            if strict:
+                self.cursor.execute("SELECT COUNT(*) FROM logs;")
+                count_after = self.cursor.fetchone()[0]
+
+                if count_before is not None and count_after != count_before + 1:
+                    print(
+                        f"[ERROR] Row count mismatch! Expected {count_before + 1}, but got {count_after}."
                     )
-                    self.conn.commit()
+                    print(f"Primary key: {primary_key}")
+                    print(f"Log entry: {log}")
+                    raise ValueError(
+                        "Strict mode violation: Row count did not increase as expected."
+                    )
+
         except sqlite3.Error as e:
             print(f"Error while executing SQL: {e}")
             print(f"Log entry: {log}")
@@ -210,14 +235,13 @@ class RunLogger:
             bool: True if a matching record exists, False otherwise
         """
         log = {self._normalize_column_name(k): v for k, v in log.items()}
-        blacklist = ["timestamp", "target_cat"]
         # blacklist = set(ConfigParams.configs_dict()) - set({"gen_target_y@1", "determinism", "generation_strategy", "allowed_mutations", "include_sink", "pop_size", "model"})
         primary_key = set(primary_key)
         if consider_config:
             primary_key |= set(ConfigParams.configs_dict())
-            primary_key -= set(blacklist)
+        primary_key -= set(self.blacklist)
 
-        assert all(key not in blacklist for key in primary_key)
+        assert all(key not in self.blacklist for key in primary_key)
 
         primary_key = list(primary_key)
 
@@ -230,9 +254,7 @@ class RunLogger:
         else:
             # Type-insensitive comparison by converting everything to strings
             key_values = tuple(str(log[k]) for k in primary_key)
-            key_str = " AND ".join(
-                [f"CAST({k} AS TEXT) = ?" for k in primary_key]
-            )
+            key_str = " AND ".join([f"CAST({k} AS TEXT) = ?" for k in primary_key])
 
         self.cursor.execute(f"SELECT 1 FROM logs WHERE {key_str}", key_values)
         return self.cursor.fetchone() is not None
@@ -243,17 +265,49 @@ class RunLogger:
     def query(self, query) -> pd.DataFrame:
         return pd.read_sql(query, self.conn)
 
+    def _recomp(self):
+        """Recomputes the logs table by removing `_id` and setting a composite primary key."""
+        # Step 1: Get column names excluding `_id`
+        self.cursor.execute("PRAGMA table_info(logs);")
+        columns = [row[1] for row in self.cursor.fetchall() if row[1] != "_id"]
+        column_names = ", ".join(columns)  # Format columns for SQL
+
+        # Step 2: Create a new table with a composite primary key
+        primary_key = ", ".join(columns)  # Use all columns as primary key
+        self.cursor.execute(
+            f"""
+            CREATE TABLE logs_new (
+                {", ".join(f"{col} TEXT" for col in columns)},
+                PRIMARY KEY ({primary_key})
+            );
+            """
+        )
+
+        # Step 3: Copy data from old table
+        self.cursor.execute(f"INSERT INTO logs_new SELECT {column_names} FROM logs;")
+
+        # Step 4: Drop the old table
+        self.cursor.execute("DROP TABLE logs;")
+
+        # Step 5: Rename the new table
+        self.cursor.execute("ALTER TABLE logs_new RENAME TO logs;")
+
+        # Step 6: Commit the transaction
+        self.conn.commit()
+
+        print("Successfully removed `_id` and set a composite primary key.")
+
     def close(self):
         self.conn.close()
 
 
 if __name__ == "__main__":
-    logger = RunLogger("results/evaluate/alignment/alignment.db", schema=None, add_config=False)
-    query = """SELECT gen_target_y_at_1, count(model) FROM logs 
-WHERE CAST(model AS TEXT) = 'BERT4Rec' 
-AND CAST(dataset AS TEXT) = 'ml-100k' 
-AND CAST(split AS TEXT) = '(None, 10, 0)' 
-AND CAST(generation_strategy AS TEXT) = 'targeted' 
+    logger = RunLogger(
+        "results/evaluate/alignment/alignment.db", schema=None, add_config=False
+    )
+    # logger._recomp()
+    query = """SELECT i, generation_strategy, model, dataset, gen_target_y_at_1 AS target, count(*) AS num_users FROM logs 
+WHERE CAST(split AS TEXT) = '(None, 10, 0)' 
 AND CAST(determinism AS TEXT) = 'True' 
 AND CAST(generations AS TEXT) = '10'
 AND CAST(halloffame_ratio AS TEXT) = '0' 
@@ -263,8 +317,9 @@ AND CAST(pop_size AS TEXT) = '8192'
 AND CAST(generations AS TEXT) = '10'
 AND CAST(crossover_prob AS TEXT) = '0.7' 
 AND CAST(genetic_topk AS TEXT) = '1' 
-AND CAST(mutation_params AS TEXT) = '(1, 1, 1)' 
 AND CAST(ignore_genetic_split AS TEXT) = 'True' 
-AND CAST(jaccard_threshold AS TEXT) = '0.5'
-group by gen_target_y_at_1"""
+GROUP BY i, gen_target_y_at_1, model, dataset, generation_strategy
+HAVING COUNT(*) > 2
+ORDER BY i, generation_strategy, model, dataset, gen_target_y_at_1, num_users;"""
     print(logger.query(query))
+    print(logger.query("SELECT count(*) from logs"))
