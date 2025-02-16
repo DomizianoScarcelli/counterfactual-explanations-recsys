@@ -220,7 +220,7 @@ class RunLogger:
         log: Dict[str, Any],
         primary_key: List[str],
         consider_config: bool = True,
-        type_sensitive: bool = False,
+        type_sensitive: bool = True,
     ) -> bool:
         """
         Checks if inserting the given log entry will violate the primary key constraint.
@@ -265,61 +265,101 @@ class RunLogger:
     def query(self, query) -> pd.DataFrame:
         return pd.read_sql(query, self.conn)
 
-    def _recomp(self):
-        """Recomputes the logs table by removing `_id` and setting a composite primary key."""
-        # Step 1: Get column names excluding `_id`
-        self.cursor.execute("PRAGMA table_info(logs);")
-        columns = [row[1] for row in self.cursor.fetchall() if row[1] != "_id"]
-        column_names = ", ".join(columns)  # Format columns for SQL
+    def dedupe(self, primary_key: List[str]):
+        """
+        Removes duplicate rows from the logs table based on the provided primary key columns.
+        The comparison is type-insensitive (values are cast to TEXT).
 
-        # Step 2: Create a new table with a composite primary key
-        primary_key = ", ".join(columns)  # Use all columns as primary key
+        Args:
+            primary_key (List[str]): List of column names defining uniqueness.
+        """
+        if not primary_key:
+            print("[ERROR] No primary key specified for deduplication.")
+            return
+
+        # Normalize column names
+        primary_key = [self._normalize_column_name(k) for k in primary_key]
+
+        # Ensure primary key columns exist in the table
+        self.cursor.execute("PRAGMA table_info(logs)")
+        existing_columns = {row[1] for row in self.cursor.fetchall()}
+        primary_key = [k for k in primary_key if k in existing_columns]
+        primary_key.extend([self._normalize_column_name(key) for key in ConfigParams.configs_dict().keys() if key not in self.blacklist])
+
+        if not primary_key:
+            print(
+                "[ERROR] None of the provided primary key columns exist in the table."
+            )
+            return
+
+        # Create a temporary table without duplicates
+        key_str = ", ".join([f"CAST({k} AS TEXT)" for k in primary_key])
         self.cursor.execute(
             f"""
-            CREATE TABLE logs_new (
-                {", ".join(f"{col} TEXT" for col in columns)},
-                PRIMARY KEY ({primary_key})
+            CREATE TABLE logs_dedup AS
+            SELECT * FROM logs
+            WHERE _id IN (
+                SELECT MIN(_id) 
+                FROM logs
+                GROUP BY {key_str}
             );
             """
         )
 
-        # Step 3: Copy data from old table
-        self.cursor.execute(f"INSERT INTO logs_new SELECT {column_names} FROM logs;")
-
-        # Step 4: Drop the old table
+        # Replace old table with the deduplicated one
         self.cursor.execute("DROP TABLE logs;")
-
-        # Step 5: Rename the new table
-        self.cursor.execute("ALTER TABLE logs_new RENAME TO logs;")
-
-        # Step 6: Commit the transaction
+        self.cursor.execute("ALTER TABLE logs_dedup RENAME TO logs;")
         self.conn.commit()
 
-        print("Successfully removed `_id` and set a composite primary key.")
+        print("Successfully removed duplicate rows based on the primary key.")
 
     def close(self):
         self.conn.close()
+
+
+## LOGGER QUERIES
+def evaluation_recap(logger):
+    query = """SELECT generation_strategy, model, dataset, gen_target_y_at_1 AS target, count(*) AS num_users FROM logs
+    WHERE CAST(split AS TEXT) = '(None, 10, 0)'
+    AND CAST(determinism AS TEXT) = 'True'
+    AND CAST(generations AS TEXT) = '10'
+    AND CAST(halloffame_ratio AS TEXT) = '0'
+    AND CAST(fitness_alpha AS TEXT) = '0.5'
+    AND CAST(mut_prob AS TEXT) = '0.5'
+    AND CAST(pop_size AS TEXT) = '8192'
+    AND CAST(generations AS TEXT) = '10'
+    AND CAST(crossover_prob AS TEXT) = '0.7'
+    AND CAST(genetic_topk AS TEXT) = '1'
+    AND CAST(ignore_genetic_split AS TEXT) = 'True'
+    GROUP BY gen_target_y_at_1, model, dataset, generation_strategy
+    ORDER BY generation_strategy, model, dataset, gen_target_y_at_1, num_users;"""
+
+    print(logger.query(query))
+
+
+def check_duplicates(logger):
+    query = """SELECT i, generation_strategy, model, dataset, gen_target_y_at_1 AS target, count(*) AS num_users FROM logs
+    WHERE CAST(split AS TEXT) = '(None, 10, 0)'
+    AND CAST(determinism AS TEXT) = 'True'
+    AND CAST(generations AS TEXT) = '10'
+    AND CAST(halloffame_ratio AS TEXT) = '0'
+    AND CAST(fitness_alpha AS TEXT) = '0.5'
+    AND CAST(mut_prob AS TEXT) = '0.5'
+    AND CAST(pop_size AS TEXT) = '8192'
+    AND CAST(generations AS TEXT) = '10'
+    AND CAST(crossover_prob AS TEXT) = '0.7'
+    AND CAST(genetic_topk AS TEXT) = '1'
+    AND CAST(ignore_genetic_split AS TEXT) = 'True'
+    GROUP BY i, gen_target_y_at_1, model, dataset, generation_strategy
+    HAVING count(*) > 1
+    ORDER BY i, generation_strategy, model, dataset, gen_target_y_at_1, num_users;"""
+
+    print(logger.query(query))
 
 
 if __name__ == "__main__":
     logger = RunLogger(
         "results/evaluate/alignment/alignment.db", schema=None, add_config=False
     )
-    # logger._recomp()
-    query = """SELECT i, generation_strategy, model, dataset, gen_target_y_at_1 AS target, count(*) AS num_users FROM logs 
-WHERE CAST(split AS TEXT) = '(None, 10, 0)' 
-AND CAST(determinism AS TEXT) = 'True' 
-AND CAST(generations AS TEXT) = '10'
-AND CAST(halloffame_ratio AS TEXT) = '0' 
-AND CAST(fitness_alpha AS TEXT) = '0.5'
-AND CAST(mut_prob AS TEXT) = '0.5'
-AND CAST(pop_size AS TEXT) = '8192'
-AND CAST(generations AS TEXT) = '10'
-AND CAST(crossover_prob AS TEXT) = '0.7' 
-AND CAST(genetic_topk AS TEXT) = '1' 
-AND CAST(ignore_genetic_split AS TEXT) = 'True' 
-GROUP BY i, gen_target_y_at_1, model, dataset, generation_strategy
-HAVING COUNT(*) > 2
-ORDER BY i, generation_strategy, model, dataset, gen_target_y_at_1, num_users;"""
-    print(logger.query(query))
-    print(logger.query("SELECT count(*) from logs"))
+    evaluation_recap(logger)
+    check_duplicates(logger)
