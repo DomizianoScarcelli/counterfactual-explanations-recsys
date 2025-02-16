@@ -6,7 +6,14 @@ import os
 import fire
 from tqdm import tqdm
 
-def csv_to_sqlite(csv_file: str, db_file: str, merge_cols, primary_key: Optional[List[str]] = None, batch_size: int = 1000):
+
+def csv_to_sqlite(
+    csv_file: str,
+    db_file: str,
+    merge_cols,
+    primary_key: Optional[List[str]] = None,
+    batch_size: int = 1000,
+):
     # Check if the CSV file exists
     if not os.path.exists(csv_file):
         raise FileNotFoundError(f"The file {csv_file} does not exist.")
@@ -24,8 +31,16 @@ def csv_to_sqlite(csv_file: str, db_file: str, merge_cols, primary_key: Optional
     for _, row in tqdm(df.iterrows(), total=len(df)):
         # Convert the row to a dictionary
         log_entry = row.to_dict()
-        log_entry_metr = {k: v for k, v in log_entry.items() if k not in ConfigParams.configs_dict().keys()}
-        log_entry_str = {k: str(v) for k, v in log_entry.items() if k in ConfigParams.configs_dict().keys()}
+        log_entry_metr = {
+            k: v
+            for k, v in log_entry.items()
+            if k not in ConfigParams.configs_dict().keys()
+        }
+        log_entry_str = {
+            k: str(v)
+            for k, v in log_entry.items()
+            if k in ConfigParams.configs_dict().keys()
+        }
         log_entry = {**log_entry_metr, **log_entry_str}
 
         # Add the log entry to the batch
@@ -35,7 +50,13 @@ def csv_to_sqlite(csv_file: str, db_file: str, merge_cols, primary_key: Optional
         if len(batch) >= batch_size:
             # Insert the batch into the database
             for log in batch:
-                logger.log_run(log, primary_key=primary_key)
+                if not logger.exists(
+                    log=log,
+                    primary_key=primary_key,
+                    consider_config=False,
+                    type_sensitive=False,
+                ):
+                    logger.log_run(log, primary_key=primary_key, strict=True)
             batch.clear()  # Reset the batch after inserting
 
     # Insert any remaining rows that did not fill the last batch
@@ -43,7 +64,9 @@ def csv_to_sqlite(csv_file: str, db_file: str, merge_cols, primary_key: Optional
         for log in batch:
             logger.log_run(log, primary_key=primary_key)
 
-    print(f"CSV file '{csv_file}' has been successfully merged into SQLite DB '{db_file}'.")
+    print(
+        f"CSV file '{csv_file}' has been successfully merged into SQLite DB '{db_file}'."
+    )
 
 
 if __name__ == "__main__":

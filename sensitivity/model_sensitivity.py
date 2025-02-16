@@ -84,7 +84,7 @@ def model_sensitivity_universal(
     log = {
         "i": int,
         "position": int,
-        "pos_from_end": int, 
+        "pos_from_end": int,
         "alphabet_len": int,
         "sequence": str,
         "model": str,
@@ -104,15 +104,20 @@ def model_sensitivity_universal(
 
     if targeted and not y_target:
         raise ValueError("If setting is 'targeted', then y_target has to be defined")
-    
+
     if targeted:
-        y_targets_ks = {k: [{cat2id[y_target]} for _ in range(k)] for k in ks}
+        y_targets_ks = {
+            k: [{cat2id[y_target]} if categorized else y_target for _ in range(k)]
+            for k in ks
+        }
 
     i = 0
     start_i = 0
     end_i = sum(1 for _ in InteractionGenerator())  # all users
     pbar = tqdm(
-        total=end_i - start_i, desc=f"Testing model sensitivity on position {position}", leave=False
+        total=end_i - start_i,
+        desc=f"Testing model sensitivity on position {position}",
+        leave=False,
     )
     i_list, sequence_list = [], []
     scores_ks = {k: [] for k in ks}
@@ -133,7 +138,6 @@ def model_sensitivity_universal(
 
             if logger.exists(new_row, primary_key, consider_config=False):
                 continue
-
 
         sequence = trim(sequence.squeeze(0)).unsqueeze(0)
         x_primes = generate_sequence_variants(sequence, position, alphabet)
@@ -204,9 +208,11 @@ def model_sensitivity_universal(
         **score_dict,
     }
     if targeted:
-        data["target"] = y_target
+        data["target"] = [y_target] * len(i_list)
     if log_path and len(i_list) > 0:
-        logger.log_run(log=data, primary_key=primary_key)
+        for row_i in range(len(sequence_list)):
+            row = {key: data[key][row_i] for key in data}
+            logger.log_run(log=row, primary_key=primary_key, strict=True)
     else:
         print(pd.DataFrame(data))
 
@@ -220,7 +226,9 @@ def run_on_all_positions(
     model = generate_model(config)
     start_i, end_i = 49, 0
     for i in tqdm(
-        range(start_i, end_i - 1, -1), "Testing model sensitivity on all positions", leave=False
+        range(start_i, end_i - 1, -1),
+        "Testing model sensitivity on all positions",
+        leave=False,
     ):
         # This is very important in order to evaluate different positions on the same sequences
         sequences.reset()
@@ -235,17 +243,17 @@ def run_on_all_positions(
                 raise ValueError(
                     "false -> run on all targets is not implemented in model sensitivity, please specify the target as a string (category) or int (item id)"
                 )
-            if (
-                not isinstance(y_target, str)
+            if not (
+                isinstance(y_target, str)
                 and categorized
                 or isinstance(y_target, int)
                 and not categorized
             ):
                 raise ValueError(
-                    f"if categorized, y_target must be str; if non categorized, y_target must be int. Now categorized={categorized} and y_target is of type: {type(y_target)}"
+                    f"if categorized, y_target must be str; if non categorized, y_target must be int. Now categorized={categorized} (type {type(categorized)}) and y_target is of type: {type(y_target)}"
                 )
 
-            if isinstance(y_target, int):
+            if isinstance(y_target, str):
                 y_target = cat2id[y_target]
 
         model_sensitivity_universal(

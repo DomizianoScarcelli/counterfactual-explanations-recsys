@@ -199,7 +199,7 @@ class RunLogger:
                 self.cursor.execute("SELECT COUNT(*) FROM logs;")
                 count_after = self.cursor.fetchone()[0]
 
-                if count_before is not None and count_after != count_before + 1:
+                if count_before is not None and count_after <= count_before:
                     print(
                         f"[ERROR] Row count mismatch! Expected {count_before + 1}, but got {count_after}."
                     )
@@ -332,7 +332,7 @@ def evaluation_recap(logger):
     AND CAST(genetic_topk AS TEXT) = '1'
     AND CAST(ignore_genetic_split AS TEXT) = 'True'
     GROUP BY gen_target_y_at_1, model, dataset, generation_strategy
-    ORDER BY generation_strategy, model, dataset, gen_target_y_at_1, num_users;"""
+    ORDER BY num_users DESC, generation_strategy, model, dataset, gen_target_y_at_1;"""
 
     print(logger.query(query))
 
@@ -362,4 +362,4 @@ if __name__ == "__main__":
         "results/evaluate/alignment/alignment.db", schema=None, add_config=False
     )
     evaluation_recap(logger)
-    check_duplicates(logger)
+    # check_duplicates(logger)

@@ -1,5 +1,5 @@
 #!/bin/bash
-categorized_options=("False" "True")
+categorized_options=(false true)
 models_options=("BERT4Rec" "SASRec" "GRU4Rec")
 
 # Calculate the total number of iterations
