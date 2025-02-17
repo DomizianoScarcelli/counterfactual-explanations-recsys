@@ -58,13 +58,19 @@ def load_csv_db(
                     consider_config=False,
                     type_sensitive=False,
                 ):
-                    logger.log_run(log, primary_key=primary_key, strict=True)
+                    logger.log_run(log, primary_key=primary_key, strict=False)
             batch.clear()  # Reset the batch after inserting
 
     # Insert any remaining rows that did not fill the last batch
     if batch:
         for log in batch:
-            logger.log_run(log, primary_key=primary_key)
+            if not logger.exists(
+                log=log,
+                primary_key=primary_key,
+                consider_config=False,
+                type_sensitive=False,
+            ):
+                logger.log_run(log, primary_key=primary_key, strict=False)
 
     print(
         f"CSV file '{csv_file}' has been successfully merged into SQLite DB '{db_file}'."
