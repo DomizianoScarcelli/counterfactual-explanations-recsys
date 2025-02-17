@@ -7,8 +7,8 @@
 ## SASRec
 - [-x] Targeted-Categorized (alignment_hyperopt_sasrec.csv) 400 users (WIP 943 users)
 - [-] Targeted-Uncategorized (WIP-OTHER alignment_hyperopt_targeted_uncat_sasrec.csv) 400 users, sasrec_2.csv per le categorie 411, 630, 1305.
-- [-x] Untargeted-Categorized (alignment_hyperopt_untargeted_sasrec.csv) 400 users  (WIP 943 users)
-- [-x] Untargted-Uncategorized (alignment_hyperopt_untargeted_sasrec.csv) 400 users (WIP 943 users)
+- [x] Untargeted-Categorized 943 users  (DONE)
+- [x] Untargted-Uncategorized 943 users (DONE)
 ## GRU4Rec
 - [x] Targeted-Categorized  (alignment_hyperopt_gru4rec.csv) 400 users
 - [X] Targeted-Uncategorized (DONE alignment_hyperopt_targeted_uncat_gru4rec.csv) 400 users
@@ -23,7 +23,7 @@
 - [x] Untargeted-Categorized (alignment_hyperopt_untargeted_1m.csv) 200 users
 - [x] Untargted-Uncategorized (alignment_hyperopt_untargeted_1m.csv) 200 users
 ## SASRec
-- [ ] Targeted-Categorized
+- [ ] Targeted-Categorized 
 - [ ] Targeted-Uncategorized
 - [ ] Untargeted-Categorized
 - [ ] Untargted-Uncategorized

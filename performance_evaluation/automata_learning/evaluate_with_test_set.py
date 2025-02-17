@@ -102,14 +102,14 @@ def evaluate_single(dfa: Dfa, test_dataset: GoodBadDataset):
 def evaluate(
     datasets: DatasetGenerator,
     end_i: int,
-    log_path: Optional[Path] = None,
+    save_path: Optional[Path] = None,
 ):
 
     primary_key = ["source_sequence"]
     logger = None
-    if log_path:
+    if save_path:
         logger = RunLogger(
-            db_path=log_path, schema=None, add_config=True, merge_cols=True
+            db_path=save_path, schema=None, add_config=True, merge_cols=True
         )
 
     pbar = tqdm(
@@ -118,13 +118,10 @@ def evaluate(
     for i in range(end_i):
         pbar.update(1)
         next_sequence = preprocess_interaction(datasets.interactions.peek())
-        next_sequence_str = seq_tostr(next_sequence)
-        config_dict = ConfigParams.configs_dict()
-        new_row = pd.DataFrame({"source_sequence": [next_sequence_str], **config_dict})
-        future_df = pd.concat([prev_df, new_row])
-        if logger.exists(new_row, primary_key, type_sensitive=False):
+        new_row = {"source_sequence": seq_tostr(next_sequence)}
+        if logger and logger.exists(new_row, primary_key, consider_config=True, type_sensitive=False):
             printd(
-                f"[{i}] Skipping source sequence {next_sequence} since it still exists in the log with the same config: {config_dict}"
+                f"[{i}] Skipping source sequence {next_sequence} since it still exists in the log with the same config"
             )
             datasets.skip()
             continue
@@ -252,7 +249,7 @@ def run_automata_learning_eval(
         target=ConfigParams.TARGET_CAT,
     )
 
-    evaluate(datasets=datasets, end_i=end_i, log_path=save_path)
+    evaluate(datasets=datasets, end_i=end_i, save_path=save_path)
 
 
 if __name__ == "__main__":

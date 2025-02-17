@@ -1,7 +1,6 @@
-from utils_classes.RunLogger import RunLogger
 import sqlite3
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Set
 
 import pandas as pd
 
@@ -221,7 +220,7 @@ class RunLogger:
     def exists(
         self,
         log: Dict[str, Any],
-        primary_key: List[str],
+        primary_key: Optional[List[str] | Set[str]],
         consider_config: bool = True,
         type_sensitive: bool = True,
     ) -> bool:
@@ -237,10 +236,19 @@ class RunLogger:
         Returns:
             bool: True if a matching record exists, False otherwise
         """
+        # Check if the table is empty
+        self.cursor.execute("SELECT COUNT(*) FROM logs")
+        if self.cursor.fetchone()[0] == 0:
+            return False  # Table is empty, so no record can exist
+
         log = {self._normalize_column_name(k): v for k, v in log.items()}
         # blacklist = set(ConfigParams.configs_dict()) - set({"gen_target_y@1", "determinism", "generation_strategy", "allowed_mutations", "include_sink", "pop_size", "model"})
+        if not primary_key:
+            primary_key = [key for key in log if key not in self.blacklist]
+
         primary_key = set(primary_key)
         if consider_config:
+            log.update(ConfigParams.configs_dict(pandas=False, tostr=True))
             primary_key |= set(ConfigParams.configs_dict())
         primary_key -= set(self.blacklist)
 
@@ -250,6 +258,10 @@ class RunLogger:
 
         # Normalize column names for the primary key
         primary_key = [self._normalize_column_name(k) for k in primary_key]
+
+        assert all(
+            key in log for key in primary_key
+        ), f"keys not in log: {primary_key}, {list(log.keys())}"
         if type_sensitive:
             # Original type-sensitive comparison
             key_values = tuple(log[k] for k in primary_key)

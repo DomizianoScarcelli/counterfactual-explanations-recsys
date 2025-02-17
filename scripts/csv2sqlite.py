@@ -5,16 +5,16 @@ import fire
 import pandas as pd
 from tqdm import tqdm
 
-from config import ConfigDict, ConfigParams
+from config import ConfigParams
 from utils_classes.RunLogger import RunLogger
 
 
-def csv_to_sqlite(
+def load_csv_db(
     csv_file: str,
     db_file: str,
-    merge_cols,
+    merge_cols: bool = True,
     primary_key: Optional[List[str]] = None,
-    batch_size: int = 1000,
+    batch_size: int = 1,
 ):
     # Check if the CSV file exists
     if not os.path.exists(csv_file):
@@ -72,4 +72,4 @@ def csv_to_sqlite(
 
 
 if __name__ == "__main__":
-    fire.Fire(csv_to_sqlite)
+    fire.Fire(load_csv_db)
