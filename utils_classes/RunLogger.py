@@ -1,3 +1,4 @@
+from utils_classes.RunLogger import RunLogger
 import sqlite3
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -286,7 +287,13 @@ class RunLogger:
         self.cursor.execute("PRAGMA table_info(logs)")
         existing_columns = {row[1] for row in self.cursor.fetchall()}
         primary_key = [k for k in primary_key if k in existing_columns]
-        primary_key.extend([self._normalize_column_name(key) for key in ConfigParams.configs_dict().keys() if key not in self.blacklist])
+        primary_key.extend(
+            [
+                self._normalize_column_name(key)
+                for key in ConfigParams.configs_dict().keys()
+                if key not in self.blacklist
+            ]
+        )
 
         if not primary_key:
             print(
@@ -314,6 +321,10 @@ class RunLogger:
         self.conn.commit()
 
         print("Successfully removed duplicate rows based on the primary key.")
+
+    def to_pandas(self, table: str):
+        query = f"SELECT * FROM {table}"  # Replace with your table name
+        return pd.read_sql_query(query, self.conn)
 
     def close(self):
         self.conn.close()

@@ -1,7 +1,9 @@
+from utils import load_log
 import os
 import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, TypeAlias
+import sqlite3
 
 import fire
 import pandas as pd
@@ -10,11 +12,15 @@ from tqdm import tqdm
 from config import ConfigDict, ConfigParams
 from constants import cat2id
 from performance_evaluation import alignment
-from performance_evaluation.alignment.utils import (compute_edit_distance,
-                                                    compute_fidelity,
-                                                    compute_running_times)
+from performance_evaluation.alignment.utils import (
+    compute_edit_distance,
+    compute_fidelity,
+    compute_running_times,
+)
 from performance_evaluation.automata_learning.evaluate_with_test_set import (
-    compute_automata_metrics, run_automata_learning_eval)
+    compute_automata_metrics,
+    run_automata_learning_eval,
+)
 from run import run_alignment
 from run import run_alignment as run_alignment
 from run import run_all, run_genetic
@@ -100,7 +106,9 @@ class RunSwitcher:
         if target:
             self.pbar.set_description_str(self.og_desc + f" | Target: {target}")
 
-        logger = RunLogger(db_path=self.save_path, schema=None, add_config=True, merge_cols=True)
+        logger = RunLogger(
+            db_path=self.save_path, schema=None, add_config=True, merge_cols=True
+        )
         if self.mode == "alignment":
 
             run_alignment(
@@ -250,7 +258,7 @@ class CLIStats:
 
     def automata_metrics(self, log_path: str, save_path: Optional[str] = None):
         config_keys = list(ConfigParams.configs_dict().keys())
-        df = pd.read_csv(log_path)
+        df = load_log(log_path)
         config_keys.remove("timestamp")
 
         group_rows = []
@@ -278,7 +286,7 @@ class CLIStats:
 
     def fidelity(self, log_path: str, save_path: Optional[str] = None):
         config_keys = list(ConfigParams.configs_dict().keys())
-        df = pd.read_csv(log_path)
+        df = load_log(log_path)
         if "gen_target_y@1" in df.columns:
             config_keys.append("gen_target_y@1")
             # TODO: after the target_cat=None but gen_target_y@1=target_cat encoded, adjust this accordingly
@@ -318,51 +326,51 @@ class CLIStats:
         else:
             print(result_df)
 
-    def alignment(
-        self,
-        config_path: Optional[str] = None,
-        config_dict: Optional[ConfigDict] = None,
-        log_path: Optional[str] = None,
-        group_by: Optional[List[str] | str] = None,
-        filter: Optional[Dict[str, Any]] = None,
-        save_path: Optional[str] = None,
-    ):
-        save_path, config_path, log_path = _absolute_paths(
-            save_path, config_path, log_path
-        )
+    # def alignment(
+    #     self,
+    #     config_path: Optional[str] = None,
+    #     config_dict: Optional[ConfigDict] = None,
+    #     log_path: Optional[str] = None,
+    #     group_by: Optional[List[str] | str] = None,
+    #     filter: Optional[Dict[str, Any]] = None,
+    #     save_path: Optional[str] = None,
+    # ):
+    #     save_path, config_path, log_path = _absolute_paths(
+    #         save_path, config_path, log_path
+    #     )
 
-        if config_path and config_dict:
-            raise ValueError(
-                "Only one between config_path and config_dict must be set, not both"
-            )
-        if config_path:
-            ConfigParams.reload(config_path)
-        if config_dict:
-            ConfigParams.override_params(config_dict)
-        ConfigParams.fix()
+    #     if config_path and config_dict:
+    #         raise ValueError(
+    #             "Only one between config_path and config_dict must be set, not both"
+    #         )
+    #     if config_path:
+    #         ConfigParams.reload(config_path)
+    #     if config_dict:
+    #         ConfigParams.override_params(config_dict)
+    #     ConfigParams.fix()
 
-        if not log_path:
-            raise ValueError(f"Log path needed for stats")
-        if not os.path.exists(log_path):
-            raise FileNotFoundError(f"File {log_path} does not exists")
+    #     if not log_path:
+    #         raise ValueError(f"Log path needed for stats")
+    #     if not os.path.exists(log_path):
+    #         raise FileNotFoundError(f"File {log_path} does not exists")
 
-        stats_metrics = [
-            "status",
-            "dataset_time",
-            "align_time",
-            "automata_learning_time",
-        ]
-        group_by = list(ConfigParams.configs_dict().keys()) + ["split"]
-        group_by.remove("timestamp")
+    #     stats_metrics = [
+    #         "status",
+    #         "dataset_time",
+    #         "align_time",
+    #         "automata_learning_time",
+    #     ]
+    #     group_by = list(ConfigParams.configs_dict().keys()) + ["split"]
+    #     group_by.remove("timestamp")
 
-        stats = alignment.utils.get_log_stats(
-            log_path=log_path,
-            save_path=save_path,
-            group_by=group_by,
-            metrics=stats_metrics,
-            filter=filter,
-        )
-        return stats
+    #     stats = alignment.utils.get_log_stats(
+    #         log_path=log_path,
+    #         save_path=save_path,
+    #         group_by=group_by,
+    #         metrics=stats_metrics,
+    #         filter=filter,
+    #     )
+    #     return stats
 
 
 class CLIEvaluate:

@@ -1,7 +1,10 @@
+from utils_classes.RunLogger import RunLogger
 import random
 import time
 from functools import wraps
 from typing import Any, Callable, List, Set
+import pandas as pd
+from pandas import DataFrame
 
 import numpy as np
 import torch
@@ -79,6 +82,18 @@ def timeit(func):
         return result
 
     return wrapper
+
+
+def load_log(log_path) -> DataFrame:
+    if log_path.endswith(".csv"):
+        df = pd.read_csv(csv)
+    elif log_path.endswith(".db"):
+        logger = RunLogger(log_path)
+        df = logger.to_pandas(table="logs")
+        logger.close()
+    else:
+        raise ValueError(f"Log must be .csv or .db, not .{log_path.split(".")[-1]}")
+    return df
 
 
 class TimedFunction:
