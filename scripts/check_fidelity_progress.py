@@ -1,5 +1,6 @@
 import pandas as pd
 
+
 def count_missing_rows(csv_filepath, config):
     # Load the CSV file
     df = pd.read_csv(csv_filepath)

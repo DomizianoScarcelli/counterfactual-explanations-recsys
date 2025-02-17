@@ -1,10 +1,12 @@
+import os
 from typing import List, Optional
+
+import fire
+import pandas as pd
+from tqdm import tqdm
+
 from config import ConfigDict, ConfigParams
 from utils_classes.RunLogger import RunLogger
-import pandas as pd
-import os
-import fire
-from tqdm import tqdm
 
 
 def csv_to_sqlite(

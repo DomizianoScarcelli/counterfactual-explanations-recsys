@@ -1,9 +1,10 @@
-import pandas as pd
+import os
+from typing import Optional
+
+import fire
 import matplotlib.pyplot as plt
 import numpy as np
-from typing import Optional
-import fire
-import os
+import pandas as pd
 
 
 def main(file_path: str, title: str,save_path: Optional[str] = None):

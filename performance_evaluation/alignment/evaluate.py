@@ -10,13 +10,8 @@ from alignment.utils import postprocess_alignment
 from automata_learning.passive_learning import learning_pipeline
 from config import ConfigParams
 from constants import cat2id, error_messages
-from exceptions import (
-    CounterfactualNotFound,
-    DfaNotAccepting,
-    DfaNotRejecting,
-    NoTargetStatesError,
-    SplitNotCoherent,
-)
+from exceptions import (CounterfactualNotFound, DfaNotAccepting,
+                        DfaNotRejecting, NoTargetStatesError, SplitNotCoherent)
 from generation.utils import equal_ys, labels2cat
 from models.utils import topk, trim
 from type_hints import CategorySet, GoodBadDataset
@@ -114,18 +109,19 @@ def _init_log(ks: List[int]) -> Dict[str, Any]:
 def log_error(
     i: int, error: str, ks: List[int], split: Split, target_cat: Optional[str] = None
 ) -> Dict[str, Any]:
-    from performance_evaluation.genetic.evaluate import _init_log as gen_init_log
+    from performance_evaluation.genetic.evaluate import \
+        _init_log as gen_init_log
 
     log = _init_log(ks)
     gen_log = gen_init_log(ks)
     log["i"] = i
-    log["split"] = split
+    log["split"] = str(split)
     if target_cat:
         log["gen_target_y@1"] = str(
             {cat2id[target_cat]} if isinstance(target_cat, str) else target_cat
         )
     gen_log.update(log)
-    gen_log.update(ConfigParams.configs_dict())
+    gen_log.update(ConfigParams.configs_dict(pandas=False, tostr=True))
     gen_log["error"] = error
     return gen_log
 

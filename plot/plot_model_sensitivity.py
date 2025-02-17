@@ -1,6 +1,6 @@
+import fire
 import matplotlib.pyplot as plt
 import pandas as pd
-import fire
 
 
 def main(csv_path: str, save_path: str, title: str):

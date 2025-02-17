@@ -1,7 +1,9 @@
 import sqlite3
-import pandas as pd
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Union
+from typing import Any, Dict, List, Optional, Union
+
+import pandas as pd
+
 from config import ConfigParams
 
 

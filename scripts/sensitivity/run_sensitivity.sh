@@ -1,5 +1,5 @@
 #!/bin/bash
-categorized_options=(false true)
+categorized_options=("False" "True")
 models_options=("BERT4Rec" "SASRec" "GRU4Rec")
 
 # Calculate the total number of iterations
@@ -55,6 +55,9 @@ for categorized in "${categorized_options[@]}"; do
     "model": $model,
     "device": "cpu"
     },
+"evolution":{
+    "target_cat": $target_cat,
+},
 "generation": {
     "targeted": False,
     "categorized": $categorized 
@@ -72,6 +75,5 @@ EOF
         python -m cli evaluate sensitivity \
             --save-path="results/evaluate/sensitivity/sensitivity.db" \
             --config_dict="$config_json" \
-            --target-cat=$target_cat
         done
     done

@@ -15,7 +15,6 @@ import fire
 import pandas as pd
 from aalpy.automata.Dfa import Dfa
 from pandas import DataFrame
-from recbole.model.abstract_recommender import SequentialRecommender
 from torch import Tensor
 from tqdm import tqdm
 
@@ -26,7 +25,7 @@ from config import ConfigParams
 from exceptions import EmptyDatasetError
 from generation.dataset.generate import generate
 from generation.dataset.utils import dataset_difference
-from models.config_utils import generate_model, get_config
+from models.config_utils import get_config
 from models.utils import trim
 from performance_evaluation.alignment.utils import (log_run, pk_exists,
                                                     preprocess_interaction)

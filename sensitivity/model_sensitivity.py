@@ -1,8 +1,6 @@
-from utils_classes.RunLogger import RunLogger
-from utils_classes.generators import InteractionGenerator
 from pathlib import Path
 from statistics import mean
-from typing import List, Optional, Dict
+from typing import Dict, List, Optional
 
 import pandas as pd
 import torch
@@ -17,7 +15,9 @@ from models.config_utils import generate_model, get_config
 from models.utils import topk, trim
 from type_hints import CategorySet, RecDataset
 from utils import seq_tostr
-from utils_classes.generators import SequenceGenerator, SkippableGenerator
+from utils_classes.generators import (InteractionGenerator, SequenceGenerator,
+                                      SkippableGenerator)
+from utils_classes.RunLogger import RunLogger
 
 
 def generate_sequence_variants(sequence: Tensor, position: int, alphabet: Tensor):

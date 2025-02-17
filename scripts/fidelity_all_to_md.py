@@ -1,6 +1,8 @@
-import pandas as pd
-from constants import cat2id
 import re
+
+import pandas as pd
+
+from constants import cat2id
 
 
 def csv_to_markdown(csv_file):
