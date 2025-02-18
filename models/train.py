@@ -1,4 +1,3 @@
-from config import ConfigParams
 import warnings
 from pathlib import Path
 
@@ -7,6 +6,7 @@ from recbole.data import create_dataset, data_preparation
 from recbole.trainer import Trainer
 from recbole.utils import get_model, init_seed
 
+from config import ConfigParams
 from type_hints import RecDataset, RecModel
 
 warnings.simplefilter(action="ignore", category=FutureWarning)

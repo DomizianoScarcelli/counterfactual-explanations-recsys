@@ -6,6 +6,7 @@ usable characters to the automa's alphabet, and compute the evaluation metrics
 by computing true/false positive/negatives on the good and bad points.
 """
 
+from utils_classes.RunLogger import RunLogger
 import json
 import warnings
 from pathlib import Path
@@ -15,7 +16,6 @@ import fire
 import pandas as pd
 from aalpy.automata.Dfa import Dfa
 from pandas import DataFrame
-from recbole.model.abstract_recommender import SequentialRecommender
 from torch import Tensor
 from tqdm import tqdm
 
@@ -26,12 +26,17 @@ from config import ConfigParams
 from exceptions import EmptyDatasetError
 from generation.dataset.generate import generate
 from generation.dataset.utils import dataset_difference
-from models.config_utils import generate_model, get_config
+from models.config_utils import get_config
 from models.utils import trim
-from performance_evaluation.alignment.utils import (log_run, pk_exists,
-                                                    preprocess_interaction)
-from performance_evaluation.evaluation_utils import (compute_metrics,
-                                                     print_confusion_matrix)
+from performance_evaluation.alignment.utils import (
+    log_run,
+    pk_exists,
+    preprocess_interaction,
+)
+from performance_evaluation.evaluation_utils import (
+    compute_metrics,
+    print_confusion_matrix,
+)
 from type_hints import GoodBadDataset
 from utils import printd, seq_tostr
 from utils_classes.generators import DatasetGenerator
@@ -97,16 +102,15 @@ def evaluate_single(dfa: Dfa, test_dataset: GoodBadDataset):
 def evaluate(
     datasets: DatasetGenerator,
     end_i: int,
-    log_path: Optional[Path] = None,
+    save_path: Optional[Path] = None,
 ):
 
-    prev_df = pd.DataFrame({})
-
     primary_key = ["source_sequence"]
-    if log_path and log_path.exists():
-        prev_df = pd.read_csv(log_path)
-
-    assert not prev_df.duplicated().any()
+    logger = None
+    if save_path:
+        logger = RunLogger(
+            db_path=save_path, schema=None, add_config=True, merge_cols=True
+        )
 
     pbar = tqdm(
         desc="Automata Learning performance evaluation...", leave=False, total=end_i
@@ -114,18 +118,10 @@ def evaluate(
     for i in range(end_i):
         pbar.update(1)
         next_sequence = preprocess_interaction(datasets.interactions.peek())
-        next_sequence_str = seq_tostr(next_sequence)
-        config_dict = ConfigParams.configs_dict()
-        new_row = pd.DataFrame({"source_sequence": [next_sequence_str], **config_dict})
-        future_df = pd.concat([prev_df, new_row])
-        if pk_exists(
-            df=future_df,
-            primary_key=primary_key,
-            consider_config=True,
-            config_blacklist=["timestamp"],
-        ):
+        new_row = {"source_sequence": seq_tostr(next_sequence)}
+        if logger and logger.exists(new_row, primary_key, consider_config=True, type_sensitive=False):
             printd(
-                f"[{i}] Skipping source sequence {next_sequence} since it still exists in the log with the same config: {config_dict}"
+                f"[{i}] Skipping source sequence {next_sequence} since it still exists in the log with the same config"
             )
             datasets.skip()
             continue
@@ -150,13 +146,8 @@ def evaluate(
                     "source_sequence": seq_tostr(next_sequence),
                     "error": "EmptyDatasetError",
                 }
-                if log_path:
-                    prev_df = log_run(
-                        log=log,
-                        prev_df=prev_df,
-                        save_path=log_path,
-                        primary_key=["source_sequence"],
-                    )
+                if logger:
+                    logger.log_run(log, primary_key)
                 continue
             source_sequence = preprocess_interaction(interaction)
             pbar.set_postfix_str(f"On sequence: {seq_tostr(next_sequence)}")
@@ -204,13 +195,8 @@ def evaluate(
                 "source_sequence": seq_tostr(source_sequence),
                 "error": None,
             }
-            if log_path:
-                prev_df = log_run(
-                    log=log,
-                    prev_df=prev_df,
-                    save_path=log_path,
-                    primary_key=["source_sequence"],
-                )
+            if logger:
+                logger.log_run(log, primary_key)
 
 
 def compute_automata_metrics(df: DataFrame) -> dict:
@@ -263,7 +249,7 @@ def run_automata_learning_eval(
         target=ConfigParams.TARGET_CAT,
     )
 
-    evaluate(datasets=datasets, end_i=end_i, log_path=save_path)
+    evaluate(datasets=datasets, end_i=end_i, save_path=save_path)
 
 
 if __name__ == "__main__":

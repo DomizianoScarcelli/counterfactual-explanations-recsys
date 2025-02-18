@@ -1,9 +1,10 @@
-import pandas as pd
+import os
+from typing import Optional
+
+import fire
 import matplotlib.pyplot as plt
 import numpy as np
-from typing import Optional
-import fire
-import os
+import pandas as pd
 
 
 def main(file_path: str, title: str,save_path: Optional[str] = None):
@@ -15,25 +16,25 @@ def main(file_path: str, title: str,save_path: Optional[str] = None):
     df = pd.read_csv(file_path)
 
     fidelity_columns = [
-        "fidelity_score@1",
-        "fidelity_score@5",
-        "fidelity_score@10",
-        "fidelity_score@20",
-        "fidelity_gen_score@1",
-        "fidelity_gen_score@5",
-        "fidelity_gen_score@10",
-        "fidelity_gen_score@20",
+        "fidelity_score_at_1",
+        "fidelity_score_at_5",
+        "fidelity_score_at_10",
+        "fidelity_score_at_20",
+        "fidelity_gen_score_at_1",
+        "fidelity_gen_score_at_5",
+        "fidelity_gen_score_at_10",
+        "fidelity_gen_score_at_20",
     ]
     df[fidelity_columns] = df[fidelity_columns] * 100  # Convert to percentages
 
     models = df["model"].unique()
-    item_ids = df["gen_target_y@1"].astype(str).unique()
+    item_ids = df["gen_target_y_at_1"].astype(str).unique()
     methods = ["GENE", "PACE"]
     fidelity_metrics = [
-        "fidelity_score@1",
-        "fidelity_score@5",
-        "fidelity_score@10",
-        "fidelity_score@20",
+        "fidelity_score_at_1",
+        "fidelity_score_at_5",
+        "fidelity_score_at_10",
+        "fidelity_score_at_20",
     ]
 
     # Plot settings
@@ -50,7 +51,7 @@ def main(file_path: str, title: str,save_path: Optional[str] = None):
         for model in models:
             for method in methods:
                 subset = df[
-                    (df["gen_target_y@1"].astype(str) == item_id)
+                    (df["gen_target_y_at_1"].astype(str) == item_id)
                     & (df["model"] == model)
                 ]
                 if not subset.empty:
@@ -67,7 +68,7 @@ def main(file_path: str, title: str,save_path: Optional[str] = None):
             for model in models:
                 for method in methods:
                     subset = df[
-                        (df["gen_target_y@1"].astype(str) == item_id)
+                        (df["gen_target_y_at_1"].astype(str) == item_id)
                         & (df["model"] == model)
                     ]
                     if not subset.empty:
@@ -75,7 +76,7 @@ def main(file_path: str, title: str,save_path: Optional[str] = None):
                             value = subset[metric].values[0]
                         else:  # method == "PACE"
                             value = subset[
-                                f"fidelity_gen_score@{str(metric.split('@')[-1])}"
+                                f"fidelity_gen_score_at_{str(metric.split('_at_')[-1])}"
                             ].values[0]
                     else:
                         value = 0  # Handle missing values

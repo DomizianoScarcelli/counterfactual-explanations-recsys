@@ -159,8 +159,8 @@ def ndcg(a: List[int], b: List[int]) -> float:
         return rels
 
     if len(a) != len(b):
-        raise ValueError("Ground truth and prediction lists must have the same length.")
-
+        raise ValueError(f"Ground truth and prediction lists must have the same length: {a} and {b} with lens: {len(a)} != {len(b)}")
+    
     rels = rel(a, b)
     prel = rel(a, a)
 
@@ -195,7 +195,7 @@ def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
         return intersection
 
     if len(a) != len(b):
-        raise ValueError("Ground truth and prediction lists must have the same length.")
+        raise ValueError(f"Ground truth and prediction lists must have the same length: {a} and {b} with lens: {len(a)} != {len(b)}")
 
     # Compute relevance scores: 1 if an element of predicted_set is in truth_set, else 0
     relevance_scores = [rel(truth, pred) for truth, pred in zip(a, b)]
@@ -241,7 +241,7 @@ def intersection_weighted_positional_ndcg(
         return rels
 
     if len(a) != len(b):
-        raise ValueError("Ground truth and prediction lists must have the same length.")
+        raise ValueError(f"Ground truth and prediction lists must have the same length: {a} and {b} with lens: {len(a)} != {len(b)}")
 
     # Compute relevance scores: 1 if an element of predicted_set is in truth_set, else 0
     rels = rels(a, b)

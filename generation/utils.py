@@ -4,7 +4,8 @@ import random
 from enum import Enum
 from pathlib import Path
 from statistics import mean
-from typing import Callable, Dict, List, Literal, Set, Tuple, TypedDict, overload
+from typing import (Callable, Dict, List, Literal, Set, Tuple, TypedDict,
+                    overload)
 
 import _pickle as cPickle
 from numpy import isin
@@ -17,7 +18,8 @@ from constants import cat2id
 from exceptions import EmptyDatasetError
 from type_hints import CategorizedDataset, CategorySet, Dataset, RecDataset
 from utils_classes.Cached import Cached
-from utils_classes.distances import edit_distance, intersection_weighted_ndcg, ndcg
+from utils_classes.distances import (edit_distance, intersection_weighted_ndcg,
+                                     ndcg)
 
 
 class ItemInfo(TypedDict):

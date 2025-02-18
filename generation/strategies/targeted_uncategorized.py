@@ -1,4 +1,3 @@
-from utils_classes.distances import ndcg
 import math
 from statistics import mean
 from typing import Callable, List, Optional
@@ -7,24 +6,17 @@ import numpy as np
 import torch
 from deap import tools
 from torch import Tensor
-from type_hints import Dataset
 
 from config import ConfigParams
 from constants import MAX_LENGTH
 from generation.extended_ea_algorithms import eaSimpleBatched
 from generation.mutations import ALL_MUTATIONS, Mutation
 from generation.strategies.genetic import GeneticStrategy
-from generation.utils import (
-    _evaluate_categorized_generation,
-    equal_ys,
-    get_category_map,
-)
+from generation.utils import (_evaluate_categorized_generation, equal_ys,
+                              get_category_map)
 from models.utils import pad_batch, topk, trim
-from type_hints import CategorizedDataset
-from utils_classes.distances import (
-    edit_distance,
-    self_indicator,
-)
+from type_hints import CategorizedDataset, Dataset
+from utils_classes.distances import edit_distance, ndcg, self_indicator
 from utils_classes.Split import Split
 
 
