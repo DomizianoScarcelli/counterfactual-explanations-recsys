@@ -1,28 +1,30 @@
+from utils import load_log
 import re
-
-import pandas as pd
-
+import pandas as pd 
+import fire
 from constants import cat2id
 
 
-def csv_to_markdown(csv_file):
+def csv_to_markdown(log_path):
     # Read the CSV file
-    df = pd.read_csv(csv_file)
+    df = load_log(log_path)
+
+    print(df.columns)
 
     # Extract relevant columns
     columns_to_keep = {
         "model": "Model",
         "dataset": "Dataset",
         "generation_strategy": "Generation Strategy",
-        "gen_target_y@1": "Target",
-        "fidelity_score@1": "PACE fidelity@1",
-        "fidelity_score@5": "PACE fidelity@5",
-        "fidelity_score@10": "PACE fidelity@10",
-        "fidelity_score@20": "PACE fidelity@20",
-        "fidelity_gen_score@1": "GENE fidelity@1",
-        "fidelity_gen_score@5": "GENE fidelity@5",
-        "fidelity_gen_score@10": "GENE fidelity@10",
-        "fidelity_gen_score@20": "GENE fidelity@20",
+        "gen_target_y_at_1": "Target",
+        "fidelity_score_at_1": "PACE fidelity_at_1",
+        "fidelity_score_at_5": "PACE fidelity_at_5",
+        "fidelity_score_at_10": "PACE fidelity_at_10",
+        "fidelity_score_at_20": "PACE fidelity_at_20",
+        "fidelity_gen_score_at_1": "GENE fidelity_at_1",
+        "fidelity_gen_score_at_5": "GENE fidelity_at_5",
+        "fidelity_gen_score_at_10": "GENE fidelity_at_10",
+        "fidelity_gen_score_at_20": "GENE fidelity_at_20",
         "gen_cost": "GENE distance",
         "cost": "PACE distance",
         "gen_dataset_time": "Dataset Generation Time",
@@ -47,7 +49,7 @@ def csv_to_markdown(csv_file):
     # Create separate dataframes for PACE and GENE metrics
     pace_df = df[[
         'Model', 'Dataset', 'Target', 'Generation Strategy', '#users',
-        'PACE fidelity@1', 'PACE fidelity@5', 'PACE fidelity@10', 'PACE fidelity@20',
+        'PACE fidelity_at_1', 'PACE fidelity_at_5', 'PACE fidelity_at_10', 'PACE fidelity_at_20',
         'PACE distance', 'Dataset Generation Time', 'Constraint A* Time'
     ]].copy()
     pace_df['Method'] = 'PACE'
@@ -56,7 +58,7 @@ def csv_to_markdown(csv_file):
 
     gene_df = df[[
         'Model', 'Dataset', 'Target', 'Generation Strategy', '#users',
-        'GENE fidelity@1', 'GENE fidelity@5', 'GENE fidelity@10', 'GENE fidelity@20',
+        'GENE fidelity_at_1', 'GENE fidelity_at_5', 'GENE fidelity_at_10', 'GENE fidelity_at_20',
         'GENE distance', 'Dataset Generation Time', 'Constraint A* Time'
     ]].copy()
     gene_df['Method'] = 'GENE'
@@ -66,13 +68,13 @@ def csv_to_markdown(csv_file):
     df = pd.concat([pace_df, gene_df], ignore_index=True)
 
     # Convert fidelity scores to percentages
-    fidelity_columns = ['fidelity@1', 'fidelity@5', 'fidelity@10', 'fidelity@20']
+    fidelity_columns = ['fidelity_at_1', 'fidelity_at_5', 'fidelity_at_10', 'fidelity_at_20']
     df[fidelity_columns] = df[fidelity_columns].multiply(100).round(2)
 
     # Reorder columns according to the specified order
     column_order = [
-        'Target', 'Model', 'Dataset', 'Method', 'fidelity@1', 'fidelity@5', 
-        'fidelity@10', 'fidelity@20', '#users', 'Generation Strategy'
+        'Target', 'Model', 'Dataset', 'Method', 'fidelity_at_1', 'fidelity_at_5', 
+        'fidelity_at_10', 'fidelity_at_20', '#users', 'Generation Strategy'
     ]
     df = df[column_order]
 
@@ -116,13 +118,11 @@ def csv_to_markdown(csv_file):
             strategy_group = strategy_group.drop("Generation Strategy", axis=1)
             markdown_content += strategy_group.to_markdown(index=False) + "\n\n"
         else:
-            #FIX: untargeted groups are empty, understand why
             markdown_content += "No data available for this strategy\n\n"
 
     with open("fidelity_results.md", "w") as f:
         f.write(markdown_content)
 
 
-# Example usage
-csv_file = "results/stats/alignment/fidelity_all.csv"
-csv_to_markdown(csv_file)
+if __name__ == "__main__":
+   fire.Fire(csv_to_markdown)

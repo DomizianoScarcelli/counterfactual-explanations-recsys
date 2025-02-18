@@ -86,7 +86,7 @@ def timeit(func):
 
 def load_log(log_path) -> DataFrame:
     if log_path.endswith(".csv"):
-        df = pd.read_csv(csv)
+        df = pd.read_csv(log_path)
     elif log_path.endswith(".db"):
         logger = RunLogger(log_path)
         df = logger.to_pandas(table="logs")

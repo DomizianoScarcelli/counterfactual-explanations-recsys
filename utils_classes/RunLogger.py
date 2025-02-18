@@ -331,112 +331,23 @@ class RunLogger:
         print(f"Removed {total_before - total_after} duplicates.")
 
     def to_pandas(self, table: str):
-        query = f"SELECT * FROM {table}"  # Replace with your table name
-        return pd.read_sql_query(query, self.conn)
+        query = f"SELECT * FROM {table}"  
+        df = pd.read_sql_query(query, self.conn)
+
+        def convert_dtype(value):
+            try:
+                float_val = float(value)
+                if float_val.is_integer():
+                    return int(float_val)
+                return float_val
+            except (ValueError, TypeError):
+                if str(value).lower() in ["true", "false"]:  # Handle booleans
+                    return str(value).lower() == "true"
+                return value
+
+        for col in df.columns:
+            df[col] = df[col].apply(convert_dtype)
+        return df
 
     def close(self):
         self.conn.close()
-
-
-## LOGGER QUERIES
-def evaluation_recap(logger):
-    query = """SELECT generation_strategy, model, dataset, gen_target_y_at_1 AS target, count(*) AS num_users FROM logs
-    WHERE CAST(split AS TEXT) = '(None, 10, 0)'
-    AND CAST(determinism AS TEXT) = 'True'
-    AND CAST(dataset AS TEXT) = 'ml-1m' 
-    AND CAST(generations AS TEXT) = '10'
-    AND CAST(halloffame_ratio AS TEXT) = '0'
-    AND CAST(fitness_alpha AS TEXT) = '0.5'
-    AND CAST(mut_prob AS TEXT) = '0.5'
-    AND CAST(pop_size AS TEXT) = '8192'
-    AND CAST(generations AS TEXT) = '10'
-    AND CAST(crossover_prob AS TEXT) = '0.7'
-    AND CAST(genetic_topk AS TEXT) = '1'
-    AND CAST(ignore_genetic_split AS TEXT) = 'True'
-    GROUP BY gen_target_y_at_1, model, dataset, generation_strategy
-    ORDER BY generation_strategy, model, dataset, gen_target_y_at_1, num_users DESC;"""
-
-    print(logger.query(query))
-
-
-def check_duplicates(logger):
-    query = """WITH duplicate_counts AS (
-    SELECT i, generation_strategy, model, dataset, gen_target_y_at_1, COUNT(*) AS dup_level
-    FROM logs
-    WHERE CAST(split AS TEXT) = '(None, 10, 0)'
-      AND CAST(determinism AS TEXT) = 'True'
-      AND CAST(generations AS TEXT) = '10'
-      AND CAST(halloffame_ratio AS TEXT) = '0'
-      AND CAST(fitness_alpha AS TEXT) = '0.5'
-      AND CAST(mut_prob AS TEXT) = '0.5'
-      AND CAST(pop_size AS TEXT) = '8192'
-      AND CAST(generations AS TEXT) = '10'
-      AND CAST(crossover_prob AS TEXT) = '0.7'
-      AND CAST(genetic_topk AS TEXT) = '1'
-      AND CAST(ignore_genetic_split AS TEXT) = 'True'
-    GROUP BY i, gen_target_y_at_1, model, dataset, generation_strategy
-    HAVING COUNT(*) > 1
-)
-SELECT dup_level, COUNT(*) AS num_dups
-FROM duplicate_counts
-GROUP BY dup_level
-ORDER BY dup_level;"""
-
-    print(logger.query(query))
-
-
-def filter(logger):
-    query = """DELETE FROM logs
-    WHERE NOT (
-        CAST(split AS TEXT) = '(None, 10, 0)'
-        AND CAST(determinism AS TEXT) = 'True'
-        AND CAST(generations AS TEXT) = '10'
-        AND CAST(halloffame_ratio AS TEXT) = '0'
-        AND CAST(fitness_alpha AS TEXT) = '0.5'
-        AND CAST(mut_prob AS TEXT) = '0.5'
-        AND CAST(pop_size AS TEXT) = '8192'
-        AND CAST(generations AS TEXT) = '10'
-        AND CAST(crossover_prob AS TEXT) = '0.7'
-        AND CAST(genetic_topk AS TEXT) = '1'
-        AND CAST(ignore_genetic_split AS TEXT) = 'True'
-    );"""
-    
-    logger.cursor.execute(query)
-    logger.conn.commit()
-    print("Filtered logs: only chone hyperparameters rows are kept.")
-
-
-def clean_sensitivity():
-    logger = RunLogger("results/evaluate/sensitivity/sensitivity.db", schema=None, add_config=False)
-    primary_key = ["i", "position", "targeted", "categorized", "target", "model", "dataset"]
-    logger.dedupe(add_config=False, primary_key=primary_key)
-
-def clean_alignment():
-    logger = RunLogger("v_alignment.db", schema=None, add_config=False)
-    primary_key = [
-        "i",
-        "gen_strategy",
-        "split",
-        "model",
-        "dataset",
-        "gen_target_y_at_1",
-        "pop_size",
-        "generations",
-        "fitness_alpha",
-        "include_sink",
-        "mut_prob",
-        "crossover_prob",
-        "genetic_topk",
-        "mutation_params",
-        "ignore_genetic_split",
-        "jaccard_threshold",
-    ]
-    logger.dedupe(add_config=False, primary_key=primary_key)
-    filter(logger)
-    return logger
-
-if __name__ == "__main__":
-    # logger = clean_alignment()
-    logger = RunLogger("results/evaluate/alignment/alignment.db", schema=None, add_config=False)
-    check_duplicates(logger)
-    evaluation_recap(logger)

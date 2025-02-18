@@ -1,6 +1,6 @@
 import pandas as pd
 
-from scripts.merge_run_sensitivity import main as main_merge
+from scripts.pandas.merge_run_sensitivity import main as main_merge
 
 
 def test_MergeRunSensitivity_ReturnsCorrectResult_WhenMetricsAreAllEqual():

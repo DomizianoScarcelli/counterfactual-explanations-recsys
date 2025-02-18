@@ -24,7 +24,7 @@ from performance_evaluation.automata_learning.evaluate_with_test_set import (
 from run import run_alignment
 from run import run_alignment as run_alignment
 from run import run_all, run_genetic
-from scripts.merge_dfs import main as merge_dfs_script
+from scripts.pandas.merge_dfs import main as merge_dfs_script
 from scripts.print_pth import print_pth as print_pth_script
 from scripts.targets_popularity import main as targets_popularity_script
 from sensitivity.model_sensitivity import run_on_all_positions
@@ -287,9 +287,9 @@ class CLIStats:
     def fidelity(self, log_path: str, save_path: Optional[str] = None):
         config_keys = list(ConfigParams.configs_dict().keys())
         df = load_log(log_path)
-        if "gen_target_y@1" in df.columns:
-            config_keys.append("gen_target_y@1")
-            # TODO: after the target_cat=None but gen_target_y@1=target_cat encoded, adjust this accordingly
+        if "gen_target_y_at_1" in df.columns:
+            config_keys.append("gen_target_y_at_1")
+            # TODO: after the target_cat=None but gen_target_y_at_1=target_cat encoded, adjust this accordingly
             config_keys.remove("target_cat")
 
         config_keys.remove("timestamp")

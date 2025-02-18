@@ -260,21 +260,21 @@ def get_log_stats(
 
 def compute_fidelity(df: pd.DataFrame) -> dict:
     """
-    Compute fidelity for each score@k and gen_score@k in the DataFrame, handling None values
+    Compute fidelity for each score_at_k and gen_score_at_k in the DataFrame, handling None values
     and error cases.
 
     Args:
-        df (pd.DataFrame): Input DataFrame containing score@k, gen_score@k columns,
+        df (pd.DataFrame): Input DataFrame containing score_at_k, gen_score_at_k columns,
                            jaccard_threshold column, and optionally an error column.
 
     Returns:
-        dict: Dictionary containing fidelity@k values for each k.
+        dict: Dictionary containing fidelity_at_k values for each k.
     """
     fidelity_results = {}
 
     # Identify score and gen_score columns
-    score_columns = [col for col in df.columns if col.startswith("score@")]
-    gen_score_columns = [col for col in df.columns if col.startswith("gen_score@")]
+    score_columns = [col for col in df.columns if col.startswith("score")]
+    gen_score_columns = [col for col in df.columns if col.startswith("gen_score")]
     all_score_columns = score_columns + gen_score_columns
 
     similarity_threshold = df["jaccard_threshold"]

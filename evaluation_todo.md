@@ -2,6 +2,7 @@
 - C: Continue it
 - X: Done and imported
 - x: Done and to be imported
+- O: other pc
 # ML-100k
 ## BERT4Rec
 - [W] Targeted-Categorized 
@@ -9,15 +10,15 @@
 - [X] Untargeted-Categorized
 - [X] Untargted-Uncategorized
 ## SASRec
-- [C] Targeted-Categorized 
-- [C] Targeted-Uncategorized 
+- [WO] Targeted-Categorized 
+- [WO] Targeted-Uncategorized 
 - [X] Untargeted-Categorized  
 - [X] Untargted-Uncategorized 
 ## GRU4Rec
-- [C] Targeted-Categorized 
+- [W] Targeted-Categorized 
 - [C] Targeted-Uncategorized
-- [C] Untargeted-Categorized
-- [C] Untargted-Uncategorized
+- [WO] Untargeted-Categorized
+- [WO] Untargted-Uncategorized
 
 
 # ML-1M
