@@ -130,6 +130,7 @@ class RunLogger:
         log: Dict[str, Any],
         primary_key: Optional[List[str]] = None,
         strict: bool = True,
+        tostr: bool = False,
     ):
         # Normalize column names in the log
         log = {self._normalize_column_name(key): value for key, value in log.items()}
@@ -179,14 +180,9 @@ class RunLogger:
             if strict:
                 self.cursor.execute("SELECT COUNT(*) FROM logs;")
                 count_before = self.cursor.fetchone()[0]
-
-            # if primary_key:
-            #     key_values = tuple(log[k] for k in primary_key if k in log)
-            #     key_str = " AND ".join([f"{k} = ?" for k in primary_key if k in log])
-
-            #     self.cursor.execute(f"SELECT 1 FROM logs WHERE {key_str}", key_values)
-            #     if not self.cursor.fetchone():
-            # Directly use all log items without filtering out non-existing columns
+            
+            if tostr:
+                log = {k: str(v) for k, v in log.items()}
             columns = ", ".join(log.keys())
             placeholders = ", ".join(["?" for _ in log])
             values = tuple(log.values())
@@ -275,6 +271,9 @@ class RunLogger:
         return self.cursor.fetchone() is not None
 
     def get_logs(self) -> pd.DataFrame:
+        pd.set_option("display.max_rows", None)  
+        pd.set_option("display.max_columns", None)
+        pd.set_option("display.expand_frame_repr", False)
         return pd.read_sql("SELECT * FROM logs", self.conn)
 
     def query(self, query) -> pd.DataFrame:
@@ -331,7 +330,7 @@ class RunLogger:
         print(f"Removed {total_before - total_after} duplicates.")
 
     def to_pandas(self, table: str):
-        query = f"SELECT * FROM {table}"  
+        query = f"SELECT * FROM {table}"
         df = pd.read_sql_query(query, self.conn)
 
         def convert_dtype(value):

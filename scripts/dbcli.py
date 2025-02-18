@@ -22,24 +22,14 @@ class DBCLI:
         batch_size: int = 10,
         check_if_exists: bool = True,
     ):
-        # Check if the CSV file exists
         if not os.path.exists(csv_file):
             raise FileNotFoundError(f"The file {csv_file} does not exist.")
-
-        # Read the CSV file using pandas
         df = pd.read_csv(csv_file)
-
-        # Initialize the RunLogger to handle the database interactions
         logger = RunLogger(
             db_file, schema=None, add_config=False, merge_cols=merge_cols
         )
-
-        # Initialize a list to collect rows for batch insert
         batch = []
-
-        # Iterate through the rows and log them one by one
         for _, row in tqdm(df.iterrows(), total=len(df)):
-            # Convert the row to a dictionary
             log_entry = row.to_dict()
             log_entry_metr = {
                 k: v
@@ -52,13 +42,8 @@ class DBCLI:
                 if k in ConfigParams.configs_dict().keys()
             }
             log_entry = {**log_entry_metr, **log_entry_str}
-
-            # Add the log entry to the batch
             batch.append(log_entry)
-
-            # Once the batch reaches the specified size, insert all entries at once
             if len(batch) >= batch_size:
-                # Insert the batch into the database
                 for log in batch:
                     if check_if_exists and logger.exists(
                         log=log,
@@ -69,8 +54,6 @@ class DBCLI:
                         continue
                     logger.log_run(log, primary_key=primary_key, strict=False)
                 batch.clear()  # Reset the batch after inserting
-
-        # Insert any remaining rows that did not fill the last batch
         if batch:
             for log in batch:
                 if check_if_exists and logger.exists(
@@ -81,7 +64,6 @@ class DBCLI:
                 ):
                     continue
                 logger.log_run(log, primary_key=primary_key, strict=False)
-
         print(
             f"CSV file '{csv_file}' has been successfully merged into SQLite DB '{db_file}'."
         )
@@ -97,7 +79,6 @@ class DBCLI:
 
         cursor1 = conn1.cursor()
         cursor2 = conn2.cursor()
-        # merged_cursor = conn_merged.cursor()
 
         cursor1.execute("SELECT name FROM sqlite_master WHERE type='table';")
         tables1 = {table[0] for table in cursor1.fetchall()}
@@ -122,6 +103,10 @@ class DBCLI:
 
     def clean(self, db: str, dbtype: DBType):
         logger = RunLogger(db, schema=None, add_config=False)
+        confirm = input(f"Confirm CLEAN operation on db: {db}, type: {dbtype}? y/N: ")
+        if confirm != "y":
+            print("Aborted")
+            return
         if dbtype == "alignment":
             primary_key = [
                 "i",
@@ -171,11 +156,31 @@ class DBCLI:
             ]
             logger.dedupe(add_config=False, primary_key=primary_key)
         elif dbtype == "automata_learning":
-            raise NotImplementedError()
+            primary_key = [
+                "source_sequence",
+                "generation_strategy",
+                "target_cat",
+                "dataset",
+                "model",
+                "pop_size",
+                "generations",
+                "fitness_alpha",
+                "include_sink",
+                "mut_prob",
+                "crossover_prob",
+                "genetic_topk",
+                "mutation_params",
+                "ignore_genetic_split",
+                "jaccard_threshold",
+            ]
+            logger.dedupe(add_config=False, primary_key=primary_key)
         else:
             raise ValueError(f"dbtype {dbtype} not supported")
 
     def recap(self, db: str, dbtype: DBType):
+        pd.set_option("display.max_rows", None)
+        pd.set_option("display.max_columns", None)
+        pd.set_option("display.expand_frame_repr", False)
         logger = RunLogger(db, schema=None, add_config=False)
         if dbtype == "alignment":
             query = """SELECT generation_strategy, model, dataset, gen_target_y_at_1 AS target, count(*) AS num_users FROM logs
@@ -194,9 +199,27 @@ class DBCLI:
             ORDER BY generation_strategy, model, dataset, gen_target_y_at_1, num_users DESC;"""
             print(logger.query(query))
         elif dbtype == "sensitivity":
-            raise NotImplementedError()
+            query = """SELECT targeted, categorized, model, dataset, target, position, count(*) AS num_users FROM logs
+            GROUP BY targeted, categorized, model, dataset, target, position
+            ORDER BY targeted, categorized, model, dataset, target, CAST(position as INTEGER), num_users DESC;"""
+
+            print(logger.query(query))
         elif dbtype == "automata_learning":
-            raise NotImplementedError()
+            query = """SELECT generation_strategy, model, dataset, target_cat, count(*) AS num_users FROM logs
+            WHERE CAST(determinism AS TEXT) = 'True'
+            AND CAST(generations AS TEXT) = '10'
+            AND CAST(halloffame_ratio AS TEXT) = '0'
+            AND CAST(fitness_alpha AS TEXT) = '0.5'
+            AND CAST(mut_prob AS TEXT) = '0.5'
+            AND CAST(pop_size AS TEXT) = '8192'
+            AND CAST(generations AS TEXT) = '10'
+            AND CAST(crossover_prob AS TEXT) = '0.7'
+            AND CAST(genetic_topk AS TEXT) = '1'
+            AND CAST(ignore_genetic_split AS TEXT) = 'True'
+            GROUP BY generation_strategy, model, dataset, target_cat
+            ORDER BY generation_strategy, model, dataset, target_cat, num_users DESC;"""
+
+            print(logger.query(query))
         else:
             raise ValueError(f"dbtype {dbtype} not supported")
 

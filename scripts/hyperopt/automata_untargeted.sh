@@ -1,8 +1,9 @@
 #!/bin/bash
-target_cat_options=(50 411 630 1305)
+
+categorized_options=("False" "True")
 
 # Calculate the total number of iterations
-total_iterations=$(( ${#crossover_prob_options[@]} * ${#mutation_prob_options[@]} * ${#fitness_alpha_options[@]} * ${#generations_options[@]} * ${#pop_size_options[@]} * ${#similarity_threshold_options[@]} * ${#genetic_topk_options[@]} * ${#num_mutations_options[@]} ^ ${#target_cat_options[@]} ))
+total_iterations=2
 
 # Check if arguments were provided
 start=$1
@@ -35,7 +36,7 @@ end=$((end - 1))
 iteration=0
 
 # Iterate over all combinations of parameters
-for target_cat in "${target_cat_options[@]}"; do
+for categorized in "${categorized_options[@]}"; do
     # Increment the iteration counter
     ((iteration++))
 
@@ -52,28 +53,25 @@ for target_cat in "${target_cat_options[@]}"; do
 {
 "settings": {
     "model": $model,
-    "device": "cpu"
-    },
-  "evolution": {
-    "target_cat": $target_cat,
-  },
-  "generation": {
+    "dataset": "ML_100K",
+},
+"generation": {
     "ignore_genetic_split": True,
-    "targeted": True,
-    "categorized": False,
+    "targeted": False,
+    "categorized": $categorized,
   }
 }
 EOF
 )
 
-                                # Print the configuration being tested (for debugging)
-                                echo "Running script with configuration:"
-                                echo "$config_json"
+    # Print the configuration being tested (for debugging)
+    echo "Running script with configuration:"
+    echo "$config_json"
 
-                                # Run the script with the JSON string as the --config-dict argument
-                                python -m cli evaluate automata_learning \
-                                    --use-cache=False \
-                                    --save-path="results/evaluate/automata_learning/automata_learning.db" \
-                                    --config_dict="$config_json" \
-                                    --end_i="400" 
-done
+    # Run the script with the JSON string as the --config-dict argument
+    python -m cli evaluate automata_learning \
+        --use-cache=False \
+        --save-path="results/evaluate/automata_learning/automata_learning.db" \
+        --config_dict="$config_json" \
+        --end_i="400"
+    done

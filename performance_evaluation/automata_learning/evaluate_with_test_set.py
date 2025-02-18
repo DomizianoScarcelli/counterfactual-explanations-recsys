@@ -29,8 +29,6 @@ from generation.dataset.utils import dataset_difference
 from models.config_utils import get_config
 from models.utils import trim
 from performance_evaluation.alignment.utils import (
-    log_run,
-    pk_exists,
     preprocess_interaction,
 )
 from performance_evaluation.evaluation_utils import (
@@ -119,7 +117,9 @@ def evaluate(
         pbar.update(1)
         next_sequence = preprocess_interaction(datasets.interactions.peek())
         new_row = {"source_sequence": seq_tostr(next_sequence)}
-        if logger and logger.exists(new_row, primary_key, consider_config=True, type_sensitive=False):
+        if logger and logger.exists(
+            new_row, primary_key, consider_config=True, type_sensitive=False
+        ):
             printd(
                 f"[{i}] Skipping source sequence {next_sequence} since it still exists in the log with the same config"
             )
@@ -147,7 +147,7 @@ def evaluate(
                     "error": "EmptyDatasetError",
                 }
                 if logger:
-                    logger.log_run(log, primary_key)
+                    logger.log_run(log, primary_key, tostr=True)
                 continue
             source_sequence = preprocess_interaction(interaction)
             pbar.set_postfix_str(f"On sequence: {seq_tostr(next_sequence)}")
@@ -196,7 +196,7 @@ def evaluate(
                 "error": None,
             }
             if logger:
-                logger.log_run(log, primary_key)
+                logger.log_run(log, primary_key, tostr=True)
 
 
 def compute_automata_metrics(df: DataFrame) -> dict:
