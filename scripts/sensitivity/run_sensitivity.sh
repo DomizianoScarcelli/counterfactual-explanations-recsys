@@ -55,12 +55,9 @@ for categorized in "${categorized_options[@]}"; do
     "model": $model,
     "device": "cpu"
     },
-"evolution":{
-    "target_cat": $target_cat,
-},
 "generation": {
     "targeted": False,
-    "categorized": $categorized 
+    "categorized": $categorized
     }
 }
 
@@ -74,6 +71,6 @@ EOF
         # Run the script with the JSON string as the --config-dict argument
         python -m cli evaluate sensitivity \
             --save-path="results/evaluate/sensitivity/sensitivity.db" \
-            --config_dict="$config_json" \
+            --config_dict="$config_json"
         done
     done

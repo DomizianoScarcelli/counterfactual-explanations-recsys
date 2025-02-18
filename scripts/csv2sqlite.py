@@ -14,7 +14,8 @@ def load_csv_db(
     db_file: str,
     merge_cols: bool = True,
     primary_key: Optional[List[str]] = None,
-    batch_size: int = 1,
+    batch_size: int = 10,
+    check_if_exists: bool=True,
 ):
     # Check if the CSV file exists
     if not os.path.exists(csv_file):
@@ -52,25 +53,27 @@ def load_csv_db(
         if len(batch) >= batch_size:
             # Insert the batch into the database
             for log in batch:
-                if not logger.exists(
+                if check_if_exists and logger.exists(
                     log=log,
                     primary_key=primary_key,
                     consider_config=False,
                     type_sensitive=False,
                 ):
-                    logger.log_run(log, primary_key=primary_key, strict=False)
+                    continue
+                logger.log_run(log, primary_key=primary_key, strict=False)
             batch.clear()  # Reset the batch after inserting
 
     # Insert any remaining rows that did not fill the last batch
     if batch:
         for log in batch:
-            if not logger.exists(
+            if check_if_exists and logger.exists(
                 log=log,
                 primary_key=primary_key,
                 consider_config=False,
                 type_sensitive=False,
             ):
-                logger.log_run(log, primary_key=primary_key, strict=False)
+                continue
+            logger.log_run(log, primary_key=primary_key, strict=False)
 
     print(
         f"CSV file '{csv_file}' has been successfully merged into SQLite DB '{db_file}'."

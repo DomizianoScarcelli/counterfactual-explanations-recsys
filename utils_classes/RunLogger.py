@@ -280,59 +280,55 @@ class RunLogger:
     def query(self, query) -> pd.DataFrame:
         return pd.read_sql(query, self.conn)
 
-    def dedupe(self, primary_key: List[str]):
-        """
-        Removes duplicate rows from the logs table based on the provided primary key columns.
-        The comparison is type-insensitive (values are cast to TEXT).
-
-        Args:
-            primary_key (List[str]): List of column names defining uniqueness.
-        """
-        if not primary_key:
-            print("[ERROR] No primary key specified for deduplication.")
-            return
-
-        # Normalize column names
-        primary_key = [self._normalize_column_name(k) for k in primary_key]
-
-        # Ensure primary key columns exist in the table
+    def dedupe(self, primary_key: Optional[List[str]] = None, add_config: bool = True):
         self.cursor.execute("PRAGMA table_info(logs)")
         existing_columns = {row[1] for row in self.cursor.fetchall()}
-        primary_key = [k for k in primary_key if k in existing_columns]
-        primary_key.extend(
-            [
-                self._normalize_column_name(key)
-                for key in ConfigParams.configs_dict().keys()
-                if key not in self.blacklist
-            ]
-        )
 
         if not primary_key:
-            print(
-                "[ERROR] None of the provided primary key columns exist in the table."
-            )
+            primary_key = [col for col in existing_columns if col not in self.blacklist]
+        else:
+            primary_key = [
+                self._normalize_column_name(k)
+                for k in primary_key
+                if k in existing_columns
+            ]
+
+        if not primary_key:
+            print("[ERROR] No valid primary key columns found for deduplication.")
             return
 
-        # Create a temporary table without duplicates
-        key_str = ", ".join([f"CAST({k} AS TEXT)" for k in primary_key])
+        if add_config:
+            primary_key += [
+                self._normalize_column_name(key)
+                for key in ConfigParams.configs_dict()
+                if key not in self.blacklist + primary_key
+            ]
+
+        print("Final primary key columns:", primary_key)
+
+        # Ensure proper grouping and handle NULLs
+        key_str = ", ".join([f"CAST({k} as TEXT)" for k in primary_key])
+
+        self.cursor.execute("SELECT COUNT(*) FROM logs")
+        total_before = self.cursor.fetchone()[0]
+
         self.cursor.execute(
             f"""
-            CREATE TABLE logs_dedup AS
-            SELECT * FROM logs
-            WHERE _id IN (
-                SELECT MIN(_id) 
+            DELETE FROM logs
+            WHERE ROWID NOT IN (
+                SELECT MIN(ROWID) 
                 FROM logs
                 GROUP BY {key_str}
             );
             """
         )
 
-        # Replace old table with the deduplicated one
-        self.cursor.execute("DROP TABLE logs;")
-        self.cursor.execute("ALTER TABLE logs_dedup RENAME TO logs;")
-        self.conn.commit()
+        self.conn.commit()  # Ensure changes are saved
 
-        print("Successfully removed duplicate rows based on the primary key.")
+        self.cursor.execute("SELECT COUNT(*) FROM logs")
+        total_after = self.cursor.fetchone()[0]
+
+        print(f"Removed {total_before - total_after} duplicates.")
 
     def to_pandas(self, table: str):
         query = f"SELECT * FROM {table}"  # Replace with your table name
@@ -347,6 +343,7 @@ def evaluation_recap(logger):
     query = """SELECT generation_strategy, model, dataset, gen_target_y_at_1 AS target, count(*) AS num_users FROM logs
     WHERE CAST(split AS TEXT) = '(None, 10, 0)'
     AND CAST(determinism AS TEXT) = 'True'
+    AND CAST(dataset AS TEXT) = 'ml-1m' 
     AND CAST(generations AS TEXT) = '10'
     AND CAST(halloffame_ratio AS TEXT) = '0'
     AND CAST(fitness_alpha AS TEXT) = '0.5'
@@ -357,34 +354,89 @@ def evaluation_recap(logger):
     AND CAST(genetic_topk AS TEXT) = '1'
     AND CAST(ignore_genetic_split AS TEXT) = 'True'
     GROUP BY gen_target_y_at_1, model, dataset, generation_strategy
-    ORDER BY num_users DESC, generation_strategy, model, dataset, gen_target_y_at_1;"""
+    ORDER BY generation_strategy, model, dataset, gen_target_y_at_1, num_users DESC;"""
 
     print(logger.query(query))
 
 
 def check_duplicates(logger):
-    query = """SELECT i, generation_strategy, model, dataset, gen_target_y_at_1 AS target, count(*) AS num_users FROM logs
+    query = """WITH duplicate_counts AS (
+    SELECT i, generation_strategy, model, dataset, gen_target_y_at_1, COUNT(*) AS dup_level
+    FROM logs
     WHERE CAST(split AS TEXT) = '(None, 10, 0)'
-    AND CAST(determinism AS TEXT) = 'True'
-    AND CAST(generations AS TEXT) = '10'
-    AND CAST(halloffame_ratio AS TEXT) = '0'
-    AND CAST(fitness_alpha AS TEXT) = '0.5'
-    AND CAST(mut_prob AS TEXT) = '0.5'
-    AND CAST(pop_size AS TEXT) = '8192'
-    AND CAST(generations AS TEXT) = '10'
-    AND CAST(crossover_prob AS TEXT) = '0.7'
-    AND CAST(genetic_topk AS TEXT) = '1'
-    AND CAST(ignore_genetic_split AS TEXT) = 'True'
+      AND CAST(determinism AS TEXT) = 'True'
+      AND CAST(generations AS TEXT) = '10'
+      AND CAST(halloffame_ratio AS TEXT) = '0'
+      AND CAST(fitness_alpha AS TEXT) = '0.5'
+      AND CAST(mut_prob AS TEXT) = '0.5'
+      AND CAST(pop_size AS TEXT) = '8192'
+      AND CAST(generations AS TEXT) = '10'
+      AND CAST(crossover_prob AS TEXT) = '0.7'
+      AND CAST(genetic_topk AS TEXT) = '1'
+      AND CAST(ignore_genetic_split AS TEXT) = 'True'
     GROUP BY i, gen_target_y_at_1, model, dataset, generation_strategy
-    HAVING count(*) > 1
-    ORDER BY i, generation_strategy, model, dataset, gen_target_y_at_1, num_users;"""
+    HAVING COUNT(*) > 1
+)
+SELECT dup_level, COUNT(*) AS num_dups
+FROM duplicate_counts
+GROUP BY dup_level
+ORDER BY dup_level;"""
 
     print(logger.query(query))
 
 
+def filter(logger):
+    query = """DELETE FROM logs
+    WHERE NOT (
+        CAST(split AS TEXT) = '(None, 10, 0)'
+        AND CAST(determinism AS TEXT) = 'True'
+        AND CAST(generations AS TEXT) = '10'
+        AND CAST(halloffame_ratio AS TEXT) = '0'
+        AND CAST(fitness_alpha AS TEXT) = '0.5'
+        AND CAST(mut_prob AS TEXT) = '0.5'
+        AND CAST(pop_size AS TEXT) = '8192'
+        AND CAST(generations AS TEXT) = '10'
+        AND CAST(crossover_prob AS TEXT) = '0.7'
+        AND CAST(genetic_topk AS TEXT) = '1'
+        AND CAST(ignore_genetic_split AS TEXT) = 'True'
+    );"""
+    
+    logger.cursor.execute(query)
+    logger.conn.commit()
+    print("Filtered logs: only chone hyperparameters rows are kept.")
+
+
+def clean_sensitivity():
+    logger = RunLogger("results/evaluate/sensitivity/sensitivity.db", schema=None, add_config=False)
+    primary_key = ["i", "position", "targeted", "categorized", "target", "model", "dataset"]
+    logger.dedupe(add_config=False, primary_key=primary_key)
+
+def clean_alignment():
+    logger = RunLogger("v_alignment.db", schema=None, add_config=False)
+    primary_key = [
+        "i",
+        "gen_strategy",
+        "split",
+        "model",
+        "dataset",
+        "gen_target_y_at_1",
+        "pop_size",
+        "generations",
+        "fitness_alpha",
+        "include_sink",
+        "mut_prob",
+        "crossover_prob",
+        "genetic_topk",
+        "mutation_params",
+        "ignore_genetic_split",
+        "jaccard_threshold",
+    ]
+    logger.dedupe(add_config=False, primary_key=primary_key)
+    filter(logger)
+    return logger
+
 if __name__ == "__main__":
-    logger = RunLogger(
-        "results/evaluate/alignment/alignment.db", schema=None, add_config=False
-    )
+    # logger = clean_alignment()
+    logger = RunLogger("results/evaluate/alignment/alignment.db", schema=None, add_config=False)
+    check_duplicates(logger)
     evaluation_recap(logger)
-    # check_duplicates(logger)
