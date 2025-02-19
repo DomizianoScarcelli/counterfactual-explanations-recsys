@@ -7,32 +7,6 @@ from models.utils import replace_padding
 from type_hints import Dataset
 from utils_classes.generators import InteractionGenerator
 
-# class TestDataloaderTypes:
-#     def test_GetDataloaders_ReturnsCorrectType_WhenLeaveOneOut(self, config):
-#         print(f"\n------LEAVE ONE OUT------\n")
-#         train, val, test = get_dataloaders(config, split_strategy="LS")
-#         for train_ex in train:
-#             print(f"LS Train example:", train_ex.interaction)
-#             break
-#         for val_ex in val:
-#             print(f"LS Val example:", val_ex[0].interaction)
-#             break
-#         for test_ex in test:
-#             print(f"LS Test example:", test_ex[0].interaction)
-#             break
-    
-#     def test_GetDataloaders_ReturnsCorrectType_WhenRandomSplit(self, config):
-#         print(f"\n------RANDOM SPLIT------\n")
-#         train, val, test = get_dataloaders(config, split_strategy="RS")
-#         for train_ex in train:
-#             print(f"RS Train example:", train_ex.interaction)
-#             break
-#         for val_ex in val:
-#             print(f"RS Val example:", val_ex[0].interaction)
-#             break
-#         for test_ex in test:
-#             print(f"RS Test example:", test_ex[0].interaction)
-#             break
 
 class TestGetSequenceFromInteraction:
     def test_GetSequenceFromInteraction_IsCorrect(self, interactions: InteractionGenerator):

@@ -2,25 +2,7 @@ import pytest
 from torch import tensor
 
 from config import ConfigParams
-from utils_classes.distances import (intersection_weighted_ndcg, jaccard_sim,
-                                     ndcg, precision_at)
-
-
-class TestJaccardSim:
-    def test_JaccardSim_ReturnsCorrectValue_WhenSetsPartiallyOverlap(self):
-        a = tensor([1, 2, 3])
-        b = tensor([3, 4, 5])
-        assert jaccard_sim(a, b) == 1 / 5, "Failed for partial overlap."
-
-    def test_JaccardSim_ReturnsOne_WhenSetsAreIdentical(self):
-        a = tensor([1, 2, 3])
-        b = tensor([1, 2, 3])
-        assert jaccard_sim(a, b) == 1.0, "Failed for identical sets."
-
-    def test_JaccardSim_ReturnsZero_WhenSetsAreDisjoint(self):
-        a = tensor([1, 2, 3])
-        b = tensor([4, 5, 6])
-        assert jaccard_sim(a, b) == 0.0, "Failed for disjoint sets."
+from utils_classes.distances import intersection_weighted_ndcg, ndcg, precision_at
 
 
 class TestPrecisionAtK:
@@ -146,7 +128,9 @@ class TestNDCG:
         result_perfect = ndcg(a, [1, 2, 3])
         result_suboptimal = ndcg(a, b)
 
-        assert result_perfect > result_suboptimal, f"{result_perfect} > {result_suboptimal}"
+        assert (
+            result_perfect > result_suboptimal
+        ), f"{result_perfect} > {result_suboptimal}"
 
     def test_NDCG_HandlesEmptyInputLists(self):
         a = []

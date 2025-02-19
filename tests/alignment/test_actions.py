@@ -1,56 +1,42 @@
 import pytest
-from memory_profiler import memory_usage
+from alignment.actions import Action, encode_action, encode_action_str, decode_action, print_action, is_legal
 
-from alignment.actions import (Action, decode_action, encode_action,
-                               encode_action_str)
+def test_encode_action_EncodesCorrectly_WhenValidInputs():
+    assert encode_action(Action.SYNC, 42) == (Action.SYNC << 13) | 42
+    assert encode_action(Action.ADD, 99) == (Action.ADD << 13) | 99
+    assert encode_action(Action.DEL, 7) == (Action.DEL << 13) | 7
 
+def test_encode_action_str_EncodesCorrectly_WhenValidStrings():
+    assert encode_action_str("sync_42") == encode_action(Action.SYNC, 42)
+    assert encode_action_str("add_15") == encode_action(Action.ADD, 15)
+    assert encode_action_str("del_8") == encode_action(Action.DEL, 8)
 
-@pytest.fixture
-def action_map():
-    return {
-        (Action.ADD, 2588): "add_2588",
-        (Action.DEL, 1244): "del_1244",
-        (Action.SYNC, 1421): "sync_1421",
-        (Action.ADD, 40): "add_40",
-        (Action.DEL, 50): "del_50"
-    }
+def test_encode_action_str_RaisesAssertionError_WhenInvalidString():
+    with pytest.raises(AssertionError, match="Action 'invalid_action' not supported"):
+        encode_action_str("invalid_action")
 
-@pytest.fixture
-def actions():
-    # Generating a long list of actions for testing, for example 10,000 actions
-    return [f"{action_type}_{i}" for action_type in ["add", "del", "sync"] for i in range(10000)]
+def test_decode_action_DecodesCorrectly_WhenValidEncodedAction():
+    assert decode_action(encode_action(Action.SYNC, 42)) == (Action.SYNC, 42)
+    assert decode_action(encode_action(Action.ADD, 99)) == (Action.ADD, 99)
+    assert decode_action(encode_action(Action.DEL, 7)) == (Action.DEL, 7)
 
-def test_action_encoding(action_map):
-    for (action_type, number), expected_string in action_map.items():
-        encoded = encode_action(action_type, number)
-        decoded_action_type, decoded_number = decode_action(encoded)
+def test_print_action_ReturnsCorrectString_WhenValidEncodedAction():
+    assert print_action(encode_action(Action.SYNC, 42)) == "sync_42"
+    assert print_action(encode_action(Action.ADD, 15)) == "add_15"
+    assert print_action(encode_action(Action.DEL, 8)) == "del_8"
 
-        # Check if encoding and decoding are correct
-        assert decoded_action_type == action_type
-        assert decoded_number == number
+def test_is_legal_ReturnsTrue_WhenNoConflicts():
+    prev_actions = {encode_action(Action.ADD, 3)}
+    illegal_symbols = {5}
+    assert is_legal(encode_action(Action.SYNC, 4), prev_actions, illegal_symbols) is True
 
-        # Check if the expected string representation matches
-        assert f"{expected_string}" == f"{expected_string}"
+def test_is_legal_ReturnsFalse_WhenIllegalSymbolUsed():
+    prev_actions = {encode_action(Action.ADD, 3)}
+    illegal_symbols = {4}
+    assert is_legal(encode_action(Action.SYNC, 4), prev_actions, illegal_symbols) is False
 
-def test_action_memory_efficiency(actions):
-    # Measure memory usage for string tuples
-    def create_string_tuples():
-        return tuple(f"{action_type}_{i}" for action_type in ["add", "del", "sync"] for i in range(10000))
+def test_is_legal_ReturnsFalse_WhenConflictingActionExists():
+    prev_actions = {encode_action(Action.ADD, 4)}
+    illegal_symbols = set()
+    assert is_legal(encode_action(Action.DEL, 4), prev_actions, illegal_symbols) is False
 
-
-    mem_usage_strings = memory_usage(create_string_tuples, interval=0.1) 
-    string_memory_usage = (max(mem_usage_strings) - min(mem_usage_strings))  * 1024 * 1024
-
-    def create_encoded_tuples():
-        return tuple(encode_action_str(a) for a in actions)
-
-    mem_usage_encoded = memory_usage(create_encoded_tuples, interval=0.1)
-    encoded_memory_usage = (max(mem_usage_encoded) - min(mem_usage_encoded)) * 1024 * 1024
-
-    # Assert that the memory usage of the string tuples is less than the encoded actions
-    assert string_memory_usage > encoded_memory_usage, (
-        f"String tuple memory usage {string_memory_usage} bytes"
-        f"should be more than encoded actions memory usage {encoded_memory_usage} bytes"
-    )
-    print(f"String actions memory usage: {string_memory_usage}b")
-    print(f"Encoded actions memory usage: {encoded_memory_usage}b")

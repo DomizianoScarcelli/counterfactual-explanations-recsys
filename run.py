@@ -1,10 +1,6 @@
 import warnings
-from ctypes import alignment
-from time import strftime
-from typing import Any, Dict, Generator, List, Optional
+from typing import List, Optional
 
-import pandas as pd
-from pandas import DataFrame
 from tqdm import tqdm
 
 from config import ConfigParams
@@ -14,14 +10,12 @@ from generation.dataset.utils import interaction_to_tensor
 from performance_evaluation.alignment.evaluate import evaluate_alignment
 from performance_evaluation.alignment.evaluate import \
     log_error as log_alignment_error
-from performance_evaluation.alignment.utils import pk_exists
 from performance_evaluation.genetic.evaluate import evaluate_genetic
 from performance_evaluation.genetic.evaluate import \
     log_error as log_genetic_error
 from type_hints import SplitTuple
 from utils import printd
-from utils_classes.generators import (DatasetGenerator, InteractionGenerator,
-                                      TimedGenerator)
+from utils_classes.generators import DatasetGenerator, TimedGenerator
 from utils_classes.RunLogger import RunLogger
 from utils_classes.Split import Split
 
@@ -105,7 +99,9 @@ def run_genetic(
         datasets.skip()
 
     for i in range(start_i, end_i):
-        if skip_sequence(i, primary_key, target_cat, logger, split.split, alignment=False):
+        if skip_sequence(
+            i, primary_key, target_cat, logger, split.split, alignment=False
+        ):
             printd(
                 f"Skipping i: {i} with target {target_cat} and split {split} because already in the log..."
             )

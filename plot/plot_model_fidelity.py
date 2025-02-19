@@ -1,10 +1,12 @@
-from utils import load_log
 import os
 from typing import Optional
 
 import fire
 import matplotlib.pyplot as plt
 import numpy as np
+
+from utils import load_log
+
 
 def main(log_path: str):
     file_name = os.path.basename(log_path).split(".")[0]

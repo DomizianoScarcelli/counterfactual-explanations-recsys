@@ -1,6 +1,7 @@
-from utils import load_log
 import fire
 import matplotlib.pyplot as plt
+
+from utils import load_log
 
 
 def get_title(targeted, categorized, dataset):

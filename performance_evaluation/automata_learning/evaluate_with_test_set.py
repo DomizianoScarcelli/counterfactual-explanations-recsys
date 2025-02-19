@@ -6,7 +6,6 @@ usable characters to the automa's alphabet, and compute the evaluation metrics
 by computing true/false positive/negatives on the good and bad points.
 """
 
-from utils_classes.RunLogger import RunLogger
 import json
 import warnings
 from pathlib import Path
@@ -28,16 +27,13 @@ from generation.dataset.generate import generate
 from generation.dataset.utils import dataset_difference
 from models.config_utils import get_config
 from models.utils import trim
-from performance_evaluation.alignment.utils import (
-    preprocess_interaction,
-)
-from performance_evaluation.evaluation_utils import (
-    compute_metrics,
-    print_confusion_matrix,
-)
+from performance_evaluation.alignment.utils import preprocess_interaction
+from performance_evaluation.evaluation_utils import (compute_metrics,
+                                                     print_confusion_matrix)
 from type_hints import GoodBadDataset
 from utils import printd, seq_tostr
 from utils_classes.generators import DatasetGenerator
+from utils_classes.RunLogger import RunLogger
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 warnings.simplefilter(action="ignore", category=RuntimeWarning)

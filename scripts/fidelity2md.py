@@ -1,8 +1,10 @@
-from utils import load_log
 import re
-import pandas as pd 
+
 import fire
+import pandas as pd
+
 from constants import cat2id
+from utils import load_log
 
 
 def csv_to_markdown(log_path):

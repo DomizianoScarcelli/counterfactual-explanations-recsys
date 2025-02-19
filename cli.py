@@ -1,9 +1,8 @@
-from utils import load_log
 import os
+import sqlite3
 import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, TypeAlias
-import sqlite3
 
 import fire
 import pandas as pd
@@ -12,15 +11,11 @@ from tqdm import tqdm
 from config import ConfigDict, ConfigParams
 from constants import cat2id
 from performance_evaluation import alignment
-from performance_evaluation.alignment.utils import (
-    compute_edit_distance,
-    compute_fidelity,
-    compute_running_times,
-)
+from performance_evaluation.alignment.utils import (compute_edit_distance,
+                                                    compute_fidelity,
+                                                    compute_running_times)
 from performance_evaluation.automata_learning.evaluate_with_test_set import (
-    compute_automata_metrics,
-    run_automata_learning_eval,
-)
+    compute_automata_metrics, run_automata_learning_eval)
 from run import run_alignment
 from run import run_alignment as run_alignment
 from run import run_all, run_genetic
@@ -28,7 +23,7 @@ from scripts.pandas.merge_dfs import main as merge_dfs_script
 from scripts.print_pth import print_pth as print_pth_script
 from scripts.targets_popularity import main as targets_popularity_script
 from sensitivity.model_sensitivity import run_on_all_positions
-from utils import SeedSetter
+from utils import SeedSetter, load_log
 from utils_classes.generators import InteractionGenerator
 from utils_classes.RunLogger import RunLogger
 

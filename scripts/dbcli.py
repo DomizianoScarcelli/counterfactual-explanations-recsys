@@ -1,6 +1,6 @@
 import os
-from typing import List, Optional, TypeAlias, Literal
 import sqlite3
+from typing import List, Literal, Optional, TypeAlias
 
 import fire
 import pandas as pd
