@@ -1,5 +1,5 @@
 import math
-from typing import List, Set
+from typing import List, Set, Optional
 
 import Levenshtein
 import torch
@@ -118,7 +118,7 @@ def ndcg(a: List[int], b: List[int]) -> float:
     return ndcg
 
 
-def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
+def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]], perfect_score: Optional[int]=None) -> float:
     """
     Calculate the NDCG for a list of ground truth sets (a)
     and predicted sets (b).
@@ -138,7 +138,7 @@ def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
         #         f"intersection_weighted_ndcg must not be used in the untargeted seetting!"
         #     )
         if intersection >= 1:
-            return perfect_rel(truth_set, preds_set)
+            return perfect_rel(truth_set, preds_set) if not perfect_score else perfect_score
         return intersection
 
     if len(a) != len(b):
@@ -152,7 +152,10 @@ def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
 
     actual_dcg = dcg(relevance_scores)
     ideal_dcg = dcg(ideal_relevance_score)
-    ndcg = actual_dcg / ideal_dcg if ideal_dcg > 0 else 0.0
+    if perfect_score:
+        ndcg = actual_dcg / perfect_score 
+    else:
+        ndcg = actual_dcg / ideal_dcg if ideal_dcg > 0 else 0.0
     assert 0.0 <= ndcg <= 1.0, f"NDCG is not in a normalized range: {ndcg}"
 
     return ndcg
