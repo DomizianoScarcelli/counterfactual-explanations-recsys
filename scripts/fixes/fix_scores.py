@@ -38,7 +38,7 @@ def main(log_path):
             df.loc[idx, f"gen_score_at_{k}"] = gen_score_at_k
             df.loc[idx, f"score_at_{k}"] = score_at_k
 
-    df.to_csv(f"fixed.csv")
+    df.to_csv(f"fixed.csv", index=False)
 
 
 if __name__ == "__main__":

@@ -186,7 +186,7 @@ class RunLogger:
             columns = ", ".join(log.keys())
             placeholders = ", ".join(["?" for _ in log])
             values = tuple(log.values())
-
+            
             self.cursor.execute(
                 f"INSERT INTO logs ({columns}) VALUES ({placeholders})", values
             )
