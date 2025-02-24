@@ -1,0 +1,20 @@
+\begingroup
+    \setlength{\tabcolsep}{6pt} % Adjust column spacing
+    \renewcommand{\arraystretch}{1.2} % Adjust row height
+    \small % Reduce font size
+    \begin{longtable}{|l|l|l|l|l|l|l|l|}
+    \hline
+\textbf{Target} & \textbf{Model} & \textbf{Dataset} & \textbf{Method} & \textbf{fidelity@1} & \textbf{fidelity@5} & \textbf{fidelity@10} & \textbf{fidelity@20} \\ \hline
+\endhead
+nan & BERT4Rec & ml-100k & GENE & 1.0 & 0.785 & 0.756 & 0.739 \\
+nan & BERT4Rec & ml-100k & PACE & 0.683 & 0.689 & 0.703 & 0.723 \\\hline
+nan & BERT4Rec & ml-1m & GENE & 1.0 & 0.695 & 0.61 & 0.58 \\
+nan & BERT4Rec & ml-1m & PACE & 0.79 & 0.895 & 0.95 & 0.975 \\\hline
+nan & GRU4Rec & ml-100k & GENE & 1.0 & 0.7 & 0.668 & 0.62 \\
+nan & GRU4Rec & ml-100k & PACE & 0.682 & 0.725 & 0.748 & 0.76 \\\hline
+nan & SASRec & ml-100k & GENE & 1.0 & 0.768 & 0.666 & 0.628 \\
+nan & SASRec & ml-100k & PACE & 0.892 & 0.907 & 0.911 & 0.913 \\\hline
+\caption{\textbf{TODO: these are still partial results, update!} Model fidelity in the Targeted-Categorized setting}
+    \label{tab:eval_targ_cat}
+    \end{longtable}
+    \endgroup

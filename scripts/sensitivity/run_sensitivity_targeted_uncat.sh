@@ -1,7 +1,7 @@
 #!/bin/bash
 
 target_cat_options=(50 411 630 1305)
-models_options=("BERT4Rec" "SASRec" "GRU4Rec")
+models_options=("BERT4Rec")
 
 # Calculate the total number of iterations
 total_iterations=$(( ${#target_cat_options[@]}))

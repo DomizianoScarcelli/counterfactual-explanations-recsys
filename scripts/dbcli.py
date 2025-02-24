@@ -72,10 +72,19 @@ class DBCLI:
         if not os.path.exists(db1) or not os.path.exists(db2):
             raise FileNotFoundError("One or both database files do not exist.")
 
-        merged_db_name = f"{os.path.splitext(db1)[0]}_{os.path.splitext(db2)[0]}.db"
+        dir_path = os.path.dirname(db1)
+        db1_name = os.path.splitext(os.path.basename(db1))[0]
+        db2_name = os.path.splitext(os.path.basename(db2))[0]
+        merged_db_name = f"{db1_name}_{db2_name}.db"
+        merged_db_name = os.path.join(dir_path, merged_db_name)
+        print(f"[DEBUG] merged db name:", merged_db_name)
+
         conn1 = sqlite3.connect(db1)
+        print(f"Connected to db1 at {db1}")
         conn2 = sqlite3.connect(db2)
+        print(f"Connected to db2 at {db2}")
         conn_merged = sqlite3.connect(merged_db_name)
+        print(f"Connected to merged db at {merged_db_name}")
 
         cursor1 = conn1.cursor()
         cursor2 = conn2.cursor()
@@ -133,6 +142,7 @@ class DBCLI:
                 AND CAST(determinism AS TEXT) = 'True'
                 AND CAST(generations AS TEXT) = '10'
                 AND CAST(halloffame_ratio AS TEXT) = '0'
+                AND CAST(jaccard_threshold AS TEXT) = '0.5'
                 AND CAST(fitness_alpha AS TEXT) = '0.5'
                 AND CAST(mut_prob AS TEXT) = '0.5'
                 AND CAST(pop_size AS TEXT) = '8192'

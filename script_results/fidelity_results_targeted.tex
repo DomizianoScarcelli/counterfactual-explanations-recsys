@@ -1,0 +1,58 @@
+\begingroup
+    \setlength{\tabcolsep}{6pt} % Adjust column spacing
+    \renewcommand{\arraystretch}{1.2} % Adjust row height
+    \small % Reduce font size
+    \begin{longtable}{|l|l|l|l|l|l|l|l|}
+    \hline
+\textbf{Target} & \textbf{Model} & \textbf{Dataset} & \textbf{Method} & \textbf{fidelity@1} & \textbf{fidelity@5} & \textbf{fidelity@10} & \textbf{fidelity@20} \\ \hline
+\endhead
+Action & BERT4Rec & ml-100k & GENE & 1.0 & 0.758 & 0.632 & 0.523 \\
+Action & BERT4Rec & ml-100k & PACE & 0.476 & 0.467 & 0.416 & 0.372 \\\hline
+Action & BERT4Rec & ml-1m & GENE & 1.0 & 0.82 & 0.665 & 0.565 \\
+Action & BERT4Rec & ml-1m & PACE & 0.45 & 0.43 & 0.385 & 0.38 \\\hline
+Action & GRU4Rec & ml-100k & GENE & 1.0 & 0.789 & 0.657 & 0.547 \\
+Action & GRU4Rec & ml-100k & PACE & 0.375 & 0.411 & 0.401 & 0.365 \\\hline
+Action & SASRec & ml-100k & GENE & 1.0 & 0.776 & 0.644 & 0.525 \\
+Action & SASRec & ml-100k & PACE & 0.403 & 0.439 & 0.39 & 0.359 \\\hline
+Adventure & BERT4Rec & ml-100k & GENE & 0.997 & 0.594 & 0.353 & 0.209 \\
+Adventure & BERT4Rec & ml-100k & PACE & 0.294 & 0.233 & 0.159 & 0.097 \\\hline
+Adventure & BERT4Rec & ml-1m & GENE & 1.0 & 0.66 & 0.44 & 0.305 \\
+Adventure & BERT4Rec & ml-1m & PACE & 0.34 & 0.34 & 0.23 & 0.17 \\\hline
+Adventure & GRU4Rec & ml-100k & GENE & 1.0 & 0.628 & 0.367 & 0.174 \\
+Adventure & GRU4Rec & ml-100k & PACE & 0.248 & 0.235 & 0.146 & 0.09 \\\hline
+Adventure & SASRec & ml-100k & GENE & 0.999 & 0.626 & 0.403 & 0.216 \\
+Adventure & SASRec & ml-100k & PACE & 0.268 & 0.22 & 0.163 & 0.098 \\\hline
+Animation & BERT4Rec & ml-100k & GENE & 0.943 & 0.432 & 0.245 & 0.158 \\
+Animation & BERT4Rec & ml-100k & PACE & 0.146 & 0.088 & 0.063 & 0.037 \\\hline
+Animation & BERT4Rec & ml-1m & GENE & 0.88 & 0.455 & 0.335 & 0.285 \\
+Animation & BERT4Rec & ml-1m & PACE & 0.26 & 0.18 & 0.15 & 0.12 \\\hline
+Animation & GRU4Rec & ml-100k & GENE & 0.975 & 0.252 & 0.08 & 0.025 \\
+Animation & GRU4Rec & ml-100k & PACE & 0.098 & 0.035 & 0.01 & 0.002 \\\hline
+Animation & SASRec & ml-100k & GENE & 0.995 & 0.362 & 0.19 & 0.12 \\
+Animation & SASRec & ml-100k & PACE & 0.157 & 0.07 & 0.047 & 0.028 \\\hline
+Drama & BERT4Rec & ml-100k & GENE & 1.0 & 0.648 & 0.534 & 0.42 \\
+Drama & BERT4Rec & ml-100k & PACE & 0.585 & 0.469 & 0.405 & 0.327 \\\hline
+Drama & BERT4Rec & ml-1m & GENE & 1.0 & 0.64 & 0.49 & 0.42 \\
+Drama & BERT4Rec & ml-1m & PACE & 0.54 & 0.41 & 0.365 & 0.3 \\\hline
+Drama & GRU4Rec & ml-100k & GENE & 1.0 & 0.59 & 0.49 & 0.405 \\
+Drama & GRU4Rec & ml-100k & PACE & 0.505 & 0.425 & 0.378 & 0.312 \\\hline
+Drama & SASRec & ml-100k & GENE & 1.0 & 0.715 & 0.63 & 0.552 \\
+Drama & SASRec & ml-100k & PACE & 0.595 & 0.512 & 0.462 & 0.435 \\\hline
+Fantasy & BERT4Rec & ml-100k & GENE & 0.893 & 0.256 & 0.018 & 0.0 \\
+Fantasy & BERT4Rec & ml-100k & PACE & 0.128 & 0.037 & 0.0 & 0.0 \\\hline
+Fantasy & BERT4Rec & ml-1m & GENE & 0.925 & 0.44 & 0.2 & 0.145 \\
+Fantasy & BERT4Rec & ml-1m & PACE & 0.185 & 0.1 & 0.065 & 0.045 \\\hline
+Fantasy & GRU4Rec & ml-100k & GENE & 0.917 & 0.321 & 0.018 & 0.0 \\
+Fantasy & GRU4Rec & ml-100k & PACE & 0.044 & 0.019 & 0.003 & 0.0 \\\hline
+Fantasy & SASRec & ml-100k & GENE & 0.915 & 0.375 & 0.025 & 0.0 \\
+Fantasy & SASRec & ml-100k & PACE & 0.17 & 0.06 & 0.002 & 0.0 \\\hline
+Horror & BERT4Rec & ml-100k & GENE & 0.993 & 0.358 & 0.191 & 0.139 \\
+Horror & BERT4Rec & ml-100k & PACE & 0.176 & 0.081 & 0.052 & 0.036 \\\hline
+Horror & GRU4Rec & ml-100k & GENE & 0.994 & 0.163 & 0.029 & 0.012 \\
+Horror & GRU4Rec & ml-100k & PACE & 0.103 & 0.028 & 0.012 & 0.012 \\\hline
+Horror & SASRec & ml-100k & GENE & 0.995 & 0.232 & 0.094 & 0.054 \\
+Horror & SASRec & ml-100k & PACE & 0.151 & 0.046 & 0.032 & 0.023 \\\hline
+\caption{\textbf{TODO: these are still partial results, update!} Model fidelity in the Targeted-Categorized setting}
+    \label{tab:eval_targ_cat}
+    \end{longtable}
+    \endgroup

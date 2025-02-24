@@ -7,6 +7,7 @@ by computing true/false positive/negatives on the good and bad points.
 """
 
 import json
+from statistics import mean
 import warnings
 from pathlib import Path
 from typing import Optional
@@ -28,8 +29,10 @@ from generation.dataset.utils import dataset_difference
 from models.config_utils import get_config
 from models.utils import trim
 from performance_evaluation.alignment.utils import preprocess_interaction
-from performance_evaluation.evaluation_utils import (compute_metrics,
-                                                     print_confusion_matrix)
+from performance_evaluation.evaluation_utils import (
+    compute_metrics,
+    print_confusion_matrix,
+)
 from type_hints import GoodBadDataset
 from utils import printd, seq_tostr
 from utils_classes.generators import DatasetGenerator
@@ -114,7 +117,11 @@ def evaluate(
         next_sequence = preprocess_interaction(datasets.interactions.peek())
         new_row = {"source_sequence": seq_tostr(next_sequence)}
         if logger and logger.exists(
-            new_row, primary_key, consider_config=True, type_sensitive=False
+            new_row,
+            primary_key,
+            consider_config=True,
+            type_sensitive=False,
+            whitelist=["target_cat"],
         ):
             printd(
                 f"[{i}] Skipping source sequence {next_sequence} since it still exists in the log with the same config"
@@ -195,22 +202,43 @@ def evaluate(
                 logger.log_run(log, primary_key, tostr=True)
 
 
-def compute_automata_metrics(df: DataFrame) -> dict:
+def compute_automata_metrics(df: DataFrame, average_per_user: bool = False) -> dict:
     """
     Given a pandas DataFrame with at least "tp, fp, tn, fn" columns, it computes the overall
-    precision, accuracy and recall based on the aggregation of those metrics.
+    precision, accuracy, and recall. Supports two modes:
+
+    1. Default (False): Aggregates tp, fp, tn, and fn across all users and then computes metrics.
+    2. average_per_user=True: Computes precision, accuracy, and recall per user and averages them.
+
+    Args:
+        df (DataFrame): DataFrame containing "tp", "fp", "tn", and "fn" columns.
+        average_per_user (bool): If True, compute metrics per user and then average them.
+
+    Returns:
+        dict: A dictionary containing the computed precision, accuracy, and recall.
     """
     result_df = {}
-    metrics_cols = [col for col in df.columns if col in ["tp", "fp", "tn", "fn"]]
-    for metrics_col in metrics_cols:
-        col_sum = df[metrics_col].sum()
-        result_df[metrics_col] = col_sum
 
-    tp, fp, tn, fn = result_df["tp"], result_df["fp"], result_df["tn"], result_df["fn"]
-    precision, accuracy, recall = compute_metrics(tp=tp, fp=fp, tn=tn, fn=fn)
-    result_df["precision"] = precision
-    result_df["accuracy"] = accuracy
-    result_df["recall"] = recall
+    if average_per_user:
+        return df[["precision", "accuracy", "recall"]].mean().to_dict()
+    else:
+        # Sum tp, fp, tn, fn across all users and compute metrics globally
+        metrics_cols = ["tp", "fp", "tn", "fn"]
+        for metrics_col in metrics_cols:
+            result_df[metrics_col] = df[metrics_col].sum()
+
+        tp, fp, tn, fn = (
+            result_df["tp"],
+            result_df["fp"],
+            result_df["tn"],
+            result_df["fn"],
+        )
+        precision, accuracy, recall = compute_metrics(tp=tp, fp=fp, tn=tn, fn=fn)
+
+        result_df["precision"] = precision
+        result_df["accuracy"] = accuracy
+        result_df["recall"] = recall
+
     return result_df
 
 

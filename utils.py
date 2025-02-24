@@ -96,6 +96,24 @@ def load_log(log_path) -> DataFrame:
     return df
 
 
+def infer_dtype(df: DataFrame) -> DataFrame:
+    def infer(value):
+        try:
+            float_val = float(value)
+            if float_val.is_integer():
+                return int(float_val)
+            return float_val
+        except (ValueError, TypeError):
+            if str(value).lower() in ["true", "false"]:  # Handle booleans
+                return str(value).lower() == "true"
+            return value
+
+    for col in df.columns:
+        df[col] = df[col].apply(infer)
+
+    return df
+
+
 class TimedFunction:
     """
     A wrapper class for timing the execution of a specific function.

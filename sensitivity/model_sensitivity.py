@@ -1,3 +1,4 @@
+from constants import id2cat
 from pathlib import Path
 from statistics import mean
 from typing import Dict, List, Optional
@@ -15,8 +16,11 @@ from models.config_utils import generate_model, get_config
 from models.utils import topk, trim
 from type_hints import CategorySet, RecDataset
 from utils import seq_tostr
-from utils_classes.generators import (InteractionGenerator, SequenceGenerator,
-                                      SkippableGenerator)
+from utils_classes.generators import (
+    InteractionGenerator,
+    SequenceGenerator,
+    SkippableGenerator,
+)
 from utils_classes.RunLogger import RunLogger
 
 
@@ -102,7 +106,7 @@ def model_sensitivity_universal(
     else:
         raise NotImplementedError(f"Dataset {ConfigParams.DATASET} not supported yet!")
 
-    if targeted and not y_target:
+    if targeted and y_target is None:
         raise ValueError("If setting is 'targeted', then y_target has to be defined")
 
     if targeted:
@@ -120,7 +124,7 @@ def model_sensitivity_universal(
     )
     i_list, sequence_list = [], []
     scores_ks = {k: [] for k in ks}
-    primary_key = ["i", "position"]
+    primary_key = ["i", "position", "targeted", "categorized"]
     if targeted:
         primary_key.append("target")
     for i, sequence in enumerate(sequences):
@@ -131,11 +135,11 @@ def model_sensitivity_universal(
 
         pbar.update(1)
         if log_path:
-            new_row = {"i": i, "position": position}
+            new_row = {"i": i, "position": position, "targeted": int(targeted), "categorized": int(categorized)}
             if targeted:
-                new_row["target"] = y_target
+                new_row["target"] = id2cat[y_target]
 
-            if logger.exists(new_row, primary_key, consider_config=False):
+            if logger and logger.exists(new_row, primary_key, consider_config=False):
                 continue
 
         sequence = trim(sequence.squeeze(0)).unsqueeze(0)
@@ -207,11 +211,11 @@ def model_sensitivity_universal(
         **score_dict,
     }
     if targeted:
-        data["target"] = [y_target] * len(i_list)
+        data["target"] = [id2cat[y_target]] * len(i_list)
     if log_path and len(i_list) > 0:
         for row_i in range(len(sequence_list)):
             row = {key: data[key][row_i] for key in data}
-            logger.log_run(log=row, primary_key=primary_key, strict=True)
+            logger.log_run(log=row, primary_key=primary_key, strict=False)
     else:
         print(pd.DataFrame(data))
 
@@ -254,7 +258,8 @@ def run_on_all_positions(
 
             if isinstance(y_target, str):
                 y_target = cat2id[y_target]
-
+        
+        print("[DEBUG], y_target", y_target)
         model_sensitivity_universal(
             model=model,
             sequences=sequences,
