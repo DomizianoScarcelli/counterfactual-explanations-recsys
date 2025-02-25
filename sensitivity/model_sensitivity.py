@@ -135,9 +135,14 @@ def model_sensitivity_universal(
 
         pbar.update(1)
         if log_path:
-            new_row = {"i": i, "position": position, "targeted": int(targeted), "categorized": int(categorized)}
+            new_row = {
+                "i": i,
+                "position": position,
+                "targeted": int(targeted),
+                "categorized": int(categorized),
+            }
             if targeted:
-                new_row["target"] = id2cat[y_target]
+                new_row["target"] = id2cat[y_target] if categorized else y_target
 
             if logger and logger.exists(new_row, primary_key, consider_config=False):
                 continue
@@ -211,7 +216,7 @@ def model_sensitivity_universal(
         **score_dict,
     }
     if targeted:
-        data["target"] = [id2cat[y_target]] * len(i_list)
+        data["target"] = [id2cat[y_target] if categorized else y_target] * len(i_list)
     if log_path and len(i_list) > 0:
         for row_i in range(len(sequence_list)):
             row = {key: data[key][row_i] for key in data}
@@ -258,7 +263,7 @@ def run_on_all_positions(
 
             if isinstance(y_target, str):
                 y_target = cat2id[y_target]
-        
+
         print("[DEBUG], y_target", y_target)
         model_sensitivity_universal(
             model=model,

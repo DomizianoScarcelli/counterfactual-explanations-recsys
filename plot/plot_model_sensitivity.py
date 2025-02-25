@@ -85,6 +85,7 @@ def main(log_path: str, whitelist_models: List[str]=[], whitelist_datasets: List
 
                 plt.xlabel("Position from End")
                 plt.ylabel("Mean Score")
+                # plt.ylim(0, 1)
                 plt.title(get_title(targeted, categorized, dataset, target))
                 plt.legend()
                 plt.grid()
