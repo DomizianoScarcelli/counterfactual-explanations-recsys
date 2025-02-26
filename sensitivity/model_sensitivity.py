@@ -1,4 +1,3 @@
-from constants import id2cat
 from pathlib import Path
 from statistics import mean
 from typing import Dict, List, Optional
@@ -10,17 +9,14 @@ from torch import Tensor
 from tqdm import tqdm
 
 from config import ConfigParams
-from constants import cat2id
+from constants import cat2id, id2cat
 from generation.utils import equal_ys, get_items, labels2cat
 from models.config_utils import generate_model, get_config
 from models.utils import topk, trim
 from type_hints import CategorySet, RecDataset
 from utils import seq_tostr
-from utils_classes.generators import (
-    InteractionGenerator,
-    SequenceGenerator,
-    SkippableGenerator,
-)
+from utils_classes.generators import (InteractionGenerator, SequenceGenerator,
+                                      SkippableGenerator)
 from utils_classes.RunLogger import RunLogger
 
 

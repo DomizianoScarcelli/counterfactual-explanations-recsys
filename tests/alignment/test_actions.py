@@ -1,5 +1,8 @@
 import pytest
-from alignment.actions import Action, encode_action, encode_action_str, decode_action, print_action, is_legal
+
+from alignment.actions import (Action, decode_action, encode_action,
+                               encode_action_str, is_legal, print_action)
+
 
 def test_encode_action_EncodesCorrectly_WhenValidInputs():
     assert encode_action(Action.SYNC, 42) == (Action.SYNC << 13) | 42

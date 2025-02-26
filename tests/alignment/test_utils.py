@@ -1,16 +1,14 @@
+import heapq
+from unittest.mock import Mock
+
 import pytest
 import torch
-import heapq
-from constants import MAX_LENGTH
-from unittest.mock import Mock
+
 from alignment.actions import Action, decode_action
 from alignment.utils import (  # Replace 'your_module' with the actual module name
-    postprocess_alignment,
-    alignment_length,
-    get_path_statistics,
-    prune_paths_by_length,
-    syncable,
-)
+    alignment_length, get_path_statistics, postprocess_alignment,
+    prune_paths_by_length, syncable)
+from constants import MAX_LENGTH
 
 
 def test_postprocess_alignment_ReturnsPaddedTensor_WhenAlignedLengthLessThanMax():

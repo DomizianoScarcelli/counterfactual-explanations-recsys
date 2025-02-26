@@ -29,6 +29,7 @@ def preprocess_interaction(
     source_sequence = trim(source_sequence.squeeze(0)).tolist()
     return source_sequence, source_gt
 
+
 def metric_mean(df: pd.DataFrame, metric_name: str) -> Union[float, Dict[str, int]]:
     # Check if the column exists
     if metric_name not in df.columns:
@@ -185,10 +186,36 @@ def compute_fidelity(df: pd.DataFrame) -> dict:
 
     return fidelity_results
 
+
 def compute_edit_distance(df: pd.DataFrame) -> dict:
-    cost_columns = [col for col in df.columns if col.endswith("cost")]
-    cost_means = {col: df[col].mean() for col in cost_columns}
-    return cost_means
+    threshold = df.iloc[0]["jaccard_threshold"]
+    strategy = df.iloc[0]["generation_strategy"]
+
+    ks = [1, 5, 10, 20]
+    results = {}
+
+    for k in ks:
+        gen_score_col = f"gen_score_at_{k}"
+        score_col = f"score_at_{k}"
+        gen_cost_col = f"gen_cost"
+        cost_col = f"cost"
+
+        if "targeted" in strategy:
+            valid_gen_rows = df[df[gen_score_col] > threshold]
+        else:
+            valid_gen_rows = df[df[gen_score_col] < threshold]
+
+        results[f"avg_gen_cost_at_{k}"] = valid_gen_rows[gen_cost_col].mean()
+
+        if "targeted" in strategy:
+            valid_cost_rows = df[df[score_col] > threshold]
+        else:
+            valid_cost_rows = df[df[score_col] < threshold]
+
+        results[f"avg_cost_at_{k}"] = valid_cost_rows[cost_col].mean()
+
+    return results
+
 
 def compute_running_times(df: pd.DataFrame) -> dict:
     time_columns = [col for col in df.columns if col.endswith("time")]

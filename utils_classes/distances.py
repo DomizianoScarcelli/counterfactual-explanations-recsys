@@ -1,5 +1,5 @@
 import math
-from typing import List, Set, Optional
+from typing import List, Optional, Set
 
 import Levenshtein
 import torch

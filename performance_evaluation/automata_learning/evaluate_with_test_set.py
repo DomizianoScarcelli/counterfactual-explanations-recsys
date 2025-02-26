@@ -7,9 +7,9 @@ by computing true/false positive/negatives on the good and bad points.
 """
 
 import json
-from statistics import mean
 import warnings
 from pathlib import Path
+from statistics import mean
 from typing import Optional
 
 import fire
@@ -29,10 +29,8 @@ from generation.dataset.utils import dataset_difference
 from models.config_utils import get_config
 from models.utils import trim
 from performance_evaluation.alignment.utils import preprocess_interaction
-from performance_evaluation.evaluation_utils import (
-    compute_metrics,
-    print_confusion_matrix,
-)
+from performance_evaluation.evaluation_utils import (compute_metrics,
+                                                     print_confusion_matrix)
 from type_hints import GoodBadDataset
 from utils import printd, seq_tostr
 from utils_classes.generators import DatasetGenerator

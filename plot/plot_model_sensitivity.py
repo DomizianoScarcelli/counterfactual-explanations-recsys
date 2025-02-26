@@ -1,6 +1,7 @@
+from typing import List
+
 import fire
 import matplotlib.pyplot as plt
-from typing import List
 
 from utils import load_log
 
