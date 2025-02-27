@@ -10,3 +10,4 @@ log/**
 **/evaluation_all.csv
 **/*.db
 **/script_results/**
+**/plot/figs/**
