@@ -1,6 +1,6 @@
 import sqlite3
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union, Set
+from typing import Any, Dict, List, Optional, Set, Union
 
 import pandas as pd
 
@@ -130,6 +130,7 @@ class RunLogger:
         log: Dict[str, Any],
         primary_key: Optional[List[str]] = None,
         strict: bool = True,
+        tostr: bool = False,
     ):
         # Normalize column names in the log
         log = {self._normalize_column_name(key): value for key, value in log.items()}
@@ -180,17 +181,12 @@ class RunLogger:
                 self.cursor.execute("SELECT COUNT(*) FROM logs;")
                 count_before = self.cursor.fetchone()[0]
 
-            # if primary_key:
-            #     key_values = tuple(log[k] for k in primary_key if k in log)
-            #     key_str = " AND ".join([f"{k} = ?" for k in primary_key if k in log])
-
-            #     self.cursor.execute(f"SELECT 1 FROM logs WHERE {key_str}", key_values)
-            #     if not self.cursor.fetchone():
-            # Directly use all log items without filtering out non-existing columns
+            if tostr:
+                log = {k: str(v) for k, v in log.items()}
             columns = ", ".join(log.keys())
             placeholders = ", ".join(["?" for _ in log])
             values = tuple(log.values())
-
+            
             self.cursor.execute(
                 f"INSERT INTO logs ({columns}) VALUES ({placeholders})", values
             )
@@ -223,6 +219,7 @@ class RunLogger:
         primary_key: Optional[List[str] | Set[str]],
         consider_config: bool = True,
         type_sensitive: bool = True,
+        whitelist: List[str] = [],
     ) -> bool:
         """
         Checks if inserting the given log entry will violate the primary key constraint.
@@ -251,8 +248,7 @@ class RunLogger:
             log.update(ConfigParams.configs_dict(pandas=False, tostr=True))
             primary_key |= set(ConfigParams.configs_dict())
         primary_key -= set(self.blacklist)
-
-        assert all(key not in self.blacklist for key in primary_key)
+        primary_key |= set(whitelist)
 
         primary_key = list(primary_key)
 
@@ -275,6 +271,9 @@ class RunLogger:
         return self.cursor.fetchone() is not None
 
     def get_logs(self) -> pd.DataFrame:
+        pd.set_option("display.max_rows", None)
+        pd.set_option("display.max_columns", None)
+        pd.set_option("display.expand_frame_repr", False)
         return pd.read_sql("SELECT * FROM logs", self.conn)
 
     def query(self, query) -> pd.DataFrame:
@@ -331,22 +330,11 @@ class RunLogger:
         print(f"Removed {total_before - total_after} duplicates.")
 
     def to_pandas(self, table: str):
-        query = f"SELECT * FROM {table}"  
+        from utils import infer_dtype
+
+        query = f"SELECT * FROM {table}"
         df = pd.read_sql_query(query, self.conn)
-
-        def convert_dtype(value):
-            try:
-                float_val = float(value)
-                if float_val.is_integer():
-                    return int(float_val)
-                return float_val
-            except (ValueError, TypeError):
-                if str(value).lower() in ["true", "false"]:  # Handle booleans
-                    return str(value).lower() == "true"
-                return value
-
-        for col in df.columns:
-            df[col] = df[col].apply(convert_dtype)
+        df = infer_dtype(df)
         return df
 
     def close(self):

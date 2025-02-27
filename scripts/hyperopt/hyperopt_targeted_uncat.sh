@@ -53,6 +53,7 @@ for target_cat in "${target_cat_options[@]}"; do
 "settings": {
     "model": $model,
     "device": "cpu"
+    "dataset": "ML_1M"
     },
   "evolution": {
     "target_cat": $target_cat,

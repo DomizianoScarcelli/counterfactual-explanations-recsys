@@ -61,17 +61,7 @@ def run_automata(automata: Dfa, input: list, final_reset: bool = True):
     if isinstance(input, Tensor):
         input = input.tolist()
     for char in input:
-        # try:
         result = automata.step(char)
-        # except KeyError:
-        # TODO: see how to handle this case
-        # continue
-        # print(f"Unknown character: {char}, self looping...")
-        # continue
-
-        # pass
-        # equivalent to go in sink state and early return
-        # return False
     if final_reset:
         automata.reset_to_initial()
     return result

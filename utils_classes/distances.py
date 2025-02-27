@@ -1,15 +1,13 @@
 import math
-from statistics import mean
-from typing import List, Set
+from typing import List, Optional, Set
 
 import Levenshtein
 import torch
 import torch.nn.functional as F
-from torch import Tensor, Value, nn
+from torch import Tensor, nn
 
 from config import ConfigParams
 from constants import PADDING_CHAR
-from type_hints import CategorySet
 
 
 def edit_distance(t1: Tensor | list, t2: Tensor | list, normalized: bool = True):
@@ -71,59 +69,6 @@ def self_indicator(seq1: Tensor, seq2: Tensor):
     return float("inf") if torch.all(seq1 == seq2).all() else 0
 
 
-def pairwise_jaccard_sim(
-    a: CategorySet | List[CategorySet], b: CategorySet | List[CategorySet]
-) -> float:
-    jaccards = set()
-    if isinstance(a, list) and isinstance(b, list):
-        if len(a) != len(b):
-            raise ValueError(
-                f"set a and b must be of the same length, got: {len(a)} != {len(b)}"
-            )
-        for a_i, b_i in zip(a, b):
-            jaccards.add(jaccard_sim(a_i, b_i))
-        return mean(jaccards)
-    elif isinstance(a, set) and isinstance(b, list):
-        for b_i in b:
-            jaccards.add(jaccard_sim(a, b_i))
-        return mean(jaccards)
-    elif isinstance(a, list) and isinstance(b, set):
-        for a_i in a:
-            jaccards.add(jaccard_sim(a_i, b))
-        return mean(jaccards)
-    elif isinstance(a, set) and isinstance(b, set):
-        return jaccard_sim(a, b)
-    else:
-        raise ValueError(
-            f"Parameters must be sets of ints or lists of sets of ints, not: {type(a).__name__} and {type(b).__name__}"
-        )
-
-
-def jaccard_sim(a: Set[int] | Tensor, b: Set[int] | Tensor) -> float:
-    """
-    Computes the Jaccard similarity between two sets or tensors of indices.
-
-    Args:
-        a: The first set of indices or a tensor.
-        b: The second set of indices or a tensor.
-
-    Returns:
-        float: Jaccard similarity score (0.0 to 1.0).
-    """
-    if not isinstance(a, (Tensor, set)):
-        raise TypeError(f"Expected a Tensor or Set, but got {type(a).__name__}")
-    if not isinstance(b, (Tensor, set)):
-        raise TypeError(f"Expected a Tensor or Set, but got {type(b).__name__}")
-
-    b_set = set(b.tolist()) if isinstance(b, Tensor) else b
-    a_set = set(a.tolist()) if isinstance(a, Tensor) else a
-
-    intersection = len(a_set & b_set)
-    union = len(a_set | b_set)
-
-    return intersection / union if union > 0 else 0.0
-
-
 def precision_at(k: int, a: Tensor, b: Tensor) -> float:
     """
     Computes the Precision@k between two ranked lists of indices.
@@ -159,8 +104,10 @@ def ndcg(a: List[int], b: List[int]) -> float:
         return rels
 
     if len(a) != len(b):
-        raise ValueError(f"Ground truth and prediction lists must have the same length: {a} and {b} with lens: {len(a)} != {len(b)}")
-    
+        raise ValueError(
+            f"Ground truth and prediction lists must have the same length: {a} and {b} with lens: {len(a)} != {len(b)}"
+        )
+
     rels = rel(a, b)
     prel = rel(a, a)
 
@@ -171,7 +118,7 @@ def ndcg(a: List[int], b: List[int]) -> float:
     return ndcg
 
 
-def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
+def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]], perfect_score: Optional[int]=None) -> float:
     """
     Calculate the NDCG for a list of ground truth sets (a)
     and predicted sets (b).
@@ -186,26 +133,25 @@ def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
 
     def rel(truth_set: Set[int], preds_set: Set[int]) -> float:
         intersection = len(truth_set & preds_set)
-        # if ConfigParams.GENERATION_STRATEGY != "targeted":
-        #     raise ValueError(
-        #         f"intersection_weighted_ndcg must not be used in the untargeted seetting!"
-        #     )
         if intersection >= 1:
-            return perfect_rel(truth_set, preds_set)
+            return perfect_rel(truth_set, preds_set) if not perfect_score else perfect_score
         return intersection
 
     if len(a) != len(b):
-        raise ValueError(f"Ground truth and prediction lists must have the same length: {a} and {b} with lens: {len(a)} != {len(b)}")
+        raise ValueError(
+            f"Ground truth and prediction lists must have the same length: {a} and {b} with lens: {len(a)} != {len(b)}"
+        )
 
     # Compute relevance scores: 1 if an element of predicted_set is in truth_set, else 0
     relevance_scores = [rel(truth, pred) for truth, pred in zip(a, b)]
-    # TODO: see if changing this into a relevance score of the truth with itself gives the same result.
-    # This would also remove the need of the perfect_rel and just use the value 1
     ideal_relevance_score = [perfect_rel(truth, pred) for truth, pred in zip(a, b)]
 
     actual_dcg = dcg(relevance_scores)
     ideal_dcg = dcg(ideal_relevance_score)
-    ndcg = actual_dcg / ideal_dcg if ideal_dcg > 0 else 0.0
+    if perfect_score:
+        ndcg = actual_dcg / perfect_score 
+    else:
+        ndcg = actual_dcg / ideal_dcg if ideal_dcg > 0 else 0.0
     assert 0.0 <= ndcg <= 1.0, f"NDCG is not in a normalized range: {ndcg}"
 
     return ndcg
@@ -214,8 +160,6 @@ def intersection_weighted_ndcg(a: List[Set[int]], b: List[Set[int]]) -> float:
 def intersection_weighted_positional_ndcg(
     a: List[Set[int]], b: List[Set[int]]
 ) -> float:
-    # MAJOR TODO: this has to be tested inside the genetic_categorized topk approach
-
     def dcg(relevance_scores: List[float] | List[int]) -> float:
         """Calculate Discounted Cumulative Gain (DCG)."""
         return sum(rel / math.log2(idx + 2) for idx, rel in enumerate(relevance_scores))
@@ -231,7 +175,7 @@ def intersection_weighted_positional_ndcg(
                     )
                     # When we are in the targeted setting, we just want the target category to be part of the output categories.
                     # E.g. if target is 10, then rel({10}, {10, 12}) should yield a perfect score since the target is in the preds set.
-                    # TODO: this can be extended to be more flexible, allowing a more strict requiremenet like perfect score only if intersection is perfect.
+                    # NOTE: this can be extended to be more flexible, allowing a more strict requiremenet like perfect score only if intersection is perfect.
                 if intersection >= 1:
                     n_intersection = intersection / min(len(truth), len(pred))
                     rel = n_intersection * (1 / abs(j - i))
@@ -241,7 +185,9 @@ def intersection_weighted_positional_ndcg(
         return rels
 
     if len(a) != len(b):
-        raise ValueError(f"Ground truth and prediction lists must have the same length: {a} and {b} with lens: {len(a)} != {len(b)}")
+        raise ValueError(
+            f"Ground truth and prediction lists must have the same length: {a} and {b} with lens: {len(a)} != {len(b)}"
+        )
 
     # Compute relevance scores: 1 if an element of predicted_set is in truth_set, else 0
     rels = rels(a, b)

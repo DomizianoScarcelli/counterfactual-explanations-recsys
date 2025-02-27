@@ -1,7 +1,6 @@
 #!/bin/bash
 
-target_cat_options=(50 411 630 1305)
-models_options=("BERT4Rec" "SASRec" "GRU4Rec")
+target_cat_options=(630 1305)
 
 # Calculate the total number of iterations
 total_iterations=$(( ${#target_cat_options[@]}))
@@ -9,6 +8,7 @@ total_iterations=$(( ${#target_cat_options[@]}))
 # Check if arguments were provided
 start=$1
 end=$2
+model=$3
 
 if [[ -z "$start" || -z "$end" ]]; then
     echo "Usage: $0 <start_index> <end_index>"
@@ -37,7 +37,6 @@ iteration=0
 
 # Iterate over all combinations of parameters
 for target_cat in "${target_cat_options[@]}"; do
-    for model in "${models_options[@]}"; do
         # Increment the iteration counter
         ((iteration++))
 
@@ -77,4 +76,3 @@ EOF
             --save-path="results/evaluate/sensitivity/sensitivity.db" \
             --config_dict="$config_json" 
         done
-    done

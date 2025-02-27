@@ -8,8 +8,6 @@ from typing import (Callable, Dict, List, Literal, Set, Tuple, TypedDict,
                     overload)
 
 import _pickle as cPickle
-from numpy import isin
-from pandas.core.dtypes.common import is_int64_dtype
 from recbole.data.dataset.sequential_dataset import SequentialDataset
 from torch import Tensor
 
@@ -88,6 +86,7 @@ def equal_ys(
             pred = [x.item() for x in pred]  # type: ignore
 
         if all(isinstance(x, int) for x in (gt + pred)):
+            # Untargeted
             return _compare_ndcg_ys(gt, pred, return_score=return_score, score_fn=ndcg)
     if (
         isinstance(gt, set)
@@ -100,6 +99,7 @@ def equal_ys(
         )
     ):
         return _compare_ndcg_ys(
+            # Targeted
             gt, pred, return_score=return_score, score_fn=intersection_weighted_ndcg
         )
     raise ValueError(f"Types {type(gt)} and {type(pred)} not supported")

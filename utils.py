@@ -1,16 +1,16 @@
-from utils_classes.RunLogger import RunLogger
 import random
 import time
 from functools import wraps
 from typing import Any, Callable, List, Set
-import pandas as pd
-from pandas import DataFrame
 
 import numpy as np
+import pandas as pd
 import torch
+from pandas import DataFrame
 from torch import Tensor
 
 from config import ConfigParams
+from utils_classes.RunLogger import RunLogger
 
 
 def printd(statement, level=1):
@@ -93,6 +93,24 @@ def load_log(log_path) -> DataFrame:
         logger.close()
     else:
         raise ValueError(f"Log must be .csv or .db, not .{log_path.split(".")[-1]}")
+    return df
+
+
+def infer_dtype(df: DataFrame) -> DataFrame:
+    def infer(value):
+        try:
+            float_val = float(value)
+            if float_val.is_integer():
+                return int(float_val)
+            return float_val
+        except (ValueError, TypeError):
+            if str(value).lower() in ["true", "false"]:  # Handle booleans
+                return str(value).lower() == "true"
+            return value
+
+    for col in df.columns:
+        df[col] = df[col].apply(infer)
+
     return df
 
 
