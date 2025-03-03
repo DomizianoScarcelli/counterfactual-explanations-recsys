@@ -1,5 +1,6 @@
 #!/bin/bash
-target_cat_options=(50 411 630 1305)
+# target_cat_options=(50 411) 
+target_cat_options=(2858 2005 728 2738) 
 
 # Calculate the total number of iterations
 total_iterations=$(( ${#crossover_prob_options[@]} * ${#mutation_prob_options[@]} * ${#fitness_alpha_options[@]} * ${#generations_options[@]} * ${#pop_size_options[@]} * ${#similarity_threshold_options[@]} * ${#genetic_topk_options[@]} * ${#num_mutations_options[@]} ^ ${#target_cat_options[@]} ))
@@ -52,7 +53,7 @@ for target_cat in "${target_cat_options[@]}"; do
 {
 "settings": {
     "model": $model,
-    "device": "cpu"
+    "device": "cpu",
     "dataset": "ML_1M"
     },
   "evolution": {
@@ -73,10 +74,10 @@ EOF
                                 # Run the script with the JSON string as the --config-dict argument
                                 python -m cli evaluate alignment \
                                     --use-cache=False \
-                                    --save-path="results/evaluate/alignment/alignment.db" \
+                                    --save-path="results/evaluate/alignment/alignment_new.db" \
                                     --config_dict="$config_json" \
                                     --mode="all" \
-                                    --range-i="(0, None)" \
+                                    --range-i="(0, 200)" \
                                     --splits="[(None, 10, 0)]" \
                                     --target-cat=$target_cat
 done
