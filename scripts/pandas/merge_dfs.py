@@ -4,7 +4,7 @@ from typing import List, Optional
 
 import pandas as pd
 
-from config import ConfigParams
+from config.config import ConfigParams
 
 
 def main(

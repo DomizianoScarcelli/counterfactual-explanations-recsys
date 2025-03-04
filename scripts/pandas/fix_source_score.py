@@ -3,7 +3,7 @@ import ast
 import pandas as pd
 from tqdm import tqdm
 
-from generation.utils import equal_ys
+from core.generation.utils import equal_ys
 
 
 def fix_source_score():

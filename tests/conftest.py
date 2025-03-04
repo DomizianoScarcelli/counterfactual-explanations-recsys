@@ -4,14 +4,14 @@ import pytest
 import torch
 from recbole.model.abstract_recommender import SequentialRecommender
 
-from alignment.alignment import (augment_constraint_automata,
-                                 augment_trace_automata)
-from automata_learning.passive_learning import (
+from core.alignment.alignment import (augment_constraint_automata,
+                                      augment_trace_automata)
+from core.automata_learning.passive_learning import (
     generate_automata_from_dataset, generate_single_accepting_sequence_dfa)
-from config import ConfigParams
-from generation.dataset.utils import load_dataset
-from models.config_utils import generate_model, get_config
-from utils_classes.generators import InteractionGenerator, SequenceGenerator
+from config.config import ConfigParams
+from core.generation.dataset.utils import load_dataset
+from core.models.config_utils import generate_model, get_config
+from utils.utils import InteractionGenerator, SequenceGenerator
 
 
 # By marking a class with @pytest.mark.incremental, if a test fails, all the other ones in the class are skipped
@@ -132,7 +132,7 @@ def mock_a_dfa_aug(mock_dataset, mock_t_dfa):
 
 @pytest.fixture(scope="module")
 def dataset():
-    return load_dataset(load_path=Path("saved/counterfactual_dataset.pickle"))[0]
+    return load_dataset(load_path=Path("saved_models/counterfactual_dataset.pickle"))[0]
 
 
 @pytest.fixture(scope="module")

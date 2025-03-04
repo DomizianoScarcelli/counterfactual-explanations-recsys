@@ -9,15 +9,15 @@ import pandas as pd
 import torch
 from tqdm import tqdm
 
-from config import ConfigParams
-from generation.utils import get_items
-from models.config_utils import get_config
-from models.utils import trim
-from sensitivity.utils import (compute_scores, counterfactual_scores_deltas,
-                               print_topk_info)
+from config.config import ConfigParams
+from core.generation.utils import get_items
+from core.models.config_utils import get_config
+from core.models.utils import trim
+from core.sensitivity.utils import (compute_scores, counterfactual_scores_deltas,
+                                    print_topk_info)
 from type_hints import RecDataset
-from utils import seq_tostr
-from utils_classes.generators import SequenceGenerator
+from utils.utils import seq_tostr
+from utils.utils import SequenceGenerator
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 

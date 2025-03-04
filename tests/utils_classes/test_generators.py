@@ -2,10 +2,10 @@ import torch
 from recbole.trainer import Interaction
 from torch import Tensor
 
-from generation.dataset.utils import are_dataset_equal
+from core.generation.dataset.utils import are_dataset_equal
 from type_hints import GoodBadDataset
-from utils_classes.generators import (DatasetGenerator, InteractionGenerator,
-                                      SequenceGenerator)
+from utils.utils import (DatasetGenerator, InteractionGenerator,
+                         SequenceGenerator)
 
 
 def interaction_equality(i1: Interaction, i2: Interaction):

@@ -6,8 +6,8 @@ import fire
 import pandas as pd
 from tqdm import tqdm
 
-from config import ConfigParams
-from utils_classes.RunLogger import RunLogger
+from config.config import ConfigParams
+from utils.utils import RunLogger
 
 DBType: TypeAlias = Literal["sensitivity", "alignment", "automata_learning"]
 

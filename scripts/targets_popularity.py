@@ -7,8 +7,6 @@ import pandas as pd
 import seaborn as sns
 from pandas import DataFrame
 
-from generation.dataset.utils import interaction_to_tensor
-
 
 # Read the data from the item file
 def frequencies(dataset: str, categorized: bool) -> Tuple[DataFrame, DataFrame]:

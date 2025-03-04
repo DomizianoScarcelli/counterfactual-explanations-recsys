@@ -5,7 +5,7 @@ import fire
 import pandas as pd
 from pandas.core.api import DataFrame, Series
 
-from constants import MAX_LENGTH
+from config.constants import MAX_LENGTH
 
 
 def calculate_metrics(

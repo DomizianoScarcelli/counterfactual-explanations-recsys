@@ -4,11 +4,10 @@ from unittest.mock import Mock
 import pytest
 import torch
 
-from alignment.actions import Action, decode_action
-from alignment.utils import (  # Replace 'your_module' with the actual module name
-    alignment_length, get_path_statistics, postprocess_alignment,
+from core.alignment.utils import (  # Replace 'your_module' with the actual module name
+    get_path_statistics, postprocess_alignment,
     prune_paths_by_length, syncable)
-from constants import MAX_LENGTH
+from config.constants import MAX_LENGTH
 
 
 def test_postprocess_alignment_ReturnsPaddedTensor_WhenAlignedLengthLessThanMax():
