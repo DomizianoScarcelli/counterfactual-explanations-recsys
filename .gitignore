@@ -1,6 +1,4 @@
-!.gitkeep
 **/__pycache__/**
-**/.DS_Store/**
 /dataset/**
 .dataset_cache/**
 .pytest_cache/**
@@ -11,3 +9,5 @@ log/**
 **/*.db
 **/script_results/**
 **/plot/figs/**
+!.gitkeep
+**/.DS_Store/**
