@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 from config.constants import MAX_LENGTH, PADDING_CHAR
 from core.models.utils import replace_padding
 from type_hints import Dataset, GoodBadDataset
-from core.generation.dataset.utils import printd
+from utils.utils import printd
 
 
 def save_dataset(dataset: GoodBadDataset, save_path: str | Path):

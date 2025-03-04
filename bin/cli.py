@@ -16,12 +16,12 @@ from core.evaluation.automata_learning.evaluate_with_test_set import (
 from core.evaluation.evaluation_utils import compute_metrics
 from run import run_alignment as run_alignment
 from run import run_all, run_genetic
-from scripts.pandas.merge_dfs import main as merge_dfs_script
+from scripts.dataframes.merge_dfs import main as merge_dfs_script
 from scripts.print_pth import print_pth as print_pth_script
 from scripts.targets_popularity import main as targets_popularity_script
 from core.sensitivity.model_sensitivity import run_on_all_positions
 from utils.utils import SeedSetter, load_log
-from utils.utils import InteractionGenerator
+from utils.generators import InteractionGenerator
 from utils.utils import RunLogger
 
 RunModes: TypeAlias = Literal["alignment", "genetic", "automata_learning", "all"]

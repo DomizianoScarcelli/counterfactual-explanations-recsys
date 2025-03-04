@@ -15,8 +15,8 @@ from config.config import ConfigParams
 from config.constants import cat2id
 from exceptions import EmptyDatasetError
 from type_hints import CategorizedDataset, CategorySet, Dataset, RecDataset
-from utils.utils import Cached
-from utils.utils import (edit_distance, intersection_weighted_ndcg,
+from utils.Cached import Cached
+from utils.distances import (edit_distance, intersection_weighted_ndcg,
                          ndcg)
 
 

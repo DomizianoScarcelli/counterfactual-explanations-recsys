@@ -15,9 +15,9 @@ from core.evaluation.genetic.evaluate import \
     log_error as log_genetic_error
 from type_hints import SplitTuple
 from utils.utils import printd
-from utils.utils import DatasetGenerator, TimedGenerator
+from utils.generators import DatasetGenerator, TimedGenerator
 from utils.utils import RunLogger
-from utils.utils import Split
+from utils.Split import Split
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 warnings.simplefilter(action="ignore", category=RuntimeWarning)

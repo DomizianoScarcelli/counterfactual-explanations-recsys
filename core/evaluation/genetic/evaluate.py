@@ -16,9 +16,9 @@ from core.generation.utils import (_evaluate_categorized_generation,
 from core.models.utils import pad, topk, trim
 from type_hints import GoodBadDataset
 from utils.utils import TimedFunction, seq_tostr
-from utils.utils import edit_distance
-from utils.utils import TimedGenerator
-from utils.utils import Split
+from utils.distances import edit_distance
+from utils.generators import TimedGenerator
+from utils.Split import Split
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 warnings.simplefilter(action="ignore", category=RuntimeWarning)

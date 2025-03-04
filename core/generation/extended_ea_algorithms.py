@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from config.constants import MAX_LENGTH
 from core.generation.utils import clone
-from utils.utils import Split
+from utils.Split import Split
 
 
 def split_population(population: list, split: Optional[Split]):

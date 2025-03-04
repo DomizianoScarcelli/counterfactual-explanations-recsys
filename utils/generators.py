@@ -16,12 +16,10 @@ from core.generation.dataset.utils import (get_dataloaders, interaction_to_tenso
 from core.generation.mutations import parse_mutations
 from core.generation.strategies.abstract_strategy import GenerationStrategy
 from core.generation.strategies.exhaustive import ExhaustiveStrategy
-from core.generation import GeneticStrategy
-from core.generation import \
-    CategorizedGeneticStrategy
+from core.generation.strategies.genetic import GeneticStrategy
+from core.generation.strategies.genetic_categorized import CategorizedGeneticStrategy
+from core.generation.strategies.targeted_uncategorized import TargetedUncategorizedGeneticStrategy
 from core.generation.strategies.targeted import TargetedGeneticStrategy
-from core.generation import \
-    TargetedUncategorizedGeneticStrategy
 from core.generation.utils import get_items
 from core.models.config_utils import generate_model, get_config
 from core.models.model_funcs import model_predict

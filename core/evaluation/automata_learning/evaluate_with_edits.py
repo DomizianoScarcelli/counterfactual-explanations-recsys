@@ -16,7 +16,7 @@ from core.models.utils import pad, pad_batch, topk
 from core.evaluation.alignment.utils import preprocess_interaction
 from core.evaluation.evaluation_utils import (compute_metrics,
                                               print_confusion_matrix)
-from utils.utils import DatasetGenerator
+from utils.generators import DatasetGenerator
 
 
 def generate_edits(seq: List[int], dfa_state: DfaState) -> List[Tuple[List[int], bool]]:

@@ -14,8 +14,8 @@ from core.generation.utils import equal_ys, get_items, labels2cat
 from core.models.config_utils import generate_model, get_config
 from core.models.utils import topk, trim
 from type_hints import CategorySet, RecDataset
-from core.sensitivity.utils import seq_tostr
-from utils.utils import (InteractionGenerator, SequenceGenerator,
+from utils.utils import seq_tostr
+from utils.generators import (InteractionGenerator, SequenceGenerator,
                          SkippableGenerator)
 from utils.utils import RunLogger
 

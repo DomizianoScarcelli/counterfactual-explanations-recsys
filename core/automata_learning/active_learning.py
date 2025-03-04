@@ -14,7 +14,7 @@ from core.generation.utils import equal_ys, get_items, labels2cat
 from core.models.config_utils import generate_model, get_config
 from core.models.utils import pad, topk
 from type_hints import RecDataset, RecModel
-from utils.utils import edit_distance
+from utils.distances import edit_distance
 
 
 class TargetLabelSUL(SUL):

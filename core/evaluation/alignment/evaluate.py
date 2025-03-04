@@ -15,7 +15,7 @@ from core.generation.utils import equal_ys, labels2cat
 from core.models.utils import topk, trim
 from type_hints import CategorySet, GoodBadDataset
 from utils.utils import TimedFunction, printd, seq_tostr
-from utils.utils import Split
+from utils.Split import Split
 
 timed_learning_pipeline = TimedFunction(learning_pipeline)
 timed_trace_disalignment = TimedFunction(trace_disalignment)

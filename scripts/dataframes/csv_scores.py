@@ -17,7 +17,7 @@ from core.sensitivity.utils import (compute_scores, counterfactual_scores_deltas
                                     print_topk_info)
 from type_hints import RecDataset
 from utils.utils import seq_tostr
-from utils.utils import SequenceGenerator
+from utils.generators import SequenceGenerator
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 

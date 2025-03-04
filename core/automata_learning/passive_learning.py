@@ -10,7 +10,7 @@ from core.automata_learning.utils import load_automata
 from config.config import ConfigParams
 from core.generation.dataset.utils import load_dataset
 from type_hints import GoodBadDataset
-from core.automata_learning.utils import printd
+from utils.utils import printd
 
 
 def _generate_automata(

@@ -31,7 +31,7 @@ from core.evaluation.evaluation_utils import (compute_metrics,
                                               print_confusion_matrix)
 from type_hints import GoodBadDataset
 from utils.utils import printd, seq_tostr
-from utils.utils import DatasetGenerator
+from utils.generators import DatasetGenerator
 from utils.utils import RunLogger
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
@@ -200,7 +200,7 @@ def evaluate(
 
 def compute_automata_metrics(df: DataFrame, average_per_user: bool = False) -> dict:
     """
-    Given a pandas DataFrame with at least "tp, fp, tn, fn" columns, it computes the overall
+    Given a dataframes DataFrame with at least "tp, fp, tn, fn" columns, it computes the overall
     precision, accuracy, and recall. Supports two modes:
 
     1. Default (False): Aggregates tp, fp, tn, and fn across all users and then computes metrics.

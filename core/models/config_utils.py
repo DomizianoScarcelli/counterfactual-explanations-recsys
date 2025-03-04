@@ -10,7 +10,7 @@ from core.models.extended_models.ExtendedBERT4Rec import ExtendedBERT4Rec
 from core.models.extended_models.ExtendedGRU4Rec import ExtendedGRU4Rec
 from core.models.extended_models.ExtendedSASRec import ExtendedSASRec
 from type_hints import RecDataset, RecModel
-from core.models.utils import printd
+from utils.utils import printd
 
 
 def generate_model(config: Config) -> SequentialRecommender:

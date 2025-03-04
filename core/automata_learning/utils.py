@@ -6,7 +6,7 @@ from typing import List
 from aalpy.automata.Dfa import Dfa
 from torch import Tensor
 
-from core.automata_learning.utils import printd
+from utils.utils import printd
 
 
 def save_automata(automata, save_path):

@@ -3,7 +3,7 @@ from typing import Optional, Tuple
 import fire
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
+import dataframes as pd
 import seaborn as sns
 from pandas import DataFrame
 
