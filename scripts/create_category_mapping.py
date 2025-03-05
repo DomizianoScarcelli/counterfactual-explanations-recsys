@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-import dataframes as pd
+import pandas as pd
 
 from config.config import ConfigParams
 from core.generation.utils import token2id

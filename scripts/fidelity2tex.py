@@ -2,7 +2,7 @@ from typing import Optional
 import re
 
 import fire
-import dataframes as pd
+import pandas as pd
 
 from config.constants import cat2id
 from utils.utils import load_log

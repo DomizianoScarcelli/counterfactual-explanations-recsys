@@ -14,7 +14,7 @@ from core.generation.dataset.generate import generate
 from core.generation.dataset.utils import get_dataset_alphabet
 from core.models.utils import pad, trim
 from type_hints import GoodBadDataset, Trace
-from utils.utils import Split
+from utils.Split import Split
 
 
 @pytest.mark.skip()

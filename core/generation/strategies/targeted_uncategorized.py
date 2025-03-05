@@ -16,8 +16,8 @@ from core.generation.utils import (_evaluate_categorized_generation, equal_ys,
                                    get_category_map)
 from core.models.utils import pad_batch, topk, trim
 from type_hints import CategorizedDataset, Dataset
-from utils.utils import edit_distance, ndcg, self_indicator
-from utils.utils import Split
+from utils.distances import edit_distance, ndcg, self_indicator
+from utils.Split import Split
 
 
 class TargetedUncategorizedGeneticStrategy(GeneticStrategy):

@@ -1,6 +1,6 @@
 import pytest
 
-from utils.utils import Cached
+from utils.Cached import Cached
 
 
 @pytest.fixture(autouse=True)

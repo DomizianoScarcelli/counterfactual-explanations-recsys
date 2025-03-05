@@ -4,7 +4,7 @@ from config.config import ConfigParams
 from core.models.config_utils import generate_model, get_config
 from core.evaluation.alignment.utils import preprocess_interaction
 from utils.utils import printd
-from utils.utils import DatasetGenerator
+from utils.generators import DatasetGenerator
 
 
 def test_automata_accepts_source_sequence():

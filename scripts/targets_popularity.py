@@ -3,7 +3,7 @@ from typing import Optional, Tuple
 import fire
 import matplotlib.pyplot as plt
 import numpy as np
-import dataframes as pd
+import pandas as pd
 import seaborn as sns
 from pandas import DataFrame
 
@@ -72,7 +72,7 @@ def plot(freqs: DataFrame, title: str, max_x_values: Optional[int]=None):
     plt.title(title)
     plt.grid(axis="y", linestyle="--", alpha=0.7)
     print(f"Figure plotted")
-    plt.savefig(f"plot/figs/{title}.png", bbox_inches="tight")
+    plt.savefig(f"reports/plot/figs/{title}.png", bbox_inches="tight")
     plt.close()
 
 def main(dataset: str):

@@ -68,7 +68,7 @@ EOF
                                 echo "$config_json"
 
                                 # Run the script with the JSON string as the --config-dict argument
-                                python -m cli evaluate alignment \
+                                python -m bin.cli evaluate alignment \
                                     --use-cache=False \
                                     --save-path="results/evaluate/alignment/alignment.db" \
                                     --config_dict="$config_json" \

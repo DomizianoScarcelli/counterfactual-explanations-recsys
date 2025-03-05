@@ -6,7 +6,7 @@ from torch import Tensor
 from core.generation.dataset.utils import interaction_to_tensor
 from core.models.config_utils import generate_model
 from core.models.model_funcs import model_predict
-from utils.utils import InteractionGenerator
+from utils.generators import InteractionGenerator
 
 
 @pytest.fixture()

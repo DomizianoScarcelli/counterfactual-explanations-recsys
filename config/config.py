@@ -8,7 +8,7 @@ import torch
 
 from type_hints import RecDataset, RecModel
 
-default_config_path = "configs/config.toml"
+default_config_path = "config/configs/config.toml"
 
 
 class DebugConfig(TypedDict):

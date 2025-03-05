@@ -5,7 +5,7 @@ from core.generation.dataset.utils import (are_dataset_equal, dataset_difference
                                            interaction_to_tensor)
 from core.models.utils import replace_padding
 from type_hints import Dataset
-from utils.utils import InteractionGenerator
+from utils.generators import InteractionGenerator
 
 
 class TestGetSequenceFromInteraction:

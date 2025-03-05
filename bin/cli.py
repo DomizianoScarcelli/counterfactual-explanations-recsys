@@ -14,8 +14,8 @@ from core.evaluation.alignment.utils import (compute_edit_distance,
 from core.evaluation.automata_learning.evaluate_with_test_set import (
     compute_automata_metrics, run_automata_learning_eval)
 from core.evaluation.evaluation_utils import compute_metrics
-from run import run_alignment as run_alignment
-from run import run_all, run_genetic
+from bin.run import run_alignment as run_alignment
+from bin.run import run_all, run_genetic
 from scripts.dataframes.merge_dfs import main as merge_dfs_script
 from scripts.print_pth import print_pth as print_pth_script
 from scripts.targets_popularity import main as targets_popularity_script

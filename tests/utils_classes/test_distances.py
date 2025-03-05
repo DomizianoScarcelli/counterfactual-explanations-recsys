@@ -2,7 +2,7 @@ import pytest
 from torch import tensor
 
 from config.config import ConfigParams
-from utils.utils import (intersection_weighted_ndcg, ndcg,
+from utils.distances import (intersection_weighted_ndcg, ndcg,
                          precision_at)
 
 

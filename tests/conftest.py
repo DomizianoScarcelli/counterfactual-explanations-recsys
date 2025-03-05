@@ -11,7 +11,7 @@ from core.automata_learning.passive_learning import (
 from config.config import ConfigParams
 from core.generation.dataset.utils import load_dataset
 from core.models.config_utils import generate_model, get_config
-from utils.utils import InteractionGenerator, SequenceGenerator
+from utils.generators import InteractionGenerator, SequenceGenerator
 
 
 # By marking a class with @pytest.mark.incremental, if a test fails, all the other ones in the class are skipped

@@ -98,7 +98,7 @@ def main(log_path: str, whitelist_models: List[str]=[], whitelist_datasets: List
                     else "_untargeted"
                 )
                 plt.savefig(
-                    f"plot/figs/sensitivity/sensitivity_targeted{targeted}_categorized{categorized}_dataset{dataset}{target_suffix}.png"
+                    f"reports/plot/figs/sensitivity/sensitivity_targeted{targeted}_categorized{categorized}_dataset{dataset}{target_suffix}.png"
                 )
                 plt.close()
 

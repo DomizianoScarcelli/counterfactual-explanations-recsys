@@ -3,7 +3,7 @@ import sqlite3
 from typing import List, Literal, Optional, TypeAlias
 
 import fire
-import dataframes as pd
+import pandas as pd
 from tqdm import tqdm
 
 from config.config import ConfigParams

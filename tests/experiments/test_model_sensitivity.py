@@ -8,8 +8,8 @@ from core.generation.utils import Items, get_items
 from core.models.config_utils import generate_model, get_config
 from core.models.utils import topk
 from type_hints import RecDataset
-from utils.utils import jaccard_sim, ndcg_at, precision_at
-from utils.utils import SequenceGenerator
+from utils.distances import jaccard_sim, ndcg_at, precision_at
+from utils.generators import SequenceGenerator
 
 
 def test_ModelSensitivity_YieldsCorrectMetrics_WhenSequencesAreAllEqual():

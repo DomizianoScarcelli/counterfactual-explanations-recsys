@@ -4,7 +4,7 @@ from torch import Tensor
 
 from core.generation.dataset.utils import are_dataset_equal
 from type_hints import GoodBadDataset
-from utils.utils import (DatasetGenerator, InteractionGenerator,
+from utils.generators import (DatasetGenerator, InteractionGenerator,
                          SequenceGenerator)
 
 

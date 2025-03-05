@@ -24,7 +24,7 @@ def generate_model(config: Config) -> SequentialRecommender:
     """
     train_data, _, _ = get_dataloaders(config)
     checkpoint_file = Path(
-        f"saved/{ConfigParams.MODEL.value}_{ConfigParams.DATASET.value}.pth"
+        f"saved_models/{ConfigParams.MODEL.value}_{ConfigParams.DATASET.value}.pth"
     )
 
     if config.model == RecModel.BERT4Rec.value:

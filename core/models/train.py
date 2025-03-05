@@ -44,7 +44,7 @@ model = get_model(config["model"])(config, train_data.dataset).to(ConfigParams.D
 
 # Perform inference
 trainer = Trainer(config, model)
-latest_checkpoint = Path(f"saved/{ConfigParams.MODEL.value}_{ConfigParams.DATASET.value}.pth")
+latest_checkpoint = Path(f"saved_models/{ConfigParams.MODEL.value}_{ConfigParams.DATASET.value}.pth")
 trainer.resume_checkpoint(latest_checkpoint)
 # NOTE: uncomment this to perform the training, otherwise just the evaluation part will be performed
 # results = trainer.fit(train_data, show_progress=True)

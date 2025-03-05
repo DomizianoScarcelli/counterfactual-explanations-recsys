@@ -72,7 +72,7 @@ EOF
         echo "$config_json"
 
         # Run the script with the JSON string as the --config-dict argument
-        python -m cli evaluate sensitivity \
+        python -m bin.cli evaluate sensitivity \
             --save-path="results/evaluate/sensitivity/sensitivity.db" \
             --config_dict="$config_json" 
         done

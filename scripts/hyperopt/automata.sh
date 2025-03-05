@@ -70,7 +70,7 @@ EOF
     echo "$config_json"
 
     # Run the script with the JSON string as the --config-dict argument
-    python -m cli evaluate automata_learning \
+    python -m bin.cli evaluate automata_learning \
         --use-cache=False \
         --save-path="results/evaluate/automata_learning/automata_learning.db" \
         --config_dict="$config_json" \
