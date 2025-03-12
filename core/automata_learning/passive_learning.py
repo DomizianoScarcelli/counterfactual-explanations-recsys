@@ -30,7 +30,7 @@ def _generate_automata(
     Returns:
         The learned DFA which accepts good points and rejects bad points.
     """
-    if Path(f"saved_models/saved_automatas/{save_path}").exists() and load_if_exists:
+    if Path(f"saved_automatas/{save_path}").exists() and load_if_exists:
         printd("[INFO] Loaded existing automata", level=1)
         dfa = load_automata(save_path)
         return dfa

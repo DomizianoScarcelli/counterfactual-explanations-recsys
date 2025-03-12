@@ -3,14 +3,20 @@
 # Define target options
 dataset="ML_1M" #ML_100K or ML_1M
 target_cat_options=("Horror" "Action" "Adventure" "Animation" "Fantasy" "Drama")
+
+# Dataset specific options
 target_items_options_ml1m=(2858 2005 728 2738)
 target_items_options_ml100k=(50 411 630 1305)
+num_users_ml1m=200
+num_users_ml100k=None
 
 # Set target_items_options based on dataset
 if [[ "$dataset" == "ML_1M" ]]; then
     target_items_options=("${target_items_options_ml1m[@]}")
+    num_users=("${num_users_ml1m[@]}")
 elif [[ "$dataset" == "ML_100K" ]]; then
     target_items_options=("${target_items_options_ml100k[@]}")
+    num_users=("${num_users_ml100k[@]}")
 else
     echo "Error: Invalid dataset. Choose 'ML_100K' or 'ML_1M'."
     exit 1
@@ -90,8 +96,8 @@ for target in "${target_options[@]}"; do
     },
     $( [[ "$target_mode" == "targeted" ]] && echo "\"evolution\": { \"target_cat\": $target }," )
   "generation": {
-    "targeted": $( [[ "$target_mode" == "targeted" ]] && echo "true" || echo "false" ),
-    "categorized": $( [[ "$categorized" == "categorized" ]] && echo "true" || echo "false" )
+    "targeted": $( [[ "$target_mode" == "targeted" ]] && echo "True" || echo "False" ),
+    "categorized": $( [[ "$categorized" == "categorized" ]] && echo "True" || echo "False" )
   }
 }
 EOF
@@ -104,18 +110,17 @@ echo "python -m bin.cli evaluate alignment \\
     --save-path=\"results/evaluate/alignment.db\" \\
     --config_dict='$config_json' \\
     --mode=\"all\" \\
-    --range-i=\"(0, None)\" \\
+    --range-i=\"(0, $num_users)\" \\
     --splits=\"[(None, 10, 0)]\""
 
-#    # Run the script
-#    python -m bin.cli evaluate alignment \
-#        --use-cache=False \
-#        --save-path="results/evaluate/alignment.db" \
-#        --config_dict="$config_json" \
-#        --mode="all" \
-#        --range-i="(0, None)" \
-#        --splits="[(None, 10, 0)]" \
-#        $( [[ "$target_mode" == "targeted" ]] && echo "--target-cat=\"$target\"")
+   # Run the script
+   python -m bin.cli evaluate alignment \
+       --use-cache=False \
+       --save-path="results/evaluate/alignment.db" \
+       --config_dict="$config_json" \
+       --mode="all" \
+       --range-i="(0, None)" \
+       --splits="[(None, 10, 0)]"
 
 
 
