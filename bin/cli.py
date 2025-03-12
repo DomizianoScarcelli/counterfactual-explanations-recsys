@@ -8,11 +8,15 @@ from tqdm import tqdm
 
 from config.config import ConfigDict, ConfigParams
 from config.constants import cat2id
-from core.evaluation.alignment.utils import (compute_edit_distance,
-                                             compute_fidelity,
-                                             compute_running_times)
+from core.evaluation.alignment.utils import (
+    compute_edit_distance,
+    compute_fidelity,
+    compute_running_times,
+)
 from core.evaluation.automata_learning.evaluate_with_test_set import (
-    compute_automata_metrics, run_automata_learning_eval)
+    compute_automata_metrics,
+    run_automata_learning_eval,
+)
 from core.evaluation.evaluation_utils import compute_metrics
 from bin.run import run_alignment as run_alignment
 from bin.run import run_all, run_genetic
@@ -61,7 +65,7 @@ class RunSwitcher:
                 self.targets = [self.target]
             else:
                 self.targets = (
-                    ConfigParams.TARGET_CAT
+                    [ConfigParams.TARGET_CAT]
                     if ConfigParams.TARGET_CAT
                     else [cat for cat in cat2id if cat != "unknown"]
                 )
@@ -257,7 +261,10 @@ class CLIStats:
             category_df = metrics_df[metrics_df["generation_strategy"] == category_type]
 
             if not category_df.empty:
-                avg_row = {"target_cat": "Average", "generation_strategy": category_type}
+                avg_row = {
+                    "target_cat": "Average",
+                    "generation_strategy": category_type,
+                }
 
                 # Sum tp, tn, fp, fn
                 tp_sum = category_df["tp"].sum()
@@ -334,6 +341,7 @@ class CLIStats:
             result_df.to_csv(save_path, index=False)
         else:
             print(result_df)
+
 
 class CLIEvaluate:
 

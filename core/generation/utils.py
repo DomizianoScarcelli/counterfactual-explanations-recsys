@@ -1,11 +1,11 @@
+from typing import Optional
 import json
 import pickle
 import random
 from enum import Enum
 from pathlib import Path
 from statistics import mean
-from typing import (Callable, Dict, List, Literal, Set, Tuple, TypedDict,
-                    overload)
+from typing import Callable, Dict, List, Literal, Set, Tuple, TypedDict, overload
 
 import _pickle as cPickle
 from recbole.data.dataset.sequential_dataset import SequentialDataset
@@ -16,8 +16,7 @@ from config.constants import cat2id
 from exceptions import EmptyDatasetError
 from type_hints import CategorizedDataset, CategorySet, Dataset, RecDataset
 from utils.Cached import Cached
-from utils.distances import (edit_distance, intersection_weighted_ndcg,
-                         ndcg)
+from utils.distances import edit_distance, intersection_weighted_ndcg, ndcg
 
 
 class ItemInfo(TypedDict):
@@ -100,18 +99,23 @@ def equal_ys(
     ):
         return _compare_ndcg_ys(
             # Targeted
-            gt, pred, return_score=return_score, score_fn=intersection_weighted_ndcg
+            gt,
+            pred,
+            return_score=return_score,
+            score_fn=intersection_weighted_ndcg,
         )
     raise ValueError(f"Types {type(gt)} and {type(pred)} not supported")
 
 
-def get_items(dataset: RecDataset = ConfigParams.DATASET) -> Set[int]:
+def get_items(dataset: Optional[RecDataset] = None) -> Set[int]:
     category_map = get_category_map(dataset)
     items = set(int(x) for x in category_map.keys())
     return items
 
 
-def get_category_map(dataset: RecDataset = ConfigParams.DATASET) -> Dict[int, str]:
+def get_category_map(dataset: Optional[RecDataset] = None) -> Dict[int, str]:
+    if dataset is None:
+        dataset = ConfigParams.DATASET
 
     def load_json(path: Path):
         if not path.exists():
@@ -133,28 +137,28 @@ def get_category_map(dataset: RecDataset = ConfigParams.DATASET) -> Dict[int, st
     return Cached(category, load_fn=load_json).get_data()
 
 
-@overload
-def labels2cat(
-    ys: List[int] | Tensor,
-    encode: Literal[True],  # When encode is True
-    dataset: RecDataset = ConfigParams.DATASET,
-) -> List[CategorySet]:  # Encoded categories are sets of ints
-    ...
+# @overload
+# def labels2cat(
+#     ys: List[int] | Tensor,
+#     encode: Literal[True],  # When encode is True
+#     dataset: RecDataset = ConfigParams.DATASET,
+# ) -> List[CategorySet]:  # Encoded categories are sets of ints
+#     ...
 
 
-@overload
-def labels2cat(
-    ys: List[int] | Tensor,
-    encode: Literal[False],  # When encode is False
-    dataset: RecDataset = ConfigParams.DATASET,
-) -> List[Set[str]]:  # Unencoded categories are sets of strings
-    ...
+# @overload
+# def labels2cat(
+#     ys: List[int] | Tensor,
+#     encode: Literal[False],  # When encode is False
+#     dataset: RecDataset = ConfigParams.DATASET,
+# ) -> List[Set[str]]:  # Unencoded categories are sets of strings
+#     ...
 
 
 def labels2cat(
     ys: List[int] | Tensor,
     encode: bool = True,
-    dataset: RecDataset = ConfigParams.DATASET,
+    dataset: Optional[RecDataset] = None,
 ) -> List[CategorySet] | List[Set[str]]:
     itemid2cat = get_category_map(dataset)
     if isinstance(ys, Tensor):
@@ -166,7 +170,7 @@ def labels2cat(
 
 
 def label2cat(
-    label: int, dataset: RecDataset = ConfigParams.DATASET, encode: bool = True
+    label: int, dataset: Optional[RecDataset] = None, encode: bool = True
 ) -> List[int]:
     itemid2cat = get_category_map(dataset)
     categories = itemid2cat[label]

@@ -92,7 +92,8 @@ for target in "${target_options[@]}"; do
 {
 "settings": {
     "model": "$model",
-    "device": "cpu"
+    "device": "cpu",
+    "dataset": "$dataset"
     },
     $( [[ "$target_mode" == "targeted" ]] && echo "\"evolution\": { \"target_cat\": $target }," )
   "generation": {
@@ -104,7 +105,8 @@ EOF
 )
 
     # Print the configuration for debugging
-#    echo "Running script:"
+echo "========EVALUATION.SH INFO========"
+echo "Running script:"
 echo "python -m bin.cli evaluate alignment \\
     --use-cache=False \\
     --save-path=\"results/evaluate/alignment.db\" \\
@@ -112,6 +114,7 @@ echo "python -m bin.cli evaluate alignment \\
     --mode=\"all\" \\
     --range-i=\"(0, $num_users)\" \\
     --splits=\"[(None, 10, 0)]\""
+echo "=================================="
 
    # Run the script
    python -m bin.cli evaluate alignment \
@@ -119,7 +122,7 @@ echo "python -m bin.cli evaluate alignment \\
        --save-path="results/evaluate/alignment.db" \
        --config_dict="$config_json" \
        --mode="all" \
-       --range-i="(0, None)" \
+       --range-i="(0, $num_users)" \
        --splits="[(None, 10, 0)]"
 
 

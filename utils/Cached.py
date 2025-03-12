@@ -74,6 +74,7 @@ class Cached:
         Returns:
             str: Simulated data loaded from the file path. Replace with actual implementation.
         """
+        print("[DEBUG] Cached data loaded for the first time at", self.path)
         return self.load_fn(self.path)
 
     def get_data(self):
