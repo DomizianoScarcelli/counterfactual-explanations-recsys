@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, TypeAlias
 
 import fire
+import random
 import pandas as pd
 from tqdm import tqdm
 
@@ -40,6 +41,7 @@ class RunSwitcher:
         use_cache: bool,
         mode: RunModes = "all",
         save_path: Optional[Path] = None,
+        sample_num: Optional[int] = None,
     ):
         self.targeted = ConfigParams.TARGETED
         self.categorized = ConfigParams.CATEGORIZED
@@ -59,7 +61,23 @@ class RunSwitcher:
             temp_int = InteractionGenerator()
             self.end_i = sum(1 for _ in temp_int)
 
+        self.sampled_indices = None
+        if sample_num:
+            sample_range = range(self.start_i, self.end_i)
+            if sample_num > len(sample_range):
+                raise ValueError(
+                    f"sample_num ({sample_num}) must be smaller than sample range ({len(sample_range)})"
+                )
+            self.sampled_indices = set(
+                random.sample(population=sample_range, k=sample_num)
+            )
         self.targets: Optional[List[str]] = None
+
+        num_sequences = (
+            len(self.sampled_indices)
+            if self.sampled_indices
+            else self.end_i - self.start_i
+        )
         if self.targeted:
             if self.target:
                 self.targets = [self.target]
@@ -72,17 +90,17 @@ class RunSwitcher:
 
             assert self.targets
             self.pbar = tqdm(
-                desc=f"[TARGETED] Evaluating {self.end_i-self.start_i} sequences on {len(self.targets)} targets and {len(self.splits) if self.splits is not None else 1} splits",
+                desc=f"[TARGETED] Evaluating {num_sequences} sequences on {len(self.targets)} targets and {len(self.splits) if self.splits is not None else 1} splits",
                 total=len(self.targets)
-                * (self.end_i - self.start_i)
+                * num_sequences
                 * (len(self.splits) if self.splits is not None else 1),
             )
             self.og_desc = self.pbar.desc
 
         elif not self.targeted:
             self.pbar = tqdm(
-                desc=f"[UNTARGETED] Evaluating {self.end_i-self.start_i} sequences on {len(self.splits) if self.splits is not None else 1} splits",
-                total=(self.end_i - self.start_i)
+                desc=f"[UNTARGETED] Evaluating {num_sequences} sequences on {len(self.splits) if self.splits is not None else 1} splits",
+                total=num_sequences
                 * (len(self.splits) if self.splits is not None else 1),
             )
             self.og_desc = self.pbar.desc
@@ -112,6 +130,7 @@ class RunSwitcher:
                 logger=logger,
                 start_i=self.start_i,
                 end_i=self.end_i,
+                sampled_indices=self.sampled_indices,
                 splits=self.splits,  # type: ignore
                 use_cache=self.use_cache,
                 ks=self.ks,
@@ -123,6 +142,7 @@ class RunSwitcher:
                 logger=logger,
                 start_i=self.start_i,
                 end_i=self.end_i,
+                sampled_indices=self.sampled_indices,
                 split=self.splits[0] if self.splits and len(self.splits) == 1 else None,  # type: ignore
                 pbar=self.pbar,
             )  # NOTE: splits can be used in the genetic only if just a single one is used, otherwise each split would require a different dataset generation
@@ -132,6 +152,7 @@ class RunSwitcher:
                 logger=logger,
                 start_i=self.start_i,
                 end_i=self.end_i,
+                sampled_indices=self.sampled_indices,
                 splits=self.splits,  # type: ignore
                 use_cache=self.use_cache,
                 ks=self.ks,
@@ -349,6 +370,7 @@ class CLIEvaluate:
         self,
         mode: RunModes = "all",
         range_i: Tuple[int, Optional[int]] = (0, None),
+        sample_num: Optional[int] = None,
         splits: Optional[List[int]] = None,
         use_cache: bool = True,
         save_path: Optional[str] = None,
@@ -368,11 +390,16 @@ class CLIEvaluate:
 
         RunSwitcher(
             range_i=range_i,
+            sample_num=sample_num,
             splits=splits,
             use_cache=use_cache,
             save_path=save_path,
             mode=mode,
-            target=ConfigParams.TARGET_CAT if ConfigParams.TARGET_CAT is not False else None,
+            target=(
+                ConfigParams.TARGET_CAT
+                if ConfigParams.TARGET_CAT is not False
+                else None
+            ),
         ).run()
 
     def automata_learning(

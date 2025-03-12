@@ -1,5 +1,7 @@
+from typing import Set
 import warnings
 from typing import List, Optional
+import random
 
 from tqdm import tqdm
 
@@ -8,11 +10,9 @@ from config.constants import cat2id, error_messages
 from exceptions import EmptyDatasetError
 from core.generation.dataset.utils import interaction_to_tensor
 from core.evaluation.alignment.evaluate import evaluate_alignment
-from core.evaluation.alignment.evaluate import \
-    log_error as log_alignment_error
+from core.evaluation.alignment.evaluate import log_error as log_alignment_error
 from core.evaluation.genetic.evaluate import evaluate_genetic
-from core.evaluation.genetic.evaluate import \
-    log_error as log_genetic_error
+from core.evaluation.genetic.evaluate import log_error as log_genetic_error
 from type_hints import SplitTuple
 from utils.utils import printd
 from utils.generators import DatasetGenerator, TimedGenerator
@@ -75,6 +75,7 @@ def run_genetic(
     logger: RunLogger,
     start_i: int = 0,
     end_i: int = 1,
+    sampled_indices: Optional[Set[int]] = None,
     ks: List[int] = ConfigParams.TOPK,
     split: Optional[tuple] = None,  # type: ignore
     pbar=None,
@@ -99,6 +100,10 @@ def run_genetic(
         datasets.skip()
 
     for i in range(start_i, end_i):
+        if sampled_indices and i not in sampled_indices:
+            printd(f"Skipping i = {i} because it was not sampled")
+            datasets.skip()
+            continue
         if skip_sequence(
             i, primary_key, target_cat, logger, split.split, alignment=False
         ):
@@ -158,6 +163,7 @@ def run_alignment(
     logger: RunLogger,
     start_i: int = 0,
     end_i: int = 1,
+    sampled_indices: Optional[Set[int]] = None,
     splits: Optional[List[tuple]] = None,  # type: ignore
     ks: List[int] = ConfigParams.TOPK,
     use_cache: bool = False,
@@ -191,7 +197,12 @@ def run_alignment(
         printd(f"Skipping i = {i}")
         datasets.skip()
         continue
-    for i in tqdm(range(start_i, end_i), disable=ConfigParams.DEBUG == 0):
+    user_range = range(start_i, end_i)
+    for i in user_range:
+        if sampled_indices and i not in sampled_indices:
+            printd(f"Skipping i = {i} because it was not sampled")
+            datasets.skip()
+            continue
         new_splits = []
         for split in splits:
             if not skip_sequence(i, primary_key, target_cat, logger, split.split):
@@ -260,6 +271,7 @@ def run_all(
     logger: RunLogger,
     start_i: int = 0,
     end_i: int = 1,
+    sampled_indices: Optional[Set[int]] = None,
     splits: Optional[List[tuple]] = None,  # type: ignore
     ks: List[int] = ConfigParams.TOPK,
     use_cache: bool = False,
@@ -292,8 +304,12 @@ def run_all(
         printd(f"Skipping i = {i}")
         datasets.skip()
 
-    for i in tqdm(range(start_i, end_i), disable=ConfigParams.DEBUG == 0):
-
+    user_range = range(start_i, end_i)
+    for i in user_range:
+        if sampled_indices and i not in sampled_indices:
+            printd(f"Skipping i = {i} because it was not sampled")
+            datasets.skip()
+            continue
         new_splits = []
         for split in splits:
             if not skip_sequence(i, primary_key, target_cat, logger, split):

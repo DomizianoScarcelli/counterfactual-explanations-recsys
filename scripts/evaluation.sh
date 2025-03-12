@@ -6,18 +6,25 @@ target_cat_options=("Horror" "Action" "Adventure" "Animation" "Fantasy" "Drama")
 seed=42
 
 # Dataset specific options
+# #ml1m
 target_items_options_ml1m=(2858 2005 728 2738)
+num_users_ml1m=None
+sample_num_ml1m=200
+
+# #ml100k
 target_items_options_ml100k=(50 411 630 1305)
-num_users_ml1m=200
 num_users_ml100k=None
+sample_num_ml100k=None
 
 # Set target_items_options based on dataset
 if [[ "$dataset" == "ML_1M" ]]; then
     target_items_options=("${target_items_options_ml1m[@]}")
     num_users=("${num_users_ml1m[@]}")
+    sample_num=("${sample_num_ml1m[@]}")
 elif [[ "$dataset" == "ML_100K" ]]; then
     target_items_options=("${target_items_options_ml100k[@]}")
     num_users=("${num_users_ml100k[@]}")
+    sample_num=("${sample_num_ml100k[@]}")
 else
     echo "Error: Invalid dataset. Choose 'ML_100K' or 'ML_1M'."
     exit 1
@@ -131,19 +138,20 @@ echo "python -m bin.cli evaluate alignment \\
     --config_dict='$config_json' \\
     --mode=\"all\" \\
     --range-i=\"(0, $num_users)\" \\
-    --splits=\"[(None, 10, 0)]\""
+    --splits=\"[(None, 10, 0)]\" \\
+    --sample_num=$sample_num
+    "
 echo "=================================="
 
    # Run the script
    python -m bin.cli evaluate alignment \
        --use-cache=False \
-       --save-path="results/evaluate/alignment_tests.db" \
+       --save-path="results/evaluate/alignment_test.db" \
        --config_dict="$config_json" \
        --mode="all" \
        --range-i="(0, $num_users)" \
-       --splits="[(None, 10, 0)]"
-
-
+       --splits="[(None, 10, 0)]" \
+       --sample_num=$sample_num
 
 
 done

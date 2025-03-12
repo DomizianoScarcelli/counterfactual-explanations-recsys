@@ -1,3 +1,4 @@
+from config.config import ConfigParams
 from recbole.data.utils import data_preparation
 import pickle
 from pathlib import Path
@@ -53,7 +54,10 @@ def get_dataloaders(config: Config) -> Tuple[DataLoader, DataLoader, DataLoader]
     Returns:
         The train, val, test torch Dataloaders.
     """
-    init_seed(config["seed"], config["reproducibility"])
+    init_seed(
+        config["seed"] if ConfigParams.SEED == 42 else ConfigParams.SEED,
+        config["reproducibility"],
+    )
     dataset = create_dataset(config)
     train_data, valid_data, test_data = data_preparation(config, dataset)
     return train_data, valid_data, test_data
