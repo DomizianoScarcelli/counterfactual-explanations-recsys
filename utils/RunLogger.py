@@ -330,7 +330,7 @@ class RunLogger:
         print(f"Removed {total_before - total_after} duplicates.")
 
     def to_pandas(self, table: str):
-        from utils import infer_dtype
+        from utils.utils import infer_dtype
 
         query = f"SELECT * FROM {table}"
         df = pd.read_sql_query(query, self.conn)

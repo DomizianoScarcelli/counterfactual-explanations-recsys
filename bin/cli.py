@@ -99,6 +99,7 @@ class RunSwitcher:
             self._run_single()
 
     def _run_single(self, target: Optional[str] = None):
+        print(f"[DEBUG] run_single target: {target}, mode: {self.mode}")
         if target:
             self.pbar.set_description_str(self.og_desc + f" | Target: {target}")
 
@@ -106,7 +107,6 @@ class RunSwitcher:
             db_path=self.save_path, schema=None, add_config=True, merge_cols=True
         )
         if self.mode == "alignment":
-
             run_alignment(
                 target_cat=target,
                 logger=logger,
@@ -348,7 +348,6 @@ class CLIEvaluate:
     def alignment(
         self,
         mode: RunModes = "all",
-        target_cat: Optional[str] = None,
         range_i: Tuple[int, Optional[int]] = (0, None),
         splits: Optional[List[int]] = None,
         use_cache: bool = True,
@@ -373,7 +372,7 @@ class CLIEvaluate:
             use_cache=use_cache,
             save_path=save_path,
             mode=mode,
-            target=target_cat,
+            target=ConfigParams.TARGET_CAT if ConfigParams.TARGET_CAT is not False else None,
         ).run()
 
     def automata_learning(

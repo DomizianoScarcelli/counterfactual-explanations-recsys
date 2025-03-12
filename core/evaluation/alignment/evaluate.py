@@ -9,8 +9,13 @@ from core.alignment.utils import postprocess_alignment
 from core.automata_learning.passive_learning import learning_pipeline
 from config.config import ConfigParams
 from config.constants import cat2id, error_messages
-from exceptions import (CounterfactualNotFound, DfaNotAccepting,
-                        DfaNotRejecting, NoTargetStatesError, SplitNotCoherent)
+from exceptions import (
+    CounterfactualNotFound,
+    DfaNotAccepting,
+    DfaNotRejecting,
+    NoTargetStatesError,
+    SplitNotCoherent,
+)
 from core.generation.utils import equal_ys, labels2cat
 from core.models.utils import topk, trim
 from type_hints import CategorySet, GoodBadDataset
@@ -42,36 +47,6 @@ def single_run(
     aligned = postprocess_alignment(aligned)
     return aligned, cost, alignment
 
-
-def _init_schema(ks: List[int]) -> Dict[str, Any]:
-    log_at_ks = [
-        {
-            f"aligned_gt@{k}": str,
-            f"gt@{k}": str,
-            f"preds_gt@{k}": str,
-            f"score@{k}": float,
-        }
-        for k in ks
-    ]
-    run_log = {
-        "i": int,
-        "split": str,
-        "status": str,
-        "score": float,
-        "source": str,
-        "aligned": str,
-        "alignment": str,
-        "cost": float,
-        "gt": str,
-        "aligned_gt": str,
-        "dataset_time": float,
-        "align_time": float,
-        "automata_learning_time": float,
-    }
-
-    for log_at_k in log_at_ks:
-        run_log = {**run_log, **log_at_k}
-    return run_log
 
 def _init_log(ks: List[int]) -> Dict[str, Any]:
 
@@ -108,8 +83,7 @@ def _init_log(ks: List[int]) -> Dict[str, Any]:
 def log_error(
     i: int, error: str, ks: List[int], split: Split, target_cat: Optional[str] = None
 ) -> Dict[str, Any]:
-    from core.evaluation.genetic.evaluate import \
-        _init_log as gen_init_log
+    from core.evaluation.genetic.evaluate import _init_log as gen_init_log
 
     log = _init_log(ks)
     gen_log = gen_init_log(ks)
@@ -218,9 +192,14 @@ def _evaluate_targeted_uncat(
     source_logits = model(source)
     trimmed_source = trim(source.squeeze()).tolist()
     source_preds = {
-        k: topk(logits=source_logits, k=k, dim=-1, indices=True).squeeze(0) for k in ks
+        k: [
+            {x.item()}
+            for x in topk(logits=source_logits, k=k, dim=-1, indices=True).squeeze(0)
+        ]
+        for k in ks
     }
-    target_preds = {k: [target_cat for _ in range(k)] for k in ks}
+    target_preds = {k: [{target_cat} for _ in range(k)] for k in ks}
+
     try:
         aligned, cost, alignment = single_run(trimmed_source, dataset, split)
 
@@ -232,7 +211,12 @@ def _evaluate_targeted_uncat(
 
         counterfactual_logits = model(aligned)
         counterfactual_preds: Dict[int, List[Tensor]] = {
-            k: topk(logits=counterfactual_logits, k=k, dim=-1, indices=True).squeeze(0)
+            k: [
+                {x.item()}
+                for x in topk(
+                    logits=counterfactual_logits, k=k, dim=-1, indices=True
+                ).squeeze(0)
+            ]
             for k in ks
         }
 

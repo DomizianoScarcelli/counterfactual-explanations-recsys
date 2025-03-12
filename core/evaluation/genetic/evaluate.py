@@ -8,11 +8,15 @@ from core.alignment.alignment import trace_disalignment
 from core.automata_learning.passive_learning import learning_pipeline
 from config.config import ConfigParams
 from config.constants import MAX_LENGTH, cat2id
-from exceptions import (CounterfactualNotFound, DfaNotAccepting,
-                        DfaNotRejecting, EmptyDatasetError,
-                        NoTargetStatesError, SplitNotCoherent)
-from core.generation.utils import (_evaluate_categorized_generation,
-                                   equal_ys, labels2cat)
+from exceptions import (
+    CounterfactualNotFound,
+    DfaNotAccepting,
+    DfaNotRejecting,
+    EmptyDatasetError,
+    NoTargetStatesError,
+    SplitNotCoherent,
+)
+from core.generation.utils import _evaluate_categorized_generation, equal_ys, labels2cat
 from core.models.utils import pad, topk, trim
 from type_hints import GoodBadDataset
 from utils.utils import TimedFunction, seq_tostr
@@ -72,8 +76,7 @@ def _init_log(ks: List[int]) -> Dict[str, Any]:
 def log_error(
     i: int, error: str, ks: List[int], split: Split, target_cat: Optional[str]
 ) -> Dict[str, Any]:
-    from core.evaluation.alignment.evaluate import \
-        _init_log as align_init_log
+    from core.evaluation.alignment.evaluate import _init_log as align_init_log
 
     log = _init_log(ks)
     align_log = align_init_log(ks)
@@ -333,10 +336,14 @@ def _evaluate_targeted_uncat(
     source_logits = model(source)
     trimmed_source = trim(source.squeeze(0))
     source_preds = {
-        k: topk(logits=source_logits, k=k, dim=-1, indices=True).squeeze(0) for k in ks
+        k: [
+            {x.item()}
+            for x in topk(logits=source_logits, k=k, dim=-1, indices=True).squeeze(0)
+        ]
+        for k in ks
     }
 
-    target_preds = {k: [target_cat for _ in range(k)] for k in ks}
+    target_preds = {k: [{target_cat} for _ in range(k)] for k in ks}
 
     # Compute dataset metrics not implemented for targeted uncategorized
     log["gen_good_points_percentage"] = None
@@ -352,7 +359,12 @@ def _evaluate_targeted_uncat(
     counterfactual_logits = model(pad(best_counterfactual, MAX_LENGTH).unsqueeze(0))
     best_counterfactual = trim(best_counterfactual.squeeze())
     counterfactual_preds = {
-        k: topk(logits=counterfactual_logits, k=k, dim=-1, indices=True).squeeze(0)
+        k: [
+            {x.item()}
+            for x in topk(
+                logits=counterfactual_logits, k=k, dim=-1, indices=True
+            ).squeeze(0)
+        ]
         for k in ks
     }
 

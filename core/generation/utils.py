@@ -102,7 +102,9 @@ def equal_ys(
             gt,
             pred,
             return_score=return_score,
-            score_fn=intersection_weighted_ndcg,
+            score_fn=lambda a, b: intersection_weighted_ndcg(
+                a, b, perfect_score=1 if not ConfigParams.CATEGORIZED else None
+            ),
         )
     raise ValueError(f"Types {type(gt)} and {type(pred)} not supported")
 

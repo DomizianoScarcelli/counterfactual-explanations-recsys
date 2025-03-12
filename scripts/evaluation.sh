@@ -119,11 +119,12 @@ echo "=================================="
    # Run the script
    python -m bin.cli evaluate alignment \
        --use-cache=False \
-       --save-path="results/evaluate/alignment.db" \
+       --save-path="results/evaluate/alignment_tests.db" \
        --config_dict="$config_json" \
        --mode="all" \
        --range-i="(0, $num_users)" \
        --splits="[(None, 10, 0)]"
+
 
 
 

@@ -255,8 +255,6 @@ def run_alignment(
             logger.log_run(alignment_log, primary_key)
 
 
-# TODO:
-# - put a boolean 'evaluate' which if false doesn't run the evaluation but just the generation
 def run_all(
     target_cat: Optional[str],
     logger: RunLogger,
@@ -326,7 +324,7 @@ def run_all(
         try:
             dataset, interaction = next(datasets)
         except EmptyDatasetError as e:
-            printd(f"run_full: Raised {type(e)}")
+            print(f"[DEBUG] run_full: Raised {type(e)}")
             for split in splits:
                 alignment_log = log_alignment_error(
                     i=i,
