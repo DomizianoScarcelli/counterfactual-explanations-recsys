@@ -69,6 +69,6 @@ EOF
 
         # Run the script with the JSON string as the --config-dict argument
         python -m bin.cli evaluate sensitivity \
-            --save-path="results/evaluate/sensitivity/sensitivity.db" \
+            --save-path="results/evaluate/sensitivity.db" \
             --config_dict="$config_json"
     done

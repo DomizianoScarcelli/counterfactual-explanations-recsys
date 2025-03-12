@@ -1,0 +1,122 @@
+#!/bin/bash
+
+# Define target options
+dataset="ML_1M" #ML_100K or ML_1M
+target_cat_options=("Horror" "Action" "Adventure" "Animation" "Fantasy" "Drama")
+target_items_options_ml1m=(2858 2005 728 2738)
+target_items_options_ml100k=(50 411 630 1305)
+
+# Set target_items_options based on dataset
+if [[ "$dataset" == "ML_1M" ]]; then
+    target_items_options=("${target_items_options_ml1m[@]}")
+elif [[ "$dataset" == "ML_100K" ]]; then
+    target_items_options=("${target_items_options_ml100k[@]}")
+else
+    echo "Error: Invalid dataset. Choose 'ML_100K' or 'ML_1M'."
+    exit 1
+fi
+
+# Check if sufficient arguments were provided
+if [[ $# -lt 4 ]]; then
+    echo "Usage: $0 <start_index> <end_index> <model> <target_mode> [categorized]"
+    echo "target_mode: targeted | untargeted"
+    echo "categorized: categorized | uncategorized (optional, defaults to uncategorized)"
+    exit 1
+fi
+
+# Parse arguments
+start=$1
+end=$2
+model=$3
+target_mode=$4
+categorized=${5:-uncategorized}  # Default to uncategorized if not provided
+
+# Determine total iterations based on mode
+if [[ "$target_mode" == "targeted" && "$categorized" == "uncategorized" ]]; then
+    total_iterations=${#target_items_options[@]}
+elif [[ "$target_mode" == "targeted" && "$categorized" == "categorized" ]]; then
+    total_iterations=${#target_cat_options[@]}
+else
+    total_iterations=1
+fi
+
+# Validate indices
+if ! [[ "$start" =~ ^[0-9]+$ && "$end" =~ ^[0-9]+$ ]]; then
+    echo "Error: Both <start_index> and <end_index> must be integers."
+    exit 1
+fi
+
+if (( start < 1 || end < 1 || start > total_iterations || end > total_iterations || start > end )); then
+    echo "Error: Invalid range. Ensure 1 <= start_index <= end_index <= $total_iterations."
+    exit 1
+fi
+
+# Adjust indices to be zero-based for the loop
+start=$((start - 1))
+end=$((end - 1))
+
+# Determine target options based on mode
+if [[ "$target_mode" == "targeted" && "$categorized" == "uncategorized" ]]; then
+    target_options=("${target_items_options[@]}")
+elif [[ "$target_mode" == "targeted" && "$categorized" == "categorized" ]]; then
+    target_options=("${target_cat_options[@]}")
+elif [[ "$target_mode" == "untargeted" ]]; then
+    target_options=("") # No target option needed
+else
+    echo "Error: Invalid mode combination."
+    exit 1
+fi
+
+# Initialize iteration counter
+iteration=0
+
+# Iterate over target options
+for target in "${target_options[@]}"; do
+    ((iteration++))
+
+    # Skip iterations outside the specified range
+    if (( iteration < start + 1 || iteration > end + 1 )); then
+        continue
+    fi
+
+    echo "Iteration $iteration of $total_iterations (Executing range $((start + 1)) to $((end + 1)))"
+
+    # Construct JSON configuration
+    config_json=$(cat <<EOF
+{
+"settings": {
+    "model": "$model",
+    "device": "cpu"
+    },
+    $( [[ "$target_mode" == "targeted" ]] && echo "\"evolution\": { \"target_cat\": $target }," )
+  "generation": {
+    "targeted": $( [[ "$target_mode" == "targeted" ]] && echo "true" || echo "false" ),
+    "categorized": $( [[ "$categorized" == "categorized" ]] && echo "true" || echo "false" )
+  }
+}
+EOF
+)
+
+    # Print the configuration for debugging
+#    echo "Running script:"
+echo "python -m bin.cli evaluate alignment \\
+    --use-cache=False \\
+    --save-path=\"results/evaluate/alignment.db\" \\
+    --config_dict='$config_json' \\
+    --mode=\"all\" \\
+    --range-i=\"(0, None)\" \\
+    --splits=\"[(None, 10, 0)]\""
+
+#    # Run the script
+#    python -m bin.cli evaluate alignment \
+#        --use-cache=False \
+#        --save-path="results/evaluate/alignment.db" \
+#        --config_dict="$config_json" \
+#        --mode="all" \
+#        --range-i="(0, None)" \
+#        --splits="[(None, 10, 0)]" \
+#        $( [[ "$target_mode" == "targeted" ]] && echo "--target-cat=\"$target\"")
+
+
+
+done
