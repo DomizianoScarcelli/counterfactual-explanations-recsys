@@ -60,8 +60,13 @@ def get_config(
         "save_dataset": save_dataset,
         "train_batch_size": ConfigParams.TRAIN_BATCH_SIZE,
         "device": ConfigParams.DEVICE,
+        "seed": (
+            ConfigParams.SEED if ConfigParams.SEED != 42 else 2020
+        ),  # since in experiments with seed 42, the RecBole seed was left as default, we leave it as the default 2020 value when the seed is 42.
         # "n_heads": 1,
     }
-    return Config(
+    conf = Config(
         model=model.value, dataset=dataset.value, config_dict=parameter_dict_ml1m
     )
+    # print(f"[DEBUG] RecBole Config:", conf)
+    return conf

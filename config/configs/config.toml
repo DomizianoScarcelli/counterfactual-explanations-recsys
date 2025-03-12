@@ -8,6 +8,7 @@ device = "cpu"
 model = "BERT4Rec"          # Name of the model being used
 dataset = "ML_100K"         # Dataset identifier 
 determinism = true          # Ensure deterministic runs 
+seed = 42                 # Random seed for determinism
 train_batch_size = 1        # Batch size for training
 test_batch_size = 1         # Batch size for testing
 topk = [1, 5, 10, 20]       # K to use when sampling topk

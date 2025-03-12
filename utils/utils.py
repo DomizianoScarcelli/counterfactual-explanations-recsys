@@ -1,3 +1,4 @@
+from typing import Optional
 import random
 import time
 from functools import wraps
@@ -34,7 +35,9 @@ class SeedSetter:
         return cls._instance
 
     @classmethod
-    def set_seed(cls, seed: int = 42):
+    def set_seed(cls, seed: Optional[int] = None):
+        if seed is None:
+            seed = ConfigParams.SEED
         # Check if we are trying to change the seed once it's already set
         if cls.previous_seed is not None:
             raise ValueError(

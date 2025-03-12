@@ -3,6 +3,7 @@
 # Define target options
 dataset="ML_1M" #ML_100K or ML_1M
 target_cat_options=("Horror" "Action" "Adventure" "Animation" "Fantasy" "Drama")
+seed=42
 
 # Dataset specific options
 target_items_options_ml1m=(2858 2005 728 2738)
@@ -36,6 +37,22 @@ end=$2
 model=$3
 target_mode=$4
 categorized=${5:-uncategorized}  # Default to uncategorized if not provided
+
+shift 5  # Shift arguments so we can process additional flags
+
+# Parse optional flags
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --seed=*)
+            seed="${1#*=}"  # Extract seed value
+            ;;
+        *)
+            echo "Unknown argument: $1"
+            exit 1
+            ;;
+    esac
+    shift
+done
 
 # Determine total iterations based on mode
 if [[ "$target_mode" == "targeted" && "$categorized" == "uncategorized" ]]; then
@@ -93,7 +110,8 @@ for target in "${target_options[@]}"; do
 "settings": {
     "model": "$model",
     "device": "cpu",
-    "dataset": "$dataset"
+    "dataset": "$dataset",
+    "seed": $seed
     },
     $( [[ "$target_mode" == "targeted" ]] && echo "\"evolution\": { \"target_cat\": $target }," )
   "generation": {

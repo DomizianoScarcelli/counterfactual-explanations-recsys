@@ -1,10 +1,11 @@
+from recbole.data.utils import data_preparation
 import pickle
 from pathlib import Path
 from typing import Set, Tuple
 
 import torch
 from recbole.config import Config
-from recbole.data import create_dataset, data_preparation
+from recbole.data import create_dataset
 from recbole.data.interaction import Interaction
 from recbole.utils import init_seed
 from torch import Tensor
@@ -76,7 +77,8 @@ def make_deterministic(dataset: Tuple[Dataset, Dataset]) -> Tuple[Dataset, Datas
     dataset = (new_g, new_b)
     printd(
         f"Dataset len after making it deterministic: {
-          len(new_g)}, {len(new_b)}", level=1
+          len(new_g)}, {len(new_b)}",
+        level=1,
     )
     return dataset
 

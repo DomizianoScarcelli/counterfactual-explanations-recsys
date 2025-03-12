@@ -115,6 +115,7 @@ class ConfigParams:
             # Set parameters directly as class attributes
             cls.DEBUG = config["debug"]["debug"]
             cls.DETERMINISM = config["settings"]["determinism"]
+            cls.SEED = config["settings"]["seed"]
             cls.DEVICE = torch.device(config["settings"]["device"])
             cls.MODEL = RecModel[config["settings"]["model"]]
             cls.DATASET = RecDataset[config["settings"]["dataset"]]
@@ -249,6 +250,7 @@ class ConfigParams:
             "generation_strategy": [ConfigParams.GENERATION_STRATEGY] * length,
             "ignore_genetic_split": [ConfigParams.IGNORE_GEN_SPLIT] * length,
             "jaccard_threshold": [ConfigParams.THRESHOLD] * length,
+            "seed": [ConfigParams.SEED] * length,
             "timestamp": [ConfigParams.TIMESTAMP] * length,
         }
         if not pandas:
