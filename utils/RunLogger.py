@@ -1,5 +1,6 @@
 import sqlite3
 from pathlib import Path
+import time
 from typing import Any, Dict, List, Optional, Set, Union
 
 import pandas as pd
@@ -20,6 +21,7 @@ class RunLogger:
         self.schema = self._normalize_schema(schema) if schema else {}
         self.add_config = add_config
         self.conn = sqlite3.connect(db_path, check_same_thread=False)
+        # self.conn.execute("PRAGMA journal_mode=WAL")
         self.cursor = self.conn.cursor()
         self.blacklist = ["timestamp", "target_cat", "_id", "rowid"]
 
@@ -132,6 +134,20 @@ class RunLogger:
         strict: bool = True,
         tostr: bool = False,
     ):
+        try:
+            self._log_run(log, primary_key, strict, tostr)
+        except sqlite3.OperationalError:
+            print("DATABASE LOCKED; sleeping for 3 seconds and trying again")
+            time.sleep(3)
+            self.log_run(log, primary_key, strict, tostr)
+
+    def _log_run(
+        self,
+        log: Dict[str, Any],
+        primary_key: Optional[List[str]] = None,
+        strict: bool = True,
+        tostr: bool = False,
+    ):
         # Normalize column names in the log
         log = {self._normalize_column_name(key): value for key, value in log.items()}
 
@@ -186,7 +202,7 @@ class RunLogger:
             columns = ", ".join(log.keys())
             placeholders = ", ".join(["?" for _ in log])
             values = tuple(log.values())
-            
+
             self.cursor.execute(
                 f"INSERT INTO logs ({columns}) VALUES ({placeholders})", values
             )
