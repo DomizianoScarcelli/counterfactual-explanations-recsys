@@ -2,16 +2,27 @@ import sqlite3
 from pathlib import Path
 import time
 from typing import Any, Dict, List, Optional, Set, Union
+from dotenv import load_dotenv
+import os
 
 import pandas as pd
-
+import libsql_experimental as libsql
 from config.config import ConfigParams
+
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+dotenv_path = os.path.join(ROOT_DIR, ".env")
+load_dotenv(dotenv_path)
+
+TURSO_URL = os.getenv("TURSO_URL")
+TURSO_TOKEN = os.getenv("TURSO_TOKEN")
 
 
 class RunLogger:
     def __init__(
         self,
-        db_path: Union[str, Path],
+        db_path: Optional[Union[str, Path]],
+        local: Optional[bool] = None,
+        sync: Optional[bool] = False,
         schema: Optional[Dict[str, Any]] = None,
         add_config: bool = False,
         merge_cols: bool = True,  # Changed default to True since it's needed for schema-less operation
@@ -20,9 +31,19 @@ class RunLogger:
         self.merge_cols = merge_cols
         self.schema = self._normalize_schema(schema) if schema else {}
         self.add_config = add_config
-        self.conn = sqlite3.connect(db_path, check_same_thread=False)
-        # self.conn.execute("PRAGMA journal_mode=WAL")
-        self.cursor = self.conn.cursor()
+        self.local = local if local is not None else ConfigParams.LOCAL
+        if not self.local:
+            if sync:
+                self.conn = libsql.connect(
+                    "local.db", sync_url=TURSO_URL, auth_token=TURSO_TOKEN
+                )
+                self.conn.sync()
+            else:
+                self.conn = libsql.connect(TURSO_URL, auth_token=TURSO_TOKEN)
+            self.cursor = self.conn.cursor()
+        else:
+            self.conn = sqlite3.connect(db_path, check_same_thread=False)
+            self.cursor = self.conn.cursor()
         self.blacklist = ["timestamp", "target_cat", "_id", "rowid"]
 
         # Add config parameters to schema if add_config is True
@@ -58,12 +79,19 @@ class RunLogger:
         else:
             return "TEXT"  # Default to TEXT for unknown types
 
+    def fetch_one(self, query, params=None):
+        # if self.local:
+        self.cursor.execute(query, params or ())
+        return self.cursor.fetchone()
+        # else:
+        #     result = self.cursor.execute(query, params or []).rows
+        #     return [result[0]] if result else None
+
     def _check_or_init_db(self):
         """Check if the database exists and initialize if needed."""
-        self.cursor.execute(
+        table_exists = self.fetch_one(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='logs';"
         )
-        table_exists = self.cursor.fetchone()
 
         if not table_exists:
             # If no schema provided, create an empty table with a temporary column
@@ -131,7 +159,7 @@ class RunLogger:
         self,
         log: Dict[str, Any],
         primary_key: Optional[List[str]] = None,
-        strict: bool = True,
+        strict: bool = False,
         tostr: bool = False,
     ):
         try:
@@ -145,7 +173,7 @@ class RunLogger:
         self,
         log: Dict[str, Any],
         primary_key: Optional[List[str]] = None,
-        strict: bool = True,
+        strict: bool = False,
         tostr: bool = False,
     ):
         # Normalize column names in the log
@@ -194,8 +222,7 @@ class RunLogger:
             # Get count before insertion (strict mode check)
             count_before = None
             if strict:
-                self.cursor.execute("SELECT COUNT(*) FROM logs;")
-                count_before = self.cursor.fetchone()[0]
+                count_before = self.fetch_one("SELECT COUNT(*) FROM logs;")[0]
 
             if tostr:
                 log = {k: str(v) for k, v in log.items()}
@@ -210,8 +237,7 @@ class RunLogger:
 
             # Get count after insertion (strict mode check)
             if strict:
-                self.cursor.execute("SELECT COUNT(*) FROM logs;")
-                count_after = self.cursor.fetchone()[0]
+                count_after = self.fetch_one("SELECT COUNT(*) FROM logs;")[0]
 
                 if count_before is not None and count_after <= count_before:
                     print(
@@ -250,8 +276,7 @@ class RunLogger:
             bool: True if a matching record exists, False otherwise
         """
         # Check if the table is empty
-        self.cursor.execute("SELECT COUNT(*) FROM logs")
-        if self.cursor.fetchone()[0] == 0:
+        if self.fetch_one("SELECT COUNT(*) FROM logs")[0] == 0:
             return False  # Table is empty, so no record can exist
 
         log = {self._normalize_column_name(k): v for k, v in log.items()}
@@ -283,8 +308,10 @@ class RunLogger:
             key_values = tuple(str(log[k]) for k in primary_key)
             key_str = " AND ".join([f"CAST({k} AS TEXT) = ?" for k in primary_key])
 
-        self.cursor.execute(f"SELECT 1 FROM logs WHERE {key_str}", key_values)
-        return self.cursor.fetchone() is not None
+        return (
+            self.fetch_one(f"SELECT 1 FROM logs WHERE {key_str}", key_values)
+            is not None
+        )
 
     def get_logs(self) -> pd.DataFrame:
         pd.set_option("display.max_rows", None)
@@ -324,8 +351,7 @@ class RunLogger:
         # Ensure proper grouping and handle NULLs
         key_str = ", ".join([f"CAST({k} as TEXT)" for k in primary_key])
 
-        self.cursor.execute("SELECT COUNT(*) FROM logs")
-        total_before = self.cursor.fetchone()[0]
+        total_before = self.fetch_one("SELECT COUNT(*) FROM logs")[0]
 
         self.cursor.execute(
             f"""
@@ -340,8 +366,7 @@ class RunLogger:
 
         self.conn.commit()  # Ensure changes are saved_models
 
-        self.cursor.execute("SELECT COUNT(*) FROM logs")
-        total_after = self.cursor.fetchone()[0]
+        total_after = self.fetch_one("SELECT COUNT(*) FROM logs")[0]
 
         print(f"Removed {total_before - total_after} duplicates.")
 

@@ -13,6 +13,41 @@ DBType: TypeAlias = Literal["sensitivity", "alignment", "automata_learning"]
 
 
 class DBCLI:
+    def upload_local(self, db_file: str, batch_size: int = 100):
+        os.environ["RUST_LOG"] = "error"
+        logger = RunLogger(
+            db_path=db_file, schema=None, add_config=False, merge_cols=False, local=True
+        )
+        remote = RunLogger(db_path=None, schema=None, add_config=False, local=False)
+
+        # Fetch logs as a DataFrame
+        logs_df = logger.query("SELECT * FROM logs")
+
+        # Convert DataFrame to list of dicts for efficient iteration
+        logs = logs_df.to_dict(orient="records")
+
+        # Process in batches
+        total_batches = (len(logs) + batch_size - 1) // batch_size  # Ceiling division
+        for i in tqdm(
+            range(0, len(logs), batch_size),
+            desc="Uploading logs",
+            unit="batch",
+            total=total_batches,
+        ):
+            batch = logs[i : i + batch_size]
+            for item_i, item in enumerate(
+                tqdm(batch, desc=f"Uploading batch {i}", leave=False)
+            ):
+                try:
+                    remote.log_run(log=item, tostr=True)
+                except Exception as e:
+                    print(
+                        f"[ERROR] Failed to upload batch {i//batch_size + 1} item {item_i}: {e}"
+                    )
+                    continue
+
+        print("[INFO] Upload completed.")
+
     def import_csv(
         self,
         csv_file: str,

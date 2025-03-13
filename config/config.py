@@ -19,6 +19,7 @@ class DebugConfig(TypedDict):
 class SettingsConfig(TypedDict):
     device: str
     model: str
+    seed: int
     dataset: str
     determinism: bool
     train_batch_size: int
@@ -54,6 +55,7 @@ class EvolutionConfig(TypedDict):
     allowed_mutations: List[str]
     mut_prob: float
     crossover_prob: float
+    local: bool
 
 
 class ConfigDict(TypedDict):
@@ -133,6 +135,7 @@ class ConfigParams:
             cls.IGNORE_GEN_SPLIT = config["generation"]["ignore_genetic_split"]
             cls.GENETIC_TOPK = config["generation"]["genetic_topk"]
 
+            cls.LOCAL = config["evolution"]["local"]
             cls.GENERATIONS = config["evolution"]["generations"]
             cls.TARGET_CAT = config["evolution"]["target_cat"]
             cls.POP_SIZE = config["evolution"]["pop_size"]
