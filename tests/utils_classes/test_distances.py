@@ -1,9 +1,9 @@
 import pytest
 from torch import tensor
 
-from config import ConfigParams
-from utils_classes.distances import (intersection_weighted_ndcg, ndcg,
-                                     precision_at)
+from config.config import ConfigParams
+from utils.distances import (intersection_weighted_ndcg, ndcg,
+                         precision_at)
 
 
 class TestPrecisionAtK:

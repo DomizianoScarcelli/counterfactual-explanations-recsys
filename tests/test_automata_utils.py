@@ -1,4 +1,4 @@
-from automata_learning.utils import invert_automata, run_automata
+from core.automata_learning.utils import invert_automata, run_automata
 
 
 def test_invert_automata(mock_a_dfa_aug, mock_original_trace):

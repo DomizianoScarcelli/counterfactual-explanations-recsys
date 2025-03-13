@@ -1,19 +1,18 @@
 import json
-import os
 from pathlib import Path
 
 import pandas as pd
 
-from config import ConfigParams
-from generation.utils import token2id
-from models.config_utils import get_config
+from config.config import ConfigParams
+from core.generation.utils import token2id
+from core.models.config_utils import get_config
 from type_hints import RecDataset
 
 
 def create_category_mapping():
     """
     This script processes the MovieLens 1M dataset to create a mapping between internal item IDs and their associated
-    categories (genres). The resulting mapping is saved as a JSON file for further use.
+    categories (genres). The resulting mapping is saved_models as a JSON file for further use.
 
     The json file is used by `generation.utils.get_category_map()`
     """

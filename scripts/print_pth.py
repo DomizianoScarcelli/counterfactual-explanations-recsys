@@ -1,7 +1,7 @@
 import fire
 import torch
 
-from config import ConfigParams
+from config.config import ConfigParams
 
 
 def print_pth(pth_path:str):

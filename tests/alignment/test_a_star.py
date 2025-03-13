@@ -1,9 +1,8 @@
 import pytest
 from aalpy.automata.Dfa import Dfa, DfaState
 
-from alignment.a_star import a_star, get_target_states
-from alignment.alignment import align
-from automata_learning.utils import run_automata
+from core.alignment.a_star import a_star, get_target_states
+from core.alignment.alignment import align
 
 
 @pytest.fixture()

@@ -3,13 +3,13 @@ from statistics import mean
 import torch
 from tqdm import tqdm
 
-from config import ConfigParams
-from generation.utils import Items, get_items
-from models.config_utils import generate_model, get_config
-from models.utils import topk
+from config.config import ConfigParams
+from core.generation.utils import Items, get_items
+from core.models.config_utils import generate_model, get_config
+from core.models.utils import topk
 from type_hints import RecDataset
-from utils_classes.distances import jaccard_sim, ndcg_at, precision_at
-from utils_classes.generators import SequenceGenerator
+from utils.distances import jaccard_sim, ndcg_at, precision_at
+from utils.generators import SequenceGenerator
 
 
 def test_ModelSensitivity_YieldsCorrectMetrics_WhenSequencesAreAllEqual():

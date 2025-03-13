@@ -3,10 +3,10 @@ import torch
 from torch import Tensor
 from tqdm import tqdm
 
-from generation.dataset.utils import interaction_to_tensor
-from models.extended_models.ExtendedBERT4Rec import ExtendedBERT4Rec
-from models.model_funcs import model_predict
-from utils_classes.generators import InteractionGenerator
+from core.generation.dataset.utils import interaction_to_tensor
+from core.models.extended_models.ExtendedBERT4Rec import ExtendedBERT4Rec
+from core.models.model_funcs import model_predict
+from utils.generators import InteractionGenerator
 
 
 @pytest.fixture()

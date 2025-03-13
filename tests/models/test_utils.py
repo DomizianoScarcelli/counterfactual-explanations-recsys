@@ -3,7 +3,7 @@ import re
 import pytest
 import torch
 
-from models.utils import pad, pad_batch, trim
+from core.models.utils import pad, pad_batch, trim
 
 
 class TestTrimZeros:

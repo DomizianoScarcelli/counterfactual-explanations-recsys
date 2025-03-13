@@ -1,4 +1,4 @@
-from utils_classes.Split import Split
+from utils.Split import Split
 
 
 def test_split_creation():

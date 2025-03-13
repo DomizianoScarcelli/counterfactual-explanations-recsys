@@ -1,11 +1,11 @@
 import torch
 
-from config import ConfigParams
-from generation.dataset.utils import (are_dataset_equal, dataset_difference,
-                                      get_dataloaders, interaction_to_tensor)
-from models.utils import replace_padding
+from config.config import ConfigParams
+from core.generation.dataset.utils import (are_dataset_equal, dataset_difference,
+                                           interaction_to_tensor)
+from core.models.utils import replace_padding
 from type_hints import Dataset
-from utils_classes.generators import InteractionGenerator
+from utils.generators import InteractionGenerator
 
 
 class TestGetSequenceFromInteraction:

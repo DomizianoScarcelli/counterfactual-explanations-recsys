@@ -1,15 +1,15 @@
 from deap.base import deepcopy
 from tqdm import tqdm
 
-from config import ConfigParams
-from constants import PADDING_CHAR
-from generation.dataset.generate import generate
-from generation.dataset.utils import (are_dataset_equal, dataset_difference,
-                                      get_dataloaders, interaction_to_tensor)
-from generation.utils import NumItems
-from models.config_utils import generate_model, get_config
+from config.config import ConfigParams
+from config.constants import PADDING_CHAR
+from core.generation.dataset.generate import generate
+from core.generation.dataset.utils import (are_dataset_equal, dataset_difference,
+                                           get_dataloaders, interaction_to_tensor)
+from core.generation.utils import NumItems
+from core.models.config_utils import generate_model, get_config
 from type_hints import RecDataset
-from utils_classes.generators import DatasetGenerator, SequenceGenerator
+from utils.generators import SequenceGenerator
 
 
 def test_RangeOfItemsIsCorrect():

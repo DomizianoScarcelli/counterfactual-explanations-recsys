@@ -1,14 +1,12 @@
 import pytest
-from recbole.config import Config
 from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
 from torch import Tensor
 
-from config import ConfigParams
-from generation.dataset.utils import interaction_to_tensor
-from models.config_utils import generate_model, get_config
-from models.model_funcs import model_predict
-from utils_classes.generators import InteractionGenerator
+from core.generation.dataset.utils import interaction_to_tensor
+from core.models.config_utils import generate_model
+from core.models.model_funcs import model_predict
+from utils.generators import InteractionGenerator
 
 
 @pytest.fixture()

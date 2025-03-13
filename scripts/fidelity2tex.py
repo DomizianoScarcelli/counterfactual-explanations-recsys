@@ -4,8 +4,8 @@ import re
 import fire
 import pandas as pd
 
-from constants import cat2id
-from utils import load_log
+from config.constants import cat2id
+from utils.utils import load_log
 
 strategy_mapping = {
     "targeted": "Targeted-Categorized",
@@ -190,7 +190,7 @@ def df2latex(
     Convert a Markdown table to a LaTeX longtable and save it to a file.
 
     :param md_table: A string containing the Markdown table.
-    :param output_file: The file path where the LaTeX table should be saved.
+    :param output_file: The file path where the LaTeX table should be saved_models.
     """
     if drop_last_col:
         df = df.iloc[:, :-1]  # Remove last column (strategy)
@@ -243,7 +243,7 @@ def df2latex(
     with open(output_file, "w") as f:
         f.write(latex_table)
 
-    print(f"LaTeX table saved to {output_file}")
+    print(f"LaTeX table saved_models to {output_file}")
 
 
 def main(log_path: str):
