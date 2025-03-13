@@ -95,7 +95,7 @@ def model_sensitivity_universal(
     }
 
     if log_path:
-        logger = RunLogger(db_path=log_path, schema=log, add_config=False)
+        logger = RunLogger(db_path=log_path, schema=log, add_config=False, local=True)
 
     if ConfigParams.DATASET in [RecDataset.ML_1M, RecDataset.ML_100K]:
         alphabet = torch.tensor(list(get_items()))

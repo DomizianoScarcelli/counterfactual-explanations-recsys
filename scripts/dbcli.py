@@ -61,7 +61,7 @@ class DBCLI:
             raise FileNotFoundError(f"The file {csv_file} does not exist.")
         df = pd.read_csv(csv_file)
         logger = RunLogger(
-            db_file, schema=None, add_config=False, merge_cols=merge_cols
+            db_file, schema=None, add_config=False, merge_cols=merge_cols, local=True
         )
         batch = []
         for _, row in tqdm(df.iterrows(), total=len(df)):

@@ -102,7 +102,7 @@ def evaluate(
     logger = None
     if save_path:
         logger = RunLogger(
-            db_path=save_path, schema=None, add_config=True, merge_cols=True
+            db_path=save_path, schema=None, add_config=True, merge_cols=True, local=True
         )
 
     pbar = tqdm(
