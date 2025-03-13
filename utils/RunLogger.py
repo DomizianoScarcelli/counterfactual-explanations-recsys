@@ -32,6 +32,7 @@ class RunLogger:
         self.schema = self._normalize_schema(schema) if schema else {}
         self.add_config = add_config
         self.local = local if local is not None else ConfigParams.LOCAL
+
         if not self.local:
             if sync:
                 self.conn = libsql.connect(
@@ -40,10 +41,11 @@ class RunLogger:
                 self.conn.sync()
             else:
                 self.conn = libsql.connect(TURSO_URL, auth_token=TURSO_TOKEN)
-            self.cursor = self.conn.cursor()
+            self.cursor = self.conn
         else:
             self.conn = sqlite3.connect(db_path, check_same_thread=False)
             self.cursor = self.conn.cursor()
+
         self.blacklist = ["timestamp", "target_cat", "_id", "rowid"]
 
         # Add config parameters to schema if add_config is True
@@ -80,12 +82,11 @@ class RunLogger:
             return "TEXT"  # Default to TEXT for unknown types
 
     def fetch_one(self, query, params=None):
-        # if self.local:
-        self.cursor.execute(query, params or ())
-        return self.cursor.fetchone()
-        # else:
-        #     result = self.cursor.execute(query, params or []).rows
-        #     return [result[0]] if result else None
+        # query_with_limit = query.strip() + " LIMIT 1"
+        return self.cursor.execute(query, params or ()).fetchone()
+        # if len(result) == 0:
+        #     return None
+        # return result[0]
 
     def _check_or_init_db(self):
         """Check if the database exists and initialize if needed."""
@@ -160,7 +161,7 @@ class RunLogger:
         log: Dict[str, Any],
         primary_key: Optional[List[str]] = None,
         strict: bool = False,
-        tostr: bool = False,
+        tostr: bool = True,
     ):
         try:
             self._log_run(log, primary_key, strict, tostr)

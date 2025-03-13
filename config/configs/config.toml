@@ -25,7 +25,7 @@ genetic_topk = 1            # the topk to use when computing scores in the datas
 
 # Settings for the evolutionary algorithm
 [evolution]
-local=false                 # Wheter to store evaluation results in a local or remote db
+local=true                 # Wheter to store evaluation results in a local or remote db
 generations = 10            # Number of generations in the evolutionary process
 target_cat = false          # Target category (if false, it will run over all the categories)
 pop_size = 8192             # Population size for the algorithm

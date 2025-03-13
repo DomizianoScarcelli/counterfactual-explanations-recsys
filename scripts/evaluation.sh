@@ -146,7 +146,7 @@ echo "=================================="
    # Run the script
    python -m bin.cli evaluate alignment \
        --use-cache=False \
-       --save-path="results/evaluate/alignment_test.db" \
+       --save-path="results/evaluate/alignment.db" \
        --config_dict="$config_json" \
        --mode="all" \
        --range-i="(0, $num_users)" \
