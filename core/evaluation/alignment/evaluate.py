@@ -399,7 +399,7 @@ def evaluate_alignment(
             split=split,
         )
     if target_cat is None and categorized:
-        return _evaluate_untargeted_uncat(
+        return _evaluate_untargeted_cat(
             i=i, dataset=dataset, source=source, model=model, ks=ks, split=split
         )
     if target_cat is None and not categorized:
