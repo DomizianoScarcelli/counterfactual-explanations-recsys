@@ -46,7 +46,10 @@ def skip_sequence(
 
     new_row.update(ConfigParams.configs_dict(pandas=False, tostr=True))
 
-    return logger.exists(log=new_row, primary_key=primary_key, consider_config=True)
+    exists = logger.exists(log=new_row, primary_key=primary_key, consider_config=True)
+    if exists:
+        printd(f"Skipping in {logger.db_path}", new_row)
+    return exists
 
 
 def parse_splits(splits: Optional[List[tuple]] = None) -> List[Split]:  # type: ignore
@@ -393,6 +396,5 @@ def run_all(
 
             alignment_logs.append(alignment_log)
 
-        logs = []
         for alignment_log in alignment_logs:
             logger.log_run({**genetic_log, **alignment_log}, primary_key=primary_key)

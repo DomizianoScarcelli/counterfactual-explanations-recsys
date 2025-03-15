@@ -309,7 +309,6 @@ def _evaluate_untargeted_cat(
         printd(f"run_full: Raised {type(e)}")
         log = log_error(i, error=error_messages[type(e)], ks=ks, split=split)
     return log
-    pass
 
 
 def _evaluate_untargeted_uncat(

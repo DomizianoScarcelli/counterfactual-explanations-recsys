@@ -149,27 +149,28 @@ def compute_fidelity(df: pd.DataFrame) -> dict:
     gen_score_columns = [col for col in df.columns if col.startswith("gen_score")]
     all_score_columns = score_columns + gen_score_columns
 
-    similarity_threshold = df["jaccard_threshold"]
+    similarity_threshold = pd.to_numeric(df["jaccard_threshold"], errors="coerce")
 
     # Iterate over each score column
     error_col = "error" if "error" in df.columns else "gen_error"
     for score_col in all_score_columns:
+        df[score_col] = pd.to_numeric(df[score_col], errors="coerce")
         # Handle cases where values are None or error is not None
         if all(df["gen_strategy"] == "targeted") or all(
             df["gen_strategy"] == "targeted_uncategorized"
         ):
             good_generation = (
-                (df[score_col] > similarity_threshold)
-                & (df[score_col].notna())
+                (df[score_col].notna())
                 & (df[error_col].isna())
+                & (df[score_col] > similarity_threshold)
             ).sum()
         elif all(df["gen_strategy"] == "genetic") or all(
             df["gen_strategy"] == "genetic_categorized"
         ):
             good_generation = (
-                (df[score_col] < similarity_threshold)
-                & (df[score_col].notna())
+                (df[score_col].notna())
                 & (df[error_col].isna())
+                & (df[score_col] < similarity_threshold)
             ).sum()
         else:
             raise ValueError(
@@ -216,5 +217,7 @@ def compute_edit_distance(df: pd.DataFrame) -> dict:
 
 def compute_running_times(df: pd.DataFrame) -> dict:
     time_columns = [col for col in df.columns if col.endswith("time")]
+    for col in time_columns:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
     time_means = {col: df[col].mean() for col in time_columns}
     return time_means

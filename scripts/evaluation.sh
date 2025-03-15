@@ -16,19 +16,7 @@ target_items_options_ml100k=(50 411 630 1305)
 num_users_ml100k=None
 sample_num_ml100k=None
 
-# Set target_items_options based on dataset
-if [[ "$dataset" == "ML_1M" ]]; then
-    target_items_options=("${target_items_options_ml1m[@]}")
-    num_users=("${num_users_ml1m[@]}")
-    sample_num=("${sample_num_ml1m[@]}")
-elif [[ "$dataset" == "ML_100K" ]]; then
-    target_items_options=("${target_items_options_ml100k[@]}")
-    num_users=("${num_users_ml100k[@]}")
-    sample_num=("${sample_num_ml100k[@]}")
-else
-    echo "Error: Invalid dataset. Choose 'ML_100K' or 'ML_1M'."
-    exit 1
-fi
+
 
 # Check if sufficient arguments were provided
 if [[ $# -lt 4 ]]; then
@@ -48,10 +36,14 @@ categorized=${5:-uncategorized}  # Default to uncategorized if not provided
 shift 5  # Shift arguments so we can process additional flags
 
 # Parse optional flags
+# Parse optional flags
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --seed=*)
             seed="${1#*=}"  # Extract seed value
+            ;;
+        --dataset=*)
+            dataset="${1#*=}"  # Extract dataset value
             ;;
         *)
             echo "Unknown argument: $1"
@@ -60,6 +52,20 @@ while [[ $# -gt 0 ]]; do
     esac
     shift
 done
+
+# Set target_items_options based on dataset
+if [[ "$dataset" == "ML_1M" ]]; then
+    target_items_options=("${target_items_options_ml1m[@]}")
+    num_users=("${num_users_ml1m[@]}")
+    sample_num=("${sample_num_ml1m[@]}")
+elif [[ "$dataset" == "ML_100K" ]]; then
+    target_items_options=("${target_items_options_ml100k[@]}")
+    num_users=("${num_users_ml100k[@]}")
+    sample_num=("${sample_num_ml100k[@]}")
+else
+    echo "Error: Invalid dataset. Choose 'ML_100K' or 'ML_1M'."
+    exit 1
+fi
 
 # Determine total iterations based on mode
 if [[ "$target_mode" == "targeted" && "$categorized" == "uncategorized" ]]; then
@@ -146,7 +152,7 @@ echo "=================================="
    # Run the script
    python -m bin.cli evaluate alignment \
        --use-cache=False \
-       --save-path="results/evaluate/alignment_test.db" \
+       --save-path="results/evaluate/alignment.db" \
        --config_dict="$config_json" \
        --mode="all" \
        --range-i="(0, $num_users)" \

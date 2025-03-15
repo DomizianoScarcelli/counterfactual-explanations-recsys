@@ -40,7 +40,7 @@ class CategorizedGeneticStrategy(GeneticStrategy):
         k: int = ConfigParams.GENETIC_TOPK,
         good_examples: bool = True,
         halloffame_ratio: float = 0.1,
-        verbose: bool = True,
+        verbose: bool = ConfigParams.DEBUG > 0,
         split: Optional[Split] = None,
     ):
         """
