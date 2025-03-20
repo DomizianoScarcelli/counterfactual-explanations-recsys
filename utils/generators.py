@@ -25,6 +25,7 @@ from core.models.config_utils import generate_model, get_config
 from core.models.model_funcs import model_predict
 from type_hints import GoodBadDataset
 from utils.Split import Split
+# from recbole.data.interaction import Interaction
 
 
 class SkippableGenerator(ABC):
@@ -475,6 +476,6 @@ if __name__ == "__main__":
     confg = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
     ints = InteractionGenerator(confg)
     count = 0
-    for i in ints:
-        count += 1
-    print(f"There are {count} sequences")
+    for i, inter in enumerate(ints):
+        print(f"Interactiona at {i} is", inter)
+        break

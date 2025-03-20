@@ -39,7 +39,7 @@ cat2id = {
 
 id2cat = {value: key for key, value in cat2id.items()}
 
-SUPPORTED_DATASETS = [RecDataset.ML_1M, RecDataset.ML_100K]
+SUPPORTED_DATASETS = [RecDataset.ML_1M, RecDataset.ML_100K, RecDataset.LASTFM]
 
 error_messages = {
     DfaNotAccepting: "DfaNotAccepting",

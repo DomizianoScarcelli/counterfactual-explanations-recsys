@@ -1,3 +1,4 @@
+from config.constants import SUPPORTED_DATASETS
 import json
 from pathlib import Path
 
@@ -16,14 +17,13 @@ def create_category_mapping():
 
     The json file is used by `generation.utils.get_category_map()`
     """
-    dataset_path = Path(f"dataset/{ConfigParams.DATASET.value}")
-    get_config(
-        dataset=ConfigParams.DATASET, model=ConfigParams.MODEL, save_dataset=True
-    )
+    dataset = ConfigParams.DATASET
+    dataset_path = Path(f"dataset/{dataset.value}")
+    get_config(dataset=dataset, model=ConfigParams.MODEL, save_dataset=True)
     if not dataset_path.exists():
         # Generate the dataset
         raise ValueError(
-            f"Dataset {ConfigParams.DATASET.value} not found, make sure to download the .zip from https://drive.google.com/drive/folders/1ahiLmzU7cGRPXf5qGMqtAChte2eYp9gI and unzip it in the dataset/ directory"
+            f"Dataset {dataset.value} not found, make sure to download it following the instructions at https://github.com/RUCAIBox/RecSysDatasets/tree/master/conversion_tools/usage and putting the unzipped and processed directory in the dataset/"
         )
 
     item_info_path = dataset_path / Path(f"{ConfigParams.DATASET.value}.item")
@@ -32,7 +32,14 @@ def create_category_mapping():
     # maps interals ids to categories
     category_map = {}
     for _, row in df.iterrows():
-        token = str(row["item_id:token"])
+        if dataset in [RecDataset.ML_1M, RecDataset.ML_100K]:
+            token = str(row["item_id:token"])
+        elif dataset in [RecDataset.LASTFM]:
+            token = str(row["artist_id:token"])
+        else:
+            raise ValueError(
+                f"Dataset {dataset} not supported (supported datsets are {SUPPORTED_DATASETS})"
+            )
         try:
             id = token2id(ConfigParams.DATASET, token)
             if ConfigParams.DATASET == RecDataset.ML_1M:
