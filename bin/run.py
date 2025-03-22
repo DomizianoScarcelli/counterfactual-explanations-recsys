@@ -201,7 +201,8 @@ def run_alignment(
         datasets.skip()
         continue
     user_range = range(start_i, end_i)
-    for i in user_range:
+    for _ in user_range:
+        i = datasets.index
         if sampled_indices and i not in sampled_indices:
             printd(f"Skipping i = {i} because it was not sampled")
             datasets.skip()
@@ -221,7 +222,6 @@ def run_alignment(
             datasets.skip()
             continue
         splits = new_splits
-        assert datasets.index == i, f"{datasets.index} != {i}"
         assert len(datasets.get_times()) == i, f"{len(datasets.get_times())} != {i}"
 
         try:
@@ -308,7 +308,8 @@ def run_all(
         datasets.skip()
 
     user_range = range(start_i, end_i)
-    for i in user_range:
+    for _ in user_range:
+        i = datasets.index
         if sampled_indices and i not in sampled_indices:
             printd(f"Skipping i = {i} because it was not sampled")
             datasets.skip()
@@ -337,7 +338,6 @@ def run_all(
             continue
 
         splits = new_splits
-        assert datasets.index == i, f"{datasets.index} != {i}"
         assert len(datasets.get_times()) == i, f"{len(datasets.get_times())} != {i}"
 
         try:
