@@ -164,16 +164,15 @@ def labels2cat(
     dataset: Optional[RecDataset] = None,
 ) -> List[CategorySet] | List[Set[str]]:
     itemid2cat = get_category_map(dataset)
-    ys = trim(ys).tolist()
-    # if isinstance(ys, Tensor):
-    #     ys = ys.tolist()
+    if isinstance(ys, Tensor):
+        ys = ys.tolist()
 
     if encode:
-        try:
-            return [set(cat2id[cat] for cat in itemid2cat[y]) for y in ys]  # type: ignore
-        except:
-            print(f"[ERROR] error on sequence", ys)
-            raise
+        # try:
+        return [set(cat2id[cat] for cat in itemid2cat[y]) for y in ys]  # type: ignore
+        # except:
+        # print(f"[ERROR] error on sequence", ys)
+        # raise
     return [set(itemid2cat[y]) for y in ys]
 
 
