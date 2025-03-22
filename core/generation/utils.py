@@ -1,3 +1,4 @@
+from core.models.utils import trim
 from typing import Optional
 import json
 import pickle
@@ -163,11 +164,16 @@ def labels2cat(
     dataset: Optional[RecDataset] = None,
 ) -> List[CategorySet] | List[Set[str]]:
     itemid2cat = get_category_map(dataset)
-    if isinstance(ys, Tensor):
-        ys = ys.tolist()
+    ys = trim(ys).tolist()
+    # if isinstance(ys, Tensor):
+    #     ys = ys.tolist()
 
     if encode:
-        return [set(cat2id[cat] for cat in itemid2cat[y]) for y in ys]  # type: ignore
+        try:
+            return [set(cat2id[cat] for cat in itemid2cat[y]) for y in ys]  # type: ignore
+        except:
+            print(f"[ERROR] error on sequence", ys)
+            raise
     return [set(itemid2cat[y]) for y in ys]
 
 
