@@ -3,6 +3,10 @@ from config.constants import SUPPORTED_DATASETS
 import json
 from pathlib import Path
 import fire
+import gdown
+import zipfile
+import shutil
+
 
 import pandas as pd
 from tqdm import tqdm
@@ -34,7 +38,39 @@ def generate_dataset_pth(dataset):
 
 
 def steam_download():
-    pass
+    file_id = "1O1VkMJ61RAPjI5gCuLt056PLhhYvWpnq"  # Extracted from URL
+    url = f"https://drive.google.com/uc?id={file_id}"
+    output_path = Path("dataset/steam/steam.zip")
+    extract_path = Path("dataset/steam/")
+
+    # Ensure output directory exists
+    extract_path.mkdir(parents=True, exist_ok=True)
+
+    # Download the file
+    gdown.download(url, str(output_path), quiet=False)
+
+    # Extract ZIP file
+    if output_path.suffix == ".zip":
+        with zipfile.ZipFile(output_path, "r") as zip_ref:
+            zip_ref.extractall(extract_path)
+        print("Extraction complete.")
+        # Remove __MACOSX folder if it exists
+
+    macosx_path = extract_path / "__MACOSX"
+    if macosx_path.exists():
+        shutil.rmtree(macosx_path)
+        print("Removed __MACOSX folder.")
+
+    # Move contents from steam-alt/steam/ to steam-alt/
+    steam_folder = extract_path / "steam"
+    if steam_folder.exists():
+        for item in steam_folder.iterdir():
+            shutil.move(str(item), str(extract_path))  # Move files/folders up
+        steam_folder.rmdir()  # Remove the now-empty "steam" folder
+        print("Moved steam contents to steam-alt and removed steam folder.")
+
+    # Optional: Remove ZIP file after extraction
+    output_path.unlink()
 
 
 def get_dataset(dataset: RecDataset):
