@@ -23,10 +23,12 @@ PathInfo: TypeAlias = Tuple[
 ]
 PathsQueue: TypeAlias = List[PathInfo]
 
+
 class RecDataset(Enum):
     ML_1M = "ml-1m"
     ML_100K = "ml-100k"
-    LASTFM = "lastfm"
+    STEAM = "steam"
+
 
 class RecModel(Enum):
     BERT4Rec = "BERT4Rec"

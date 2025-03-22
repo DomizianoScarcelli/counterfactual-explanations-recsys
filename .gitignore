@@ -11,3 +11,5 @@ log/**
 !.gitkeep
 **/.DS_Store/**
 .idea/**
+data/steam-SequentialDataset.pth
+dataset/steam/**

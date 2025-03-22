@@ -136,7 +136,7 @@ class InteractionGenerator(SkippableGenerator):
         # Self.data is a List of Tuples of the form:
         # (Interaction, None [1], batch_idx [B], ground_truth(?) [B])
 
-        # Example of Interaction.interaction structure
+        # Example of Interaction.interaction structure fopr the MovieLens dataset
         # {
         #         'user_id': Tensor,  # Shape: [B]
         #         'item_id': Tensor,  # Shape: [B]
@@ -477,5 +477,6 @@ if __name__ == "__main__":
     ints = InteractionGenerator(confg)
     count = 0
     for i, inter in enumerate(ints):
-        print(f"Interactiona at {i} is", inter)
-        break
+        print(f"Interactiona at {i} user is ", inter.interaction)
+        if i == 1:
+            break

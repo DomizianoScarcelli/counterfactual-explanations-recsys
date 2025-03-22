@@ -27,7 +27,7 @@ def save_dataset(dataset: GoodBadDataset, save_path: str | Path):
         save_path: The save path
     """
     with open(save_path, "wb") as f:
-        printd(f"Dataset saved_models to {save_path}", level=1)
+        printd(f"Dataset saved to {save_path}", level=1)
         pickle.dump(dataset, f)
 
 

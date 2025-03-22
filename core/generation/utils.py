@@ -122,7 +122,7 @@ def get_category_map(dataset: Optional[RecDataset] = None) -> Dict[int, str]:
     def load_json(path: Path):
         if not path.exists():
             raise FileNotFoundError(
-                "Category map has not been found, generate it with `python -m scripts.create_category_mapping`"
+                "Category map has not been found, generate it with `python -m scripts.preprocess_dataset`"
             )
         with open(path, "r") as f:
             data = json.load(f)
@@ -186,8 +186,12 @@ def get_remapped_dataset(dataset: RecDataset) -> SequentialDataset:
         with open(path, "rb") as f:
             return pickle.load(f)
 
-    if dataset in [RecDataset.ML_1M, RecDataset.ML_100K]:
+    if dataset in SUPPORTED_DATASETS:
         path = Path(f"data/{ConfigParams.DATASET.value}-SequentialDataset.pth")
+        if not path.exists():
+            raise FileNotFoundError(
+                f"Sequential dataset at {path} not found, make sure to generate it by running an InteractionGenerator with that dataset."
+            )
     else:
         raise NotImplementedError(
             f"get_category_map not implemented for dataset {dataset}"
@@ -200,8 +204,8 @@ def id2token(dataset: RecDataset, id: int) -> int:
     """Maps interal item ids to external tokens"""
     if dataset in [RecDataset.ML_1M, RecDataset.ML_100K]:
         field = "item_id"
-    elif dataset in [RecDataset.LASTFM]:
-        field = "artist_id"
+    elif dataset == RecDataset.STEAM:
+        field = "product_id"
     else:
         raise ValueError(
             f"Dataset {dataset} not supported (supported datsets are {SUPPORTED_DATASETS})"
@@ -214,8 +218,8 @@ def token2id(dataset: RecDataset, token: str) -> int:
     """Maps external item tokens to internal ids."""
     if dataset in [RecDataset.ML_1M, RecDataset.ML_100K]:
         field = "item_id"
-    elif dataset in [RecDataset.LASTFM]:
-        field = "artist_id"
+    elif dataset == RecDataset.STEAM:
+        field = "product_id"
     else:
         raise ValueError(
             f"Dataset {dataset} not supported (supported datsets are {SUPPORTED_DATASETS})"
@@ -223,8 +227,10 @@ def token2id(dataset: RecDataset, token: str) -> int:
     remapped_dataset: SequentialDataset = get_remapped_dataset(dataset)
     return int(remapped_dataset.token2id(field, tokens=token))
 
+
 def clone(x):
     return cPickle.loads(cPickle.dumps(x))
+
 
 def random_points_with_offset(max_value: int, max_offset: int):
     if max_value <= 2:

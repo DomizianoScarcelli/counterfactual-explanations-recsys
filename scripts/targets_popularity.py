@@ -9,7 +9,22 @@ from pandas import DataFrame
 
 
 # Read the data from the item file
-def frequencies(dataset: str, categorized: bool) -> Tuple[DataFrame, DataFrame]:
+
+
+def frequencies(dataset: str, categorized: bool):
+    if dataset in ["ml-1m", "ml-100k"]:
+        return movielens_frequencies(dataset, categorized)
+    elif dataset in ["steam"]:
+        return steam_frequencies(categorized)
+
+
+def steam_frequencies(categorized: bool) -> Tuple[DataFrame, DataFrame]:
+    pass
+
+
+def movielens_frequencies(
+    dataset: str, categorized: bool
+) -> Tuple[DataFrame, DataFrame]:
     item_df = pd.read_csv(
         f"dataset/{dataset}/{dataset}.item",
         sep="\t",
@@ -33,7 +48,7 @@ def frequencies(dataset: str, categorized: bool) -> Tuple[DataFrame, DataFrame]:
     # with pd.option_context(
     #     "display.max_rows", None, "display.max_columns", None, "display.width", None
     # ):
-        # print(class_frequencies)
+    # print(class_frequencies)
     if not categorized:
         return class_frequencies, None
 
@@ -59,14 +74,21 @@ def frequencies(dataset: str, categorized: bool) -> Tuple[DataFrame, DataFrame]:
     return class_frequencies, interaction_class_frequencies
 
 
-def plot(freqs: DataFrame, title: str, max_x_values: Optional[int]=None):
+def plot(freqs: DataFrame, title: str, max_x_values: Optional[int] = None):
     plt.figure(figsize=(12, 6))
     sns.barplot(x=freqs.index, y=freqs.values, palette="viridis")
     plt.xlabel("Categories")
     plt.ylabel("Frequency")
     if max_x_values is not None:
-        indices = np.linspace(0, len(freqs) - 1, min(max_x_values, len(freqs)), dtype=int)
-        plt.xticks(ticks=indices, labels=[freqs.index[i] for i in indices], rotation=45, ha="right")
+        indices = np.linspace(
+            0, len(freqs) - 1, min(max_x_values, len(freqs)), dtype=int
+        )
+        plt.xticks(
+            ticks=indices,
+            labels=[freqs.index[i] for i in indices],
+            rotation=45,
+            ha="right",
+        )
     else:
         plt.xticks(rotation=45, ha="right")
     plt.title(title)
@@ -74,6 +96,7 @@ def plot(freqs: DataFrame, title: str, max_x_values: Optional[int]=None):
     print(f"Figure plotted")
     plt.savefig(f"reports/plot/figs/{title}.png", bbox_inches="tight")
     plt.close()
+
 
 def main(dataset: str):
     print("Starting...")
@@ -85,7 +108,11 @@ def main(dataset: str):
     interaction_freqs = interaction_freqs[interaction_freqs.index != "class:token_seq"]
     print(f"Categorized finished | {dataset}")
     plot(class_freqs, f"Categorized Class Frequencies | {dataset}")
-    plot(interaction_freqs, f"Categorized Interaction-Level Class Frequencies | {dataset}")
+    plot(
+        interaction_freqs,
+        f"Categorized Interaction-Level Class Frequencies | {dataset}",
+    )
+
 
 if __name__ == "__main__":
     fire.Fire(main)
