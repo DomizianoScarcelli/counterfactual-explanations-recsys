@@ -451,9 +451,6 @@ class TimedGenerator:
             item = next(self.generator)
         except StopIteration:
             raise
-        except KeyError:
-            self.times.append(0)
-            raise
         elapsed_time = time.time() - start_time
         self.times.append(elapsed_time)
         return item
