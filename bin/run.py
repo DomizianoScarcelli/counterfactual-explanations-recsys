@@ -120,7 +120,7 @@ def run_genetic(
             continue
         try:
             dataset, interaction = next(datasets)
-        except EmptyDatasetError as e:
+        except (EmptyDatasetError, KeyError) as e:
             printd(f"run_genetic: Raised {type(e)}")
             log = log_genetic_error(
                 i,
@@ -201,8 +201,7 @@ def run_alignment(
         datasets.skip()
         continue
     user_range = range(start_i, end_i)
-    for _ in user_range:
-        i = datasets.index
+    for i in user_range:
         if sampled_indices and i not in sampled_indices:
             printd(f"Skipping i = {i} because it was not sampled")
             datasets.skip()
@@ -222,6 +221,7 @@ def run_alignment(
             datasets.skip()
             continue
         splits = new_splits
+        assert datasets.index == i, f"{datasets.index} != {i}"
         assert len(datasets.get_times()) == i, f"{len(datasets.get_times())} != {i}"
 
         try:
@@ -229,7 +229,7 @@ def run_alignment(
         except StopIteration:
             printd(f"STOP ITERATION RAISED")
             return
-        except EmptyDatasetError as e:
+        except (EmptyDatasetError, KeyError) as e:
             printd(f"run_full: Raised {type(e)}")
             for split in splits:
                 log = log_alignment_error(
@@ -308,8 +308,7 @@ def run_all(
         datasets.skip()
 
     user_range = range(start_i, end_i)
-    for _ in user_range:
-        i = datasets.index
+    for i in user_range:
         if sampled_indices and i not in sampled_indices:
             printd(f"Skipping i = {i} because it was not sampled")
             datasets.skip()
@@ -342,7 +341,7 @@ def run_all(
 
         try:
             dataset, interaction = next(datasets)
-        except EmptyDatasetError as e:
+        except (EmptyDatasetError, KeyError) as e:
             print(f"[DEBUG] run_full: Raised {type(e)}")
             for split in splits:
                 alignment_log = log_alignment_error(
@@ -363,6 +362,7 @@ def run_all(
             printd(f"STOP ITERATION RAISED")
             return
 
+        assert datasets.index == i, f"{datasets.index} != {i}"
         assert (
             len(datasets.get_times()) == i + 1
         ), f"{len(datasets.get_times())} != {i+1}"

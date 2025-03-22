@@ -369,41 +369,34 @@ class DatasetGenerator(SkippableGenerator):
         return self.good_strat, self.bad_strat
 
     def next(self) -> GoodBadDataset | Tuple[GoodBadDataset, Interaction]:
-        try:
-            assert (
-                self.interactions.index == self.index
-            ), f"{self.interactions.index} != {self.index} at the start of the method"
-            interaction = self.interactions.next()
-            cache_path = Path(f".dataset_cache/interaction_{self.index}_dataset.pickle")
-            # TODO: make cache path aware of the strategy
-            if cache_path.exists() and self.use_cache:
-                if self.strategy != "generation":
-                    raise NotImplementedError(
-                        "Cache not implemented for dataset not generated with the 'generation' strategy"
-                    )
-                dataset = load_dataset(cache_path)
-            else:
-                good_strat, bad_strat = self.instantiate_strategy(
-                    interaction_to_tensor(interaction)
+        assert (
+            self.interactions.index == self.index
+        ), f"{self.interactions.index} != {self.index} at the start of the method"
+        interaction = self.interactions.next()
+        cache_path = Path(f".dataset_cache/interaction_{self.index}_dataset.pickle")
+        # TODO: make cache path aware of the strategy
+        if cache_path.exists() and self.use_cache:
+            if self.strategy != "generation":
+                raise NotImplementedError(
+                    "Cache not implemented for dataset not generated with the 'generation' strategy"
                 )
-                dataset = generate(
-                    interaction=interaction, good_strat=good_strat, bad_strat=bad_strat
-                )
-                if self.use_cache:
-                    save_dataset(dataset, cache_path)
-            self.index += 1
-            assert (
-                self.interactions.index == self.index
-            ), f"{self.interactions.index} != {self.index} at the end of the method"
-            if self.return_interaction:
-                return dataset, interaction
-            return dataset
-        except KeyError as e:
-            print(
-                f"[WARNING] Sequence at i: {self.index} caused the error {e}, skipping it..."
+            dataset = load_dataset(cache_path)
+        else:
+            good_strat, bad_strat = self.instantiate_strategy(
+                interaction_to_tensor(interaction)
             )
-            super().skip() #Only skip the dataset generator since the interactions has already skipped above
-            return self.next()
+            dataset = generate(
+                interaction=interaction, good_strat=good_strat, bad_strat=bad_strat
+            )
+            if self.use_cache:
+                save_dataset(dataset, cache_path)
+        self.index += 1
+        assert (
+            self.interactions.index == self.index
+        ), f"{self.interactions.index} != {self.index} at the end of the method"
+        if self.return_interaction:
+            return dataset, interaction
+        return dataset
 
     def __iter__(self) -> DatasetGenerator:
         self.reset()
