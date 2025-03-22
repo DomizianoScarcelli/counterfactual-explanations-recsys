@@ -18,6 +18,15 @@ from type_hints import RecDataset
 
 
 def main(dataset):
+    dataset_path = Path(f"dataset/{dataset}")
+    if not dataset_path.exists():
+        # Generate the dataset
+        if dataset == RecDataset.STEAM.value:
+            steam_download()
+        else:
+            raise ValueError(
+                f"Dataset {dataset} not found, make sure to download it following the instructions at https://github.com/RUCAIBox/RecSysDatasets/tree/master/conversion_tools/usage and putting the unzipped and processed directory in the dataset/"
+            )
     generate_dataset_pth(dataset)
     create_category_mapping(dataset)
 
@@ -28,7 +37,15 @@ def generate_dataset_pth(dataset):
         print(f"{path.name} already exists, skipping pth generation")
         return
     print(f"{path.name} doesn't exists, generating...")
-    confg = get_config(model=ConfigParams.MODEL, dataset=dataset)
+    if dataset == "steam":
+        recset = RecDataset.STEAM
+    elif dataset == "ml-100k":
+        recset = RecDataset.ML_100K
+    elif dataset == "ml-1m":
+        recset = RecDataset.ML_1M
+    else:
+        raise ValueError("Invalid dataset")
+    confg = get_config(model=ConfigParams.MODEL, dataset=recset)
     ints = InteractionGenerator(confg)
     next(ints)
     assert (
@@ -73,20 +90,6 @@ def steam_download():
     output_path.unlink()
 
 
-def get_dataset(dataset: RecDataset):
-    dataset_path = Path(f"dataset/{dataset.value}")
-    get_config(dataset=dataset, model=ConfigParams.MODEL, save_dataset=True)
-    if not dataset_path.exists():
-        # Generate the dataset
-        if dataset == RecDataset.STEAM:
-            steam_download()
-        else:
-            raise ValueError(
-                f"Dataset {dataset.value} not found, make sure to download it following the instructions at https://github.com/RUCAIBox/RecSysDatasets/tree/master/conversion_tools/usage and putting the unzipped and processed directory in the dataset/"
-            )
-    return dataset_path
-
-
 def create_category_mapping(dataset):
     if dataset in ["ml-100", "ml-1m"]:
         movielens_mapping()
@@ -100,7 +103,7 @@ def create_category_mapping(dataset):
 
 def steam_mapping():
     dataset = RecDataset.STEAM
-    dataset_path = get_dataset(dataset)
+    dataset_path = Path(f"dataset/{dataset.value}")
 
     inter_info_path = dataset_path / Path(f"{dataset.value}.inter")
     item_info_path = dataset_path / Path(f"{dataset.value}.item")
