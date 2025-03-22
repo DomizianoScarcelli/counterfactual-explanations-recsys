@@ -221,6 +221,7 @@ def run_alignment(
             datasets.skip()
             continue
         splits = new_splits
+
         assert datasets.index == i, f"{datasets.index} != {i}"
         assert len(datasets.get_times()) == i, f"{len(datasets.get_times())} != {i}"
 
@@ -313,6 +314,7 @@ def run_all(
             printd(f"Skipping i = {i} because it was not sampled")
             datasets.skip()
             continue
+
         new_splits = []
         for split in splits:
             if not skip_sequence(i, primary_key, target_cat, logger, split):
@@ -337,6 +339,8 @@ def run_all(
             continue
 
         splits = new_splits
+
+        assert datasets.index == i, f"{datasets.index} != {i}"
         assert len(datasets.get_times()) == i, f"{len(datasets.get_times())} != {i}"
 
         try:
@@ -354,7 +358,6 @@ def run_all(
                 logger.log_run(alignment_log, primary_key)
             datasets.skip()
             datasets.generator.match_indices()  # type: ignore
-
             if pbar:
                 pbar.update(1)
             continue
@@ -362,7 +365,6 @@ def run_all(
             printd(f"STOP ITERATION RAISED")
             return
 
-        assert datasets.index == i, f"{datasets.index} != {i}"
         assert (
             len(datasets.get_times()) == i + 1
         ), f"{len(datasets.get_times())} != {i+1}"

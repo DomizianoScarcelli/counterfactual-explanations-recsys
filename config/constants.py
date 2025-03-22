@@ -1,8 +1,13 @@
 from enum import Enum
 
-from exceptions import (CounterfactualNotFound, DfaNotAccepting,
-                        DfaNotRejecting, EmptyDatasetError,
-                        NoTargetStatesError, SplitNotCoherent)
+from exceptions import (
+    CounterfactualNotFound,
+    DfaNotAccepting,
+    DfaNotRejecting,
+    EmptyDatasetError,
+    NoTargetStatesError,
+    SplitNotCoherent,
+)
 from type_hints import RecDataset
 
 
@@ -48,4 +53,5 @@ error_messages = {
     CounterfactualNotFound: "CounterfactualNotFound",
     SplitNotCoherent: "SplitNotCoherent",
     EmptyDatasetError: "EmptyDatasetError",
+    KeyError: "KeyError",
 }
