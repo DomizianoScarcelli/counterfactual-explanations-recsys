@@ -117,7 +117,14 @@ def steam_mapping():
         product_id = str(row["product_id:token"])
         try:
             id = token2id(dataset, product_id)
-            category_map[id] = genres[int(product_id)]
+            curr_genres = genres[int(product_id)]
+            parsed_genres = (
+                curr_genres.replace("[", "").replace("]", "").split(", ")
+                if isinstance(curr_genres, str)
+                else ["unknown"]
+            )
+            # print(f"[DEBUG] genres are: {parsed_genres}")
+            category_map[id] = parsed_genres
         except ValueError:
             print(f"Value error on {product_id}")
             continue
