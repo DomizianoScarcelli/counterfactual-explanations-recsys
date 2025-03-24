@@ -13,11 +13,12 @@ from config.config import ConfigParams
 from core.generation.utils import get_items
 from core.models.config_utils import get_config
 from core.models.utils import trim
-from core.sensitivity.utils import (compute_scores, counterfactual_scores_deltas,
+from core.sensitivity.utils import (compute_scores,
+                                    counterfactual_scores_deltas,
                                     print_topk_info)
 from type_hints import RecDataset
-from utils.utils import seq_tostr
 from utils.generators import SequenceGenerator
+from utils.utils import seq_tostr
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 

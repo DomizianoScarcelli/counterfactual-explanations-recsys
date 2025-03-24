@@ -1,6 +1,3 @@
-from recbole.model.sequential_recommender import CORE
-from config.config import ConfigParams
-from recbole.data.utils import data_preparation
 import pickle
 from pathlib import Path
 from typing import Set, Tuple
@@ -9,10 +6,13 @@ import torch
 from recbole.config import Config
 from recbole.data import create_dataset
 from recbole.data.interaction import Interaction
+from recbole.data.utils import data_preparation
+from recbole.model.sequential_recommender import CORE
 from recbole.utils import init_seed
 from torch import Tensor
 from torch.utils.data import DataLoader
 
+from config.config import ConfigParams
 from config.constants import MAX_LENGTH, PADDING_CHAR
 from core.models.utils import replace_padding
 from type_hints import Dataset, GoodBadDataset

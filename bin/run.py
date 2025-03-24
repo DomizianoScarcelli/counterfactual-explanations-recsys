@@ -1,23 +1,21 @@
-from typing import Set
-import warnings
-from typing import List, Optional
 import random
+import warnings
+from typing import List, Optional, Set
 
 from tqdm import tqdm
 
 from config.config import ConfigParams
 from config.constants import cat2id, error_messages
-from exceptions import EmptyDatasetError
-from core.generation.dataset.utils import interaction_to_tensor
 from core.evaluation.alignment.evaluate import evaluate_alignment
 from core.evaluation.alignment.evaluate import log_error as log_alignment_error
 from core.evaluation.genetic.evaluate import evaluate_genetic
 from core.evaluation.genetic.evaluate import log_error as log_genetic_error
+from core.generation.dataset.utils import interaction_to_tensor
+from exceptions import EmptyDatasetError
 from type_hints import SplitTuple
-from utils.utils import printd
 from utils.generators import DatasetGenerator, TimedGenerator
-from utils.utils import RunLogger
 from utils.Split import Split
+from utils.utils import RunLogger, printd
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 warnings.simplefilter(action="ignore", category=RuntimeWarning)

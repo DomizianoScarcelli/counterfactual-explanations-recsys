@@ -1,33 +1,28 @@
+import random
 import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, TypeAlias
 
 import fire
-import random
 import pandas as pd
 from tqdm import tqdm
 
-from config.config import ConfigDict, ConfigParams
-from config.constants import cat2id
-from core.evaluation.alignment.utils import (
-    compute_edit_distance,
-    compute_fidelity,
-    compute_running_times,
-)
-from core.evaluation.automata_learning.evaluate_with_test_set import (
-    compute_automata_metrics,
-    run_automata_learning_eval,
-)
-from core.evaluation.evaluation_utils import compute_metrics
 from bin.run import run_alignment as run_alignment
 from bin.run import run_all, run_genetic
+from config.config import ConfigDict, ConfigParams
+from config.constants import cat2id
+from core.evaluation.alignment.utils import (compute_edit_distance,
+                                             compute_fidelity,
+                                             compute_running_times)
+from core.evaluation.automata_learning.evaluate_with_test_set import (
+    compute_automata_metrics, run_automata_learning_eval)
+from core.evaluation.evaluation_utils import compute_metrics
+from core.sensitivity.model_sensitivity import run_on_all_positions
 from scripts.dataframes.merge_dfs import main as merge_dfs_script
 from scripts.print_pth import print_pth as print_pth_script
 from scripts.targets_popularity import main as targets_popularity_script
-from core.sensitivity.model_sensitivity import run_on_all_positions
-from utils.utils import SeedSetter, load_log
 from utils.generators import InteractionGenerator
-from utils.utils import RunLogger
+from utils.utils import RunLogger, SeedSetter, load_log
 
 RunModes: TypeAlias = Literal["alignment", "genetic", "automata_learning", "all"]
 

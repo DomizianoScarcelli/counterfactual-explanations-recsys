@@ -1,17 +1,12 @@
-from config.config import ConfigParams
-from enum import Enum
-from typing import Dict
-from pathlib import Path
 import json
+from enum import Enum
+from pathlib import Path
+from typing import Dict
 
-from exceptions import (
-    CounterfactualNotFound,
-    DfaNotAccepting,
-    DfaNotRejecting,
-    EmptyDatasetError,
-    NoTargetStatesError,
-    SplitNotCoherent,
-)
+from config.config import ConfigParams
+from exceptions import (CounterfactualNotFound, DfaNotAccepting,
+                        DfaNotRejecting, EmptyDatasetError,
+                        NoTargetStatesError, SplitNotCoherent)
 from type_hints import RecDataset
 
 

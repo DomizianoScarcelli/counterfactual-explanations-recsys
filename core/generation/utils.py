@@ -1,12 +1,11 @@
-from core.models.utils import trim
-from typing import Optional
 import json
 import pickle
 import random
 from enum import Enum
 from pathlib import Path
 from statistics import mean
-from typing import Callable, Dict, List, Literal, Set, Tuple, TypedDict, overload
+from typing import (Callable, Dict, List, Literal, Optional, Set, Tuple,
+                    TypedDict, overload)
 
 import _pickle as cPickle
 from recbole.data.dataset.sequential_dataset import SequentialDataset
@@ -14,6 +13,7 @@ from torch import Tensor
 
 from config.config import ConfigParams
 from config.constants import SUPPORTED_DATASETS, cat2id
+from core.models.utils import trim
 from exceptions import EmptyDatasetError
 from type_hints import CategorizedDataset, CategorySet, Dataset, RecDataset
 from utils.Cached import Cached

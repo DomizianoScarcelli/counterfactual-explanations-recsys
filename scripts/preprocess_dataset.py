@@ -1,20 +1,19 @@
-from utils.generators import InteractionGenerator
-from config.constants import SUPPORTED_DATASETS
 import json
+import shutil
+import zipfile
 from pathlib import Path
+
 import fire
 import gdown
-import zipfile
-import shutil
-
-
 import pandas as pd
 from tqdm import tqdm
 
 from config.config import ConfigParams
+from config.constants import SUPPORTED_DATASETS
 from core.generation.utils import token2id
 from core.models.config_utils import get_config
 from type_hints import RecDataset
+from utils.generators import InteractionGenerator
 
 
 def main(dataset):

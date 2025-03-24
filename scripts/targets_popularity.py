@@ -1,4 +1,3 @@
-from type_hints import RecDataset
 from typing import Optional, Tuple
 
 import fire
@@ -8,8 +7,7 @@ import pandas as pd
 import seaborn as sns
 from pandas import DataFrame
 
-
-# Read the data from the item file
+from type_hints import RecDataset
 
 
 def frequencies(dataset: str, categorized: bool):

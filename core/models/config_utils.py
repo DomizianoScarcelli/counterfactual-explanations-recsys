@@ -1,12 +1,12 @@
-from recbole.utils import dataset_arguments
-from config.constants import SUPPORTED_DATASETS
 from pathlib import Path
 
 import torch
 from recbole.config import Config
 from recbole.model.abstract_recommender import SequentialRecommender
+from recbole.utils import dataset_arguments
 
 from config.config import ConfigParams
+from config.constants import SUPPORTED_DATASETS
 from core.generation.dataset.utils import get_dataloaders
 from core.models.extended_models.ExtendedBERT4Rec import ExtendedBERT4Rec
 from core.models.extended_models.ExtendedGRU4Rec import ExtendedGRU4Rec
