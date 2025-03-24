@@ -59,7 +59,11 @@ latest_checkpoint = Path(
 if latest_checkpoint.exists():
     trainer.resume_checkpoint(latest_checkpoint)
 # NOTE: uncomment this to perform the training, otherwise just the evaluation part will be performed
-results = trainer.fit(train_data, show_progress=True)
-results = trainer.evaluate(test_data, show_progress=True)
-# results = trainer.evaluate(test_data, show_progress=True, model_file=latest_checkpoint)
+# results = trainer.fit(train_data, show_progress=True)
+if latest_checkpoint.exists():
+    results = trainer.evaluate(
+        test_data, show_progress=True, model_file=latest_checkpoint
+    )
+else:
+    results = trainer.evaluate(test_data, show_progress=True)
 print(f"Results are", results)

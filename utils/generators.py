@@ -1,4 +1,6 @@
 from __future__ import annotations
+from core.models.utils import trim
+from tqdm import tqdm
 
 import time
 from abc import ABC, abstractmethod
@@ -10,19 +12,23 @@ from recbole.trainer import Interaction
 from torch import Tensor
 
 from config.config import ConfigParams
+from config.constants import MAX_LENGTH, MIN_LENGTH
 from core.generation.dataset.generate import generate
-from core.generation.dataset.utils import (get_dataloaders,
-                                           interaction_to_tensor, load_dataset,
-                                           save_dataset)
+from core.generation.dataset.utils import (
+    get_dataloaders,
+    interaction_to_tensor,
+    load_dataset,
+    save_dataset,
+)
 from core.generation.mutations import parse_mutations
 from core.generation.strategies.abstract_strategy import GenerationStrategy
 from core.generation.strategies.exhaustive import ExhaustiveStrategy
 from core.generation.strategies.genetic import GeneticStrategy
-from core.generation.strategies.genetic_categorized import \
-    CategorizedGeneticStrategy
+from core.generation.strategies.genetic_categorized import CategorizedGeneticStrategy
 from core.generation.strategies.targeted import TargetedGeneticStrategy
-from core.generation.strategies.targeted_uncategorized import \
-    TargetedUncategorizedGeneticStrategy
+from core.generation.strategies.targeted_uncategorized import (
+    TargetedUncategorizedGeneticStrategy,
+)
 from core.generation.utils import get_items
 from core.models.config_utils import generate_model, get_config
 from core.models.model_funcs import model_predict
@@ -137,6 +143,15 @@ class InteractionGenerator(SkippableGenerator):
         # bigger than the current list, then we load another batch.
 
         self.data = list(self.unloaded_data)
+        data = []
+        for inter in self.data:
+            seq = trim(interaction_to_tensor(inter[0]).squeeze())
+            if MIN_LENGTH <= len(seq) <= MAX_LENGTH:
+                data.append(inter)
+        print(
+            f"Removed {len(self.data) - len(data)} interactions because not in range of length [{MIN_LENGTH}, {MAX_LENGTH}]"
+        )
+        self.data = data
         # self.data = []
         # self.BATCH_SIZE = 128
         # self.load_batch()
@@ -494,8 +509,11 @@ class TimedGenerator:
         return self.times
 
 
-# if __name__ == "__main__":
-#     confg = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
-#     ints = InteractionGenerator(confg)
-#     for i, inter in enumerate(ints):
-#         print(f"i: {i}")
+if __name__ == "__main__":
+    confg = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
+    seqs = SequenceGenerator(confg)
+    for i, seq in tqdm(enumerate(seqs)):
+        seq = seq.squeeze()
+        trimmed = trim(seq)
+        if not MIN_LENGTH <= len(trimmed) <= MAX_LENGTH:
+            print(f"[ERROR] on length {len(trimmed)} of trimmed {trimmed}")

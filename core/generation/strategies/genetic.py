@@ -115,7 +115,6 @@ class GeneticStrategy(GenerationStrategy):
             mutations = remove_mutation(AddMutation, mutations)
 
         # If after NUM_DELETIONS deletions the seq is shorter than the MIN_LENGTh, don't allow delete mutations
-        # TODO: this has to be revisited
         if (
             current_seq_length - ConfigParams.NUM_DELETIONS <= MIN_LENGTH
             and contains_mutation(DeleteMutation, mutations)
