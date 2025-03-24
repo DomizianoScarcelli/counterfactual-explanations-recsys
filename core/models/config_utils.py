@@ -52,9 +52,7 @@ def get_config(
     if ConfigParams.DATASET == RecDataset.STEAM:
         load_col = {"inter": ["user_id", "product_id", "timestamp"]}
     parameter_dict = {
-        "ITEM_ID_FIELD": (
-            "item_id" if ConfigParams.DATASET != RecDataset.STEAM else "product_id"
-        ),
+        "ITEM_ID_FIELD": ConfigParams.ITEM_ID_FIELD,
         "USER_ID_FIELD": "user_id",
         "checkpoint_dir": "data/",
         "load_col": load_col,
@@ -77,5 +75,5 @@ def get_config(
 
     # print(f"[DEBUG] parameter dict is", parameter_dict)
     conf = Config(model=model.value, dataset=dataset.value, config_dict=parameter_dict)
-    print(f"[DEBUG] RecBole Config:", conf)
+    # print(f"[DEBUG] RecBole Config:", conf)
     return conf

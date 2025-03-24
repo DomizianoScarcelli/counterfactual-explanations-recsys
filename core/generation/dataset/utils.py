@@ -1,3 +1,4 @@
+from recbole.model.sequential_recommender import CORE
 from config.config import ConfigParams
 from recbole.data.utils import data_preparation
 import pickle
@@ -92,8 +93,7 @@ def interaction_to_tensor(interaction: Interaction) -> Tensor:
     Given an interaction object, it returns the (batched) sequences padded with
     the ConfigParams.PADDIN_CHAR.
     """
-    sequence = interaction.interaction["item_id_list"]
-    # length = interaction.interaction["item_length"]
+    sequence = interaction.interaction[ConfigParams.ITEM_ID_LIST_FIELD]
     if sequence.dim() == 1 and sequence.size(0) == MAX_LENGTH:
         sequence = sequence.unsqueeze(0)
     batch_size = sequence.size(0)

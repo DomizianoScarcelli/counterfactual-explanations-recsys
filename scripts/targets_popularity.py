@@ -1,3 +1,4 @@
+from type_hints import RecDataset
 from typing import Optional, Tuple
 
 import fire
@@ -16,10 +17,75 @@ def frequencies(dataset: str, categorized: bool):
         return movielens_frequencies(dataset, categorized)
     elif dataset in ["steam"]:
         return steam_frequencies(categorized)
+    else:
+        raise ValueError(f"Dataset {dataset} not supported. Use {list(RecDataset)}")
 
 
 def steam_frequencies(categorized: bool) -> Tuple[DataFrame, DataFrame]:
-    pass
+    dataset = RecDataset.STEAM.value
+    item_df = pd.read_csv(
+        f"dataset/{dataset}/{dataset}.item",
+        sep="\t",
+        names=[
+            "app_name",
+            "developer",
+            "early_access",
+            "genres",
+            "product_id",
+            "metascore",
+            "price",
+            "publisher",
+            "timestamp",
+            "sentiment",
+            "specs",
+            "tags",
+            "title",
+        ],
+    )[["product_id", "genres"]]
+    inter_df = pd.read_csv(
+        f"dataset/{dataset}/{dataset}.inter",
+        sep="\t",
+        names=[
+            "user_id",
+            "play_hours",
+            "products",
+            "product_id",
+            "page_order",
+            "timestamp",
+            "early_access",
+            "page",
+            "found_funny",
+            "compensation",
+            "times",
+        ],
+    )[["user_id", "product_id"]]
+
+    if categorized:
+        item_df["genres"] = item_df["genres"].apply(
+            lambda x: (
+                x.replace("[", "").replace("]", "").split(", ")
+                if isinstance(x, str) and x.startswith("[")
+                else ["unknown"]
+            )
+        )
+        df_exploded = item_df.explode("genres")[["genres"]]
+    else:
+        df_exploded = inter_df["product_id"].str.split(expand=True).stack()
+
+    class_frequencies = df_exploded.value_counts()
+    print(f"Class frequencies", class_frequencies)
+    if not categorized:
+        return class_frequencies, None
+
+    merged_df = inter_df.merge(
+        item_df[["product_id", "genres"]], on="product_id"
+    )  # Adjusted merge
+    merged_df_exploded = merged_df["genres"].str.split(expand=True).stack()
+
+    interaction_class_frequencies = merged_df_exploded.value_counts()
+
+    print(f"Interaction-Level Class Frequencies", interaction_class_frequencies)
+    return class_frequencies, interaction_class_frequencies
 
 
 def movielens_frequencies(
@@ -42,35 +108,14 @@ def movielens_frequencies(
         df_exploded = inter_df["item_id"].str.split(expand=True).stack()
 
     class_frequencies = df_exploded.value_counts()
-    # if categorized:
-    #     class_frequencies = class_frequencies.sort(on="item_id")
-    # print("Class Frequencies:")
-    # with pd.option_context(
-    #     "display.max_rows", None, "display.max_columns", None, "display.width", None
-    # ):
-    # print(class_frequencies)
     if not categorized:
         return class_frequencies, None
-
-    class_percentages = class_frequencies / len(item_df) * 100
-    # print("\nClass Percentages:")
-    # with pd.option_context(
-    #     "display.max_rows", None, "display.max_columns", None, "display.width", None
-    # ):
-    #     print(class_percentages)
 
     merged_df = inter_df.merge(item_df[["item_id", "class"]], on="item_id")
     merged_df_exploded = merged_df["class"].str.split(expand=True).stack()
 
     interaction_class_frequencies = merged_df_exploded.value_counts()
-    # print("Interaction-Level Class Frequencies:")
-    # print(interaction_class_frequencies)
 
-    interaction_class_percentages = (
-        interaction_class_frequencies / len(merged_df_exploded) * 100
-    )
-    # print("\nInteraction-Level Class Percentages:")
-    # print(interaction_class_percentages)
     return class_frequencies, interaction_class_frequencies
 
 
@@ -98,20 +143,24 @@ def plot(freqs: DataFrame, title: str, max_x_values: Optional[int] = None):
     plt.close()
 
 
-def main(dataset: str):
+def main(dataset: str, save_plot: bool = False):
     print("Starting...")
     class_freqs, interaction_freqs = frequencies(dataset, categorized=False)
     print(f"Uncategorized finished | {dataset}")
-    plot(class_freqs, f"Uncategorized Class Frequencies | {dataset}", max_x_values=20)
+    if save_plot:
+        plot(
+            class_freqs, f"Uncategorized Class Frequencies | {dataset}", max_x_values=20
+        )
     class_freqs, interaction_freqs = frequencies(dataset, categorized=True)
     class_freqs = class_freqs[class_freqs.index != "class:token_seq"]
     interaction_freqs = interaction_freqs[interaction_freqs.index != "class:token_seq"]
     print(f"Categorized finished | {dataset}")
-    plot(class_freqs, f"Categorized Class Frequencies | {dataset}")
-    plot(
-        interaction_freqs,
-        f"Categorized Interaction-Level Class Frequencies | {dataset}",
-    )
+    if save_plot:
+        plot(class_freqs, f"Categorized Class Frequencies | {dataset}")
+        plot(
+            interaction_freqs,
+            f"Categorized Interaction-Level Class Frequencies | {dataset}",
+        )
 
 
 if __name__ == "__main__":

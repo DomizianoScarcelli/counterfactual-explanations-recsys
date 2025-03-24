@@ -6,16 +6,21 @@ target_cat_options=("Horror" "Action" "Adventure" "Animation" "Fantasy" "Drama")
 seed=42
 
 # Dataset specific options
-# #ml1m
+# ml1m
 target_items_options_ml1m=(2858 2005 728 2738)
 num_users_ml1m=None
 sample_num_ml1m=200
 
-# #ml100k
+# ml100k
 target_items_options_ml100k=(50 411 630 1305)
 num_users_ml100k=None
 sample_num_ml100k=None
 
+# steam
+target_categories_options_steam=None #TODO: define and use this
+target_items_options_steam=None #TODO: define this
+num_users_steam=None
+sample_num_steam=300
 
 
 # Check if sufficient arguments were provided
@@ -62,8 +67,12 @@ elif [[ "$dataset" == "ML_100K" ]]; then
     target_items_options=("${target_items_options_ml100k[@]}")
     num_users=("${num_users_ml100k[@]}")
     sample_num=("${sample_num_ml100k[@]}")
+elif [[ "$dataset" == "STEAM" ]]; then
+    target_items_options=("${target_items_options_steam[@]}")
+    num_users=("${num_users_steam[@]}")
+    sample_num=("${sample_num_steam[@]}")
 else
-    echo "Error: Invalid dataset. Choose 'ML_100K' or 'ML_1M'."
+    echo "Error: Invalid dataset. Choose 'ML_100K', 'ML_1M' and 'STEAM'"
     exit 1
 fi
 

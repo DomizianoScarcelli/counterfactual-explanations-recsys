@@ -11,20 +11,27 @@ from torch import Tensor
 
 from config.config import ConfigParams
 from core.generation.dataset.generate import generate
-from core.generation.dataset.utils import (get_dataloaders, interaction_to_tensor,
-                                           load_dataset, save_dataset)
+from core.generation.dataset.utils import (
+    get_dataloaders,
+    interaction_to_tensor,
+    load_dataset,
+    save_dataset,
+)
 from core.generation.mutations import parse_mutations
 from core.generation.strategies.abstract_strategy import GenerationStrategy
 from core.generation.strategies.exhaustive import ExhaustiveStrategy
 from core.generation.strategies.genetic import GeneticStrategy
 from core.generation.strategies.genetic_categorized import CategorizedGeneticStrategy
-from core.generation.strategies.targeted_uncategorized import TargetedUncategorizedGeneticStrategy
+from core.generation.strategies.targeted_uncategorized import (
+    TargetedUncategorizedGeneticStrategy,
+)
 from core.generation.strategies.targeted import TargetedGeneticStrategy
 from core.generation.utils import get_items
 from core.models.config_utils import generate_model, get_config
 from core.models.model_funcs import model_predict
 from type_hints import GoodBadDataset
 from utils.Split import Split
+
 # from recbole.data.interaction import Interaction
 
 
@@ -119,11 +126,11 @@ class InteractionGenerator(SkippableGenerator):
         train_data, eval_data, test_data = get_dataloaders(self.config)
 
         if split == "train":
-            self.data = train_data  # [1,2,3] -> 4
+            self.unloaded_data = train_data  # [1,2,3] -> 4
         elif split == "test":
-            self.data = test_data  # [1,2,3] -> 4
+            self.unloaded_data = test_data  # [1,2,3] -> 4
         elif split == "eval":
-            self.data = eval_data  # [2,3,4] -> 5
+            self.unloaded_data = eval_data  # [2,3,4] -> 5
         else:
             raise NotImplementedError(f"Split must be train, eval or test, not {split}")
 
@@ -132,7 +139,10 @@ class InteractionGenerator(SkippableGenerator):
         # solution is to materialize the list in batches. Whenever the i is
         # bigger than the current list, then we load another batch.
 
-        self.data = list(self.data)
+        self.data = list(self.unloaded_data)
+        # self.data = []
+        # self.BATCH_SIZE = 128
+        # self.load_batch()
         # Self.data is a List of Tuples of the form:
         # (Interaction, None [1], batch_idx [B], ground_truth(?) [B])
 
@@ -158,7 +168,22 @@ class InteractionGenerator(SkippableGenerator):
         #         print(f"    Subelement {j} is: {subel} of type {type(subel)}")
         # print(f"Interaction is: {self.data[0][0].interaction}")
 
+    # def load_batch(self):
+    #    #TODO: this isn't right yet
+    #    i = len(self.data)
+    #    for datapoint in self.unloaded_data:
+    #        i += 1
+    #        if i % self.BATCH_SIZE == 0:
+    #            return
+    #        try:
+    #            self.data.append(datapoint)
+    #        except StopIteration:
+    #            return
+    #    print(f"[DEBUG] loaded_batch, data length: {len(self.data)}")
+
     def next(self) -> Interaction:
+        # if self.index != 0 and self.index % (self.BATCH_SIZE-1) == 0:
+        #     self.load_batch()
         try:
             data = self.data[self.index]  # type: ignore
             self.index += 1
@@ -190,7 +215,7 @@ class DatasetGenerator(SkippableGenerator):
         config: Optional[Config] = None,
         limit_generation_to: Optional[Literal["good", "bad"]] = None,
         genetic_split: Optional[Split] = None,
-        target: Optional[str|int] = None,
+        target: Optional[str | int] = None,
         use_cache: bool = False,
         return_interaction: bool = False,
         alphabet: Optional[List[int]] = None,
@@ -472,11 +497,8 @@ class TimedGenerator:
         return self.times
 
 
-if __name__ == "__main__":
-    confg = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
-    ints = InteractionGenerator(confg)
-    count = 0
-    for i, inter in enumerate(ints):
-        print(f"Interactiona at {i} user is ", inter.interaction)
-        if i == 1:
-            break
+# if __name__ == "__main__":
+#     confg = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
+#     ints = InteractionGenerator(confg)
+#     for i, inter in enumerate(ints):
+#         print(f"i: {i}")
