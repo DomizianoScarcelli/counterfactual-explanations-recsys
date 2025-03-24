@@ -13,3 +13,4 @@ log/**
 .idea/**
 data/steam-SequentialDataset.pth
 dataset/steam/**
+tmux/**

@@ -94,6 +94,7 @@ error_messages = {
     CounterfactualNotFound: "CounterfactualNotFound",
     SplitNotCoherent: "SplitNotCoherent",
     EmptyDatasetError: "EmptyDatasetError",
+    KeyError: "KeyError",
 }
 
 if __name__ == "__main__":

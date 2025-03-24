@@ -1,3 +1,4 @@
+from core.models.utils import trim
 from typing import Optional
 import json
 import pickle
@@ -167,7 +168,11 @@ def labels2cat(
         ys = ys.tolist()
 
     if encode:
+        # try:
         return [set(cat2id[cat] for cat in itemid2cat[y]) for y in ys]  # type: ignore
+        # except:
+        # print(f"[ERROR] error on sequence", ys)
+        # raise
     return [set(itemid2cat[y]) for y in ys]
 
 
