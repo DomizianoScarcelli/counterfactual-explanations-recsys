@@ -56,33 +56,37 @@ def steam_frequencies(categorized: bool) -> Tuple[DataFrame, DataFrame]:
             "compensation",
             "times",
         ],
-    )[["user_id", "product_id"]]
+    )[["product_id"]]
 
-    if categorized:
-        item_df["genres"] = item_df["genres"].apply(
-            lambda x: (
-                x.replace("[", "").replace("]", "").split(", ")
-                if isinstance(x, str) and x.startswith("[")
-                else ["unknown"]
-            )
+    item_df["genres"] = item_df["genres"].apply(
+        lambda x: (
+            x.replace("[", "").replace("]", "").split(", ")
+            if isinstance(x, str) and x.startswith("[")
+            else ["unknown"]
         )
-        df_exploded = item_df.explode("genres")[["genres"]]
+    )
+    item_df = item_df.explode("genres")
+    if categorized:
+        df_exploded = item_df[["genres"]]
     else:
         df_exploded = inter_df["product_id"].str.split(expand=True).stack()
 
     class_frequencies = df_exploded.value_counts()
-    print(f"Class frequencies", class_frequencies)
+    print(f"df exploded | categoriezed={categorized}: ", class_frequencies)
+    class_frequencies.to_csv(f"reports/csv/class_frequencies_steam_{categorized}.csv")
     if not categorized:
         return class_frequencies, None
 
-    merged_df = inter_df.merge(
-        item_df[["product_id", "genres"]], on="product_id"
-    )  # Adjusted merge
-    merged_df_exploded = merged_df["genres"].str.split(expand=True).stack()
+    merged_df = inter_df.merge(item_df[["product_id", "genres"]], on="product_id")
+    print(f"[DEBUG] merged df is:", merged_df)
+    merged_df_exploded = merged_df["genres"]
 
     interaction_class_frequencies = merged_df_exploded.value_counts()
 
     print(f"Interaction-Level Class Frequencies", interaction_class_frequencies)
+    interaction_class_frequencies.to_csv(
+        f"reports/csv/interaction_class_frequencies_steam_{categorized}.csv"
+    )
     return class_frequencies, interaction_class_frequencies
 
 
