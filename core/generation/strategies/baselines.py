@@ -1,6 +1,6 @@
-from bin.run import skip_sequence
 from config.constants import cat2id
 from abc import abstractmethod
+from type_hints import RecDataset
 from utils.generators import SequenceGenerator
 from utils.RunLogger import RunLogger
 from core.models.utils import topk
@@ -15,9 +15,10 @@ from config.config import ConfigParams
 from utils.Split import Split
 from typing import Callable, List
 import random
+import fire
 
 import torch
-from torch import Tensor
+from torch import Tensor, Value
 
 from core.generation.strategies.abstract_strategy import GenerationStrategy
 from core.models.utils import trim
@@ -128,6 +129,7 @@ class BaselineStrategy(GenerationStrategy):
             log = {
                 "i": i,
                 "split": self.split,
+                "num_edits": self.num_edits,
                 "source": seq_tostr(trimmed_seq),
                 "aligned": seq_tostr(x),
                 "cost": distance,
@@ -245,7 +247,7 @@ class RandomStrategy(BaselineStrategy):
         split: Split,
         alphabet: List[int],
         num_edits: int,
-        target_cats: List[int],
+        target_cats: List[str],
         target_items: List[int],
         ks: Optional[List[int]] = None,
         good_examples: bool = True,
@@ -292,10 +294,13 @@ class PopularStrategy(GenerationStrategy):
     pass
 
 
-if __name__ == "__main__":
+def run_random_baseline():
+    if ConfigParams.DATASET != RecDataset.ML_100K:
+        raise ValueError(f"Only ml100k supported for no, not {ConfigParams.DATASET}")
     conf = get_config(dataset=ConfigParams.DATASET, model=ConfigParams.MODEL)
     model = generate_model(config=conf)
     seqs = SequenceGenerator(conf)
+    # TODO: put correct categories for correct dataset
     target_cats = ["Horror", "Action", "Adventure", "Animation", "Fantasy", "Drama"]
     target_items = [50, 411, 630, 1305]
     total = 0
@@ -323,4 +328,14 @@ if __name__ == "__main__":
         pop = strat.generate()
         strat.log(i, pop, baseline_name="random")
         pbar.update(1)
-        print(f"Logged i: {i}")
+
+
+def main(baseline):
+    if baseline == "random":
+        run_random_baseline()
+    else:
+        raise ValueError(f"Baseline {baseline} not supported yet")
+
+
+if __name__ == "__main__":
+    fire.Fire(main)
