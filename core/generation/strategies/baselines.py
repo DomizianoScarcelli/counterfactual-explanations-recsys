@@ -1,3 +1,4 @@
+from bin.run import skip_sequence
 from config.constants import cat2id
 from abc import abstractmethod
 from utils.generators import SequenceGenerator
@@ -60,8 +61,7 @@ class BaselineStrategy(GenerationStrategy):
     def generate(self) -> List[Tuple[List[int], Tensor]]:
         pass
 
-    def log(self, i, dataset):
-        print("Generating and logging results...")
+    def log(self, i: int, dataset, baseline_name: str):
         uncat_rankings = {
             k: [
                 {x.item()}
@@ -131,6 +131,7 @@ class BaselineStrategy(GenerationStrategy):
                 "source": seq_tostr(trimmed_seq),
                 "aligned": seq_tostr(x),
                 "cost": distance,
+                "baseline": baseline_name,
             }
             cat_logs_k = [
                 {
@@ -269,6 +270,7 @@ class RandomStrategy(BaselineStrategy):
         for _ in tqdm(
             range(ConfigParams.POP_SIZE),
             desc="Generating dataset with RandomStrategy...",
+            leave=False,
         ):
             executed, mutable, fixed = self.split.apply(x)
             random_idxs = random.sample(range(len(mutable)), k=self.num_edits)
@@ -296,6 +298,11 @@ if __name__ == "__main__":
     seqs = SequenceGenerator(conf)
     target_cats = ["Horror", "Action", "Adventure", "Animation", "Fantasy", "Drama"]
     target_items = [50, 411, 630, 1305]
+    total = 0
+    for i in seqs:
+        total += 1
+    seqs.reset()
+    pbar = tqdm(total=total, desc="Evaluating RandomStrategy baseline...")
     for i, seq in enumerate(seqs):
         strat = RandomStrategy(
             input_seq=seq,
@@ -306,7 +313,14 @@ if __name__ == "__main__":
             target_cats=target_cats,
             target_items=target_items,
         )
+        exists = strat.logger.exists(
+            log={"i": i}, primary_key=["i"], consider_config=True
+        )
+        if exists:
+            pbar.total -= 1
+            seqs.skip()
+            continue
         pop = strat.generate()
-        strat.log(i, pop)
+        strat.log(i, pop, baseline_name="random")
+        pbar.update(1)
         print(f"Logged i: {i}")
-        break
