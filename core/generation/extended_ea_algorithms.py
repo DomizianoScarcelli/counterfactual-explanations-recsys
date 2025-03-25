@@ -6,7 +6,7 @@ from deap.algorithms import tools
 from deap.tools.support import deepcopy
 from tqdm import tqdm
 
-from config.constants import MAX_LENGTH
+from config.constants import MAX_LENGTH, MIN_LENGTH
 from core.generation.utils import clone
 from utils.Split import Split
 
@@ -79,6 +79,11 @@ def eaSimpleBatched(
     assert all(
         len(ind) <= MAX_LENGTH for ind in population
     ), f"There are individuals with length > max: {[len(ind) for ind in population if len(ind) > MAX_LENGTH ]}"
+
+    assert all(
+        len(ind) >= MIN_LENGTH for ind in population
+    ), f"There are individuals with length < min: {[len(ind) for ind in population if len(ind) < MIN_LENGTH ]}"
+
     fitnesses = toolbox.evaluate(invalid_ind)
     for i, ind in enumerate(invalid_ind):
         ind.fitness.values = fitnesses[i]
