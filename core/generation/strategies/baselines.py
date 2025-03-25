@@ -36,7 +36,7 @@ class BaselineStrategy(GenerationStrategy):
         split: Split,
         alphabet: List[int],
         num_edits: int,
-        target_cats: List[int],
+        target_cats: List[str],
         target_items: List[int],
         ks: Optional[List[int]] = None,
         good_examples: bool = True,
@@ -115,7 +115,6 @@ class BaselineStrategy(GenerationStrategy):
                 }
                 targ_uncat_scores = {k: equal_ys(uncat_target_gt[k], uncat_rankings[k], return_score=True)[1] for k in self.ks}  # type: ignore
                 uncat_target_scores[target_item] = targ_uncat_scores
-
             for target_cat in self.target_cats:
                 cat_target_gt = {
                     k: [{cat2id[target_cat]} for _ in range(k)] for k in self.ks
@@ -225,17 +224,37 @@ class BaselineStrategy(GenerationStrategy):
         # Take and log best counterfactuals from all logs
         best_cat_log = min(cat_logs, key=lambda x: x["score@1"])
         best_uncat_log = min(uncat_logs, key=lambda x: x["score@1"])
-        best_targ_cat_log = max(targ_cat_logs, key=lambda x: x["score@1"])
-        best_targ_uncat_log = max(targ_uncat_logs, key=lambda x: x["score@1"])
-        logs = [
+        best_targ_cat_logs = {
+            t: min(
+                [log for log in targ_cat_logs if log["target"] == t],
+                key=lambda x: x["score@1"],
+            )
+            for t in {log["target"] for log in targ_cat_logs}
+        }
+        best_targ_uncat_logs = {
+            t: min(
+                [log for log in targ_uncat_logs if log["target"] == t],
+                key=lambda x: x["score@1"],
+            )
+            for t in {log["target"] for log in targ_uncat_logs}
+        }
+        untarg_logs = [
             best_cat_log,
             best_uncat_log,
-            best_targ_cat_log,
-            best_targ_uncat_log,
         ]
-        for log in logs:
+        targ_logs = [best_targ_cat_logs, best_targ_uncat_logs]
+        for log in targ_logs:
+            for _, target_log in log.items():
+                self.logger.log_run(
+                    target_log,
+                    primary_key=["source", "split", "aligned", "target"],
+                    tostr=True,
+                )
+        for log in untarg_logs:
             self.logger.log_run(
-                log, primary_key=["source", "split", "aligned"], tostr=True
+                log,
+                primary_key=["source", "split", "aligned"],
+                tostr=True,
             )
 
 

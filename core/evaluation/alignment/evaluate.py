@@ -149,7 +149,6 @@ def _evaluate_targeted_cat(
             log[f"gt@{k}"] = seq_tostr(source_preds[k])
             log[f"aligned_gt@{k}"] = seq_tostr(counterfactual_preds[k])
 
-            # TODO: is this correct?
             if ConfigParams.GENERATION_STRATEGY != "targeted":
                 _, score = equal_ys(
                     source_preds[k], counterfactual_preds[k], return_score=True

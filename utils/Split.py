@@ -132,7 +132,6 @@ class Split:
         if len(seq) != sum(split):  # type: ignore
             return False
 
-        # TODO: Are other checks necessary?
         return True
 
     def to_ratio(self, seq: List[int]) -> Split:

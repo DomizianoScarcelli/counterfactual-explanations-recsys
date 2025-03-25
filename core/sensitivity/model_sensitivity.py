@@ -174,7 +174,6 @@ def model_sensitivity_universal(
                 for k in ks
             }
 
-        # TODO: This can be vectorized by using torch operations
         scores_batch_ks = {k: [] for k in ks}
         for k in ks:
             n_items = len(out_primes_cat_ks[k])

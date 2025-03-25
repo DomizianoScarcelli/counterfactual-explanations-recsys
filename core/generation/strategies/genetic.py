@@ -114,7 +114,6 @@ class GeneticStrategy(GenerationStrategy):
             mutations = remove_mutation(AddMutation, mutations)
 
         # If after NUM_DELETIONS deletions the seq is shorter than the MIN_LENGTh, don't allow delete mutations
-        # TODO: this has to be revisited
         if (
             current_seq_length - ConfigParams.NUM_DELETIONS <= MIN_LENGTH
             and contains_mutation(DeleteMutation, mutations)
@@ -161,9 +160,6 @@ class GeneticStrategy(GenerationStrategy):
                 seq_dist = edit_distance(
                     self.input_seq, candidate_seq, normalized=True
                 )  # [0,MAX_LENGTH] if not normalized, [0,1] if normalized
-                # label_dist = 1 - ndcg(
-                #     ys.tolist(), y_primes[i].tolist()
-                # )  # TODO: this may be wrong in this case, results in all 0 labels
                 label_dist = jensen_shannon_divergence(ys, y_primes[i])
 
                 assert (
@@ -173,8 +169,6 @@ class GeneticStrategy(GenerationStrategy):
                     candidate_seq.dim() == 1
                 ), f"candidate seq wrong shape: {candidate_seq.shape}"
 
-                # TODO: experiment which is better, jensen_shannon or ndcg
-                # label_dist = jensen_shannon_divergence(candidate_prob, self.gt)  # [0,1]
                 self_ind = self_indicator(
                     self.input_seq, candidate_seq
                 )  # 0 if different, inf if equal
@@ -235,7 +229,6 @@ class GeneticStrategy(GenerationStrategy):
         return self._postprocess(new_augmented)
 
     def _augment(self, population, halloffame):
-        # TODO: this hasn't been tested for multiple ks
         fitness_values = [
             p.fitness.wvalues[0]
             for p in population
