@@ -6,7 +6,7 @@ profile = false             # If true it will produce a profiling log with line_
 [settings]
 device = "cpu"
 model = "BERT4Rec"          # Name of the model being used
-dataset = "STEAM"         # Dataset identifier 
+dataset = "ML_1M"         # Dataset identifier 
 determinism = true          # Ensure deterministic runs 
 seed = 42                 # Random seed for determinism
 train_batch_size = 1        # Batch size for training
