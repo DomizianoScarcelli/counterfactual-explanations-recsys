@@ -3,12 +3,14 @@ from typing import Any, Dict, List, Optional
 from recbole.model.abstract_recommender import SequentialRecommender
 from torch import Tensor
 
+from config.config import ConfigParams
+from config.constants import cat2id, error_messages
 from core.alignment.actions import print_action
 from core.alignment.alignment import trace_disalignment
 from core.alignment.utils import postprocess_alignment
 from core.automata_learning.passive_learning import learning_pipeline
-from config.config import ConfigParams
-from config.constants import cat2id, error_messages
+from core.generation.utils import equal_ys, labels2cat
+from core.models.utils import topk, trim
 from exceptions import (
     CounterfactualNotFound,
     DfaNotAccepting,
@@ -16,11 +18,9 @@ from exceptions import (
     NoTargetStatesError,
     SplitNotCoherent,
 )
-from core.generation.utils import equal_ys, labels2cat
-from core.models.utils import topk, trim
 from type_hints import CategorySet, GoodBadDataset
-from utils.utils import TimedFunction, printd, seq_tostr
 from utils.Split import Split
+from utils.utils import TimedFunction, printd, seq_tostr
 
 timed_learning_pipeline = TimedFunction(learning_pipeline)
 timed_trace_disalignment = TimedFunction(trace_disalignment)
@@ -86,17 +86,17 @@ def log_error(
     from core.evaluation.genetic.evaluate import _init_log as gen_init_log
 
     log = _init_log(ks)
-    gen_log = gen_init_log(ks)
+    # gen_log = gen_init_log(ks)
     log["i"] = i
     log["split"] = str(split)
     if target_cat:
         log["gen_target_y@1"] = str(
             {cat2id[target_cat]} if isinstance(target_cat, str) else target_cat
         )
-    gen_log.update(log)
-    gen_log.update(ConfigParams.configs_dict(pandas=False, tostr=True))
-    gen_log["error"] = error
-    return gen_log
+    # gen_log.update(log)
+    # gen_log.update(ConfigParams.configs_dict(pandas=False, tostr=True))
+    log["error"] = error
+    return log
 
 
 def _evaluate_targeted_cat(

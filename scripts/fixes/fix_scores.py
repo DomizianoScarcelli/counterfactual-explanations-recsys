@@ -3,8 +3,8 @@ import warnings
 import fire
 from tqdm import tqdm
 
-from utils.utils import load_log
 from utils.distances import intersection_weighted_ndcg
+from utils.utils import load_log
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 warnings.simplefilter(action="ignore", category=RuntimeWarning)

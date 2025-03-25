@@ -5,8 +5,8 @@ from typing import List
 import torch
 from aalpy.automata.Dfa import DfaState
 
-from core.alignment.actions import Action, decode_action
 from config.constants import MAX_LENGTH
+from core.alignment.actions import Action, decode_action
 from core.models.utils import pad, trim
 
 
