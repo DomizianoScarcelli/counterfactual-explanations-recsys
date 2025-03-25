@@ -150,7 +150,6 @@ class BaselineStrategy(GenerationStrategy):
                         **temp_log,
                         "categorized": True,
                         "targeted": False,
-                        "generation_strategy": "genetic_categorized",
                     }
                 )
             cat_logs.append(cat_log)
@@ -171,7 +170,6 @@ class BaselineStrategy(GenerationStrategy):
                         **temp_log,
                         "categorized": False,
                         "targeted": False,
-                        "generation_strategy": "genetic",
                     }
                 )
             uncat_logs.append(uncat_log)
@@ -193,7 +191,6 @@ class BaselineStrategy(GenerationStrategy):
                             **temp_log,
                             "categorized": False,
                             "targeted": True,
-                            "generation_strategy": "targeted_uncategorized",
                             "target": target_item,
                         }
                     )
@@ -215,7 +212,6 @@ class BaselineStrategy(GenerationStrategy):
                             **temp_log,
                             "categorized": True,
                             "targeted": True,
-                            "generation_strategy": "targeted",
                             "target": target_cat,
                         }
                     )
