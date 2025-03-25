@@ -4,11 +4,11 @@ import pytest
 import torch
 from recbole.model.abstract_recommender import SequentialRecommender
 
+from config.config import ConfigParams
 from core.alignment.alignment import (augment_constraint_automata,
                                       augment_trace_automata)
 from core.automata_learning.passive_learning import (
     generate_automata_from_dataset, generate_single_accepting_sequence_dfa)
-from config.config import ConfigParams
 from core.generation.dataset.utils import load_dataset
 from core.models.config_utils import generate_model, get_config
 from utils.generators import InteractionGenerator, SequenceGenerator

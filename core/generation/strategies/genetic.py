@@ -12,14 +12,15 @@ from config.constants import MAX_LENGTH, MIN_LENGTH
 from core.generation.extended_ea_algorithms import (customCxTwoPoint,
                                                     customSelTournament,
                                                     eaSimpleBatched)
-from core.generation.mutations import (ALL_MUTATIONS, AddMutation, DeleteMutation,
-                                       Mutation, contains_mutation, remove_mutation)
+from core.generation.mutations import (ALL_MUTATIONS, AddMutation,
+                                       DeleteMutation, Mutation,
+                                       contains_mutation, remove_mutation)
 from core.generation.strategies.abstract_strategy import GenerationStrategy
 from core.generation.utils import _evaluate_generation, clone, equal_ys
 from core.models.utils import pad_batch, topk, trim
 from type_hints import Dataset
 from utils.distances import (edit_distance, jensen_shannon_divergence,
-                         self_indicator)
+                             self_indicator)
 from utils.Split import Split
 
 
@@ -114,7 +115,6 @@ class GeneticStrategy(GenerationStrategy):
             mutations = remove_mutation(AddMutation, mutations)
 
         # If after NUM_DELETIONS deletions the seq is shorter than the MIN_LENGTh, don't allow delete mutations
-        # TODO: this has to be revisited
         if (
             current_seq_length - ConfigParams.NUM_DELETIONS <= MIN_LENGTH
             and contains_mutation(DeleteMutation, mutations)

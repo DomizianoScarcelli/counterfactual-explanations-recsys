@@ -6,16 +6,16 @@ from aalpy.automata.Dfa import DfaState
 from recbole.model.abstract_recommender import SequentialRecommender
 from tqdm import tqdm
 
-from core.alignment.actions import Action, decode_action
-from core.automata_learning.passive_learning import learning_pipeline
 from config.config import ConfigParams
 from config.constants import MAX_LENGTH
-from core.generation.utils import equal_ys, labels2cat
-from core.models.config_utils import generate_model, get_config
-from core.models.utils import pad, pad_batch, topk
+from core.alignment.actions import Action, decode_action
+from core.automata_learning.passive_learning import learning_pipeline
 from core.evaluation.alignment.utils import preprocess_interaction
 from core.evaluation.evaluation_utils import (compute_metrics,
                                               print_confusion_matrix)
+from core.generation.utils import equal_ys, labels2cat
+from core.models.config_utils import generate_model, get_config
+from core.models.utils import pad, pad_batch, topk
 from utils.generators import DatasetGenerator
 
 

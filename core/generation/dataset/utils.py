@@ -1,5 +1,3 @@
-from config.config import ConfigParams
-from recbole.data.utils import data_preparation
 import pickle
 from pathlib import Path
 from typing import Set, Tuple
@@ -8,10 +6,13 @@ import torch
 from recbole.config import Config
 from recbole.data import create_dataset
 from recbole.data.interaction import Interaction
+from recbole.data.utils import data_preparation
+from recbole.model.sequential_recommender import CORE
 from recbole.utils import init_seed
 from torch import Tensor
 from torch.utils.data import DataLoader
 
+from config.config import ConfigParams
 from config.constants import MAX_LENGTH, PADDING_CHAR
 from core.models.utils import replace_padding
 from type_hints import Dataset, GoodBadDataset
@@ -27,7 +28,7 @@ def save_dataset(dataset: GoodBadDataset, save_path: str | Path):
         save_path: The save path
     """
     with open(save_path, "wb") as f:
-        printd(f"Dataset saved_models to {save_path}", level=1)
+        printd(f"Dataset saved to {save_path}", level=1)
         pickle.dump(dataset, f)
 
 
@@ -92,8 +93,7 @@ def interaction_to_tensor(interaction: Interaction) -> Tensor:
     Given an interaction object, it returns the (batched) sequences padded with
     the ConfigParams.PADDIN_CHAR.
     """
-    sequence = interaction.interaction["item_id_list"]
-    # length = interaction.interaction["item_length"]
+    sequence = interaction.interaction[ConfigParams.ITEM_ID_LIST_FIELD]
     if sequence.dim() == 1 and sequence.size(0) == MAX_LENGTH:
         sequence = sequence.unsqueeze(0)
     batch_size = sequence.size(0)

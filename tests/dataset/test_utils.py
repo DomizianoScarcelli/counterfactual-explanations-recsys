@@ -1,7 +1,8 @@
 import torch
 
 from config.config import ConfigParams
-from core.generation.dataset.utils import (are_dataset_equal, dataset_difference,
+from core.generation.dataset.utils import (are_dataset_equal,
+                                           dataset_difference,
                                            interaction_to_tensor)
 from core.models.utils import replace_padding
 from type_hints import Dataset

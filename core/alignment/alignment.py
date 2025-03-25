@@ -8,8 +8,8 @@ from core.alignment.a_star import faster_a_star
 from core.alignment.actions import (Action, decode_action, encode_action,
                                     print_action)
 from core.automata_learning.utils import invert_automata, run_automata
-from exceptions import CounterfactualNotFound
 from core.generation.utils import get_items
+from exceptions import CounterfactualNotFound
 from type_hints import Trace, TraceSplit
 from utils.utils import printd
 

@@ -1,21 +1,27 @@
 #!/bin/bash
 
 # Define target options
-dataset="ML_1M" #ML_100K or ML_1M
-target_cat_options=("Horror" "Action" "Adventure" "Animation" "Fantasy" "Drama")
+dataset="ML_1M" #ML_100K, ML_1M or STEAM
 seed=42
 
 # Dataset specific options
-# #ml1m
+# MovieLens
+target_cat_options_ml=("Horror" "Action" "Adventure" "Animation" "Fantasy" "Drama")
+# MovieLens 1M
 target_items_options_ml1m=(2858 2005 728 2738)
 num_users_ml1m=None
 sample_num_ml1m=200
 
-# #ml100k
+# MovieLens 100K
 target_items_options_ml100k=(50 411 630 1305)
 num_users_ml100k=None
 sample_num_ml100k=None
 
+# STEAM
+target_cat_options_steam=("Action" "Indie" "Free to Play" "Sports" "Photo Editing")
+target_items_options_steam=(271590 35140 292140 582160)
+num_users_steam=None
+sample_num_steam=200
 
 
 # Check if sufficient arguments were provided
@@ -55,15 +61,22 @@ done
 
 # Set target_items_options based on dataset
 if [[ "$dataset" == "ML_1M" ]]; then
+    target_cat_options=("${target_cat_options_ml[@]}")
     target_items_options=("${target_items_options_ml1m[@]}")
     num_users=("${num_users_ml1m[@]}")
     sample_num=("${sample_num_ml1m[@]}")
 elif [[ "$dataset" == "ML_100K" ]]; then
+    target_cat_options=("${target_cat_options_ml[@]}")
     target_items_options=("${target_items_options_ml100k[@]}")
     num_users=("${num_users_ml100k[@]}")
     sample_num=("${sample_num_ml100k[@]}")
+elif [[ "$dataset" == "STEAM" ]]; then
+    target_cat_options=("${target_cat_options_steam[@]}")
+    target_items_options=("${target_items_options_steam[@]}")
+    num_users=("${num_users_steam[@]}")
+    sample_num=("${sample_num_steam[@]}")
 else
-    echo "Error: Invalid dataset. Choose 'ML_100K' or 'ML_1M'."
+    echo "Error: Invalid dataset. Choose 'ML_100K', 'ML_1M' and 'STEAM'"
     exit 1
 fi
 

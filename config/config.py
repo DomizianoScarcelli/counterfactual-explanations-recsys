@@ -148,6 +148,15 @@ class ConfigParams:
 
             cls.TIMESTAMP = time.strftime("%a, %d %b %Y %H:%M:%S")
 
+            item_id_field_mapping = {
+                RecDataset.ML_100K: "item_id",
+                RecDataset.ML_1M: "item_id",
+                RecDataset.STEAM: "product_id",
+            }
+
+            cls.ITEM_ID_FIELD = item_id_field_mapping[cls.DATASET]
+            cls.ITEM_ID_LIST_FIELD = f"{cls.ITEM_ID_FIELD}_list"
+
             cls._config_loaded = True  # Flag that config is loaded
 
     @classmethod
@@ -224,8 +233,8 @@ class ConfigParams:
         return toml.load(default_config_path)  # type: ignore
 
     @classmethod
-    def configs_dict(cls, length=1, pandas: bool=True, tostr: bool=False):
-        conf =  {
+    def configs_dict(cls, length=1, pandas: bool = True, tostr: bool = False):
+        conf = {
             "determinism": [ConfigParams.DETERMINISM] * length,
             "model": [ConfigParams.MODEL.value] * length,
             "dataset": [ConfigParams.DATASET.value] * length,

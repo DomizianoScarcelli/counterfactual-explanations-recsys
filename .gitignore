@@ -1,5 +1,4 @@
 **/__pycache__/**
-/dataset/**
 .dataset_cache/**
 .pytest_cache/**
 **/log_tensorboard/**
@@ -12,4 +11,6 @@ log/**
 !.gitkeep
 **/.DS_Store/**
 .idea/**
+data/steam-SequentialDataset.pth
+dataset/steam/**
 tmux/**

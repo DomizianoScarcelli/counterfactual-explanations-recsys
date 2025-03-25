@@ -17,22 +17,21 @@ from pandas import DataFrame
 from torch import Tensor
 from tqdm import tqdm
 
+from config.config import ConfigParams
 from core.alignment.actions import Action, decode_action
 from core.automata_learning.passive_learning import learning_pipeline
 from core.automata_learning.utils import run_automata
-from config.config import ConfigParams
-from exceptions import EmptyDatasetError
+from core.evaluation.alignment.utils import preprocess_interaction
+from core.evaluation.evaluation_utils import (compute_metrics,
+                                              print_confusion_matrix)
 from core.generation.dataset.generate import generate
 from core.generation.dataset.utils import dataset_difference
 from core.models.config_utils import get_config
 from core.models.utils import trim
-from core.evaluation.alignment.utils import preprocess_interaction
-from core.evaluation.evaluation_utils import (compute_metrics,
-                                              print_confusion_matrix)
+from exceptions import EmptyDatasetError
 from type_hints import GoodBadDataset
-from utils.utils import printd, seq_tostr
 from utils.generators import DatasetGenerator
-from utils.utils import RunLogger
+from utils.utils import RunLogger, printd, seq_tostr
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 warnings.simplefilter(action="ignore", category=RuntimeWarning)

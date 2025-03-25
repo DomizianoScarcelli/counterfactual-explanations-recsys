@@ -1,4 +1,6 @@
 from __future__ import annotations
+from core.models.utils import trim
+from tqdm import tqdm
 
 import time
 from abc import ABC, abstractmethod
@@ -10,6 +12,7 @@ from recbole.trainer import Interaction
 from torch import Tensor
 
 from config.config import ConfigParams
+from config.constants import MAX_LENGTH, MIN_LENGTH
 from core.generation.dataset.generate import generate
 from core.generation.dataset.utils import (
     get_dataloaders,
@@ -22,15 +25,17 @@ from core.generation.strategies.abstract_strategy import GenerationStrategy
 from core.generation.strategies.exhaustive import ExhaustiveStrategy
 from core.generation.strategies.genetic import GeneticStrategy
 from core.generation.strategies.genetic_categorized import CategorizedGeneticStrategy
+from core.generation.strategies.targeted import TargetedGeneticStrategy
 from core.generation.strategies.targeted_uncategorized import (
     TargetedUncategorizedGeneticStrategy,
 )
-from core.generation.strategies.targeted import TargetedGeneticStrategy
 from core.generation.utils import get_items
 from core.models.config_utils import generate_model, get_config
 from core.models.model_funcs import model_predict
 from type_hints import GoodBadDataset
 from utils.Split import Split
+
+# from recbole.data.interaction import Interaction
 
 
 class SkippableGenerator(ABC):
@@ -124,11 +129,11 @@ class InteractionGenerator(SkippableGenerator):
         train_data, eval_data, test_data = get_dataloaders(self.config)
 
         if split == "train":
-            self.data = train_data  # [1,2,3] -> 4
+            self.unloaded_data = train_data  # [1,2,3] -> 4
         elif split == "test":
-            self.data = test_data  # [1,2,3] -> 4
+            self.unloaded_data = test_data  # [1,2,3] -> 4
         elif split == "eval":
-            self.data = eval_data  # [2,3,4] -> 5
+            self.unloaded_data = eval_data  # [2,3,4] -> 5
         else:
             raise NotImplementedError(f"Split must be train, eval or test, not {split}")
 
@@ -137,11 +142,23 @@ class InteractionGenerator(SkippableGenerator):
         # solution is to materialize the list in batches. Whenever the i is
         # bigger than the current list, then we load another batch.
 
-        self.data = list(self.data)
+        self.data = list(self.unloaded_data)
+        data = []
+        for inter in self.data:
+            seq = trim(interaction_to_tensor(inter[0]).squeeze())
+            if MIN_LENGTH <= len(seq) <= MAX_LENGTH:
+                data.append(inter)
+        print(
+            f"Removed {len(self.data) - len(data)} interactions because not in range of length [{MIN_LENGTH}, {MAX_LENGTH}]"
+        )
+        self.data = data
+        # self.data = []
+        # self.BATCH_SIZE = 128
+        # self.load_batch()
         # Self.data is a List of Tuples of the form:
         # (Interaction, None [1], batch_idx [B], ground_truth(?) [B])
 
-        # Example of Interaction.interaction structure
+        # Example of Interaction.interaction structure fopr the MovieLens dataset
         # {
         #         'user_id': Tensor,  # Shape: [B]
         #         'item_id': Tensor,  # Shape: [B]
@@ -163,7 +180,22 @@ class InteractionGenerator(SkippableGenerator):
         #         print(f"    Subelement {j} is: {subel} of type {type(subel)}")
         # print(f"Interaction is: {self.data[0][0].interaction}")
 
+    # def load_batch(self):
+    #    #TODO: this isn't right yet
+    #    i = len(self.data)
+    #    for datapoint in self.unloaded_data:
+    #        i += 1
+    #        if i % self.BATCH_SIZE == 0:
+    #            return
+    #        try:
+    #            self.data.append(datapoint)
+    #        except StopIteration:
+    #            return
+    #    print(f"[DEBUG] loaded_batch, data length: {len(self.data)}")
+
     def next(self) -> Interaction:
+        # if self.index != 0 and self.index % (self.BATCH_SIZE-1) == 0:
+        #     self.load_batch()
         try:
             data = self.data[self.index]  # type: ignore
             self.index += 1
@@ -479,8 +511,9 @@ class TimedGenerator:
 
 if __name__ == "__main__":
     confg = get_config(model=ConfigParams.MODEL, dataset=ConfigParams.DATASET)
-    ints = InteractionGenerator(confg)
-    count = 0
-    for i in ints:
-        count += 1
-    print(f"There are {count} sequences")
+    seqs = SequenceGenerator(confg)
+    for i, seq in tqdm(enumerate(seqs)):
+        seq = seq.squeeze()
+        trimmed = trim(seq)
+        if not MIN_LENGTH <= len(trimmed) <= MAX_LENGTH:
+            print(f"[ERROR] on length {len(trimmed)} of trimmed {trimmed}")
