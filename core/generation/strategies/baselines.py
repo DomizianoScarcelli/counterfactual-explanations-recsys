@@ -1,3 +1,4 @@
+from config.constants import cat2id
 from abc import abstractmethod
 from utils.generators import SequenceGenerator
 from utils.RunLogger import RunLogger
@@ -59,7 +60,7 @@ class BaselineStrategy(GenerationStrategy):
     def generate(self) -> List[Tuple[List[int], Tensor]]:
         pass
 
-    def log(self, dataset):
+    def log(self, i, dataset):
         print("Generating and logging results...")
         uncat_rankings = {
             k: [
@@ -74,7 +75,10 @@ class BaselineStrategy(GenerationStrategy):
             )
             for k in self.ks
         }
-
+        cat_logs = []
+        uncat_logs = []
+        targ_cat_logs = []
+        targ_uncat_logs = []
         for x, y in dataset:
             cat_counter_rankings = {
                 k: [
@@ -112,7 +116,9 @@ class BaselineStrategy(GenerationStrategy):
                 uncat_target_scores[target_item] = targ_uncat_scores
 
             for target_cat in self.target_cats:
-                cat_target_gt = {k: [{target_cat} for _ in range(k)] for k in self.ks}
+                cat_target_gt = {
+                    k: [{cat2id[target_cat]} for _ in range(k)] for k in self.ks
+                }
                 targ_cat_scores = {k: equal_ys(cat_target_gt[k], cat_rankings[k], return_score=True)[1] for k in self.ks}  # type: ignore
                 cat_target_scores[target_cat] = targ_cat_scores
 
@@ -120,92 +126,114 @@ class BaselineStrategy(GenerationStrategy):
             trimmed_seq = trim(self.input_seq.squeeze(0))
             distance = edit_distance(x, trimmed_seq, normalized=False)
             log = {
+                "i": i,
                 "split": self.split,
                 "source": seq_tostr(trimmed_seq),
                 "aligned": seq_tostr(x),
                 "cost": distance,
             }
-            cat_log_at_ks = [
+            cat_logs_k = [
                 {
-                    f"rakings@{k}": seq_tostr(cat_rankings[k]),
+                    f"rankings@{k}": seq_tostr(cat_rankings[k]),
                     f"counter_rankings@{k}": seq_tostr(cat_counter_rankings[k]),
                     f"score@{k}": cat_scores[k],
                 }
                 for k in self.ks
             ]
             cat_log = {}
-            for cat_log_at_k in cat_log_at_ks:
-                cat_log = {
-                    **log,
-                    **cat_log_at_k,
-                    "categorized": True,
-                    "targeted": False,
-                }
-            self.logger.log_run(
-                cat_log, primary_key=["source", "split", "aligned"], tostr=True
-            )
-            uncat_log_at_ks = [
+            for temp_log in cat_logs_k:
+                cat_log.update(
+                    {
+                        **log,
+                        **temp_log,
+                        "categorized": True,
+                        "targeted": False,
+                        "generation_strategy": "genetic_categorized",
+                    }
+                )
+            cat_logs.append(cat_log)
+
+            uncat_log_ks = [
                 {
-                    f"rakings@{k}": seq_tostr(uncat_rankings[k]),
+                    f"rankings@{k}": seq_tostr(uncat_rankings[k]),
                     f"counter_rankings@{k}": seq_tostr(uncat_counter_rankings[k]),
                     f"score@{k}": uncat_scores[k],
                 }
                 for k in self.ks
             ]
             uncat_log = {}
-            for uncat_log_at_k in uncat_log_at_ks:
-                uncat_log = {
-                    **log,
-                    **uncat_log_at_k,
-                    "categorized": False,
-                    "targeted": False,
-                }
-            self.logger.log_run(
-                uncat_log, primary_key=["source", "split", "aligned"], tostr=True
-            )
-
-            for target_item, target_uncat_score in uncat_target_scores.items():
-                uncat_log = {}
-                targ_uncat_log_at_ks = [
+            for temp_log in uncat_log_ks:
+                uncat_log.update(
                     {
-                        f"rakings@{k}": seq_tostr(uncat_target_gt[k]),
-                        f"counter_rankings@{k}": seq_tostr(uncat_counter_rankings[k]),
-                        f"score@{k}": target_uncat_score,
-                    }
-                    for k in self.ks
-                ]
-                for targ_uncat_log in targ_uncat_log_at_ks:
-                    uncat_log = {
                         **log,
-                        **targ_uncat_log,
+                        **temp_log,
                         "categorized": False,
-                        "targeted": True,
-                        "target": target_item,
+                        "targeted": False,
+                        "generation_strategy": "genetic",
                     }
-                self.logger.log_run(
-                    uncat_log, primary_key=["source", "split", "aligned"], tostr=True
                 )
-            for target_cat, target_cat_score in cat_target_scores.items():
-                cat_log = {}
-                targ_cat_log_at_ks = [
+            uncat_logs.append(uncat_log)
+
+            for target_item in uncat_target_scores:
+                targ_uncat_log_ks = [
                     {
-                        f"rakings@{k}": seq_tostr(cat_target_gt[k]),
-                        f"counter_rankings@{k}": seq_tostr(cat_counter_rankings[k]),
-                        f"score@{k}": target_cat_score,
+                        f"rankings@{k}": seq_tostr(uncat_target_gt[k]),
+                        f"counter_rankings@{k}": seq_tostr(uncat_counter_rankings[k]),
+                        f"score@{k}": uncat_target_scores[target_item][k],
                     }
                     for k in self.ks
                 ]
-                for targ_cat_log in targ_cat_log_at_ks:
-                    cat_log = {
-                        **log,
-                        **targ_cat_log,
-                        "categorized": True,
-                        "targeted": True,
-                        "target": target_cat,
+                targ_uncat_log = {}
+                for temp_log in targ_uncat_log_ks:
+                    targ_uncat_log.update(
+                        {
+                            **log,
+                            **temp_log,
+                            "categorized": False,
+                            "targeted": True,
+                            "generation_strategy": "targeted_uncategorized",
+                            "target": target_item,
+                        }
+                    )
+                targ_uncat_logs.append(targ_uncat_log)
+            for target_cat in cat_target_scores:
+                targ_cat_log_ks = [
+                    {
+                        f"rankings@{k}": seq_tostr(cat_target_gt[k]),
+                        f"counter_rankings@{k}": seq_tostr(cat_counter_rankings[k]),
+                        f"score@{k}": cat_target_scores[target_cat][k],
                     }
-                self.logger.log_run(
-                    cat_log, primary_key=["source", "split", "aligned"], tostr=True
-                )
+                    for k in self.ks
+                ]
+                targ_cat_log = {}
+                for temp_log in targ_cat_log_ks:
+                    targ_cat_log.update(
+                        {
+                            **log,
+                            **temp_log,
+                            "categorized": True,
+                            "targeted": True,
+                            "generation_strategy": "targeted",
+                            "target": target_cat,
+                        }
+                    )
+                targ_cat_logs.append(targ_cat_log)
+
+        # Take and log best counterfactuals from all logs
+        best_cat_log = min(cat_logs, key=lambda x: x["score@1"])
+        best_uncat_log = min(uncat_logs, key=lambda x: x["score@1"])
+        best_targ_cat_log = max(targ_cat_logs, key=lambda x: x["score@1"])
+        best_targ_uncat_log = max(targ_uncat_logs, key=lambda x: x["score@1"])
+        logs = [
+            best_cat_log,
+            best_uncat_log,
+            best_targ_cat_log,
+            best_targ_uncat_log,
+        ]
+        for log in logs:
+            self.logger.log_run(
+                log, primary_key=["source", "split", "aligned"], tostr=True
+            )
 
 
 class RandomStrategy(BaselineStrategy):
@@ -268,7 +296,7 @@ if __name__ == "__main__":
     seqs = SequenceGenerator(conf)
     target_cats = ["Horror", "Action", "Adventure", "Animation", "Fantasy", "Drama"]
     target_items = [50, 411, 630, 1305]
-    for seq in seqs:
+    for i, seq in enumerate(seqs):
         strat = RandomStrategy(
             input_seq=seq,
             model=model,
@@ -279,6 +307,6 @@ if __name__ == "__main__":
             target_items=target_items,
         )
         pop = strat.generate()
-        strat.log(pop)
-        print(f"Logged")
+        strat.log(i, pop)
+        print(f"Logged i: {i}")
         break
