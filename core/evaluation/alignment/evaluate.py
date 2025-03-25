@@ -11,8 +11,13 @@ from core.alignment.utils import postprocess_alignment
 from core.automata_learning.passive_learning import learning_pipeline
 from core.generation.utils import equal_ys, labels2cat
 from core.models.utils import topk, trim
-from exceptions import (CounterfactualNotFound, DfaNotAccepting,
-                        DfaNotRejecting, NoTargetStatesError, SplitNotCoherent)
+from exceptions import (
+    CounterfactualNotFound,
+    DfaNotAccepting,
+    DfaNotRejecting,
+    NoTargetStatesError,
+    SplitNotCoherent,
+)
 from type_hints import CategorySet, GoodBadDataset
 from utils.Split import Split
 from utils.utils import TimedFunction, printd, seq_tostr
@@ -81,17 +86,17 @@ def log_error(
     from core.evaluation.genetic.evaluate import _init_log as gen_init_log
 
     log = _init_log(ks)
-    gen_log = gen_init_log(ks)
+    # gen_log = gen_init_log(ks)
     log["i"] = i
     log["split"] = str(split)
     if target_cat:
         log["gen_target_y@1"] = str(
             {cat2id[target_cat]} if isinstance(target_cat, str) else target_cat
         )
-    gen_log.update(log)
-    gen_log.update(ConfigParams.configs_dict(pandas=False, tostr=True))
-    gen_log["error"] = error
-    return gen_log
+    # gen_log.update(log)
+    # gen_log.update(ConfigParams.configs_dict(pandas=False, tostr=True))
+    log["error"] = error
+    return log
 
 
 def _evaluate_targeted_cat(
