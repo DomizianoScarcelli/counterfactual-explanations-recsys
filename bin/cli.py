@@ -10,6 +10,7 @@ from tqdm import tqdm
 from config.config import ConfigDict, ConfigParams
 from config.constants import cat2id
 from core.evaluation.alignment.utils import (
+    compute_baseline_fidelity,
     compute_edit_distance,
     compute_fidelity,
     compute_running_times,
@@ -354,6 +355,43 @@ class CLIStats:
                 config_dict[f"fidelity_{key}"] = value
             for key, value in {**edit_distance_dict, **running_time_dict}.items():
                 config_dict[key] = value
+            rows.append(config_dict)
+
+        result_df = pd.DataFrame(rows)
+
+        if save_path:
+            result_df.to_csv(save_path, index=False)
+        else:
+            print(result_df)
+
+    def baseline_fidelity(self, log_path: str, save_path: Optional[str] = None):
+        config_keys = list(ConfigParams.configs_dict().keys())
+        df = load_log(log_path)
+        config_keys.append("target")
+        config_keys.append("targeted")
+        config_keys.append("categorized")
+        config_keys.remove("target_cat")
+        config_keys.remove("timestamp")
+        if "split" in df.columns:
+            config_keys.append("split")
+
+        assert (
+            set(config_keys) - set(df.columns) == set()
+        ), f"Some config keys: {set(config_keys) - set(df.columns)} do not exist in the loaded df"
+
+        df[config_keys] = df[config_keys].fillna("NaN")
+        rows = []
+        grouped = df.groupby(config_keys)
+
+        for config_values, group in grouped:
+            fidelity_dict = compute_baseline_fidelity(group)
+            if isinstance(config_values, tuple):
+                config_dict = dict(zip(config_keys, config_values))
+            else:
+                config_dict = {config_keys[0]: config_values}
+            for key, value in fidelity_dict.items():
+                config_dict[f"count"] = group.shape[0]
+                config_dict[f"fidelity_{key}"] = value
             rows.append(config_dict)
 
         result_df = pd.DataFrame(rows)
