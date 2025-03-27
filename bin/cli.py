@@ -3,6 +3,7 @@ import random
 import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, TypeAlias
+from core.generation.strategies.baselines import main as compute_baselines
 
 import fire
 import pandas as pd
@@ -494,6 +495,23 @@ class CLIUtils:
         ConfigParams.override_params(config_dict)
         ConfigParams.fix()
         preprocess_dataset(dataset)
+
+    def baselines(
+        self,
+        dataset,
+        baseline,
+        num_samples: Optional[int] = None,
+        seed: Optional[int] = None,
+    ):
+        for key in RecDataset:
+            if key.value == dataset:
+                recdataset = key.name
+        config_dict: ConfigDict = {
+            "settings": {"dataset": recdataset, "seed": seed if seed else 42}
+        }
+        ConfigParams.override_params(config_dict)
+        ConfigParams.fix()
+        compute_baselines(baseline=baseline, num_samples=num_samples)
 
 
 class CLI:

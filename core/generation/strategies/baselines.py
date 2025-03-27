@@ -337,7 +337,7 @@ dataset_target_cats = {
 }
 
 
-def run_random_baseline():
+def run_random_baseline(num_samples: Optional[int]):
     conf = get_config(dataset=ConfigParams.DATASET, model=ConfigParams.MODEL)
     model = generate_model(config=conf)
     seqs = SequenceGenerator(conf)
@@ -347,8 +347,20 @@ def run_random_baseline():
     for i in seqs:
         total += 1
     seqs.reset()
+    sampled_indices = None
+    if num_samples:
+        sample_range = range(total)
+        if num_samples > len(sample_range):
+            raise ValueError(
+                f"sample_num ({num_samples}) must be smaller than sample range ({len(sample_range)})"
+            )
+        sampled_indices = set(random.sample(population=sample_range, k=num_samples))
+        total = num_samples
     pbar = tqdm(total=total, desc="Evaluating RandomStrategy baseline...")
     for i, seq in enumerate(seqs):
+        if sampled_indices and i not in sampled_indices:
+            seqs.skip()
+            continue
         strat = RandomStrategy(
             input_seq=seq,
             model=model,
@@ -370,9 +382,9 @@ def run_random_baseline():
         pbar.update(1)
 
 
-def main(baseline):
+def main(baseline: str, num_samples: int):
     if baseline == "random":
-        run_random_baseline()
+        run_random_baseline(num_samples)
     else:
         raise ValueError(f"Baseline {baseline} not supported yet")
 
