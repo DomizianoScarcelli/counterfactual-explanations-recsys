@@ -1,3 +1,4 @@
+from type_hints import RecDataset
 from config.constants import cat2id
 from abc import abstractmethod
 from type_hints import RecDataset
@@ -310,16 +311,31 @@ class PopularStrategy(GenerationStrategy):
 
 
 dataset_target_items = {
-        RecDataset.ML_100K:[50, 411, 630, 1305],
-        RecDataset.STEAM:[50, 411, 630, 1305],
-        RecDataset.ML_1M:[50, 411, 630, 1305],
-        }
+    RecDataset.ML_100K: [50, 411, 630, 1305],
+    RecDataset.STEAM: [271590, 35140, 292140, 582160],
+    RecDataset.ML_1M: [2858, 2005, 728, 2738],
+}
 
 dataset_target_cats = {
-        RecDataset.ML_100K:["Horror", "Action", "Adventure", "Animation", "Fantasy", "Drama"]
-        RecDataset.STEAM:[50, 411, 630, 1305],
-        RecDataset.ML_1M:["Horror", "Action", "Adventure", "Animation", "Fantasy", "Drama"]
-        }
+    RecDataset.ML_100K: [
+        "Horror",
+        "Action",
+        "Adventure",
+        "Animation",
+        "Fantasy",
+        "Drama",
+    ],
+    RecDataset.STEAM: ["Action", "Indie", "Free to Play", "Sports", "Photo Editing"],
+    RecDataset.ML_1M: [
+        "Horror",
+        "Action",
+        "Adventure",
+        "Animation",
+        "Fantasy",
+        "Drama",
+    ],
+}
+
 
 def run_random_baseline():
     conf = get_config(dataset=ConfigParams.DATASET, model=ConfigParams.MODEL)
