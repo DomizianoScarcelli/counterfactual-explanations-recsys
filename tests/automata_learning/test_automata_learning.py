@@ -1,10 +1,10 @@
+from config.config import ConfigParams
 from core.automata_learning.passive_learning import learning_pipeline
 from core.automata_learning.utils import run_automata
-from config.config import ConfigParams
-from core.models.config_utils import generate_model, get_config
 from core.evaluation.alignment.utils import preprocess_interaction
-from utils.utils import printd
+from core.models.config_utils import generate_model, get_config
 from utils.generators import DatasetGenerator
+from utils.utils import printd
 
 
 def test_automata_accepts_source_sequence():

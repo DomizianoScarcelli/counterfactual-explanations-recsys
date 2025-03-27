@@ -5,9 +5,9 @@ from aalpy.automata.Dfa import Dfa
 from aalpy.learning_algs import run_RPNI
 from torch import Tensor
 
+from config.config import ConfigParams
 from core.alignment.alignment import augment_constraint_automata
 from core.automata_learning.utils import load_automata
-from config.config import ConfigParams
 from core.generation.dataset.utils import load_dataset
 from type_hints import GoodBadDataset
 from utils.utils import printd

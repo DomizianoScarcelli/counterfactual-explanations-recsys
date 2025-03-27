@@ -12,15 +12,12 @@ from config.constants import MAX_LENGTH, cat2id
 from core.generation.extended_ea_algorithms import eaSimpleBatched
 from core.generation.mutations import ALL_MUTATIONS, Mutation
 from core.generation.strategies.genetic import GeneticStrategy
-from core.generation.utils import (
-    _evaluate_categorized_generation,
-    equal_ys,
-    get_category_map,
-    labels2cat,
-)
+from core.generation.utils import (_evaluate_categorized_generation, equal_ys,
+                                   get_category_map, labels2cat)
 from core.models.utils import pad_batch, topk, trim
 from type_hints import CategorizedDataset
-from utils.distances import edit_distance, intersection_weighted_ndcg, self_indicator
+from utils.distances import (edit_distance, intersection_weighted_ndcg,
+                             self_indicator)
 from utils.Split import Split
 
 

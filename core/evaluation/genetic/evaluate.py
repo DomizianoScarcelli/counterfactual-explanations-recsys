@@ -4,25 +4,21 @@ from typing import Any, Dict, List, Optional, Set
 from recbole.model.abstract_recommender import SequentialRecommender
 from torch import Tensor
 
-from core.alignment.alignment import trace_disalignment
-from core.automata_learning.passive_learning import learning_pipeline
 from config.config import ConfigParams
 from config.constants import MAX_LENGTH, cat2id
-from exceptions import (
-    CounterfactualNotFound,
-    DfaNotAccepting,
-    DfaNotRejecting,
-    EmptyDatasetError,
-    NoTargetStatesError,
-    SplitNotCoherent,
-)
-from core.generation.utils import _evaluate_categorized_generation, equal_ys, labels2cat
+from core.alignment.alignment import trace_disalignment
+from core.automata_learning.passive_learning import learning_pipeline
+from core.generation.utils import (_evaluate_categorized_generation, equal_ys,
+                                   labels2cat)
 from core.models.utils import pad, topk, trim
+from exceptions import (CounterfactualNotFound, DfaNotAccepting,
+                        DfaNotRejecting, EmptyDatasetError,
+                        NoTargetStatesError, SplitNotCoherent)
 from type_hints import GoodBadDataset
-from utils.utils import TimedFunction, seq_tostr
 from utils.distances import edit_distance
 from utils.generators import TimedGenerator
 from utils.Split import Split
+from utils.utils import TimedFunction, seq_tostr
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 warnings.simplefilter(action="ignore", category=RuntimeWarning)

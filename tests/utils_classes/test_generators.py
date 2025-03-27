@@ -5,7 +5,7 @@ from torch import Tensor
 from core.generation.dataset.utils import are_dataset_equal
 from type_hints import GoodBadDataset
 from utils.generators import (DatasetGenerator, InteractionGenerator,
-                         SequenceGenerator)
+                              SequenceGenerator)
 
 
 def interaction_equality(i1: Interaction, i2: Interaction):

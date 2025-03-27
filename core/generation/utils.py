@@ -1,19 +1,19 @@
-from core.models.utils import trim
-from typing import Optional
 import json
 import pickle
 import random
 from enum import Enum
 from pathlib import Path
 from statistics import mean
-from typing import Callable, Dict, List, Literal, Set, Tuple, TypedDict, overload
+from typing import (Callable, Dict, List, Literal, Optional, Set, Tuple,
+                    TypedDict, overload)
 
 import _pickle as cPickle
 from recbole.data.dataset.sequential_dataset import SequentialDataset
 from torch import Tensor
 
 from config.config import ConfigParams
-from config.constants import cat2id
+from config.constants import SUPPORTED_DATASETS, cat2id
+from core.models.utils import trim
 from exceptions import EmptyDatasetError
 from type_hints import CategorizedDataset, CategorySet, Dataset, RecDataset
 from utils.Cached import Cached
@@ -123,18 +123,18 @@ def get_category_map(dataset: Optional[RecDataset] = None) -> Dict[int, str]:
     def load_json(path: Path):
         if not path.exists():
             raise FileNotFoundError(
-                "Category map has not been found, generate it with `python -m scripts.create_category_mapping`"
+                "Category map has not been found, generate it with `python -m scripts.preprocess_dataset`"
             )
         with open(path, "r") as f:
             data = json.load(f)
 
         return {int(key): value for key, value in data.items()}
 
-    if dataset in [RecDataset.ML_1M, RecDataset.ML_100K]:
+    if dataset in SUPPORTED_DATASETS:
         category = Path(f"data/category_map_{dataset.value}.json")
     else:
         raise NotImplementedError(
-            f"get_category_map not implemented for dataset {dataset}"
+            f"get_category_map not implemented for dataset {dataset}, generate it with scripts/create_category_mapping.py"
         )
 
     return Cached(category, load_fn=load_json).get_data()
@@ -191,8 +191,12 @@ def get_remapped_dataset(dataset: RecDataset) -> SequentialDataset:
         with open(path, "rb") as f:
             return pickle.load(f)
 
-    if dataset in [RecDataset.ML_1M, RecDataset.ML_100K]:
+    if dataset in SUPPORTED_DATASETS:
         path = Path(f"data/{ConfigParams.DATASET.value}-SequentialDataset.pth")
+        if not path.exists():
+            raise FileNotFoundError(
+                f"Sequential dataset at {path} not found, make sure to generate it by running an InteractionGenerator with that dataset."
+            )
     else:
         raise NotImplementedError(
             f"get_category_map not implemented for dataset {dataset}"
@@ -203,21 +207,30 @@ def get_remapped_dataset(dataset: RecDataset) -> SequentialDataset:
 
 def id2token(dataset: RecDataset, id: int) -> int:
     """Maps interal item ids to external tokens"""
+    if dataset in [RecDataset.ML_1M, RecDataset.ML_100K]:
+        field = "item_id"
+    elif dataset == RecDataset.STEAM:
+        field = "product_id"
+    else:
+        raise ValueError(
+            f"Dataset {dataset} not supported (supported datsets are {SUPPORTED_DATASETS})"
+        )
     remapped_dataset = get_remapped_dataset(dataset)
-    return int(remapped_dataset.id2token("item_id", ids=id))
+    return int(remapped_dataset.id2token(field, ids=id))
 
 
 def token2id(dataset: RecDataset, token: str) -> int:
     """Maps external item tokens to internal ids."""
+    if dataset in [RecDataset.ML_1M, RecDataset.ML_100K]:
+        field = "item_id"
+    elif dataset == RecDataset.STEAM:
+        field = "product_id"
+    else:
+        raise ValueError(
+            f"Dataset {dataset} not supported (supported datsets are {SUPPORTED_DATASETS})"
+        )
     remapped_dataset: SequentialDataset = get_remapped_dataset(dataset)
-    return int(remapped_dataset.token2id("item_id", tokens=token))
-
-
-def get_item_info(datset: RecDataset, id: int) -> ItemInfo:
-    """Returns the information about a certain item in the dataset"""
-    # TODO:implement
-    info = {"name": "", "category": []}
-    return info
+    return int(remapped_dataset.token2id(field, tokens=token))
 
 
 def clone(x):

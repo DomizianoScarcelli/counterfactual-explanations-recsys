@@ -69,8 +69,10 @@ class DBCLI:
         )
 
     def merge(self, db1: str, db2: str):
-        if not os.path.exists(db1) or not os.path.exists(db2):
-            raise FileNotFoundError("One or both database files do not exist.")
+        if not os.path.exists(db1):
+            raise FileNotFoundError(f"{db1} doesn't exists")
+        if not os.path.exists(db2):
+            raise FileNotFoundError(f"{db2} doesn't exists")
 
         dir_path = os.path.dirname(db1)
         db1_name = os.path.splitext(os.path.basename(db1))[0]

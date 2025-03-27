@@ -1,6 +1,6 @@
 import sqlite3
-from pathlib import Path
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Union
 
 import pandas as pd

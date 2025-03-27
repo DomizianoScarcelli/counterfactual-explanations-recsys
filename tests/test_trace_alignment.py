@@ -5,11 +5,11 @@ import pytest
 import torch
 from aalpy.automata.Dfa import Dfa
 
+from config.constants import MAX_LENGTH
 from core.alignment.actions import encode_action_str, print_action
 from core.alignment.alignment import align, trace_alignment, trace_disalignment
 from core.automata_learning.passive_learning import learning_pipeline
 from core.automata_learning.utils import invert_automata, run_automata
-from config.constants import MAX_LENGTH
 from core.generation.dataset.generate import generate
 from core.generation.dataset.utils import get_dataset_alphabet
 from core.models.utils import pad, trim

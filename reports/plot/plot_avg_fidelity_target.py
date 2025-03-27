@@ -1,6 +1,7 @@
+from collections import defaultdict
+
 import matplotlib.pyplot as plt
 import numpy as np
-from collections import defaultdict
 
 # Raw data from the user
 raw_data = """Drama BERT4Rec ml-100k GENE 1.0 0.648 0.534 0.42 1.002 1.0 1.0 1.0

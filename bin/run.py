@@ -1,23 +1,19 @@
-from typing import Set
 import warnings
-from typing import List, Optional
-import random
+from typing import List, Optional, Set
 
-from tqdm import tqdm
 
 from config.config import ConfigParams
 from config.constants import cat2id, error_messages
-from exceptions import EmptyDatasetError
-from core.generation.dataset.utils import interaction_to_tensor
 from core.evaluation.alignment.evaluate import evaluate_alignment
 from core.evaluation.alignment.evaluate import log_error as log_alignment_error
 from core.evaluation.genetic.evaluate import evaluate_genetic
 from core.evaluation.genetic.evaluate import log_error as log_genetic_error
+from core.generation.dataset.utils import interaction_to_tensor
+from exceptions import EmptyDatasetError
 from type_hints import SplitTuple
-from utils.utils import printd
 from utils.generators import DatasetGenerator, TimedGenerator
-from utils.utils import RunLogger
 from utils.Split import Split
+from utils.utils import RunLogger, printd
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 warnings.simplefilter(action="ignore", category=RuntimeWarning)
@@ -38,9 +34,6 @@ def skip_sequence(
             if isinstance(target_cat, str)
             else target_cat
         )
-        # new_row["gen_target_y@1"] = (
-        #     str(cat2id[target_cat]) if isinstance(target_cat, str) else target_cat
-        # )
     if alignment:
         new_row["split"] = str(split)
 
@@ -84,7 +77,7 @@ def run_genetic(
     pbar=None,
 ):
     split: Split = parse_splits([split] if split else None)[0]  # type: ignore
-    primary_key = ["i", "generation_strategy"]
+    primary_key = ["i", "generation_strategy", "split"]
     if target_cat:
         primary_key.append("gen_target_y@1")
 
@@ -107,9 +100,7 @@ def run_genetic(
             printd(f"Skipping i = {i} because it was not sampled")
             datasets.skip()
             continue
-        if skip_sequence(
-            i, primary_key, target_cat, logger, split.split, alignment=False
-        ):
+        if skip_sequence(i, primary_key, target_cat, logger, split.split):
             printd(
                 f"Skipping i: {i} with target {target_cat} and split {split} because already in the log..."
             )
@@ -157,7 +148,7 @@ def run_genetic(
             ks=ks,
         )
 
-        yield log
+        logger.log_run(log, primary_key=primary_key)
 
 
 # TODO: add the possibility for the target_cat to be None, i.e. the run to be untargeted.
@@ -172,7 +163,6 @@ def run_alignment(
     use_cache: bool = False,
     pbar=None,
 ):
-
     # Parse args
     splits: List[Split] = parse_splits(splits)
     primary_key = ["i", "split", "generation_strategy"]

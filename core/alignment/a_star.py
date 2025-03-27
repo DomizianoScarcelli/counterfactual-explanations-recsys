@@ -8,12 +8,12 @@ from aalpy.automata.Dfa import Dfa, DfaState
 if os.environ.get("LINE_PROFILE") == "1":
     pass
 
+from config.config import ConfigParams
 from core.alignment.actions import (Action, decode_action, encode_action_str,
                                     is_legal)
 from core.alignment.utils import alignment_length, prune_paths_by_length
-from config.config import ConfigParams
-from exceptions import NoTargetStatesError
 from core.heuristics.heuristics import hops
+from exceptions import NoTargetStatesError
 from type_hints import PathInfo, PathsQueue, TraceSplit
 from utils.utils import printd
 
