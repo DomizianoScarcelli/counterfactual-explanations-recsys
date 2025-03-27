@@ -118,7 +118,7 @@ class BaselineStrategy(GenerationStrategy):
                 uncat_target_scores[target_item] = targ_uncat_scores
             for target_cat in self.target_cats:
                 cat_target_gt = {
-                    k: [{cat2id[target_cat]} for _ in range(k)] for k in self.ks
+                    k: [{cat2id()[target_cat]} for _ in range(k)] for k in self.ks
                 }
                 targ_cat_scores = {k: equal_ys(cat_target_gt[k], cat_rankings[k], return_score=True)[1] for k in self.ks}  # type: ignore
                 cat_target_scores[target_cat] = targ_cat_scores

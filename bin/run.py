@@ -30,7 +30,7 @@ def skip_sequence(
     new_row = {"i": i}
     if target_cat:
         new_row["gen_target_y@1"] = (
-            f"{'{'}{cat2id[target_cat]}{'}'}"
+            f"{'{'}{cat2id()[target_cat]}{'}'}"
             if isinstance(target_cat, str)
             else target_cat
         )

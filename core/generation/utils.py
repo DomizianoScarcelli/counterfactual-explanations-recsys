@@ -4,8 +4,17 @@ import random
 from enum import Enum
 from pathlib import Path
 from statistics import mean
-from typing import (Callable, Dict, List, Literal, Optional, Set, Tuple,
-                    TypedDict, overload)
+from typing import (
+    Callable,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Set,
+    Tuple,
+    TypedDict,
+    overload,
+)
 
 import _pickle as cPickle
 from recbole.data.dataset.sequential_dataset import SequentialDataset
@@ -168,11 +177,11 @@ def labels2cat(
         ys = ys.tolist()
 
     if encode:
-        # try:
-        return [set(cat2id[cat] for cat in itemid2cat[y]) for y in ys]  # type: ignore
-        # except:
-        # print(f"[ERROR] error on sequence", ys)
-        # raise
+        try:
+            return [set(cat2id()[cat] for cat in itemid2cat[y]) for y in ys]  # type: ignore
+        except:
+            print(f"[ERROR] cat2id is", cat2id())
+            raise
     return [set(itemid2cat[y]) for y in ys]
 
 
@@ -183,7 +192,7 @@ def label2cat(
     categories = itemid2cat[label]
     if not encode:
         return categories
-    return [cat2id[cat] for cat in categories]
+    return [cat2id()[cat] for cat in categories]
 
 
 def get_remapped_dataset(dataset: RecDataset) -> SequentialDataset:

@@ -256,7 +256,7 @@ def run_on_all_positions(
                 )
 
             if isinstance(y_target, str):
-                y_target = cat2id[y_target]
+                y_target = cat2id()[y_target]
 
         print("[DEBUG], y_target", y_target)
         model_sensitivity_universal(

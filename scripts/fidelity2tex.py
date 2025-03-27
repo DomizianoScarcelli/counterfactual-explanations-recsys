@@ -49,7 +49,7 @@ def csv2table(log_path):
     df = df[list(columns_to_keep.keys())].rename(columns=columns_to_keep)
 
     # Convert target
-    id2cat = {v: k for k, v in cat2id.items()}
+    id2cat = {v: k for k, v in cat2id().items()}
 
     def convert_target(target):
         match = re.match(r"^\{(\d+)\}$", str(target))

@@ -87,7 +87,7 @@ class RunSwitcher:
                 self.targets = (
                     [ConfigParams.TARGET_CAT]
                     if ConfigParams.TARGET_CAT
-                    else [cat for cat in cat2id if cat != "unknown"]
+                    else [cat for cat in cat2id() if cat != "unknown"]
                 )
 
             assert self.targets
