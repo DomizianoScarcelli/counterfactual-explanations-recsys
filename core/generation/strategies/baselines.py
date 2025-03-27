@@ -18,7 +18,7 @@ import random
 import fire
 
 import torch
-from torch import Tensor, Value
+from torch import Tensor
 
 from core.generation.strategies.abstract_strategy import GenerationStrategy
 from core.models.utils import trim
@@ -309,15 +309,24 @@ class PopularStrategy(GenerationStrategy):
     pass
 
 
+dataset_target_items = {
+        RecDataset.ML_100K:[50, 411, 630, 1305],
+        RecDataset.STEAM:[50, 411, 630, 1305],
+        RecDataset.ML_1M:[50, 411, 630, 1305],
+        }
+
+dataset_target_cats = {
+        RecDataset.ML_100K:["Horror", "Action", "Adventure", "Animation", "Fantasy", "Drama"]
+        RecDataset.STEAM:[50, 411, 630, 1305],
+        RecDataset.ML_1M:["Horror", "Action", "Adventure", "Animation", "Fantasy", "Drama"]
+        }
+
 def run_random_baseline():
-    if ConfigParams.DATASET != RecDataset.ML_100K:
-        raise ValueError(f"Only ml100k supported for no, not {ConfigParams.DATASET}")
     conf = get_config(dataset=ConfigParams.DATASET, model=ConfigParams.MODEL)
     model = generate_model(config=conf)
     seqs = SequenceGenerator(conf)
-    # TODO: put correct categories for correct dataset
-    target_cats = ["Horror", "Action", "Adventure", "Animation", "Fantasy", "Drama"]
-    target_items = [50, 411, 630, 1305]
+    target_cats = dataset_target_cats[ConfigParams.DATASET]
+    target_items = dataset_target_items[ConfigParams.DATASET]
     total = 0
     for i in seqs:
         total += 1
