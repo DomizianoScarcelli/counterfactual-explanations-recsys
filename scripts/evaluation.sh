@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define target options
-dataset="ML_1M" #ML_100K, ML_1M or STEAM
+dataset="STEAM" #ML_100K, ML_1M or STEAM
 seed=42
 
 # Dataset specific options
@@ -155,7 +155,7 @@ echo "python -m bin.cli evaluate alignment \\
     --use-cache=False \\
     --save-path=\"results/evaluate/alignment.db\" \\
     --config_dict='$config_json' \\
-    --mode=\"all\" \\
+    --mode=\"genetic\" \\
     --range-i=\"(0, $num_users)\" \\
     --splits=\"[(None, 10, 0)]\" \\
     --sample_num=$sample_num
@@ -167,7 +167,7 @@ echo "=================================="
        --use-cache=False \
        --save-path="results/evaluate/alignment.db" \
        --config_dict="$config_json" \
-       --mode="all" \
+       --mode="genetic" \
        --range-i="(0, $num_users)" \
        --splits="[(None, 10, 0)]" \
        --sample_num=$sample_num

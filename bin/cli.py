@@ -1,3 +1,4 @@
+from scripts.preprocess_dataset import main as preprocess_dataset
 import random
 import warnings
 from pathlib import Path
@@ -7,20 +8,24 @@ import fire
 import pandas as pd
 from tqdm import tqdm
 
-from bin.run import run_alignment as run_alignment
-from bin.run import run_all, run_genetic
+from bin.run import run_all, run_genetic, run_alignment
 from config.config import ConfigDict, ConfigParams
 from config.constants import cat2id
-from core.evaluation.alignment.utils import (compute_edit_distance,
-                                             compute_fidelity,
-                                             compute_running_times)
+from core.evaluation.alignment.utils import (
+    compute_edit_distance,
+    compute_fidelity,
+    compute_running_times,
+)
 from core.evaluation.automata_learning.evaluate_with_test_set import (
-    compute_automata_metrics, run_automata_learning_eval)
+    compute_automata_metrics,
+    run_automata_learning_eval,
+)
 from core.evaluation.evaluation_utils import compute_metrics
 from core.sensitivity.model_sensitivity import run_on_all_positions
 from scripts.dataframes.merge_dfs import main as merge_dfs_script
 from scripts.print_pth import print_pth as print_pth_script
 from scripts.targets_popularity import main as targets_popularity_script
+from type_hints import RecDataset
 from utils.generators import InteractionGenerator
 from utils.utils import RunLogger, SeedSetter, load_log
 
@@ -142,6 +147,7 @@ class RunSwitcher:
                 pbar=self.pbar,
             )  # NOTE: splits can be used in the genetic only if just a single one is used, otherwise each split would require a different dataset generation
         elif self.mode == "all":
+            print(f"[DEBUG] running all")
             run_all(
                 target_cat=target,
                 logger=logger,
@@ -165,7 +171,7 @@ class CLIScripts:
     def print_pth(self, pth_path: str):
         print_pth_script(pth_path)
 
-    def targets_popularity(self, dataset: str, save_plot: bool=False):
+    def targets_popularity(self, dataset: str, save_plot: bool = False):
         targets_popularity_script(dataset, save_plot)
 
     def merge_dfs(
@@ -442,7 +448,14 @@ class CLIEvaluate:
 
 
 class CLIUtils:
-    pass
+    def preprocess(self, dataset):
+        for key in RecDataset:
+            if key.value == dataset:
+                recdataset = key.name
+        config_dict: ConfigDict = {"settings": {"dataset": recdataset}}
+        ConfigParams.override_params(config_dict)
+        ConfigParams.fix()
+        preprocess_dataset(dataset)
 
 
 class CLI:
