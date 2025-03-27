@@ -3,6 +3,7 @@ import random
 import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, TypeAlias
+from core.generation.strategies.baselines import main as compute_baselines
 
 import fire
 import pandas as pd
@@ -12,6 +13,7 @@ from bin.run import run_all, run_genetic, run_alignment
 from config.config import ConfigDict, ConfigParams
 from config.constants import cat2id
 from core.evaluation.alignment.utils import (
+    compute_baseline_fidelity,
     compute_edit_distance,
     compute_fidelity,
     compute_running_times,
@@ -85,7 +87,7 @@ class RunSwitcher:
                 self.targets = (
                     [ConfigParams.TARGET_CAT]
                     if ConfigParams.TARGET_CAT
-                    else [cat for cat in cat2id if cat != "unknown"]
+                    else [cat for cat in cat2id() if cat != "unknown"]
                 )
 
             assert self.targets
@@ -364,6 +366,43 @@ class CLIStats:
         else:
             print(result_df)
 
+    def baseline_fidelity(self, log_path: str, save_path: Optional[str] = None):
+        config_keys = list(ConfigParams.configs_dict().keys())
+        df = load_log(log_path)
+        config_keys.append("target")
+        config_keys.append("targeted")
+        config_keys.append("categorized")
+        config_keys.remove("target_cat")
+        config_keys.remove("timestamp")
+        if "split" in df.columns:
+            config_keys.append("split")
+
+        assert (
+            set(config_keys) - set(df.columns) == set()
+        ), f"Some config keys: {set(config_keys) - set(df.columns)} do not exist in the loaded df"
+
+        df[config_keys] = df[config_keys].fillna("NaN")
+        rows = []
+        grouped = df.groupby(config_keys)
+
+        for config_values, group in grouped:
+            fidelity_dict = compute_baseline_fidelity(group)
+            if isinstance(config_values, tuple):
+                config_dict = dict(zip(config_keys, config_values))
+            else:
+                config_dict = {config_keys[0]: config_values}
+            for key, value in fidelity_dict.items():
+                config_dict[f"count"] = group.shape[0]
+                config_dict[f"fidelity_{key}"] = value
+            rows.append(config_dict)
+
+        result_df = pd.DataFrame(rows)
+
+        if save_path:
+            result_df.to_csv(save_path, index=False)
+        else:
+            print(result_df)
+
 
 class CLIEvaluate:
 
@@ -456,6 +495,23 @@ class CLIUtils:
         ConfigParams.override_params(config_dict)
         ConfigParams.fix()
         preprocess_dataset(dataset)
+
+    def baselines(
+        self,
+        dataset,
+        baseline,
+        num_samples: Optional[int] = None,
+        seed: Optional[int] = None,
+    ):
+        for key in RecDataset:
+            if key.value == dataset:
+                recdataset = key.name
+        config_dict: ConfigDict = {
+            "settings": {"dataset": recdataset, "seed": seed if seed else 42}
+        }
+        ConfigParams.override_params(config_dict)
+        ConfigParams.fix()
+        compute_baselines(baseline=baseline, num_samples=num_samples)
 
 
 class CLI:

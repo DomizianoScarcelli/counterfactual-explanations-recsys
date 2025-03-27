@@ -39,7 +39,7 @@ class TargetLabelSUL(SUL):
         preds = self.model(seq)
         topk_preds = topk(logits=preds, dim=-1, k=self.k, indices=True).squeeze()
         topk_preds = labels2cat(topk_preds, encode=True)
-        targets = [{cat2id[self.target]} for _ in range(self.k)]
+        targets = [{cat2id()[self.target]} for _ in range(self.k)]
         is_good = equal_ys(topk_preds, targets, return_score=False)
         return is_good
 

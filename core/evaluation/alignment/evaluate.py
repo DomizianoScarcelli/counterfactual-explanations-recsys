@@ -91,7 +91,7 @@ def log_error(
     log["split"] = str(split)
     if target_cat:
         log["gen_target_y@1"] = str(
-            {cat2id[target_cat]} if isinstance(target_cat, str) else target_cat
+            {cat2id()[target_cat]} if isinstance(target_cat, str) else target_cat
         )
     # gen_log.update(log)
     # gen_log.update(ConfigParams.configs_dict(pandas=False, tostr=True))
@@ -120,7 +120,7 @@ def _evaluate_targeted_cat(
         )
         for k in ks
     }
-    target_categories = {cat2id[target_cat]}
+    target_categories = {cat2id()[target_cat]}
     target_preds = {k: [target_categories for _ in range(k)] for k in ks}
 
     printd(f"----RUN DEBUG-----")
@@ -149,7 +149,6 @@ def _evaluate_targeted_cat(
             log[f"gt@{k}"] = seq_tostr(source_preds[k])
             log[f"aligned_gt@{k}"] = seq_tostr(counterfactual_preds[k])
 
-            # TODO: is this correct?
             if ConfigParams.GENERATION_STRATEGY != "targeted":
                 _, score = equal_ys(
                     source_preds[k], counterfactual_preds[k], return_score=True

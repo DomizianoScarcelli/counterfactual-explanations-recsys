@@ -130,6 +130,50 @@ def get_log_stats(
     return results
 
 
+def compute_baseline_fidelity(df: pd.DataFrame) -> dict:
+    """
+    Compute fidelity for each score_at_k and gen_score_at_k in the DataFrame, handling None values
+    and error cases.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame containing score_at_k, gen_score_at_k columns,
+                           jaccard_threshold column, and optionally an error column.
+
+    Returns:
+        dict: Dictionary containing fidelity_at_k values for each k.
+    """
+    fidelity_results = {}
+
+    # Identify score and gen_score columns
+    score_columns = [col for col in df.columns if col.startswith("score")]
+
+    similarity_threshold = pd.to_numeric(df["jaccard_threshold"], errors="coerce")
+
+    # Iterate over each score column
+    for score_col in score_columns:
+        df[score_col] = pd.to_numeric(df[score_col], errors="coerce")
+        # Handle cases where values are None or error is not None
+        if all(df["targeted"] == True):
+            good_generation = (
+                (df[score_col].notna()) & (df[score_col] > similarity_threshold)
+            ).sum()
+        elif all(df["targeted"] == False):
+            good_generation = (
+                (df[score_col].notna()) & (df[score_col] < similarity_threshold)
+            ).sum()
+        else:
+            raise ValueError(
+                f"The entire group should have the same generation strategy. Insert the generation strategy as a primary key"
+            )
+        # Compute fidelity as the proportion of valid rows above the threshold
+        fidelity_k = good_generation / len(df)
+
+        # Store the result in the dictionary
+        fidelity_results[score_col] = fidelity_k
+
+    return fidelity_results
+
+
 def compute_fidelity(df: pd.DataFrame) -> dict:
     """
     Compute fidelity for each score_at_k and gen_score_at_k in the DataFrame, handling None values

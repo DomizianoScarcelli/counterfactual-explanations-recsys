@@ -53,7 +53,7 @@ class TargetedGeneticStrategy(GeneticStrategy):
         )
         self.category_map = get_category_map()
         if isinstance(target, str):
-            target = {cat2id[target]}
+            target = {cat2id()[target]}
 
         self.target = target
 

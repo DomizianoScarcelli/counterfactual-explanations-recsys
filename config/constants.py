@@ -24,7 +24,7 @@ MIN_LENGTH, MAX_LENGTH = InputLength.Bert4Rec.value
 PADDING_CHAR = -1
 
 
-def get_cat2id() -> Dict[str, int]:
+def cat2id() -> Dict[str, int]:
     dataset = ConfigParams.DATASET
     if dataset in [RecDataset.ML_100K, RecDataset.ML_1M]:
         return cat2id_movielens
@@ -34,9 +34,8 @@ def get_cat2id() -> Dict[str, int]:
         raise ValueError(f"Dataset {dataset.value} is not supported")
 
 
-def get_id2cat():
-    cat2id = get_cat2id()
-    return {value: key for key, value in cat2id.items()}
+def id2cat():
+    return {value: key for key, value in cat2id().items()}
 
 
 def generate_cat2id_steam():
@@ -106,9 +105,6 @@ cat2id_movielens = {
     "Western": 17,
     "unknown": 18,
 }
-
-cat2id = get_cat2id()
-id2cat = get_id2cat()
 
 SUPPORTED_DATASETS = list(RecDataset)
 

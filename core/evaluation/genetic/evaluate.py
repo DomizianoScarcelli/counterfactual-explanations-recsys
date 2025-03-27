@@ -85,7 +85,7 @@ def log_error(
     log["split"] = str(split)
     if target_cat:
         log["gen_target_y@1"] = str(
-            {cat2id[target_cat]} if isinstance(target_cat, str) else target_cat
+            {cat2id()[target_cat]} if isinstance(target_cat, str) else target_cat
         )
     align_log.update(log)
 
@@ -135,7 +135,7 @@ def _evaluate_targeted_cat(
         for k in ks
     }
 
-    target_categories = {cat2id[target_cat]}
+    target_categories = {cat2id()[target_cat]}
     target_preds = {k: [target_categories for _ in range(k)] for k in ks}
 
     # Compute dataset metrics
@@ -143,7 +143,7 @@ def _evaluate_targeted_cat(
         good, bad = dataset
         bad_perc = len(bad) / ConfigParams.POP_SIZE
         good_perc = len(good) / ConfigParams.POP_SIZE
-        target_cats = [{cat2id[target_cat]} for _ in range(min(ks))]
+        target_cats = [{cat2id()[target_cat]} for _ in range(min(ks))]
         if len(bad) != 0:
             _, (_, bad_mean_dist) = _evaluate_categorized_generation(
                 trimmed_source, bad, target_cats  # type: ignore
