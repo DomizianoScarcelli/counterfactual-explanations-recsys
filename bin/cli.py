@@ -509,6 +509,8 @@ class CLIUtils:
         config_dict: ConfigDict = {
             "settings": {"dataset": recdataset, "seed": seed if seed else 42}
         }
+        if baseline == "educated":
+            config_dict.update({"evolution": {"pop_size": 1024}})
         ConfigParams.override_params(config_dict)
         ConfigParams.fix()
         compute_baselines(baseline=baseline, num_samples=num_samples)
