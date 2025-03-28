@@ -127,6 +127,11 @@ class RunLogger:
         )
         self.conn.commit()
 
+    def is_empty(self) -> bool:
+        """Efficiently checks if the database is empty, using caching to avoid redundant queries."""
+        ex = self.cursor.execute("SELECT EXISTS(SELECT 1 FROM logs LIMIT 1);")
+        return not ex.fetchone()[0]
+
     def log_run(
         self,
         log: Dict[str, Any],
