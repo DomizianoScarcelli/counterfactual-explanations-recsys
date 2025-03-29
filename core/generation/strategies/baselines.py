@@ -1,3 +1,4 @@
+from core.generation.utils import get_category_map, label2cat
 from typing import Set
 import json
 
@@ -12,7 +13,7 @@ from core.models.utils import topk
 from utils.distances import edit_distance
 from core.generation.utils import equal_ys, labels2cat
 from tqdm import tqdm
-from typing import Counter, Tuple
+from typing import Tuple
 from core.generation.utils import get_items
 from core.models.config_utils import generate_model, get_config
 from typing import Optional
@@ -373,8 +374,7 @@ class EducatedStategy(BaselineStrategy):
         )
         self.target = target
         self.categorized = categorized
-        with open(f"data/category_map_{ConfigParams.DATASET.value}.json", "r") as f:
-            self.category_map = json.load(f)
+        self.category_map = get_category_map()
 
     def generate(self) -> List[Tuple[List[int], Tensor]]:
         x = trim(self.input_seq.squeeze(0)).tolist()
@@ -421,13 +421,7 @@ class EducatedStategy(BaselineStrategy):
         super().log(i=i, dataset=dataset, baseline_name="educated", settings=settings)
 
     def _get_same_cat_items(self, cat: str):
-        try:
-            return [
-                item for item in self.alphabet if cat in self.category_map[str(item)]
-            ]
-        except KeyError:
-            print(f"id2cat is: ", id2cat())
-            raise
+        return [item for item in self.alphabet if cat in self.category_map[item]]
 
 
 class PopularStrategy(GenerationStrategy):
@@ -551,8 +545,13 @@ def run_educated_baseline(num_samples: Optional[int]):
                     target=target,
                 )
                 exists = strat.logger.exists(
-                    log={"i": i, "baseline": "educated"},
-                    primary_key=["i", "baseline"],
+                    log={
+                        "i": i,
+                        "baseline": "educated",
+                        "categorized": f"{categorized}",
+                        "target": target,
+                    },
+                    primary_key=["i", "baseline", "categorized", "target"],
                     consider_config=True,
                 )
                 if exists:
