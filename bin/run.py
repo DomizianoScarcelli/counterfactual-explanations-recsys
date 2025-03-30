@@ -1,3 +1,4 @@
+from pathlib import Path
 import warnings
 from typing import List, Optional, Set
 
@@ -25,8 +26,9 @@ def skip_sequence(
     target_cat: Optional[str],
     logger: RunLogger,
     split: tuple,
-    alignment: bool = True,
 ):
+    if logger.is_empty():
+        return False
     new_row = {"i": i}
     if target_cat:
         new_row["gen_target_y@1"] = (
@@ -34,8 +36,7 @@ def skip_sequence(
             if isinstance(target_cat, str)
             else target_cat
         )
-    if alignment:
-        new_row["split"] = str(split)
+    new_row["split"] = str(split)
 
     new_row.update(ConfigParams.configs_dict(pandas=False, tostr=True))
 
@@ -147,6 +148,7 @@ def run_genetic(
             model=model,
             ks=ks,
         )
+        log["split"] = str(split)
 
         logger.log_run(log, primary_key=primary_key)
 
