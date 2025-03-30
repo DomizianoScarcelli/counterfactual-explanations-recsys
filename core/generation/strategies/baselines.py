@@ -1,3 +1,4 @@
+from core.generation.utils import token2id
 from core.generation.utils import get_category_map, label2cat
 from typing import Set
 import json
@@ -31,8 +32,9 @@ from core.models.utils import trim
 from utils.utils import seq_tostr
 from enum import Enum
 
-
-BASELINES_DB_PATH = "results/evaluate/baselines.db"
+baselines_db_path = lambda edits: (
+    f"results/evaluate/baselines{'_2edits' if edits == 2 else ''}.db"
+)
 
 
 class CounterfactualSetting(Enum):
@@ -68,7 +70,9 @@ class BaselineStrategy(GenerationStrategy):
         self.ks = ConfigParams.TOPK if not ks else ks
         self.target_cats = target_cats
         self.target_items = target_items
-        self.logger = RunLogger(db_path=BASELINES_DB_PATH, add_config=True)
+        self.logger = RunLogger(
+            db_path=baselines_db_path(self.num_edits), add_config=True
+        )
 
     @abstractmethod
     def generate(self) -> List[Tuple[List[int], Tensor]]:
@@ -343,7 +347,11 @@ class RandomStrategy(BaselineStrategy):
             for idx, char in zip(random_idxs, random_chars):
                 mutable[idx] = char
             new_seq = executed + mutable + fixed
-            logits = self.model(torch.tensor(new_seq).unsqueeze(0))
+            try:
+                logits = self.model(torch.tensor(new_seq).unsqueeze(0))
+            except:
+                print(f"[ERROR DEBUG] with char: {char}")
+                raise
             x_primes.append((new_seq, logits))
         return x_primes
 
@@ -372,7 +380,11 @@ class EducatedStategy(BaselineStrategy):
             split=split,
             ks=ks,
         )
-        self.target = target
+        self.target = (
+            target
+            if categorized
+            else token2id(token=str(target), dataset=ConfigParams.DATASET)
+        )
         self.categorized = categorized
         self.category_map = get_category_map()
 
@@ -402,7 +414,11 @@ class EducatedStategy(BaselineStrategy):
             for idx, char in zip(random_idxs, educated_chars):
                 mutable[idx] = char
             new_seq = executed + mutable + fixed
-            logits = self.model(torch.tensor(new_seq).unsqueeze(0))
+            try:
+                logits = self.model(torch.tensor(new_seq).unsqueeze(0))
+            except:
+                print(f"[ERROR DEBUG] with char: {char}")
+                raise
             x_primes.append((new_seq, logits))
         return x_primes
 
@@ -431,7 +447,7 @@ class PopularStrategy(GenerationStrategy):
 
 dataset_target_items = {
     RecDataset.ML_100K: [50, 411, 630, 1305],
-    RecDataset.STEAM: [271590, 35140, 292140, 582160],
+    RecDataset.STEAM: [35140, 292140, 582160, 271590],
     RecDataset.ML_1M: [2858, 2005, 728, 2738],
 }
 
@@ -456,7 +472,7 @@ dataset_target_cats = {
 }
 
 
-def run_random_baseline(num_samples: Optional[int]):
+def run_random_baseline(num_samples: Optional[int], num_edits: int):
     conf = get_config(dataset=ConfigParams.DATASET, model=ConfigParams.MODEL)
     model = generate_model(config=conf)
     seqs = SequenceGenerator(conf)
@@ -474,6 +490,7 @@ def run_random_baseline(num_samples: Optional[int]):
                 f"sample_num ({num_samples}) must be smaller than sample range ({len(sample_range)})"
             )
         sampled_indices = set(random.sample(population=sample_range, k=num_samples))
+        assert len(sampled_indices) == num_samples
         total = num_samples
     pbar = tqdm(total=total, desc="Evaluating RandomStrategy baseline...")
     for i, seq in enumerate(seqs):
@@ -485,14 +502,14 @@ def run_random_baseline(num_samples: Optional[int]):
             model=model,
             split=Split(None, 10, None),
             alphabet=list(get_items()),
-            num_edits=1,
+            num_edits=num_edits,
             target_cats=target_cats,
             target_items=target_items,
         )
 
         exists = strat.logger.exists(
-            log={"i": i, "baseline": "random"},
-            primary_key=["i", "baseline"],
+            log={"i": i, "baseline": "random", "num_edits": num_edits},
+            primary_key=["i", "baseline", "num_edits"],
             consider_config=True,
         )
         if exists:
@@ -504,7 +521,7 @@ def run_random_baseline(num_samples: Optional[int]):
         pbar.update(1)
 
 
-def run_educated_baseline(num_samples: Optional[int]):
+def run_educated_baseline(num_samples: Optional[int], num_edits: int):
     conf = get_config(dataset=ConfigParams.DATASET, model=ConfigParams.MODEL)
     model = generate_model(config=conf)
     seqs = SequenceGenerator(conf)
@@ -513,19 +530,20 @@ def run_educated_baseline(num_samples: Optional[int]):
     total = 0
     for i in seqs:
         total += 1
+    sample_range = range(total)
     total *= len(target_cats) * len(target_items)
     seqs.reset()
     sampled_indices = None
     if num_samples:
-        sample_range = range(total)
         if num_samples > len(sample_range):
             raise ValueError(
                 f"sample_num ({num_samples}) must be smaller than sample range ({len(sample_range)})"
             )
         sampled_indices = set(random.sample(population=sample_range, k=num_samples))
+        assert len(sampled_indices) == num_samples
         total = num_samples
     pbar = tqdm(total=total, desc="Evaluating EducatedStategy baseline...")
-    for categorized in [True, False]:
+    for categorized in [True, False] if num_edits == 1 else [True]:
         target_list = target_cats if categorized else target_items
         for i, seq in enumerate(seqs):
             for target in target_list:
@@ -540,7 +558,7 @@ def run_educated_baseline(num_samples: Optional[int]):
                     model=model,
                     split=Split(None, 10, None),
                     alphabet=list(get_items()),
-                    num_edits=1,
+                    num_edits=num_edits,
                     categorized=categorized,
                     target=target,
                 )
@@ -550,8 +568,9 @@ def run_educated_baseline(num_samples: Optional[int]):
                         "baseline": "educated",
                         "categorized": f"{categorized}",
                         "target": target,
+                        "num_edits": num_edits,
                     },
-                    primary_key=["i", "baseline", "categorized", "target"],
+                    primary_key=["i", "baseline", "categorized", "target", "num_edits"],
                     consider_config=True,
                 )
                 if exists:
@@ -563,11 +582,11 @@ def run_educated_baseline(num_samples: Optional[int]):
                 pbar.update(1)
 
 
-def main(baseline: str, num_samples: int):
+def main(baseline: str, num_samples: int = 200, num_edits: int = 2):
     if baseline == "random":
-        run_random_baseline(num_samples)
+        run_random_baseline(num_samples, num_edits)
     elif baseline == "educated":
-        run_educated_baseline(num_samples)
+        run_educated_baseline(num_samples, num_edits)
     else:
         raise ValueError(f"Baseline {baseline} not supported yet")
 
