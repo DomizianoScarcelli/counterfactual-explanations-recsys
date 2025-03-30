@@ -1,3 +1,6 @@
+from utils.Cached import Cached
+import pickle
+from pathlib import Path
 import json
 import os
 import time
@@ -135,6 +138,44 @@ class ConfigParams:
 
             cls.GENERATIONS = config["evolution"]["generations"]
             cls.TARGET_CAT = config["evolution"]["target_cat"]
+
+            def get_remapped_dataset(dataset: RecDataset):
+                def load_pickle(path: Path):
+                    with open(path, "rb") as f:
+                        return pickle.load(f)
+
+                if dataset in list(RecDataset):
+                    path = Path(f"data/{cls.DATASET.value}-SequentialDataset.pth")
+                    if not path.exists():
+                        raise FileNotFoundError(
+                            f"Sequential dataset at {path} not found, make sure to generate it by running an InteractionGenerator with that dataset."
+                        )
+                else:
+                    raise NotImplementedError(
+                        f"get_category_map not implemented for dataset {dataset}"
+                    )
+
+                return Cached(path, load_fn=load_pickle).get_data()
+
+            def token2id(dataset: RecDataset, token: str) -> int:
+                """Maps external item tokens to internal ids."""
+                if dataset in [RecDataset.ML_1M, RecDataset.ML_100K]:
+                    field = "item_id"
+                elif dataset == RecDataset.STEAM:
+                    field = "product_id"
+                else:
+                    raise ValueError(
+                        f"Dataset {dataset} not supported (supported datsets are {list(RecDataset)})"
+                    )
+                remapped_dataset = get_remapped_dataset(dataset)
+                return int(remapped_dataset.token2id(field, tokens=token))
+
+            if not cls.CATEGORIZED and cls.TARGET_CAT != False:
+                cls.TARGET_CAT = token2id(
+                    token=str(cls.TARGET_CAT), dataset=cls.DATASET
+                )
+            if isinstance(cls.TARGET_CAT, str) and not cls.CATEGORIZED:
+                cls.TARGET_CAT = int(cls.TARGET_CAT)
             cls.POP_SIZE = config["evolution"]["pop_size"]
             cls.HALLOFFAME_RATIO = config["evolution"]["halloffame_ratio"]
             cls.ALLOWED_MUTATIONS = config["evolution"]["allowed_mutations"]

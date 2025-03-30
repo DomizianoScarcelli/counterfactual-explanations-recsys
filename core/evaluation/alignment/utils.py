@@ -200,16 +200,16 @@ def compute_fidelity(df: pd.DataFrame) -> dict:
     for score_col in all_score_columns:
         df[score_col] = pd.to_numeric(df[score_col], errors="coerce")
         # Handle cases where values are None or error is not None
-        if all(df["gen_strategy"] == "targeted") or all(
-            df["gen_strategy"] == "targeted_uncategorized"
+        if all(df["generation_strategy"] == "targeted") or all(
+            df["generation_strategy"] == "targeted_uncategorized"
         ):
             good_generation = (
                 (df[score_col].notna())
                 & (df[error_col].isna())
                 & (df[score_col] > similarity_threshold)
             ).sum()
-        elif all(df["gen_strategy"] == "genetic") or all(
-            df["gen_strategy"] == "genetic_categorized"
+        elif all(df["generation_strategy"] == "genetic") or all(
+            df["generation_strategy"] == "genetic_categorized"
         ):
             good_generation = (
                 (df[score_col].notna())
@@ -218,7 +218,7 @@ def compute_fidelity(df: pd.DataFrame) -> dict:
             ).sum()
         else:
             raise ValueError(
-                f"The entire group should have the same generation strategy. Insert the generation strategy as a primary key"
+                f"The entire group should have the same generation strategy."
             )
         # Compute fidelity as the proportion of valid rows above the threshold
         fidelity_k = good_generation / len(df)

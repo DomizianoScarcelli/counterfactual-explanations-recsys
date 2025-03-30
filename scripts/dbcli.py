@@ -122,7 +122,7 @@ class DBCLI:
             primary_key = [
                 "i",
                 "gen_strategy",
-                "split",
+                # "split",
                 "model",
                 "dataset",
                 "gen_target_y_at_1",
@@ -134,15 +134,12 @@ class DBCLI:
                 "crossover_prob",
                 "genetic_topk",
                 "mutation_params",
-                "ignore_genetic_split",
                 "jaccard_threshold",
             ]
             logger.dedupe(add_config=False, primary_key=primary_key)
             query = """DELETE FROM logs
             WHERE NOT (
-                CAST(split AS TEXT) = '(None, 10, 0)'
-                AND CAST(determinism AS TEXT) = 'True'
-                AND CAST(generations AS TEXT) = '10'
+                CAST(generations AS TEXT) = '10'
                 AND CAST(halloffame_ratio AS TEXT) = '0'
                 AND CAST(jaccard_threshold AS TEXT) = '0.5'
                 AND CAST(fitness_alpha AS TEXT) = '0.5'
@@ -151,7 +148,6 @@ class DBCLI:
                 AND CAST(generations AS TEXT) = '10'
                 AND CAST(crossover_prob AS TEXT) = '0.7'
                 AND CAST(genetic_topk AS TEXT) = '1'
-                AND CAST(ignore_genetic_split AS TEXT) = 'True'
             );"""
 
             logger.cursor.execute(query)
