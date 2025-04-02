@@ -517,7 +517,11 @@ def run_random_baseline(num_samples: Optional[int], num_edits: int):
             seqs.skip()
             continue
         pop = strat.generate()
-        strat.log(i, pop, baseline_name="random")
+        try:
+            strat.log(i, pop, baseline_name="random")
+        except KeyError:
+            pbar.update(1)
+            continue
         pbar.update(1)
 
 
@@ -545,8 +549,8 @@ def run_educated_baseline(num_samples: Optional[int], num_edits: int):
     pbar = tqdm(total=total, desc="Evaluating EducatedStategy baseline...")
     for categorized in [True, False] if num_edits == 1 else [True]:
         target_list = target_cats if categorized else target_items
-        for i, seq in enumerate(seqs):
-            for target in target_list:
+        for target in target_list:
+            for i, seq in enumerate(seqs):
                 pbar.set_postfix_str(
                     f"{'categorized' if categorized else 'uncategorized'} | target: {target}"
                 )
@@ -578,8 +582,13 @@ def run_educated_baseline(num_samples: Optional[int], num_edits: int):
                     seqs.skip()
                     continue
                 pop = strat.generate()
-                strat.log(i, pop)
+                try:
+                    strat.log(i, pop)
+                except KeyError:
+                    pbar.update(1)
+                    continue
                 pbar.update(1)
+            seqs.reset()
 
 
 def main(baseline: str, num_samples: int = 200, num_edits: int = 2):

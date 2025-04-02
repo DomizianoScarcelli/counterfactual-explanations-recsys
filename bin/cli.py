@@ -501,6 +501,7 @@ class CLIUtils:
         self,
         dataset,
         baseline,
+        model = "BERT4Rec",
         num_samples: int = 200,
         num_edits: int = 1,
         seed: Optional[int] = None,
@@ -509,7 +510,11 @@ class CLIUtils:
             if key.value == dataset:
                 recdataset = key.name
         config_dict: ConfigDict = {
-            "settings": {"dataset": recdataset, "seed": seed if seed else 42}
+            "settings": {
+                "dataset": recdataset,
+                "seed": seed if seed else 42,
+                "model": model,
+            }
         }
         if baseline == "educated":
             config_dict.update({"evolution": {"pop_size": 1024}})
