@@ -372,6 +372,7 @@ class CLIStats:
         config_keys.append("target")
         config_keys.append("targeted")
         config_keys.append("categorized")
+        config_keys.append("baseline")
         config_keys.remove("target_cat")
         config_keys.remove("timestamp")
         if "split" in df.columns:
@@ -500,18 +501,28 @@ class CLIUtils:
         self,
         dataset,
         baseline,
-        num_samples: Optional[int] = None,
+        model = "BERT4Rec",
+        num_samples: int = 200,
+        num_edits: int = 1,
         seed: Optional[int] = None,
     ):
         for key in RecDataset:
             if key.value == dataset:
                 recdataset = key.name
         config_dict: ConfigDict = {
-            "settings": {"dataset": recdataset, "seed": seed if seed else 42}
+            "settings": {
+                "dataset": recdataset,
+                "seed": seed if seed else 42,
+                "model": model,
+            }
         }
+        if baseline == "educated":
+            config_dict.update({"evolution": {"pop_size": 1024}})
         ConfigParams.override_params(config_dict)
         ConfigParams.fix()
-        compute_baselines(baseline=baseline, num_samples=num_samples)
+        compute_baselines(
+            baseline=baseline, num_samples=num_samples, num_edits=num_edits
+        )
 
 
 class CLI:
