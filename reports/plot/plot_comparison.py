@@ -1,7 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-
 def clean_data(df):
     whitelist = {
         "ml-100k": [358, 657, 785, 1387],
@@ -9,7 +8,6 @@ def clean_data(df):
         "ml-1m": [105, 718, 248, 1761],
     }
 
-    # Define a function that returns the correct whitelist for a given row
     def is_in_whitelist(row):
         if row["generation_strategy"] != "targeted_uncategorized":
             return True
@@ -17,10 +15,8 @@ def clean_data(df):
         target = int(row["target"])
         return target in whitelist.get(dataset, [])
 
-    # Apply the filtering logic row by row
     df = df[df.apply(is_in_whitelist, axis=1)]
     return df
-
 
 def preprocess_fidelity_df(df):
     df["gen_target_y_at_1"] = df["gen_target_y_at_1"].apply(
@@ -34,45 +30,62 @@ def preprocess_fidelity_df(df):
     df = df.rename(columns={"gen_target_y_at_1": "target"})
     for k in ks:
         df = df.rename(columns={f"fidelity_gen_score_at_{k}": f"fidelity@{k}"})
-
     df["target"] = df["target"].fillna("None")
     df = clean_data(df)
-    df = df[
-        [
-            "generation_strategy",
-            "dataset",
-            "model",
-            *[f"fidelity@{k}" for k in ks],
-            "target",
-            "seed",
-        ]
-    ]
+    df = df[["generation_strategy", "dataset", "model", *[f"fidelity@{k}" for k in ks], "target", "seed"]]
     return df
 
-
 def preprocess_baselines_df(df):
-    baseline_mapping = {
+    baseline_item_mapping = {
         "ml-100k": {50: 358, 411: 657, 630: 785, 1305: 1387},
         "steam": {271590: 333, 35140: 2, 292140: 1223, 582160: 448},
         "ml-1m": {2858: 105, 2005: 718, 728: 248, 2738: 1761},
     }
+    baseline_categories_mapping = {
+        "steam": {
+            "Indie": 2,
+            "Photo Editing": 6,
+            "Action": 10,
+            "Sports": 18,
+            "Free to Play": 20,
+        },
+        "ml-100k": {
+            "Action": 0,
+            "Adventure": 1,
+            "Animation": 2,
+            "Drama": 7,
+            "Fantasy": 8,
+            "Horror": 10,
+        },
+        "ml-1m": {
+            "Action": 0,
+            "Adventure": 1,
+            "Animation": 2,
+            "Drama": 7,
+            "Fantasy": 8,
+            "Horror": 10,
+        },
+    }
+
     ks = [1, 5, 10, 20]
 
-    # Rename fidelity columns
     for k in ks:
         df = df.rename(columns={f"fidelity_score_at_{k}": f"fidelity@{k}"})
-    # Fill missing target values with "None"
     df["target"] = df["target"].fillna("None")
 
-    # Map target values based on dataset
     def map_target(row):
         dataset = row["dataset"]
-        target = int(row["target"])
-        return baseline_mapping[dataset][target]
+        target = row["target"]
+        if target == "None":
+            return target
+        try:
+            target = int(target)
+            return baseline_item_mapping[dataset][target]
+        except:
+            return baseline_categories_mapping[dataset][target]
 
     df["target"] = df.apply(map_target, axis=1)
 
-    # Implement the TODO logic to generate the correct generation_strategy
     def map_generation_strategy(row):
         if row["targeted"] and row["categorized"]:
             return "targeted"
@@ -83,41 +96,34 @@ def preprocess_baselines_df(df):
         elif not row["targeted"] and row["categorized"]:
             return "genetic_categorized"
 
-    # Apply the mapping function to the DataFrame
     df["generation_strategy"] = df.apply(map_generation_strategy, axis=1)
 
-    # Select relevant columns for the final DataFrame
-    df = df[
-        [
-            "generation_strategy",
-            "dataset",
-            "baseline",
-            "model",
-            *[f"fidelity@{k}" for k in ks],
-            "target",
-            "seed",
-        ]
-    ]
-
+    df = df[["generation_strategy", "dataset", "baseline", "model", *[f"fidelity@{k}" for k in ks], "target", "seed"]]
     return df
 
-
-def plot_group(df, dataset, strategy, title: str):
+def plot_group(df_fidelity, df_baseline, dataset, strategy, title: str):
     plt.figure(figsize=(8, 5))
-
-    # Define k values and their corresponding column names
     k_values = [1, 5, 10, 20]
     fidelity_columns = [f"fidelity@{k}" for k in k_values]
 
-    # Compute seed-level average first (average fidelity scores per target-model)
-    seed_avg = df.groupby(["target", "model"])[fidelity_columns].mean().reset_index()
+    seed_avg_fidelity = df_fidelity.groupby(["target", "model"])[fidelity_columns].mean().reset_index()
+    model_avg_fidelity = seed_avg_fidelity.groupby("model")[fidelity_columns].mean()
 
-    # Compute model-level average (average fidelity scores across all targets)
-    model_avg = seed_avg.groupby("model")[fidelity_columns].mean()
+    for model in model_avg_fidelity.index:
+        plt.plot(k_values, model_avg_fidelity.loc[model], marker="o", linestyle="-", label=f"Fidelity - {model}")
 
-    # Plot fidelity scores across ks for each model
-    for model in model_avg.index:
-        plt.plot(k_values, model_avg.loc[model], marker="o", label=model)
+    for baseline, group_baseline in df_baseline.groupby("baseline"):
+        seed_avg_baseline = group_baseline.groupby(["target", "model"])[fidelity_columns].mean().reset_index()
+        model_avg_baseline = seed_avg_baseline.groupby("model")[fidelity_columns].mean()
+
+        for model in model_avg_baseline.index:
+            plt.plot(
+                k_values,
+                model_avg_baseline.loc[model],
+                marker="s",
+                linestyle="--",
+                label=f"Baseline ({baseline}) - {model}",
+            )
 
     plt.xlabel("k (Fidelity@k)")
     plt.ylabel("Fidelity Score")
@@ -125,23 +131,19 @@ def plot_group(df, dataset, strategy, title: str):
     plt.legend(title="Model")
     plt.xticks(k_values)
     plt.grid(True)
-
-    # Save the plot
     plt.savefig(title, bbox_inches="tight")
     plt.close()
 
-
-# Load the dataset
 fidelities = preprocess_fidelity_df(pd.read_csv("fidelity.csv"))
 baselines = preprocess_baselines_df(pd.read_csv("baselines.csv"))
 
-data = pd.concat([fidelities, baselines], ignore_index=True)
-
-data.to_csv("temp.csv")
-
-
-# Group by generation_strategy and dataset and plot
-for (strategy, dataset), group in data.groupby(["generation_strategy", "dataset"]):
-    plot_group(
-        group, dataset, strategy, title=f"reports/plot/figs/{dataset}_{strategy}.png"
-    )
+for (strategy, dataset), group_fidelity in fidelities.groupby(["generation_strategy", "dataset"]):
+    matching_baselines = baselines[(baselines["generation_strategy"] == strategy) & (baselines["dataset"] == dataset)]
+    if not matching_baselines.empty:
+        plot_group(
+            group_fidelity,
+            matching_baselines,
+            dataset,
+            strategy,
+            title=f"reports/plot/figs/{dataset}_{strategy}_combined.png",
+        )
