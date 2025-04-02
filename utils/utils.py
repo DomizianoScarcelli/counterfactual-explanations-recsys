@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import torch
 from pandas import DataFrame
-from torch import Tensor
+from torch import Tensor, atan
 
 from config.config import ConfigParams
 from utils.RunLogger import RunLogger
@@ -89,12 +89,16 @@ def timeit(func):
 def load_log(log_path) -> DataFrame:
     if log_path.endswith(".csv"):
         df = pd.read_csv(log_path)
+    elif log_path.endswith(".tsv"):
+        df = pd.read_csv(log_path, delimiter="\t")
     elif log_path.endswith(".db"):
         logger = RunLogger(log_path)
         df = logger.to_pandas(table="logs")
         logger.close()
     else:
-        raise ValueError(f"Log must be .csv or .db, not .{log_path.split(".")[-1]}")
+        raise ValueError(
+            f"Log must be .csv .tsv or .db, not .{log_path.split(".")[-1]}"
+        )
     return df
 
 

@@ -8,12 +8,16 @@ from config.config import ConfigParams
 from config.constants import MAX_LENGTH, cat2id
 from core.alignment.alignment import trace_disalignment
 from core.automata_learning.passive_learning import learning_pipeline
-from core.generation.utils import (_evaluate_categorized_generation, equal_ys,
-                                   labels2cat)
+from core.generation.utils import _evaluate_categorized_generation, equal_ys, labels2cat
 from core.models.utils import pad, topk, trim
-from exceptions import (CounterfactualNotFound, DfaNotAccepting,
-                        DfaNotRejecting, EmptyDatasetError,
-                        NoTargetStatesError, SplitNotCoherent)
+from exceptions import (
+    CounterfactualNotFound,
+    DfaNotAccepting,
+    DfaNotRejecting,
+    EmptyDatasetError,
+    NoTargetStatesError,
+    SplitNotCoherent,
+)
 from type_hints import GoodBadDataset
 from utils.distances import edit_distance
 from utils.generators import TimedGenerator
@@ -80,7 +84,9 @@ def log_error(
     log["gen_error"] = error
     log["split"] = str(split)
     if target_cat:
-        log["gen_target_y@1"] = str({cat2id()[target_cat]})
+        log["gen_target_y@1"] = str(
+            {cat2id()[target_cat]} if isinstance(target_cat, str) else target_cat
+        )
     align_log.update(log)
 
     return align_log

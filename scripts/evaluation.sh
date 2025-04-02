@@ -139,7 +139,7 @@ for target in "${target_options[@]}"; do
     "dataset": "$dataset",
     "seed": $seed
     },
-    $( [[ "$target_mode" == "targeted" ]] && echo "\"evolution\": { \"target_cat\": $target }," )
+  $( [[ "$target_mode" == "targeted" ]] && echo "\"evolution\": { \"target_cat\": \"${target}\" }," )
   "generation": {
     "targeted": $( [[ "$target_mode" == "targeted" ]] && echo "True" || echo "False" ),
     "categorized": $( [[ "$categorized" == "categorized" ]] && echo "True" || echo "False" )
