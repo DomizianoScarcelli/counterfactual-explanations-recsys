@@ -371,6 +371,7 @@ class CLIStats:
         df = load_log(log_path)
         config_keys.append("target")
         config_keys.append("targeted")
+        config_keys.append("baseline")
         config_keys.append("categorized")
         config_keys.remove("target_cat")
         config_keys.remove("timestamp")
