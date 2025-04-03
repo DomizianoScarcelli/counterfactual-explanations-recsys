@@ -1,6 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
+
 def clean_data(df):
     whitelist = {
         "ml-100k": [358, 657, 785, 1387],
@@ -18,6 +19,7 @@ def clean_data(df):
     df = df[df.apply(is_in_whitelist, axis=1)]
     return df
 
+
 def preprocess_fidelity_df(df):
     df["gen_target_y_at_1"] = df["gen_target_y_at_1"].apply(
         lambda x: (
@@ -27,13 +29,26 @@ def preprocess_fidelity_df(df):
         )
     )
     ks = [1, 5, 10, 20]
-    df = df.rename(columns={"gen_target_y_at_1": "target"})
+    df = df.rename(
+        columns={"gen_target_y_at_1": "target", "avg_gen_cost_at_1": "edit_distance"}
+    )
     for k in ks:
         df = df.rename(columns={f"fidelity_gen_score_at_{k}": f"fidelity@{k}"})
     df["target"] = df["target"].fillna("None")
     df = clean_data(df)
-    df = df[["generation_strategy", "dataset", "model", *[f"fidelity@{k}" for k in ks], "target", "seed"]]
+    df = df[
+        [
+            "generation_strategy",
+            "dataset",
+            "model",
+            "edit_distance",
+            *[f"fidelity@{k}" for k in ks],
+            "target",
+            "seed",
+        ]
+    ]
     return df
+
 
 def preprocess_baselines_df(df):
     baseline_item_mapping = {
@@ -98,22 +113,45 @@ def preprocess_baselines_df(df):
 
     df["generation_strategy"] = df.apply(map_generation_strategy, axis=1)
 
-    df = df[["generation_strategy", "dataset", "baseline", "model", *[f"fidelity@{k}" for k in ks], "target", "seed"]]
+    df = df[
+        [
+            "generation_strategy",
+            "dataset",
+            "baseline",
+            "model",
+            *[f"fidelity@{k}" for k in ks],
+            "target",
+            "seed",
+        ]
+    ]
     return df
 
-def plot_group(df_fidelity, df_baseline, dataset, strategy, title: str):
-    plt.figure(figsize=(8, 5))
+
+def plot_group_fidelity(df_fidelity, df_baseline, dataset, strategy, title: str):
+    plt.figure(figsize=(16, 10))
     k_values = [1, 5, 10, 20]
     fidelity_columns = [f"fidelity@{k}" for k in k_values]
 
-    seed_avg_fidelity = df_fidelity.groupby(["target", "model"])[fidelity_columns].mean().reset_index()
+    seed_avg_fidelity = (
+        df_fidelity.groupby(["target", "model"])[fidelity_columns].mean().reset_index()
+    )
     model_avg_fidelity = seed_avg_fidelity.groupby("model")[fidelity_columns].mean()
 
     for model in model_avg_fidelity.index:
-        plt.plot(k_values, model_avg_fidelity.loc[model], marker="o", linestyle="-", label=f"Fidelity - {model}")
+        plt.plot(
+            k_values,
+            model_avg_fidelity.loc[model],
+            marker="o",
+            linestyle="-",
+            label=f"{model}",
+        )
 
     for baseline, group_baseline in df_baseline.groupby("baseline"):
-        seed_avg_baseline = group_baseline.groupby(["target", "model"])[fidelity_columns].mean().reset_index()
+        seed_avg_baseline = (
+            group_baseline.groupby(["target", "model"])[fidelity_columns]
+            .mean()
+            .reset_index()
+        )
         model_avg_baseline = seed_avg_baseline.groupby("model")[fidelity_columns].mean()
 
         for model in model_avg_baseline.index:
@@ -122,11 +160,11 @@ def plot_group(df_fidelity, df_baseline, dataset, strategy, title: str):
                 model_avg_baseline.loc[model],
                 marker="s",
                 linestyle="--",
-                label=f"Baseline ({baseline}) - {model}",
+                label=f"({baseline}) - {model}",
             )
 
-    plt.xlabel("k (Fidelity@k)")
-    plt.ylabel("Fidelity Score")
+    plt.xlabel("k")
+    plt.ylabel("Fidelity@k")
     plt.title(f"Fidelity Scores for {dataset} - {strategy}")
     plt.legend(title="Model")
     plt.xticks(k_values)
@@ -134,16 +172,57 @@ def plot_group(df_fidelity, df_baseline, dataset, strategy, title: str):
     plt.savefig(title, bbox_inches="tight")
     plt.close()
 
+
+def plot_group_distance(df_fidelity, dataset, strategy, title: str):
+    plt.figure(figsize=(16, 10))
+
+    # Compute average edit distance per model
+    seed_avg_fidelity = df_fidelity.groupby(["model"])["edit_distance"].mean()
+
+    # Create bar plot
+    plt.bar(
+        seed_avg_fidelity.index,
+        seed_avg_fidelity.values,
+        color="b",
+        alpha=0.7,
+        label="Fidelity",
+    )
+
+    plt.xlabel("Model")
+    plt.ylabel("Average Edit Distance")
+    plt.title(f"Edit Distance Comparison for {dataset} - {strategy}")
+    plt.xticks(rotation=45, ha="right")
+    plt.legend()
+    plt.grid(axis="y", linestyle="--", alpha=0.7)
+    plt.savefig(title, bbox_inches="tight")
+    plt.close()
+
+
 fidelities = preprocess_fidelity_df(pd.read_csv("fidelity.csv"))
 baselines = preprocess_baselines_df(pd.read_csv("baselines.csv"))
 
-for (strategy, dataset), group_fidelity in fidelities.groupby(["generation_strategy", "dataset"]):
-    matching_baselines = baselines[(baselines["generation_strategy"] == strategy) & (baselines["dataset"] == dataset)]
+for (strategy, dataset), group_fidelity in fidelities.groupby(
+    ["generation_strategy", "dataset"]
+):
+    matching_baselines = baselines[
+        (baselines["generation_strategy"] == strategy)
+        & (baselines["dataset"] == dataset)
+    ]
     if not matching_baselines.empty:
-        plot_group(
+        plot_group_fidelity(
             group_fidelity,
             matching_baselines,
             dataset,
             strategy,
             title=f"reports/plot/figs/{dataset}_{strategy}_combined.png",
         )
+
+for (strategy, dataset), group_fidelity in fidelities.groupby(
+    ["generation_strategy", "dataset"]
+):
+    plot_group_distance(
+        group_fidelity,
+        dataset,
+        strategy,
+        title=f"reports/plot/figs/distance_{dataset}_{strategy}_combined.png",
+    )
