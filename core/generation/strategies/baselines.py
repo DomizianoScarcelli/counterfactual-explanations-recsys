@@ -115,8 +115,8 @@ class BaselineStrategy(GenerationStrategy):
             }
         for x, y in dataset:
             cat_counter_rankings, uncat_counter_rankings = None, None
-            if CounterfactualSetting.TARGETED_CATEGORIZED in settings:
-                cat_counter_rankings = {
+            if CounterfactualSetting.UNTARGETED_UNCATEGORIZED in settings:
+                uncat_counter_rankings = {
                     k: [
                         {x.item()}
                         for x in topk(
@@ -128,10 +128,10 @@ class BaselineStrategy(GenerationStrategy):
                     ]
                     for k in self.ks
                 }
-                cat_scores = {k: equal_ys(cat_counter_rankings[k], cat_rankings[k], return_score=True)[1] for k in self.ks}  # type: ignore
+                uncat_scores = {k: equal_ys(uncat_counter_rankings[k], uncat_rankings[k], return_score=True)[1] for k in self.ks}  # type: ignore
 
-            if CounterfactualSetting.TARGETED_UNCATEGORIZED in settings:
-                uncat_counter_rankings = {
+            if CounterfactualSetting.UNTARGETED_CATEGORIZED in settings:
+                cat_counter_rankings = {
                     k: labels2cat(
                         topk(
                             logits=y,
@@ -143,7 +143,7 @@ class BaselineStrategy(GenerationStrategy):
                     )
                     for k in self.ks
                 }
-                uncat_scores = {k: equal_ys(uncat_counter_rankings[k], uncat_rankings[k], return_score=True)[1] for k in self.ks}  # type: ignore
+                cat_scores = {k: equal_ys(cat_counter_rankings[k], cat_rankings[k], return_score=True)[1] for k in self.ks}  # type: ignore
 
             if CounterfactualSetting.TARGETED_UNCATEGORIZED in settings:
                 uncat_target_scores = {}
@@ -223,9 +223,7 @@ class BaselineStrategy(GenerationStrategy):
                     targ_uncat_log_ks = [
                         {
                             f"rankings@{k}": seq_tostr(uncat_target_gt[k]),
-                            f"counter_rankings@{k}": seq_tostr(
-                                uncat_counter_rankings[k]
-                            ),
+                            f"counter_rankings@{k}": seq_tostr(uncat_rankings[k]),
                             f"score@{k}": uncat_target_scores[target_item][k],
                         }
                         for k in self.ks
@@ -248,7 +246,7 @@ class BaselineStrategy(GenerationStrategy):
                     targ_cat_log_ks = [
                         {
                             f"rankings@{k}": seq_tostr(cat_target_gt[k]),
-                            f"counter_rankings@{k}": seq_tostr(cat_counter_rankings[k]),
+                            f"counter_rankings@{k}": seq_tostr(cat_rankings[k]),
                             f"score@{k}": cat_target_scores[target_cat][k],
                         }
                         for k in self.ks
@@ -336,11 +334,7 @@ class RandomStrategy(BaselineStrategy):
     def generate(self) -> List[Tuple[List[int], Tensor]]:
         x = trim(self.input_seq.squeeze(0)).tolist()
         x_primes = []
-        for _ in tqdm(
-            range(ConfigParams.POP_SIZE),
-            desc="Generating dataset with RandomStrategy...",
-            leave=False,
-        ):
+        for _ in range(ConfigParams.POP_SIZE):
             executed, mutable, fixed = self.split.apply(x)
             random_idxs = random.sample(range(len(mutable)), k=self.num_edits)
             random_chars = random.sample(self.alphabet, k=self.num_edits)
@@ -391,11 +385,7 @@ class EducatedStategy(BaselineStrategy):
     def generate(self) -> List[Tuple[List[int], Tensor]]:
         x = trim(self.input_seq.squeeze(0)).tolist()
         x_primes = []
-        for _ in tqdm(
-            range(ConfigParams.POP_SIZE),
-            desc=f"Generating dataset with EducatedStrategy for target {'item' if not self.categorized else 'category'} {self.target}...",
-            leave=False,
-        ):
+        for _ in range(ConfigParams.POP_SIZE):
             executed, mutable, fixed = self.split.apply(x)
             random_idxs = random.sample(range(len(mutable)), k=self.num_edits)
 
@@ -481,6 +471,7 @@ def run_random_baseline(num_samples: Optional[int], num_edits: int):
     total = 0
     for i in seqs:
         total += 1
+    print(f"[DEBUG] resetting")
     seqs.reset()
     sampled_indices = None
     if num_samples:
@@ -495,7 +486,6 @@ def run_random_baseline(num_samples: Optional[int], num_edits: int):
     pbar = tqdm(total=total, desc="Evaluating RandomStrategy baseline...")
     for i, seq in enumerate(seqs):
         if sampled_indices and i not in sampled_indices:
-            seqs.skip()
             continue
         strat = RandomStrategy(
             input_seq=seq,
@@ -514,7 +504,6 @@ def run_random_baseline(num_samples: Optional[int], num_edits: int):
         )
         if exists:
             pbar.total -= 1
-            seqs.skip()
             continue
         pop = strat.generate()
         try:
@@ -555,7 +544,6 @@ def run_educated_baseline(num_samples: Optional[int], num_edits: int):
                     f"{'categorized' if categorized else 'uncategorized'} | target: {target}"
                 )
                 if sampled_indices and i not in sampled_indices:
-                    seqs.skip()
                     continue
                 strat = EducatedStategy(
                     input_seq=seq,
@@ -579,7 +567,6 @@ def run_educated_baseline(num_samples: Optional[int], num_edits: int):
                 )
                 if exists:
                     pbar.total -= 1
-                    seqs.skip()
                     continue
                 pop = strat.generate()
                 try:

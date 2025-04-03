@@ -501,7 +501,7 @@ class CLIUtils:
         self,
         dataset,
         baseline,
-        model = "BERT4Rec",
+        model="BERT4Rec",
         num_samples: int = 200,
         num_edits: int = 1,
         seed: Optional[int] = None,
@@ -516,8 +516,7 @@ class CLIUtils:
                 "model": model,
             }
         }
-        if baseline == "educated":
-            config_dict.update({"evolution": {"pop_size": 1024}})
+        config_dict.update({"evolution": {"pop_size": 1024}})
         ConfigParams.override_params(config_dict)
         ConfigParams.fix()
         compute_baselines(
