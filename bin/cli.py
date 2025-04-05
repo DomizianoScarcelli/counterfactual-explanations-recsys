@@ -18,10 +18,6 @@ from core.evaluation.genetic.utils import (
     compute_fidelity,
     compute_running_times,
 )
-from core.evaluation.automata_learning.evaluate_with_test_set import (
-    compute_automata_metrics,
-    run_automata_learning_eval,
-)
 from core.evaluation.evaluation_utils import compute_metrics
 from core.sensitivity.model_sensitivity import run_on_all_positions
 from scripts.print_pth import print_pth as print_pth_script
@@ -162,89 +158,6 @@ class CLIStats:
         """
         Get statistics about previously run evaluations or analyze a given CSV file.
         """
-
-    def automata_metrics(self, log_path: str, save_path: Optional[str] = None):
-        config_keys = list(ConfigParams.configs_dict().keys())
-        df = load_log(log_path)
-
-        print("[DEBUG], dataframe", df.info())
-
-        columns_to_replace = ["tp", "tn", "fp", "fn", "precision", "accuracy", "recall"]
-        df[columns_to_replace] = df[columns_to_replace].replace("None", 0.0)
-        df[columns_to_replace] = df[columns_to_replace].fillna(0.0)
-        for col in columns_to_replace:
-            df[col] = df[col].astype(float)
-
-        print("[DEBUG], dataframe", df.info())
-
-        config_keys.remove("timestamp")
-
-        group_rows = []
-        grouped = df.groupby(config_keys)
-
-        for config_values, group in grouped:
-            metrics_dict = compute_automata_metrics(group)
-            user_metrics_dict = compute_automata_metrics(group, average_per_user=True)
-
-            if isinstance(config_values, tuple):
-                config_dict = dict(zip(config_keys, config_values))
-            else:
-                config_dict = {config_keys[0]: config_values}
-
-            for key, value in metrics_dict.items():
-                config_dict[f"{key}"] = value
-                config_dict[f"count"] = group.shape[0]
-
-            for key, value in user_metrics_dict.items():
-                config_dict[f"usr_avg_{key}"] = value
-                config_dict[f"count"] = group.shape[0]
-
-            group_rows.append(config_dict)
-
-        metrics_df = pd.DataFrame(group_rows)
-
-        # Compute "Average" rows for each category type
-        for category_type in ["targeted", "targeted_uncategorized"]:
-            category_df = metrics_df[metrics_df["generation_strategy"] == category_type]
-
-            if not category_df.empty:
-                avg_row = {
-                    "target_cat": "Average",
-                    "generation_strategy": category_type,
-                }
-
-                # Sum tp, tn, fp, fn
-                tp_sum = category_df["tp"].sum()
-                tn_sum = category_df["tn"].sum()
-                fp_sum = category_df["fp"].sum()
-                fn_sum = category_df["fn"].sum()
-
-                avg_row["tp"] = tp_sum
-                avg_row["tn"] = tn_sum
-                avg_row["fp"] = fp_sum
-                avg_row["fn"] = fn_sum
-
-                # Compute precision, accuracy, recall using summed values
-                avg_row["precision"], avg_row["accuracy"], avg_row["recall"] = (
-                    compute_metrics(tp=tp_sum, fp=fp_sum, tn=tn_sum, fn=fn_sum)
-                )
-
-                # Compute average user-level metrics
-                avg_row["usr_avg_precision"] = category_df["usr_avg_precision"].mean()
-                avg_row["usr_avg_accuracy"] = category_df["usr_avg_accuracy"].mean()
-                avg_row["usr_avg_recall"] = category_df["usr_avg_recall"].mean()
-
-                avg_row["count"] = category_df["count"].sum()
-
-                metrics_df = pd.concat(
-                    [metrics_df, pd.DataFrame([avg_row])], ignore_index=True
-                )
-
-        if save_path:
-            metrics_df.to_csv(save_path, index=False)
-        else:
-            print(metrics_df)
-
     def fidelity(
             self, log_path: str, save_path: Optional[str] = None, clean: bool = True
     ):
@@ -364,30 +277,6 @@ class CLIEvaluate:
                 else None
             ),
         ).run()
-
-    def automata_learning(
-            self,
-            config_path: Optional[str] = None,
-            config_dict: Optional[ConfigDict] = None,
-            save_path: Optional[str] = None,
-            end_i: int = 30,
-    ):
-        save_path, config_path = _absolute_paths(save_path, config_path)
-        if config_path and config_dict:
-            raise ValueError(
-                "Only one between config_path and config_dict must be set, not both"
-            )
-        if config_path:
-            ConfigParams.reload(config_path)
-        if config_dict:
-            ConfigParams.override_params(config_dict)
-        ConfigParams.fix()
-
-        run_automata_learning_eval(
-            use_cache=False,
-            end_i=end_i,
-            save_path=save_path,
-        )
 
     def sensitivity(
             self,

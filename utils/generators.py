@@ -22,7 +22,6 @@ from core.generation.dataset.utils import (
 )
 from core.generation.mutations import parse_mutations
 from core.generation.strategies.abstract_strategy import GenerationStrategy
-from core.generation.strategies.exhaustive import ExhaustiveStrategy
 from core.generation.strategies.untargeted_uncategorized import GeneticStrategy
 from core.generation.strategies.untargeted_categorized import CategorizedGeneticStrategy
 from core.generation.strategies.targeted_categorized import TargetedGeneticStrategy
@@ -375,20 +374,6 @@ class DatasetGenerator(SkippableGenerator):
                 halloffame_ratio=ConfigParams.HALLOFFAME_RATIO,
                 alphabet=self.alphabet,
                 split=self.genetic_split,
-            )
-
-        elif self.strategy == "brute_force":
-            self.good_strat = ExhaustiveStrategy(
-                input_seq=seq,
-                model=self.model,
-                alphabet=self.alphabet,
-                good_examples=True,
-            )
-            self.bad_strat = ExhaustiveStrategy(
-                input_seq=seq,
-                model=self.model,
-                alphabet=self.alphabet,
-                good_examples=False,
             )
         else:
             raise NotImplementedError(

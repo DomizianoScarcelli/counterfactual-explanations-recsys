@@ -165,7 +165,7 @@ echo "=================================="
    # Run the script
    python -m bin.cli evaluate alignment \
        --use-cache=False \
-       --save-path="results/evaluate/alignment.db" \
+       --save-path="results/evaluate/alignment_publish.db" \
        --config_dict="$config_json" \
        --mode="genetic" \
        --range-i="(0, $num_users)" \
