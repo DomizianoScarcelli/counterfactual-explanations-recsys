@@ -1,7 +1,7 @@
 from config.config import ConfigParams
 from core.automata_learning.passive_learning import learning_pipeline
 from core.automata_learning.utils import run_automata
-from core.evaluation.alignment.utils import preprocess_interaction
+from core.evaluation.genetic.utils import preprocess_interaction
 from core.models.config_utils import generate_model, get_config
 from utils.generators import DatasetGenerator
 from utils.utils import printd

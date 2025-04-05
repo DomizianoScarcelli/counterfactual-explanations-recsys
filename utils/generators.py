@@ -23,9 +23,9 @@ from core.generation.dataset.utils import (
 from core.generation.mutations import parse_mutations
 from core.generation.strategies.abstract_strategy import GenerationStrategy
 from core.generation.strategies.exhaustive import ExhaustiveStrategy
-from core.generation.strategies.genetic import GeneticStrategy
-from core.generation.strategies.genetic_categorized import CategorizedGeneticStrategy
-from core.generation.strategies.targeted import TargetedGeneticStrategy
+from core.generation.strategies.untargeted_uncategorized import GeneticStrategy
+from core.generation.strategies.untargeted_categorized import CategorizedGeneticStrategy
+from core.generation.strategies.targeted_categorized import TargetedGeneticStrategy
 from core.generation.strategies.targeted_uncategorized import (
     TargetedUncategorizedGeneticStrategy,
 )

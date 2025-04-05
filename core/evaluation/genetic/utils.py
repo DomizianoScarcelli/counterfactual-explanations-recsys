@@ -1,8 +1,6 @@
-import json
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 
 import pandas as pd
-from pandas import DataFrame
 from recbole.model.abstract_recommender import SequentialRecommender
 from recbole.trainer import Interaction
 from torch import Tensor
@@ -25,110 +23,6 @@ def preprocess_interaction(
         raise e
     source_sequence = trim(source_sequence.squeeze(0)).tolist()
     return source_sequence, source_gt
-
-
-def metric_mean(df: pd.DataFrame, metric_name: str) -> Union[float, Dict[str, int]]:
-    # Check if the column exists
-    if metric_name not in df.columns:
-        raise ValueError(f"Column '{metric_name}' not found in the DataFrame.")
-    column = df[metric_name]
-
-    # If dtype is numeric, calculate the mean
-    if pd.api.types.is_numeric_dtype(column):
-        return float(column.mean())
-
-    # If dtype is string, calculate the count of each unique value
-    elif pd.api.types.is_string_dtype(column):
-        return column.value_counts().to_dict()
-
-    else:
-        raise TypeError(f"Unsupported dtype for column '{metric_name}': {column.dtype}")
-
-
-def stats_to_df(stats: List[Dict[str, Any]]) -> DataFrame:
-    data = {}
-    for stat in stats:
-        for key, value in stat.items():
-            if key not in data:
-                data[key] = [round(value, 3) if isinstance(value, float) else value]
-            else:
-                data[key].append(round(value, 3) if isinstance(value, float) else value)
-    return DataFrame(data)
-
-
-def get_log_stats(
-    log_path: str,
-    group_by: List[str],
-    metrics: List[str],
-    filter: Optional[Dict[str, Any]] = None,
-    save_path: Optional[str] = None,
-) -> List[Dict[str, Any]]:
-    """
-    Compute statistics from a log file and optionally save the results.
-
-    Args:
-        log_path (str): Path to the CSV file containing the log data.
-        group_by (List[str]): List of column names to group the data by.
-                              Only columns present in the log file are considered.
-        metrics (List[str]): List of column names for which the mean is computed
-                             within each group.
-        filter (Optional[Dict[str, Any]]): A dictionary specifying filters to apply.
-                                           Each key is a column name, and its value
-                                           is the expected value for that column.
-                                           Only rows matching the filter criteria
-                                           are included in the analysis.
-                                           Example: `{"determinism": "true"}`.
-        save_path (Optional[str]): Path to save the resulting statistics as a JSON file.
-                                   If `None`, the results are not saved_models.
-
-    Returns:
-        List[Dict[str, Any]]: A list of dictionaries containing the computed statistics.
-                              Each dictionary includes:
-                              - Fields from `group_by`
-                              - The number of rows in the group (`rows`)
-                              - The mean value for each metric in `metrics`
-
-    Notes:
-        - Columns specified in `group_by` and `metrics` that are not present in the
-          log file are ignored.
-        - The function filters the data based on the `filter` dictionary before grouping,
-          ensuring only relevant rows are included in the computation.
-        - If `save_path` is provided, the results are saved_models as a JSON file.
-
-    Example:
-        ```python
-        stats = get_log_stats(
-            log_path="logs.csv",
-            group_by=["model", "dataset"],
-            metrics=["accuracy", "loss"],
-            filter={"split": "test"},
-            save_path="stats.json"
-        )
-        print(stats)
-        ```
-    """
-    df = pd.read_csv(log_path)
-    # Filter `group_by` to include only columns present in the DataFrame
-    group_by = [field for field in group_by if field in df.columns]
-
-    results = []
-    for fields, group in df.groupby(group_by):
-        result = {field_name: str(fields[i]) for i, field_name in enumerate(group_by)}  # type: ignore
-        if filter and not all(
-            result[filter_key] == filter_value
-            for filter_key, filter_value in filter.items()
-        ):
-            continue
-        averages = {"rows": group.shape[0]}
-        for metric in metrics:
-            averages[metric] = metric_mean(group, metric)
-        results.append({**result, **averages})
-
-    if save_path:
-        with open(save_path, "w") as f:
-            json.dump(results, f, indent=2)
-    return results
-
 
 def compute_baseline_fidelity(df: pd.DataFrame) -> dict:
     """

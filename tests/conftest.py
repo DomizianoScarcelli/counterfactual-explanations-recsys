@@ -5,8 +5,6 @@ import torch
 from recbole.model.abstract_recommender import SequentialRecommender
 
 from config.config import ConfigParams
-from core.alignment.alignment import (augment_constraint_automata,
-                                      augment_trace_automata)
 from core.automata_learning.passive_learning import (
     generate_automata_from_dataset, generate_single_accepting_sequence_dfa)
 from core.generation.dataset.utils import load_dataset
@@ -118,27 +116,9 @@ def mock_a_dfa(mock_dataset):
 
 
 @pytest.fixture(scope="module")
-def mock_t_dfa_aug(mock_original_trace):
-    # Generate another t_dfa since it's augmented on place
-    t_dfa = generate_single_accepting_sequence_dfa(mock_original_trace)
-    return augment_trace_automata(t_dfa)
-
-
-@pytest.fixture(scope="module")
-def mock_a_dfa_aug(mock_dataset, mock_t_dfa):
-    a_dfa = generate_automata_from_dataset(mock_dataset, load_if_exists=False)
-    return augment_constraint_automata(a_dfa, mock_t_dfa)
-
-
-@pytest.fixture(scope="module")
 def dataset():
     return load_dataset(load_path=Path("saved_models/counterfactual_dataset.pickle"))[0]
 
-
-@pytest.fixture(scope="module")
-def automata_gt(dataset):
-    good_points, _ = dataset
-    return good_points[0][1]
 
 
 @pytest.fixture(scope="module")
@@ -184,17 +164,6 @@ def t_dfa(original_trace):
 def a_dfa(dataset):
     return generate_automata_from_dataset(dataset)
 
-
-@pytest.fixture(scope="module")
-def t_dfa_aug(original_trace):
-    t_dfa = generate_single_accepting_sequence_dfa(original_trace)
-    return augment_trace_automata(t_dfa)
-
-
-@pytest.fixture(scope="module")
-def a_dfa_aug(dataset, t_dfa):
-    a_dfa = generate_automata_from_dataset(dataset, load_if_exists=False)
-    return augment_constraint_automata(a_dfa, t_dfa)
 
 
 @pytest.fixture(scope="module")

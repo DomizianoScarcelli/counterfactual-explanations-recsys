@@ -6,7 +6,6 @@ from torch import Tensor
 
 from config.config import ConfigParams
 from config.constants import MAX_LENGTH, cat2id
-from core.alignment.alignment import trace_disalignment
 from core.automata_learning.passive_learning import learning_pipeline
 from core.generation.utils import _evaluate_categorized_generation, equal_ys, labels2cat
 from core.models.utils import pad, topk, trim
@@ -28,7 +27,6 @@ warnings.simplefilter(action="ignore", category=FutureWarning)
 warnings.simplefilter(action="ignore", category=RuntimeWarning)
 
 timed_learning_pipeline = TimedFunction(learning_pipeline)
-timed_trace_disalignment = TimedFunction(trace_disalignment)
 
 error_messages = {
     DfaNotAccepting: "DfaNotAccepting",

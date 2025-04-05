@@ -9,10 +9,10 @@ import fire
 import pandas as pd
 from tqdm import tqdm
 
-from bin.run import run_all, run_genetic, run_alignment
+from bin.run import run_genetic
 from config.config import ConfigDict, ConfigParams
 from config.constants import cat2id
-from core.evaluation.alignment.utils import (
+from core.evaluation.genetic.utils import (
     compute_baseline_fidelity,
     compute_edit_distance,
     compute_fidelity,
@@ -24,7 +24,6 @@ from core.evaluation.automata_learning.evaluate_with_test_set import (
 )
 from core.evaluation.evaluation_utils import compute_metrics
 from core.sensitivity.model_sensitivity import run_on_all_positions
-from scripts.dataframes.merge_dfs import main as merge_dfs_script
 from scripts.print_pth import print_pth as print_pth_script
 from scripts.targets_popularity import main as targets_popularity_script
 from type_hints import RecDataset
@@ -36,14 +35,14 @@ RunModes: TypeAlias = Literal["alignment", "genetic", "automata_learning", "all"
 
 class RunSwitcher:
     def __init__(
-        self,
-        target: Optional[str],
-        range_i: Tuple[int, Optional[int]],
-        splits: Optional[List[int]],
-        use_cache: bool,
-        mode: RunModes = "all",
-        save_path: Optional[Path] = None,
-        sample_num: Optional[int] = None,
+            self,
+            target: Optional[str],
+            range_i: Tuple[int, Optional[int]],
+            splits: Optional[List[int]],
+            use_cache: bool,
+            mode: RunModes = "all",
+            save_path: Optional[Path] = None,
+            sample_num: Optional[int] = None,
     ):
         self.targeted = ConfigParams.TARGETED
         self.categorized = ConfigParams.CATEGORIZED
@@ -94,8 +93,8 @@ class RunSwitcher:
             self.pbar = tqdm(
                 desc=f"[TARGETED] Evaluating {num_sequences} sequences on {len(self.targets)} targets and {len(self.splits) if self.splits is not None else 1} splits",
                 total=len(self.targets)
-                * num_sequences
-                * (len(self.splits) if self.splits is not None else 1),
+                      * num_sequences
+                      * (len(self.splits) if self.splits is not None else 1),
             )
             self.og_desc = self.pbar.desc
 
@@ -103,7 +102,7 @@ class RunSwitcher:
             self.pbar = tqdm(
                 desc=f"[UNTARGETED] Evaluating {num_sequences} sequences on {len(self.splits) if self.splits is not None else 1} splits",
                 total=num_sequences
-                * (len(self.splits) if self.splits is not None else 1),
+                      * (len(self.splits) if self.splits is not None else 1),
             )
             self.og_desc = self.pbar.desc
 
@@ -119,50 +118,21 @@ class RunSwitcher:
             self._run_single()
 
     def _run_single(self, target: Optional[str] = None):
-        print(f"[DEBUG] run_single target: {target}, mode: {self.mode}")
         if target:
             self.pbar.set_description_str(self.og_desc + f" | Target: {target}")
 
         logger = RunLogger(
             db_path=self.save_path, schema=None, add_config=True, merge_cols=True
         )
-        if self.mode == "alignment":
-            run_alignment(
-                target_cat=target,
-                logger=logger,
-                start_i=self.start_i,
-                end_i=self.end_i,
-                sampled_indices=self.sampled_indices,
-                splits=self.splits,  # type: ignore
-                use_cache=self.use_cache,
-                ks=self.ks,
-                pbar=self.pbar,
-            )
-        elif self.mode == "genetic":
-            run_genetic(
-                target_cat=target,
-                logger=logger,
-                start_i=self.start_i,
-                end_i=self.end_i,
-                sampled_indices=self.sampled_indices,
-                split=self.splits[0] if self.splits and len(self.splits) == 1 else None,  # type: ignore
-                pbar=self.pbar,
-            )  # NOTE: splits can be used in the genetic only if just a single one is used, otherwise each split would require a different dataset generation
-        elif self.mode == "all":
-            print(f"[DEBUG] running all")
-            run_all(
-                target_cat=target,
-                logger=logger,
-                start_i=self.start_i,
-                end_i=self.end_i,
-                sampled_indices=self.sampled_indices,
-                splits=self.splits,  # type: ignore
-                use_cache=self.use_cache,
-                ks=self.ks,
-                pbar=self.pbar,
-            )
-        else:
-            raise ValueError(f"Mode '{self.mode}' not supported")
+        run_genetic(
+            target_cat=target,
+            logger=logger,
+            start_i=self.start_i,
+            end_i=self.end_i,
+            sampled_indices=self.sampled_indices,
+            split=self.splits[0] if self.splits and len(self.splits) == 1 else None,  # type: ignore
+            pbar=self.pbar,
+        )  # NOTE: splits can be used in the genetic only if just a single one is used, otherwise each split would require a different dataset generation
 
 
 def _absolute_paths(*paths: Optional[str]) -> Tuple[Optional[Path], ...]:
@@ -176,68 +146,21 @@ class CLIScripts:
     def targets_popularity(self, dataset: str, save_plot: bool = False):
         targets_popularity_script(dataset, save_plot)
 
-    def merge_dfs(
-        self,
-        paths: Optional[List[str]] = None,
-        dir: Optional[str] = None,
-        regex: Optional[str] = None,
-        primary_key: List[str] = [],
-        blacklist_keys: List[str] = ["timestamp"],
-        ignore_config: bool = False,
-        save_path: Optional[str] = None,
-    ):
-        merge_dfs_script(
-            paths=paths,
-            dir=dir,
-            regex=regex,
-            primary_key=primary_key,
-            blacklist_keys=blacklist_keys,
-            ignore_config=ignore_config,
-            save_path=save_path,
-        )
-
-
 class CLIStats:
     def stats(
-        self,
-        config_path: Optional[str] = None,
-        config_dict: Optional[ConfigDict] = None,
-        log_path: Optional[str] = None,
-        group_by: Optional[List[str] | str] = None,
-        order_by: Optional[List[str] | str] = None,
-        metrics: Optional[List[str]] = None,
-        filter: Optional[Dict[str, Any]] = None,
-        target: Optional[str] = None,
-        save_path: Optional[str] = None,
+            self,
+            config_path: Optional[str] = None,
+            config_dict: Optional[ConfigDict] = None,
+            log_path: Optional[str] = None,
+            group_by: Optional[List[str] | str] = None,
+            order_by: Optional[List[str] | str] = None,
+            metrics: Optional[List[str]] = None,
+            filter: Optional[Dict[str, Any]] = None,
+            target: Optional[str] = None,
+            save_path: Optional[str] = None,
     ):
         """
         Get statistics about previously run evaluations or analyze a given CSV file.
-
-        Args:
-            what : Type of evaluation to analyze. Defaults to None.
-            config_path: Path to the configuration file. Defaults to None.
-            log_path: Path to the log file for statistics. Required for "alignment". Defaults to None.
-            group_by: Columns to group statistics by. Defaults to None.
-            metrics: Metrics to include in the statistics. Defaults to None.
-            filter: Filters to apply to the statistics. Defaults to None.
-            save_path: Path to save the generated statistics in JSON format. Defaults to None.
-
-        Returns:
-            None or dict: Prints the statistics and optionally returns them as a dictionary.
-
-        Raises:
-            ValueError: If required parameters are missing or incorrect.
-            FileNotFoundError: If the specified log file does not exist.
-
-        Examples:
-            1. Generate statistics for alignment:
-                python -m cli stats alignment --log_path="path/to/log.csv"
-
-            2. Generate sensitivity statistics grouped by sequence:
-                python -m cli stats sensitivity --group_by=["sequence"]
-
-            3. Generate general statistics for a CSV file:
-                python -m cli stats --log_path="path/to/file.csv" --group_by=["column1"] --metrics=["metric1", "metric2"]
         """
 
     def automata_metrics(self, log_path: str, save_path: Optional[str] = None):
@@ -323,13 +246,12 @@ class CLIStats:
             print(metrics_df)
 
     def fidelity(
-        self, log_path: str, save_path: Optional[str] = None, clean: bool = True
+            self, log_path: str, save_path: Optional[str] = None, clean: bool = True
     ):
         config_keys = list(ConfigParams.configs_dict().keys())
         df = load_log(log_path)
         if "gen_target_y_at_1" in df.columns:
             config_keys.append("gen_target_y_at_1")
-            # TODO: after the target_cat=None but gen_target_y_at_1=target_cat encoded, adjust this accordingly
             config_keys.remove("target_cat")
 
         config_keys.remove("timestamp")
@@ -337,7 +259,7 @@ class CLIStats:
             config_keys.append("split")
 
         assert (
-            set(config_keys) - set(df.columns) == set()
+                set(config_keys) - set(df.columns) == set()
         ), f"Some config keys: {set(config_keys) - set(df.columns)} do not exist in the loaded df"
 
         df[config_keys] = df[config_keys].fillna("NaN")
@@ -379,7 +301,7 @@ class CLIStats:
             config_keys.append("split")
 
         assert (
-            set(config_keys) - set(df.columns) == set()
+                set(config_keys) - set(df.columns) == set()
         ), f"Some config keys: {set(config_keys) - set(df.columns)} do not exist in the loaded df"
 
         df[config_keys] = df[config_keys].fillna("NaN")
@@ -408,15 +330,15 @@ class CLIStats:
 class CLIEvaluate:
 
     def alignment(
-        self,
-        mode: RunModes = "all",
-        range_i: Tuple[int, Optional[int]] = (0, None),
-        sample_num: Optional[int] = None,
-        splits: Optional[List[int]] = None,
-        use_cache: bool = True,
-        save_path: Optional[str] = None,
-        config_path: Optional[str] = None,
-        config_dict: Optional[ConfigDict] = None,
+            self,
+            mode: RunModes = "all",
+            range_i: Tuple[int, Optional[int]] = (0, None),
+            sample_num: Optional[int] = None,
+            splits: Optional[List[int]] = None,
+            use_cache: bool = True,
+            save_path: Optional[str] = None,
+            config_path: Optional[str] = None,
+            config_dict: Optional[ConfigDict] = None,
     ):
         save_path, config_path = _absolute_paths(save_path, config_path)
         if config_path and config_dict:
@@ -444,11 +366,11 @@ class CLIEvaluate:
         ).run()
 
     def automata_learning(
-        self,
-        config_path: Optional[str] = None,
-        config_dict: Optional[ConfigDict] = None,
-        save_path: Optional[str] = None,
-        end_i: int = 30,
+            self,
+            config_path: Optional[str] = None,
+            config_dict: Optional[ConfigDict] = None,
+            save_path: Optional[str] = None,
+            end_i: int = 30,
     ):
         save_path, config_path = _absolute_paths(save_path, config_path)
         if config_path and config_dict:
@@ -468,10 +390,10 @@ class CLIEvaluate:
         )
 
     def sensitivity(
-        self,
-        save_path: str,
-        config_path: Optional[str] = None,
-        config_dict: Optional[ConfigDict] = None,
+            self,
+            save_path: str,
+            config_path: Optional[str] = None,
+            config_dict: Optional[ConfigDict] = None,
     ):
         save_path, config_path = _absolute_paths(save_path, config_path)
         if config_path and config_dict:
@@ -498,13 +420,13 @@ class CLIUtils:
         preprocess_dataset(dataset)
 
     def baselines(
-        self,
-        dataset,
-        baseline,
-        model="BERT4Rec",
-        num_samples: int = 200,
-        num_edits: int = 1,
-        seed: Optional[int] = None,
+            self,
+            dataset,
+            baseline,
+            model="BERT4Rec",
+            num_samples: int = 200,
+            num_edits: int = 1,
+            seed: Optional[int] = None,
     ):
         for key in RecDataset:
             if key.value == dataset:
