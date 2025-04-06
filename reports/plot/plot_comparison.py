@@ -1,4 +1,5 @@
 import pandas as pd
+from pandas import DataFrame
 import matplotlib.pyplot as plt
 
 
@@ -50,7 +51,7 @@ def preprocess_fidelity_df(df):
     return df
 
 
-def preprocess_baselines_df(df):
+def preprocess_baselines_df(df, num_edits: int):
     baseline_item_mapping = {
         "ml-100k": {50: 358, 411: 657, 630: 785, 1305: 1387},
         "steam": {271590: 333, 35140: 2, 292140: 1223, 582160: 448},
@@ -124,6 +125,7 @@ def preprocess_baselines_df(df):
             "seed",
         ]
     ]
+    df["num_edits"] = num_edits
     return df
 
 
@@ -173,34 +175,42 @@ def plot_group_fidelity(df_fidelity, df_baseline, dataset, strategy, title: str)
     plt.close()
 
 
-def plot_group_distance(df_fidelity, dataset, strategy, title: str):
-    plt.figure(figsize=(16, 10))
+def combine_baselines(b1: DataFrame, b2: DataFrame) -> DataFrame:
+    # Concatenate the two dataframes
+    combined = pd.concat([b1, b2], ignore_index=True)
 
-    # Compute average edit distance per model
-    seed_avg_fidelity = df_fidelity.groupby(["model"])["edit_distance"].mean()
+    # Define sort order (descending fidelity scores, ascending num_edits)
+    sort_cols = [
+        "fidelity@1",
+        "fidelity@5",
+        "fidelity@10",
+        "fidelity@20",
+        "num_edits",
+    ]
+    ascending = [False, False, False, False, True]
 
-    # Create bar plot
-    plt.bar(
-        seed_avg_fidelity.index,
-        seed_avg_fidelity.values,
-        color="b",
-        alpha=0.7,
-        label="Fidelity",
-    )
+    # Sort and drop duplicates, keeping the best row per 'i'
+    combined_sorted = combined.sort_values(by=sort_cols, ascending=ascending)
+    subset = ["generation_strategy", "dataset", "baseline", "model", "target", "seed"]
+    best_rows = combined_sorted.drop_duplicates(subset=subset, keep="first")
 
-    plt.xlabel("Model")
-    plt.ylabel("Average Edit Distance")
-    plt.title(f"Edit Distance Comparison for {dataset} - {strategy}")
-    plt.xticks(rotation=45, ha="right")
-    plt.legend()
-    plt.grid(axis="y", linestyle="--", alpha=0.7)
-    plt.savefig(title, bbox_inches="tight")
-    plt.close()
+    return best_rows.reset_index(drop=True)
 
+
+def baselines2table(df: DataFrame):
+    # TODO:
+    pass
+
+baselines = preprocess_baselines_df(pd.read_csv("baselines.csv"), num_edits=1)
+baselines_2edits = preprocess_baselines_df(
+    pd.read_csv("baselines_2edits.csv"), num_edits=2
+)
+
+baselines = combine_baselines(baselines, baselines_2edits)
+# baselines.to_csv(f"reports/csv/baseline_fidelities.csv")
+baselines2table(baselines)
 
 fidelities = preprocess_fidelity_df(pd.read_csv("fidelity.csv"))
-baselines = preprocess_baselines_df(pd.read_csv("baselines.csv"))
-
 for (strategy, dataset), group_fidelity in fidelities.groupby(
     ["generation_strategy", "dataset"]
 ):
@@ -216,13 +226,3 @@ for (strategy, dataset), group_fidelity in fidelities.groupby(
             strategy,
             title=f"reports/plot/figs/{dataset}_{strategy}_combined.png",
         )
-
-for (strategy, dataset), group_fidelity in fidelities.groupby(
-    ["generation_strategy", "dataset"]
-):
-    plot_group_distance(
-        group_fidelity,
-        dataset,
-        strategy,
-        title=f"reports/plot/figs/distance_{dataset}_{strategy}_combined.png",
-    )
