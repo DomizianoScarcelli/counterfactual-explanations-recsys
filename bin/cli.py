@@ -371,6 +371,7 @@ class CLIStats:
         df = load_log(log_path)
         config_keys.append("target")
         config_keys.append("targeted")
+        config_keys.append("baseline")
         config_keys.append("categorized")
         config_keys.append("baseline")
         config_keys.remove("target_cat")
@@ -398,6 +399,7 @@ class CLIStats:
             rows.append(config_dict)
 
         result_df = pd.DataFrame(rows)
+        result_df = result_df.rename(columns={"fidelity_num_edits": "num_edits"})
 
         if save_path:
             result_df.to_csv(save_path, index=False)
