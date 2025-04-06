@@ -129,53 +129,6 @@ def preprocess_baselines_df(df):
     return df
 
 
-def plot_group_fidelity(df_fidelity, df_baseline, dataset, strategy, title: str):
-    plt.figure(figsize=(16, 10))
-    k_values = [1, 5, 10, 20]
-    fidelity_columns = [f"fidelity@{k}" for k in k_values]
-
-    seed_avg_fidelity = (
-        df_fidelity.groupby(["target", "model"])[fidelity_columns].mean().reset_index()
-    )
-    model_avg_fidelity = seed_avg_fidelity.groupby("model")[fidelity_columns].mean()
-
-    for model in model_avg_fidelity.index:
-        plt.plot(
-            k_values,
-            model_avg_fidelity.loc[model],
-            marker="o",
-            linestyle="-",
-            label=f"{model}",
-        )
-
-    for baseline, group_baseline in df_baseline.groupby("baseline"):
-        seed_avg_baseline = (
-            group_baseline.groupby(["target", "model"])[fidelity_columns]
-            .mean()
-            .reset_index()
-        )
-        model_avg_baseline = seed_avg_baseline.groupby("model")[fidelity_columns].mean()
-
-        for model in model_avg_baseline.index:
-            plt.plot(
-                k_values,
-                model_avg_baseline.loc[model],
-                marker="s",
-                linestyle="--",
-                label=f"({baseline}) - {model}",
-            )
-
-    plt.xlabel("k")
-    plt.ylabel("Fidelity@k")
-    plt.title(f"Fidelity Scores for {dataset} - {strategy}")
-    plt.legend(title="Model")
-    plt.xticks(k_values)
-    plt.grid(True)
-    plt.savefig(title, bbox_inches="tight")
-    plt.close()
-
-
-
 def baselines2table(df: pd.DataFrame) -> pd.DataFrame:
     subset = ["generation_strategy", "dataset", "baseline", "model", "target", "seed"]
     fidelity_cols = [f"fidelity@{k}" for k in [1, 5, 10, 20]] + ["num_edits"]
@@ -212,24 +165,152 @@ def fidelities2table(df: pd.DataFrame) -> pd.DataFrame:
     return final_grouped
 
 
-baselines = preprocess_baselines_df(pd.read_csv("baselines.csv"))
-
-fidelities = preprocess_fidelity_df(pd.read_csv("fidelity.csv"))
-for (strategy, dataset), group_fidelity in fidelities.groupby(
-    ["generation_strategy", "dataset"]
+def plot_group_fidelity(
+    axis, df_fidelity, df_baseline, dataset, strategy, color_map, all_models
 ):
-    matching_baselines = baselines[
-        (baselines["generation_strategy"] == strategy)
-        & (baselines["dataset"] == dataset)
-    ]
-    if not matching_baselines.empty:
-        plot_group_fidelity(
-            group_fidelity,
-            matching_baselines,
-            dataset,
-            strategy,
-            title=f"reports/plot/figs/{dataset}_{strategy}_combined.png",
+    k_values = [1, 5, 10, 20]
+    fidelity_columns = [f"fidelity@{k}" for k in k_values]
+    seed_avg_fidelity = (
+        df_fidelity.groupby(["target", "model"])[fidelity_columns].mean().reset_index()
+    )
+    model_avg_fidelity = seed_avg_fidelity.groupby("model")[fidelity_columns].mean()
+
+    lines = []
+    # Plot models in consistent order
+    for model in all_models:
+        if model in model_avg_fidelity.index:
+            (line,) = axis.plot(
+                k_values,
+                model_avg_fidelity.loc[model],
+                marker="o",
+                linestyle="-",
+                label=model,
+                color=color_map.get(model),
+            )
+            lines.append(line)
+
+    df_baseline = df_baseline.sort_values("baseline", ascending=False)
+    for baseline, group_baseline in df_baseline.groupby("baseline"):
+        seed_avg_baseline = (
+            group_baseline.groupby(["target", "model"])[fidelity_columns]
+            .mean()
+            .reset_index()
         )
+        model_avg_baseline = seed_avg_baseline.groupby("model")[fidelity_columns].mean()
+
+        # Plot baseline models in same order
+        for model in all_models:
+            if model in model_avg_baseline.index:
+                baseline_label = f"({baseline}) - {model}"
+                (line,) = axis.plot(
+                    k_values,
+                    model_avg_baseline.loc[model],
+                    marker="^" if baseline == "educated" else "s",
+                    linestyle="--",
+                    label=baseline_label,
+                    color=color_map.get(baseline_label),
+                )
+                lines.append(line)
+
+    return lines
+
+
+def plot_fidelities(fidelities):
+    datasets = sorted(fidelities["dataset"].unique())
+    strategies = sorted(fidelities["generation_strategy"].unique())
+
+    rows = len(datasets)
+    cols = len(strategies)
+    fig, axes = plt.subplots(rows, cols, figsize=(16, 16))
+
+    # Ensure axes is always a 2D array
+    if rows == 1 and cols == 1:
+        axes = np.array([[axes]])
+    elif rows == 1:
+        axes = axes.reshape(1, cols)
+    elif cols == 1:
+        axes = axes.reshape(rows, 1)
+
+    # Create color map for consistent colors
+    all_models = sorted(fidelities["model"].unique())
+    color_map = {model: plt.cm.tab10(i % 10) for i, model in enumerate(all_models)}
+
+    # Add colors for baseline versions of each model
+    baseline_labels = baselines["baseline"].unique()
+    for baseline in baseline_labels:
+        for i, model in enumerate(all_models):
+            color_map[f"({baseline}) - {model}"] = plt.cm.tab10(i % 10)
+
+    all_lines = []
+    all_labels = []
+
+    # Plot by dataset (rows) and strategy (columns)
+    for row_idx, dataset in enumerate(datasets):
+        for col_idx, strategy in enumerate(strategies):
+            ax = axes[row_idx, col_idx]
+
+            # Get data for this dataset and strategy
+            dataset_strategy_data = fidelities[
+                (fidelities["dataset"] == dataset)
+                & (fidelities["generation_strategy"] == strategy)
+            ]
+
+            matching_baselines = baselines[
+                (baselines["dataset"] == dataset)
+                & (baselines["generation_strategy"] == strategy)
+            ]
+
+            if not dataset_strategy_data.empty and not matching_baselines.empty:
+                lines = plot_group_fidelity(
+                    ax,
+                    dataset_strategy_data,
+                    matching_baselines,
+                    dataset,
+                    strategy,
+                    color_map,
+                    all_models,
+                )
+                all_lines.extend(lines)
+                all_labels.extend([line.get_label() for line in lines])
+
+            # Add title even if there's no data
+            strategy_map = {
+                "genetic": "Untargeted-Uncategorized",
+                "genetic_categorized": "Untargeted-Categorized",
+                "targeted": "Targeted-Categorized",
+                "targeted_uncategorized": "Targeted-Uncategorized",
+            }
+            strat = strategy_map.get(strategy, strategy)
+            ax.set_title(f"{dataset} - {strat}")
+            ax.set_xlabel("k")
+            ax.set_ylabel("Fidelity@k")
+            ax.set_xticks([1, 5, 10, 20])
+            ax.grid(True)
+
+    # Create the legend
+    unique = {}
+    for line, label in zip(all_lines, all_labels):
+        if label not in unique:
+            unique[label] = line
+
+    fig.legend(
+        unique.values(),
+        unique.keys(),
+        loc="upper center",
+        bbox_to_anchor=(0.5, 0.05),
+        ncol=3,
+        fancybox=True,
+        shadow=True,
+    )
+
+    fig.tight_layout(rect=[0, 0.05, 1, 0.95])
+    fig.savefig("reports/plot/figs/results.png")
+
+
+baselines = preprocess_baselines_df(pd.read_csv("baselines.csv"))
+fidelities = preprocess_fidelity_df(pd.read_csv("fidelity.csv"))
+plot_fidelities(fidelities)
+
 baselines = baselines2table(baselines)
 baselines.to_csv(f"reports/csv/baseline_fidelities.csv")
 fidelities = fidelities2table(fidelities)
