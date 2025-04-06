@@ -51,7 +51,7 @@ def preprocess_fidelity_df(df):
     return df
 
 
-def preprocess_baselines_df(df, num_edits: int):
+def preprocess_baselines_df(df):
     baseline_item_mapping = {
         "ml-100k": {50: 358, 411: 657, 630: 785, 1305: 1387},
         "steam": {271590: 333, 35140: 2, 292140: 1223, 582160: 448},
@@ -122,10 +122,10 @@ def preprocess_baselines_df(df, num_edits: int):
             "model",
             *[f"fidelity@{k}" for k in ks],
             "target",
+            "num_edits",
             "seed",
         ]
     ]
-    df["num_edits"] = num_edits
     return df
 
 
@@ -175,40 +175,44 @@ def plot_group_fidelity(df_fidelity, df_baseline, dataset, strategy, title: str)
     plt.close()
 
 
-def combine_baselines(b1: DataFrame, b2: DataFrame) -> DataFrame:
-    # Concatenate the two dataframes
-    combined = pd.concat([b1, b2], ignore_index=True)
 
-    # Define sort order (descending fidelity scores, ascending num_edits)
-    sort_cols = [
-        "fidelity@1",
-        "fidelity@5",
-        "fidelity@10",
-        "fidelity@20",
-        "num_edits",
-    ]
-    ascending = [False, False, False, False, True]
-
-    # Sort and drop duplicates, keeping the best row per 'i'
-    combined_sorted = combined.sort_values(by=sort_cols, ascending=ascending)
+def baselines2table(df: pd.DataFrame) -> pd.DataFrame:
     subset = ["generation_strategy", "dataset", "baseline", "model", "target", "seed"]
-    best_rows = combined_sorted.drop_duplicates(subset=subset, keep="first")
+    fidelity_cols = [f"fidelity@{k}" for k in [1, 5, 10, 20]] + ["num_edits"]
+    grouped = (
+        df.groupby([col for col in subset if col != "seed"])[fidelity_cols]
+        .mean()
+        .reset_index()
+    )
+    final_grouped = (
+        grouped.groupby([col for col in subset if col not in ["seed", "target"]])[
+            fidelity_cols
+        ]
+        .mean()
+        .reset_index()
+    )
+    return final_grouped
 
-    return best_rows.reset_index(drop=True)
+
+def fidelities2table(df: pd.DataFrame) -> pd.DataFrame:
+    subset = ["generation_strategy", "dataset", "model", "target", "seed"]
+    fidelity_cols = [f"fidelity@{k}" for k in [1, 5, 10, 20]] + ["edit_distance"]
+    grouped = (
+        df.groupby([col for col in subset if col != "seed"])[fidelity_cols]
+        .mean()
+        .reset_index()
+    )
+    final_grouped = (
+        grouped.groupby([col for col in subset if col not in ["seed", "target"]])[
+            fidelity_cols
+        ]
+        .mean()
+        .reset_index()
+    )
+    return final_grouped
 
 
-def baselines2table(df: DataFrame):
-    # TODO:
-    pass
-
-baselines = preprocess_baselines_df(pd.read_csv("baselines.csv"), num_edits=1)
-baselines_2edits = preprocess_baselines_df(
-    pd.read_csv("baselines_2edits.csv"), num_edits=2
-)
-
-baselines = combine_baselines(baselines, baselines_2edits)
-# baselines.to_csv(f"reports/csv/baseline_fidelities.csv")
-baselines2table(baselines)
+baselines = preprocess_baselines_df(pd.read_csv("baselines.csv"))
 
 fidelities = preprocess_fidelity_df(pd.read_csv("fidelity.csv"))
 for (strategy, dataset), group_fidelity in fidelities.groupby(
@@ -226,3 +230,7 @@ for (strategy, dataset), group_fidelity in fidelities.groupby(
             strategy,
             title=f"reports/plot/figs/{dataset}_{strategy}_combined.png",
         )
+baselines = baselines2table(baselines)
+baselines.to_csv(f"reports/csv/baseline_fidelities.csv")
+fidelities = fidelities2table(fidelities)
+fidelities.to_csv(f"reports/csv/fidelities.csv")

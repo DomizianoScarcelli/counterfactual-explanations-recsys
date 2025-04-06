@@ -170,6 +170,7 @@ def compute_baseline_fidelity(df: pd.DataFrame) -> dict:
 
         # Store the result in the dictionary
         fidelity_results[score_col] = fidelity_k
+    fidelity_results["num_edits"] = df["num_edits"].mean()
 
     return fidelity_results
 
