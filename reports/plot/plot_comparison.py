@@ -1,6 +1,6 @@
 import pandas as pd
-from pandas import DataFrame
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 def clean_data(df):
@@ -207,6 +207,8 @@ def plot_group_fidelity(
                     model_avg_baseline.loc[model],
                     marker="^" if baseline == "educated" else "s",
                     linestyle="--",
+                    markersize=10 if baseline == "educated" else 6,
+                    markeredgecolor='black',
                     label=baseline_label,
                     color=color_map.get(baseline_label),
                 )
@@ -215,7 +217,7 @@ def plot_group_fidelity(
     return lines
 
 
-def plot_fidelities(fidelities):
+def plot_fidelities_grid(fidelities):
     datasets = sorted(fidelities["dataset"].unique())
     strategies = sorted(fidelities["generation_strategy"].unique())
 
@@ -281,7 +283,7 @@ def plot_fidelities(fidelities):
                 "targeted_uncategorized": "Targeted-Uncategorized",
             }
             strat = strategy_map.get(strategy, strategy)
-            ax.set_title(f"{dataset} - {strat}")
+            # ax.set_title(f"{dataset} - {strat}")
             ax.set_xlabel("k")
             ax.set_ylabel("Fidelity@k")
             ax.set_xticks([1, 5, 10, 20])
@@ -304,12 +306,93 @@ def plot_fidelities(fidelities):
     )
 
     fig.tight_layout(rect=[0, 0.05, 1, 0.95])
-    fig.savefig("reports/plot/figs/results.png")
+    fig.savefig("reports/plot/figs/results.png", dpi=600)
+
+
+def plot_fidelities_rows(fidelities):
+    datasets = sorted(fidelities["dataset"].unique())
+    strategies = sorted(fidelities["generation_strategy"].unique())
+    all_models = sorted(fidelities["model"].unique())
+
+    CB_color_cycle = ["#377eb8", "#ff7f00", "#4daf4a"]
+    color_map = {model: CB_color_cycle[i % 3] for i, model in enumerate(all_models)}
+    baseline_labels = baselines["baseline"].unique()
+    for baseline in baseline_labels:
+        for i, model in enumerate(all_models):
+            color_map[f"({baseline}) - {model}"] = CB_color_cycle[i % 3]
+
+    for dataset in datasets:
+        fig, axes = plt.subplots(1, len(strategies), figsize=(5 * len(strategies), 5))
+
+        if len(strategies) == 1:
+            axes = [axes]
+
+        all_lines = []
+        all_labels = []
+
+        for col_idx, strategy in enumerate(strategies):
+            ax = axes[col_idx]
+
+            dataset_strategy_data = fidelities[
+                (fidelities["dataset"] == dataset)
+                & (fidelities["generation_strategy"] == strategy)
+            ]
+
+            matching_baselines = baselines[
+                (baselines["dataset"] == dataset)
+                & (baselines["generation_strategy"] == strategy)
+            ]
+
+            if not dataset_strategy_data.empty and not matching_baselines.empty:
+                lines = plot_group_fidelity(
+                    ax,
+                    dataset_strategy_data,
+                    matching_baselines,
+                    dataset,
+                    strategy,
+                    color_map,
+                    all_models,
+                )
+                all_lines.extend(lines)
+                all_labels.extend([line.get_label() for line in lines])
+
+            strategy_map = {
+                "genetic": "Untargeted-Uncategorized",
+                "genetic_categorized": "Untargeted-Categorized",
+                "targeted": "Targeted-Categorized",
+                "targeted_uncategorized": "Targeted-Uncategorized",
+            }
+            strat = strategy_map.get(strategy, strategy)
+            # ax.set_title(f"{dataset} - {strat}")
+            ax.set_xlabel("k")
+            ax.set_ylabel("Fidelity@k")
+            ax.set_xticks([1, 5, 10, 20])
+            ax.grid(True)
+
+        # Deduplicate legend entries
+        unique = {}
+        for line, label in zip(all_lines, all_labels):
+            if label not in unique:
+                unique[label] = line
+
+        fig.legend(
+            unique.values(),
+            unique.keys(),
+            loc="upper center",
+            bbox_to_anchor=(0.5, 0.15),
+            ncol=3,
+            fancybox=True,
+            shadow=True,
+        )
+
+        fig.tight_layout(rect=[0, 0.15, 1, 0.95])
+        fig.savefig(f"reports/plot/figs/results_{dataset}.pdf", dpi=600)
+        plt.close(fig)
 
 
 baselines = preprocess_baselines_df(pd.read_csv("baselines.csv"))
 fidelities = preprocess_fidelity_df(pd.read_csv("fidelity.csv"))
-plot_fidelities(fidelities)
+plot_fidelities_rows(fidelities)
 
 baselines = baselines2table(baselines)
 baselines.to_csv(f"reports/csv/baseline_fidelities.csv")
