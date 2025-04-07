@@ -9,7 +9,7 @@ conda activate recsys
 
 ## Documentation
 
-The two methods GENE and PACE are evaluated both in the same run. To run an evaluation, use:
+To run an evaluation, use:
 
 ```
 bash scripts/evaluation.sh <start_index> <end_index> <model> <target_mode> [categorized] [--seed]
