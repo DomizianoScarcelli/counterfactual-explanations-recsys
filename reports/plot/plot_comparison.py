@@ -208,7 +208,7 @@ def plot_group_fidelity(
                     marker="^" if baseline == "educated" else "s",
                     linestyle="--",
                     markersize=10 if baseline == "educated" else 6,
-                    markeredgecolor='black',
+                    markeredgecolor="black",
                     label=baseline_label,
                     color=color_map.get(baseline_label),
                 )
@@ -221,8 +221,8 @@ def plot_fidelities_grid(fidelities):
     datasets = sorted(fidelities["dataset"].unique())
     strategies = sorted(fidelities["generation_strategy"].unique())
 
-    rows = len(datasets)
-    cols = len(strategies)
+    rows = len(strategies)
+    cols = len(datasets)
     fig, axes = plt.subplots(rows, cols, figsize=(16, 16))
 
     # Ensure axes is always a 2D array
@@ -247,8 +247,8 @@ def plot_fidelities_grid(fidelities):
     all_labels = []
 
     # Plot by dataset (rows) and strategy (columns)
-    for row_idx, dataset in enumerate(datasets):
-        for col_idx, strategy in enumerate(strategies):
+    for row_idx, dataset in enumerate(strategies):
+        for col_idx, strategy in enumerate(datasets):
             ax = axes[row_idx, col_idx]
 
             # Get data for this dataset and strategy
@@ -321,16 +321,16 @@ def plot_fidelities_rows(fidelities):
         for i, model in enumerate(all_models):
             color_map[f"({baseline}) - {model}"] = CB_color_cycle[i % 3]
 
-    for dataset in datasets:
-        fig, axes = plt.subplots(1, len(strategies), figsize=(5 * len(strategies), 5))
+    for strategy in strategies:
+        fig, axes = plt.subplots(1, len(datasets), figsize=(5 * len(strategies), 5))
 
-        if len(strategies) == 1:
+        if len(datasets) == 1:
             axes = [axes]
 
         all_lines = []
         all_labels = []
 
-        for col_idx, strategy in enumerate(strategies):
+        for col_idx, dataset in enumerate(datasets):
             ax = axes[col_idx]
 
             dataset_strategy_data = fidelities[
@@ -356,14 +356,7 @@ def plot_fidelities_rows(fidelities):
                 all_lines.extend(lines)
                 all_labels.extend([line.get_label() for line in lines])
 
-            strategy_map = {
-                "genetic": "Untargeted-Uncategorized",
-                "genetic_categorized": "Untargeted-Categorized",
-                "targeted": "Targeted-Categorized",
-                "targeted_uncategorized": "Targeted-Uncategorized",
-            }
-            strat = strategy_map.get(strategy, strategy)
-            # ax.set_title(f"{dataset} - {strat}")
+            # ax.set_title(f"{dataset}")
             ax.set_xlabel("k")
             ax.set_ylabel("Fidelity@k")
             ax.set_xticks([1, 5, 10, 20])
@@ -385,14 +378,22 @@ def plot_fidelities_rows(fidelities):
             shadow=True,
         )
 
+        strategy_map = {
+            "genetic": "Untargeted-Uncategorized",
+            "genetic_categorized": "Untargeted-Categorized",
+            "targeted": "Targeted-Categorized",
+            "targeted_uncategorized": "Targeted-Uncategorized",
+        }
+        strat = strategy_map.get(strategy, strategy)
         fig.tight_layout(rect=[0, 0.15, 1, 0.95])
-        fig.savefig(f"reports/plot/figs/results_{dataset}.pdf", dpi=600)
+        fig.savefig(f"reports/plot/figs/results_{strat}.pdf", dpi=600)
         plt.close(fig)
 
 
 baselines = preprocess_baselines_df(pd.read_csv("baselines.csv"))
 fidelities = preprocess_fidelity_df(pd.read_csv("fidelity.csv"))
 plot_fidelities_rows(fidelities)
+plot_fidelities_grid(fidelities)
 
 baselines = baselines2table(baselines)
 baselines.to_csv(f"reports/csv/baseline_fidelities.csv")
