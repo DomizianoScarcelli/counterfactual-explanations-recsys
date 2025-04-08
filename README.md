@@ -9,6 +9,7 @@ conda activate recsys
 
 ## Documentation
 
+### Method Evaluation
 To run an evaluation, use:
 
 ```
@@ -20,6 +21,7 @@ where
 model: BERT4Rec | SASRec | GRU4Rec
 target_mode: targeted | untargeted
 categorized: categorized | uncategorized (optional, defaults to uncategorized)
+dataset: ML_100K | ML_1M | STEAM
 ```
 
 `start_index` and `end_index` determine which range of targets to perform the evaluation on. If untargeted, then `start_index` and `end_index` must be 1.
@@ -32,3 +34,31 @@ categorized: categorized | uncategorized (optional, defaults to uncategorized)
 
 
 All evaluation results are stored into the sqlite3 database at `results/evaluate/alignment.db`, which is created if it doesn't already exists. Already performed runs will be skipped.
+
+### Baselines Evaluation
+To run the baseline evalution, use:
+
+```
+python -m bin.cli utils baselines --dataset --baseline --num-samples --seed --model --num-edits
+```
+where
+
+```
+dataset: ml-100k | ml-1m | steam
+model: BERT4Rec | SASRec | GRU4Rec
+baseline: random (replace the item with a random item) | educated (replace the item with the target item or an item in the same category)
+num-samples: (int) int defaults to the dataset's number of users, refers to the randomly sampled users to run the baseline on.
+seed: (int) defaults to 42
+num-edits: (int) defaults to 1, refers to the number of edits to allow for each counterfactual generation.
+```
+
+Examples:
+```
+python -m bin.cli utils baselines --dataset="ml-100k" --baseline="educated"  --model="GRU4Rec" --num-edits=2
+python -m bin.cli utils baselines --dataset="steam" --baseline="random" --num-samples=200 --seed=10 --model="BERT4Rec" --num-edits=2
+python -m bin.cli utils baselines --dataset="steam" --baseline="random" --num-samples=200 --seed=101 --model="GRU4Rec" --num-edits=1
+```
+
+All evaluation results are stored into the sqlite3 database at `results/evaluate/baselines.db`, which is created if it doesn't already exists. Already performed runs will be skipped.
+
+
