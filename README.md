@@ -61,4 +61,7 @@ python -m bin.cli utils baselines --dataset="steam" --baseline="random" --num-sa
 
 All evaluation results are stored into the sqlite3 database at `results/evaluate/baselines.db`, which is created if it doesn't already exists. Already performed runs will be skipped.
 
+---
+
+We also provide the GRU4Rec, BERT4Rec and SASRec models trained on the MovieLens 100K, Movielens 1M and Steam datasets, available in the `saved_models/` directory.
 
