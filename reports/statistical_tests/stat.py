@@ -109,6 +109,7 @@ def test(logger: RunLogger):
             ), f"{len(values_align)} != {len(values_base)} for key {key} and k {k}"
 
             significance_t = t_test(values_base, values_align)
+            #TODO: add other tests and log them
             log_entry = dict(zip(group_keys, key))
             log_entry.update(
                 {
