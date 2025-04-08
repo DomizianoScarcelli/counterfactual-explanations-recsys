@@ -23,6 +23,8 @@ def combine_baselines(b1: DataFrame, b2: DataFrame) -> DataFrame:
     combined_sorted = combined.sort_values(by=sort_cols, ascending=ascending)
     subset = [
         "i",
+        "targeted",
+        "categorized",
         "generation_strategy",
         "dataset",
         "baseline",

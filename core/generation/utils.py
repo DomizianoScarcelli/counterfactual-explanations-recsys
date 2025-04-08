@@ -129,7 +129,7 @@ def get_category_map(dataset: Optional[RecDataset] = None) -> Dict[int, str]:
     def load_json(path: Path):
         if not path.exists():
             raise FileNotFoundError(
-                "Category map has not been found, generate it with `python -m scripts.preprocess_dataset`"
+                "Category map has not been found, generate it with `python -m scripts.preprocessing.preprocess_dataset`"
             )
         with open(path, "r") as f:
             data = json.load(f)
