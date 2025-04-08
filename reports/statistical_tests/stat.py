@@ -3,7 +3,6 @@ from tqdm import tqdm
 from utils.utils import load_log
 from reports.statistical_tests.stat_funcs import t_test
 from pathlib import Path
-import pandas as pd
 
 
 baseline_categories_mapping = {
@@ -69,6 +68,7 @@ def test(logger: RunLogger):
 
     ks = [1, 5, 10, 20]
     group_keys = ["dataset", "model", "seed", "generation_strategy", "target"]
+    df_alignment["gen_target_y_at_1"] = df_alignment["gen_target_y_at_1"].fillna("None")
     alignment_group = df_alignment.rename(
         columns={"gen_target_y_at_1": "target"}
     ).groupby(group_keys)
