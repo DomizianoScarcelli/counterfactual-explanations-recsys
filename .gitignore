@@ -10,6 +10,7 @@ log/**
 **/plot/figs/**
 !.gitkeep
 **/.DS_Store/**
+.DS_Store
 .idea/**
 data/steam-SequentialDataset.pth
 dataset/steam/**
