@@ -1,4 +1,4 @@
-from scripts.preprocess_dataset import main as preprocess_dataset
+from scripts.preprocessing.preprocess_dataset import main as preprocess_dataset
 import random
 import warnings
 from pathlib import Path
@@ -26,7 +26,7 @@ from core.evaluation.evaluation_utils import compute_metrics
 from core.sensitivity.model_sensitivity import run_on_all_positions
 from scripts.dataframes.merge_dfs import main as merge_dfs_script
 from scripts.print_pth import print_pth as print_pth_script
-from scripts.targets_popularity import main as targets_popularity_script
+from scripts.preprocessing.targets_popularity import main as targets_popularity_script
 from type_hints import RecDataset
 from utils.generators import InteractionGenerator
 from utils.utils import RunLogger, SeedSetter, load_log

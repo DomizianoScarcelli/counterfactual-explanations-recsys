@@ -22,13 +22,13 @@ def combine_baselines(b1: DataFrame, b2: DataFrame) -> DataFrame:
     # Sort and drop duplicates, keeping the best row per combination
     combined_sorted = combined.sort_values(by=sort_cols, ascending=ascending)
     subset = [
-        "i",
-        "generation_strategy",
+        "source",
+        "targeted",
+        "categorized",
         "dataset",
         "baseline",
         "model",
         "target",
-        "num_edits",
         "seed",
     ]
     best_rows = combined_sorted.drop_duplicates(subset=subset, keep="first")
