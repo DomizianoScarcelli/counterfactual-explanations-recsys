@@ -283,7 +283,7 @@ def plot_fidelities_grid(fidelities):
                 "targeted_uncategorized": "Targeted-Uncategorized",
             }
             strat = strategy_map.get(strategy, strategy)
-            # ax.set_title(f"{dataset} - {strat}")
+            ax.set_title(f"{dataset} - {strat}")
             ax.set_xlabel("k")
             ax.set_ylabel("Fidelity@k")
             ax.set_xticks([1, 5, 10, 20])
@@ -356,7 +356,7 @@ def plot_fidelities_rows(fidelities):
                 all_lines.extend(lines)
                 all_labels.extend([line.get_label() for line in lines])
 
-            # ax.set_title(f"{dataset}")
+            ax.set_title(f"{dataset}")
             ax.set_xlabel("k")
             ax.set_ylabel("Fidelity@k")
             ax.set_xticks([1, 5, 10, 20])

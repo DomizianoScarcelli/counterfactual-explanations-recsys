@@ -373,7 +373,6 @@ class CLIStats:
         config_keys.append("targeted")
         config_keys.append("baseline")
         config_keys.append("categorized")
-        config_keys.append("baseline")
         config_keys.remove("target_cat")
         config_keys.remove("timestamp")
         if "split" in df.columns:
