@@ -1,4 +1,4 @@
-from scripts.preprocess_dataset import main as preprocess_dataset
+from scripts.preprocessing.preprocess_dataset import main as preprocess_dataset
 import random
 import warnings
 from pathlib import Path
@@ -21,7 +21,7 @@ from core.evaluation.genetic.utils import (
 from core.evaluation.evaluation_utils import compute_metrics
 from core.sensitivity.model_sensitivity import run_on_all_positions
 from scripts.print_pth import print_pth as print_pth_script
-from scripts.targets_popularity import main as targets_popularity_script
+from scripts.preprocessing.targets_popularity import main as targets_popularity_script
 from type_hints import RecDataset
 from utils.generators import InteractionGenerator
 from utils.utils import RunLogger, SeedSetter, load_log
@@ -31,14 +31,14 @@ RunModes: TypeAlias = Literal["alignment", "genetic", "automata_learning", "all"
 
 class RunSwitcher:
     def __init__(
-            self,
-            target: Optional[str],
-            range_i: Tuple[int, Optional[int]],
-            splits: Optional[List[int]],
-            use_cache: bool,
-            mode: RunModes = "all",
-            save_path: Optional[Path] = None,
-            sample_num: Optional[int] = None,
+        self,
+        target: Optional[str],
+        range_i: Tuple[int, Optional[int]],
+        splits: Optional[List[int]],
+        use_cache: bool,
+        mode: RunModes = "all",
+        save_path: Optional[Path] = None,
+        sample_num: Optional[int] = None,
     ):
         self.targeted = ConfigParams.TARGETED
         self.categorized = ConfigParams.CATEGORIZED
@@ -89,8 +89,8 @@ class RunSwitcher:
             self.pbar = tqdm(
                 desc=f"[TARGETED] Evaluating {num_sequences} sequences on {len(self.targets)} targets and {len(self.splits) if self.splits is not None else 1} splits",
                 total=len(self.targets)
-                      * num_sequences
-                      * (len(self.splits) if self.splits is not None else 1),
+                * num_sequences
+                * (len(self.splits) if self.splits is not None else 1),
             )
             self.og_desc = self.pbar.desc
 
@@ -98,7 +98,7 @@ class RunSwitcher:
             self.pbar = tqdm(
                 desc=f"[UNTARGETED] Evaluating {num_sequences} sequences on {len(self.splits) if self.splits is not None else 1} splits",
                 total=num_sequences
-                      * (len(self.splits) if self.splits is not None else 1),
+                * (len(self.splits) if self.splits is not None else 1),
             )
             self.og_desc = self.pbar.desc
 
@@ -142,24 +142,26 @@ class CLIScripts:
     def targets_popularity(self, dataset: str, save_plot: bool = False):
         targets_popularity_script(dataset, save_plot)
 
+
 class CLIStats:
     def stats(
-            self,
-            config_path: Optional[str] = None,
-            config_dict: Optional[ConfigDict] = None,
-            log_path: Optional[str] = None,
-            group_by: Optional[List[str] | str] = None,
-            order_by: Optional[List[str] | str] = None,
-            metrics: Optional[List[str]] = None,
-            filter: Optional[Dict[str, Any]] = None,
-            target: Optional[str] = None,
-            save_path: Optional[str] = None,
+        self,
+        config_path: Optional[str] = None,
+        config_dict: Optional[ConfigDict] = None,
+        log_path: Optional[str] = None,
+        group_by: Optional[List[str] | str] = None,
+        order_by: Optional[List[str] | str] = None,
+        metrics: Optional[List[str]] = None,
+        filter: Optional[Dict[str, Any]] = None,
+        target: Optional[str] = None,
+        save_path: Optional[str] = None,
     ):
         """
         Get statistics about previously run evaluations or analyze a given CSV file.
         """
+
     def fidelity(
-            self, log_path: str, save_path: Optional[str] = None, clean: bool = True
+        self, log_path: str, save_path: Optional[str] = None, clean: bool = True
     ):
         config_keys = list(ConfigParams.configs_dict().keys())
         df = load_log(log_path)
@@ -172,7 +174,7 @@ class CLIStats:
             config_keys.append("split")
 
         assert (
-                set(config_keys) - set(df.columns) == set()
+            set(config_keys) - set(df.columns) == set()
         ), f"Some config keys: {set(config_keys) - set(df.columns)} do not exist in the loaded df"
 
         df[config_keys] = df[config_keys].fillna("NaN")
@@ -214,7 +216,7 @@ class CLIStats:
             config_keys.append("split")
 
         assert (
-                set(config_keys) - set(df.columns) == set()
+            set(config_keys) - set(df.columns) == set()
         ), f"Some config keys: {set(config_keys) - set(df.columns)} do not exist in the loaded df"
 
         df[config_keys] = df[config_keys].fillna("NaN")
@@ -243,15 +245,15 @@ class CLIStats:
 class CLIEvaluate:
 
     def alignment(
-            self,
-            mode: RunModes = "all",
-            range_i: Tuple[int, Optional[int]] = (0, None),
-            sample_num: Optional[int] = None,
-            splits: Optional[List[int]] = None,
-            use_cache: bool = True,
-            save_path: Optional[str] = None,
-            config_path: Optional[str] = None,
-            config_dict: Optional[ConfigDict] = None,
+        self,
+        mode: RunModes = "all",
+        range_i: Tuple[int, Optional[int]] = (0, None),
+        sample_num: Optional[int] = None,
+        splits: Optional[List[int]] = None,
+        use_cache: bool = True,
+        save_path: Optional[str] = None,
+        config_path: Optional[str] = None,
+        config_dict: Optional[ConfigDict] = None,
     ):
         save_path, config_path = _absolute_paths(save_path, config_path)
         if config_path and config_dict:
@@ -279,10 +281,10 @@ class CLIEvaluate:
         ).run()
 
     def sensitivity(
-            self,
-            save_path: str,
-            config_path: Optional[str] = None,
-            config_dict: Optional[ConfigDict] = None,
+        self,
+        save_path: str,
+        config_path: Optional[str] = None,
+        config_dict: Optional[ConfigDict] = None,
     ):
         save_path, config_path = _absolute_paths(save_path, config_path)
         if config_path and config_dict:
@@ -309,13 +311,13 @@ class CLIUtils:
         preprocess_dataset(dataset)
 
     def baselines(
-            self,
-            dataset,
-            baseline,
-            model="BERT4Rec",
-            num_samples: int = 200,
-            num_edits: int = 1,
-            seed: Optional[int] = None,
+        self,
+        dataset,
+        baseline,
+        model="BERT4Rec",
+        num_samples: int = 200,
+        num_edits: int = 1,
+        seed: Optional[int] = None,
     ):
         for key in RecDataset:
             if key.value == dataset:
