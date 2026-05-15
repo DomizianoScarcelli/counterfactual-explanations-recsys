@@ -1,5 +1,12 @@
 # Demystifying Sequential Recommendations: Counterfactual Explanations via Genetic Algorithms and Automata Learning
 
+[![arXiv](https://img.shields.io/badge/arXiv-2508.03606v1-b31b1b.svg)](https://arxiv.org/pdf/2508.03606v1)
+
+> **Paper Accepted to the main track of the XAI-2026 conference**
+> 
+> A preprint of this work is available on [arXiv](https://arxiv.org/pdf/2508.03606v1). 
+> 
+> *Note: The current preprint focuses on the counterfactual generation and evaluation aspects of the project. The automata learning components are not included.*
 ## Installation
 It's recommended to use `conda` as virtual environment for python. To create and activate the environment with all the requirements, execute the command
 ``` 
